@@ -9741,7 +9741,7 @@ class EditReactionRole(nextcord.ui.View):
                     
                     # Do some modification checks
                     if packetToModify:
-                        if role.id == int(packetToModify[1]): # If the ids match
+                        if role and packetToModify[1] and role.id == int(packetToModify[1]): # If the ids match
                             if ignoreExtraPacket:
                                 continue
                             if index != (len(lines) - 1): # If this is not the last item in the list
@@ -9780,7 +9780,8 @@ class EditReactionRole(nextcord.ui.View):
                     else:
                         emoji = "❌"
                         
-                    self.addedRoles_IDs.append(role.id)
+                    
+                    self.addedRoles_IDs.append(role.id if role else None)
                     self.addedReactions_Emojis.append(emoji)
                     self.addedOptions_noFormat.append(f"{emoji} {nonFormattedName}")
                     returnList.append(f"{emoji} {name}")
