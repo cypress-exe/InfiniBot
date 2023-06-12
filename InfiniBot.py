@@ -4877,7 +4877,7 @@ class Dashboard(nextcord.ui.View):
                         
                     async def setup(self, interaction: Interaction):
                         server = Server(interaction.guild.id)
-                        server.messages.checkAll()
+                        await server.messages.checkAll()
                         messages = server.messages.getAll(self._type)
                         
                         maxMessages = server.messages.maxOf(self._type)
