@@ -1647,12 +1647,15 @@ class Member:
 class Message:
     '''Represents an active message'''
     def __init__(self, _type, channel_id, message_id, owner_id, persistent, parameters):
-        self.type = _type
-        self.channel_id = channel_id
-        self.message_id = message_id
-        self.owner_id = owner_id
-        self.persistent = persistent
-        self.parameters = parameters
+        self.type: str = _type
+        self.channel_id: str = channel_id
+        self.message_id: str = message_id
+        self.owner_id: str = owner_id
+        self.persistent: bool = persistent
+        self.parameters: list[str] = parameters
+        
+    def getLink(self, guild_id: int):
+        return f"https://discord.com/channels/{guild_id}/{self.channel_id}/{self.message_id}"
 
 class Messages:
     '''Manages Messages Serverwide. Requires a server_id, and you can access/save any saved messages.'''
@@ -1813,7 +1816,7 @@ class Messages:
         
         self.initialize()
 
-    def getAll(self, _type):
+    def getAll(self, _type) -> list[Message]: 
         '''Returns the list of active messages of a specific type.
         Returns List if successful, None if the type is invalid.'''
         if not self._initialized:
@@ -1825,7 +1828,7 @@ class Messages:
         return self.MESSAGE_DATA[_type]["list"]
 
     def get(self, message_id):
-        '''Returns a Message with a specific channel and message_id
+        '''Returns a Message with a specific channel and message_id.
         Returns Message if successful, None if message doesn't exist or error.'''
         if not self._initialized:
             self.initialize();
@@ -1842,6 +1845,14 @@ class Messages:
                     return message;
         return None;
 
+    def countOf(self, _type) -> int:
+        '''Returns the total amount of a type of active message that are currently cached (not the max amount)'''
+        return len(self.getAll(_type))
+
+    def maxOf(self, _type) -> int:
+        '''Returns the max amount of a type of active message'''
+        return self.MESSAGE_DATA[_type]["max_active_messages"]
+        
     async def checkAll(self):
         '''Checks all active messages to see if any don't exist anymore'''
         if not self._initialized:
@@ -2514,6 +2525,9 @@ class Dashboard(nextcord.ui.View):
         
         self.bansButton = self.AutoBansButton(self)
         self.add_item(self.bansButton)
+        
+        self.activeMessagesBtn = self.ActiveMessagesButton(self)
+        self.add_item(self.activeMessagesBtn)
         
         self.enableDisableBtn = self.EnableDisableButton(self)
         self.add_item(self.enableDisableBtn)
@@ -4803,6 +4817,106 @@ class Dashboard(nextcord.ui.View):
             
         async def callback(self, interaction: Interaction):
             await self.AutoBansView(self.outer).setup(interaction)
+
+    class ActiveMessagesButton(nextcord.ui.Button):
+        def __init__(self, outer):
+            super().__init__(label = "Active Messages", row = 2)
+            self.outer = outer
+            
+        class ActiveMessagesView(nextcord.ui.View):
+            def __init__(self, outer):
+                super().__init__(timeout = None)
+                self.outer = outer
+                
+                self.voteBtn = self.OptionButton(self, "Vote")
+                self.add_item(self.voteBtn)
+                
+                self.reactionRoleBtn = self.OptionButton(self, "Reaction Role")
+                self.add_item(self.reactionRoleBtn)
+                
+                self.embedBtn = self.OptionButton(self, "Embed")
+                self.add_item(self.embedBtn)
+                
+                self.backBtn = nextcord.ui.Button(label = "Back", row = 1)
+                self.backBtn.callback = self.backBtnCallback
+                self.add_item(self.backBtn)
+                
+            async def setup(self, interaction: Interaction):
+                server = Server(interaction.guild.id)
+                description = f"""InfiniBot caches every vote, reaction role, and embedded message posted on this server (using InfiniBot), enabling the ability to edit these messages. However, there is a maximum limit for each type of message. Please refer to the list below to manage your active messages.
+                
+                Votes ({server.messages.countOf("Vote")}/10)
+                Reaction Roles ({server.messages.countOf("Reaction Role")}/10)
+                Embeds ({server.messages.countOf("Embed")}/20)"""
+                
+                # On Mobile, extra spaces cause problems. We'll get rid of them here:
+                description = standardizeStrIndention(description)
+                
+                embed = nextcord.Embed(title = "Dashboard - Active Messages", description = description, color = nextcord.Color.blue())
+                await interaction.response.edit_message(embed = embed, view = self)
+                
+            class OptionButton(nextcord.ui.Button):
+                def __init__(self, outer, _type):
+                    super().__init__(label = f"Configure {_type}s")
+                    self.outer = outer
+                    self._type = _type
+                    
+                class TheView(nextcord.ui.View):
+                    def __init__(self, outer, _type):
+                        super().__init__(timeout = None)
+                        self.outer = outer
+                        self._type = _type
+                        
+                        self.backBtn = nextcord.ui.Button(label = "Back")
+                        self.backBtn.callback = self.backBtnCallback
+                        self.add_item(self.backBtn)
+                        
+                        self.refreshBtn = nextcord.ui.Button(label = "Refresh")
+                        self.refreshBtn.callback = self.refreshBtnCallback
+                        self.add_item(self.refreshBtn)
+                        
+                    async def setup(self, interaction: Interaction):
+                        server = Server(interaction.guild.id)
+                        server.messages.checkAll()
+                        messages = server.messages.getAll(self._type)
+                        
+                        maxMessages = server.messages.maxOf(self._type)
+                        
+                        messagesFormatted = []
+                        for index, message in enumerate(messages):
+                            discordChannel = await interaction.guild.fetch_channel(message.channel_id)
+                            discordMessage = await discordChannel.fetch_message(message.message_id)
+                            
+                            title = discordMessage.embeds[0].title
+                            persistent = " 🔒" if message.persistent else ""
+                            
+                            messagesFormatted.append(f"{index + 1}/{maxMessages}) [{title}]({message.getLink(interaction.guild.id)}){persistent}")
+                            
+                        if messagesFormatted == []:
+                            messagesFormatted.append(f"You don't have any active {self._type}s yet! Create one!")
+                        
+                        messagesFormatted_String = '\n'.join(messagesFormatted)
+                        
+                        embed = nextcord.Embed(title = f"Dashboard - Active Messages - {self._type}s",
+                                               description = f"Mange your active {self._type}s here. The 🔒 symbol indicates that the message is persistent. \n\nTo enable / disable persistency, go to the message, right click, go to `Apps → Edit → Prioritize / Deprioritize`\n\n**Active {self._type}s**\n{messagesFormatted_String}",
+                                               color = nextcord.Color.blue())
+                        
+                        await interaction.response.edit_message(embed = embed, view = self)
+                        
+                    async def backBtnCallback(self, interaction: Interaction):
+                        await self.outer.setup(interaction)
+                            
+                    async def refreshBtnCallback(self, interaction: Interaction):
+                        await self.setup(interaction)
+                    
+                async def callback(self, interaction: Interaction):
+                    await self.TheView(self.outer, self._type).setup(interaction)
+                
+            async def backBtnCallback(self, interaction: Interaction):
+                await self.outer.setup(interaction)
+            
+        async def callback(self, interaction: Interaction):
+            await self.ActiveMessagesView(self.outer).setup(interaction)
         
     class EnableDisableButton(nextcord.ui.Button):
         def __init__(self, outer):
@@ -4931,6 +5045,7 @@ class Dashboard(nextcord.ui.View):
                        
         async def callback(self, interaction: Interaction):
             await self.EnableDisableView(self.outer, interaction.guild.id).setup(interaction)       
+
 
 class Profile(nextcord.ui.View):
     def __init__(self):
@@ -7394,33 +7509,33 @@ async def createVote(interaction: Interaction, title: str, message: str, options
         return
 
     reactionsFormatted = ""
-    addedReactionsEmoji = []
-    addedReactionsAsci = [] #expendable after the following loop
+    addedOptions_Emojis = []
+    addedOptions_Asci = [] #expendable after the following loop
 
     counter = 1
     for option in optionsSplit:
         if _type == "Letters":
-            if not option[0].lower() in addedReactionsAsci: #if we have not already used this reaction
+            if not option[0].lower() in addedOptions_Asci: #if we have not already used this reaction
                 letter = option[0]
-                reaction = getReaction(letter)
+                reaction = asci_to_emoji(letter)
                 reactionsFormatted += "\n" + reaction + " " + option
-                addedReactionsAsci.append(letter.lower())
-                addedReactionsEmoji.append(reaction)
+                addedOptions_Asci.append(letter.lower())
+                addedOptions_Emojis.append(reaction)
                 counter += 1
             else:
-                letter = getNextOpenLetter(addedReactionsAsci)
-                reaction = getReaction(letter)
+                letter = getNextOpenLetter(addedOptions_Asci)
+                reaction = asci_to_emoji(letter)
                 reactionsFormatted += "\n" + reaction + " " + option
-                addedReactionsAsci.append(letter.lower())
-                addedReactionsEmoji.append(reaction)
+                addedOptions_Asci.append(letter.lower())
+                addedOptions_Emojis.append(reaction)
                 counter += 1      
                 
         elif _type == "Numbers":
             letter = option[0]
-            reaction = getNumberReaction(counter)
+            reaction = asci_to_emoji(counter)
             reactionsFormatted += "\n" + reaction + " " + option
-            addedReactionsAsci.append(letter.lower())
-            addedReactionsEmoji.append(reaction)
+            addedOptions_Asci.append(letter.lower())
+            addedOptions_Emojis.append(reaction)
             counter += 1
         
         else:
@@ -7428,7 +7543,7 @@ async def createVote(interaction: Interaction, title: str, message: str, options
             emoji = stripped[0].strip()
             word = "=".join(stripped[1:]).strip()
             reactionsFormatted += "\n" + emoji + " " + word
-            addedReactionsEmoji.append(emoji)  
+            addedOptions_Emojis.append(emoji)  
 
 
     embed = nextcord.Embed(title = title, description = message, color =  nextcord.Color.magenta())
@@ -7439,7 +7554,7 @@ async def createVote(interaction: Interaction, title: str, message: str, options
 
     
     voteMessage = partialMessage
-    for reaction in addedReactionsEmoji:
+    for reaction in addedOptions_Emojis:
         try:
             await voteMessage.add_reaction(emoji = reaction)
         except nextcord.errors.Forbidden:
@@ -7449,12 +7564,11 @@ async def createVote(interaction: Interaction, title: str, message: str, options
         
     #finally, add the vote to our active messages for future editing
     server = Server(interaction.guild.id);
-    try: parameters = [VOTETYPES.index(_type)]
-    except ValueError: parameters = []
-    server.messages.add("Vote", interaction.channel.id, partialMessage.id, interaction.user.id, parameters = parameters)
+    server.messages.add("Vote", interaction.channel.id, partialMessage.id, interaction.user.id)
     server.messages.save()
 
-def getReaction(letter):
+def asci_to_emoji(letter):
+    letter = str(letter)
     letter = letter.lower()
 
     if letter == "a": return "🇦"
@@ -7533,20 +7647,6 @@ def getNextOpenLetter(list):
     if not ("8" in list): return "8"
     if not ("9" in list): return "9"
     if not ("0" in list): return "0"
-
-def getNumberReaction(number):
-    number = int(number)
-    
-    if number == 1: return "1️⃣"
-    if number == 2: return "2️⃣"
-    if number == 3: return "3️⃣"
-    if number == 4: return "4️⃣"
-    if number == 5: return "5️⃣"
-    if number == 6: return "6️⃣"
-    if number == 7: return "7️⃣"
-    if number == 8: return "8️⃣"
-    if number == 9: return "9️⃣"
-    if number == 10: return "🔟"
 #END of Voting Bot Functionality: ------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -7557,7 +7657,7 @@ def getNumberReaction(number):
 #Start of reaction bot functionality: ----------------------------------------------------------------------------------------------------------------------------------------------------
 REACTIONROLETYPES = ["Letters", "Numbers", "Custom"]
 @create.subcommand(name = "reaction_role", description = "Create a message that will allow users to add/remove roles from themselves. (Requires Infinibot Mod)")
-async def reactionRoleCommand(interaction: Interaction, type: str = SlashOption(choices = ["Letters", "Numbers"])):
+async def reactionRoleCommand(interaction: Interaction, type: str = SlashOption(choices = ["Letters", "Numbers"]), mentionRoles: bool = SlashOption(name = "mention_roles", description = "Mention the roles with @mention", required = False, default = True)):
     if await hasRole(interaction):
         if not interaction.guild.me.guild_permissions.manage_roles:
             await interaction.response.send_message(embed = nextcord.Embed(title = "InfiniBot Missing Permissions", description = "InfiniBot needs the \"Manage Roles\" permission in order to use this command. Grant InfiniBot this permission and try again.", color = nextcord.Color.red()), ephemeral = True)
@@ -7591,10 +7691,10 @@ async def reactionRoleCommand(interaction: Interaction, type: str = SlashOption(
         await view.wait()
         
         #Finish Proccessing...
-        await createReactionRole(interaction, title, description, view.selection, type)
+        await createReactionRole(interaction, title, description, view.selection, type, mentionRoles)
     
 @create.subcommand(name = "custom_reaction_role", description = "Automatically create a vote that you can customize with emojis.")
-async def customReactionRoleCommand(interaction: Interaction, options: str = SlashOption(description = "Format: \"👍 = @Member, 🥸 = @Gamer\"")):   
+async def customReactionRoleCommand(interaction: Interaction, options: str = SlashOption(description = "Format: \"👍 = @Member, 🥸 = @Gamer\""), mentionRoles: bool = SlashOption(name = "mention_roles", description = "Mention the roles with @mention", required = False, default = True)):   
     if await hasRole(interaction):
         if not interaction.guild.me.guild_permissions.manage_roles:
             await interaction.response.send_message(embed = nextcord.Embed(title = "InfiniBot Missing Permissions", description = "InfiniBot needs the \"Manage Roles\" permission in order to use this command. Grant InfiniBot this permission and try again.", color = nextcord.Color.red()), ephemeral = True)
@@ -7643,9 +7743,45 @@ async def customReactionRoleCommand(interaction: Interaction, options: str = Sla
         
         await modal.wait()
         
-        await createReactionRole(interaction, modal.titleValue, modal.descriptionValue, [option.strip() for option in options.split(",")], "Custom")
+        await createReactionRole(interaction, modal.titleValue, modal.descriptionValue, [option.strip() for option in options.split(",")], "Custom", mentionRoles)
 
-async def createReactionRole(interaction: Interaction, title: str, message: str, rolesStr: list[str], _type: str):  
+def reactionRoleOptionsFormatter(_type: str, roles: list[nextcord.Role], emojis: (list[str] | None), mentionRoles: bool):
+    reactionsFormatted = "" # Returned
+    addedOptions_Emojis = [] # Returned
+    addedOptions_Asci = []
+    
+    count = 1
+    for role in roles:
+        if _type == "Letters":
+            if not role.name[0].lower() in addedOptions_Asci: #if we have not already used this reaction
+                letter = role.name[0]
+                reaction = asci_to_emoji(letter)
+                reactionsFormatted += "\n" + reaction + " " + (role.mention if mentionRoles else role.name)
+                addedOptions_Asci.append(letter.lower())
+                addedOptions_Emojis.append(reaction)
+            else:
+                letter = getNextOpenLetter(addedOptions_Asci)
+                reaction = asci_to_emoji(letter)
+                reactionsFormatted += "\n" + reaction + " " + (role.mention if mentionRoles else role.name)
+                addedOptions_Asci.append(letter.lower())
+                addedOptions_Emojis.append(reaction)
+        elif _type == "Numbers":
+            letter = role.name[0]
+            reaction = asci_to_emoji(count)
+            reactionsFormatted += "\n" + reaction + " " + (role.mention if mentionRoles else role.name)
+            addedOptions_Asci.append(letter.lower())
+            addedOptions_Emojis.append(reaction)
+            count += 1
+        else:
+            index = roles.index(role)
+            emoji = emojis[index].strip()
+            reactionsFormatted += "\n" + emoji + " " + (role.mention if mentionRoles else role.name)
+            addedOptions_Emojis.append(emoji)
+            
+    return reactionsFormatted, addedOptions_Emojis
+
+async def createReactionRole(interaction: Interaction, title: str, message: str, rolesStr: list[str], _type: str, mentionRoles: bool):  
+    # Decode roles and emojis
     if _type != "Custom":
         roles: list[nextcord.Role] = [role for roleName in rolesStr for role in interaction.guild.roles if role.name == roleName]
         emojis = None
@@ -7654,58 +7790,32 @@ async def createReactionRole(interaction: Interaction, title: str, message: str,
         roles: list[nextcord.Role] = [role for roleID in newRolesStr for role in interaction.guild.roles if role.id == roleID]
         emojis: list[str] = [emoji.split("=")[0] for emoji in rolesStr]
     
-    botMember: nextcord.Member = await interaction.guild.fetch_member(bot.application_id)
+    # Ensure that these roles are grantable
     for role in roles:
-        if role.position >= botMember.top_role.position:
+        if role.position >= interaction.guild.me.top_role.position:
             infinibotRole = interaction.guild.get_role(getInfinibotTopRoleId(interaction.guild))
-            await interaction.followup.send(embed = nextcord.Embed(title = "Infinibot cannot grant this permission", description = f"{role.mention} is equal to or above the role {infinibotRole.mention}. Therefore, it cannot grant the role to any member.", color = nextcord.Color.red()), ephemeral=True)
+            await interaction.followup.send(embed = nextcord.Embed(title = "Infinibot cannot grant a permission", description = f"{role.mention} is equal to or above the role {infinibotRole.mention}. Therefore, it cannot grant the role to any member.", color = nextcord.Color.red()), ephemeral=True)
             return
     
+    # Ensure that this is idiot proof
     if len(roles) == 0:
         await interaction.followup.send(embed = nextcord.Embed(title = "No Roles", description = "You need to have at least one role.", color =  nextcord.Color.red()), ephemeral = True)
         return
+    
+    # Format the options
+    optionsFormatted, addedReactions_Emojis = reactionRoleOptionsFormatter(_type, roles, emojis, mentionRoles)
 
-    reactionsFormatted = ""
-    addedReactionsEmoji = []
-    addedReactionsAsci = [] #expendable after the following loop
-
-    count = 1
-    for role in roles:
-        if _type == "Letters":
-            if not role.name[0].lower() in addedReactionsAsci: #if we have not already used this reaction
-                letter = role.name[0]
-                reaction = getReaction(letter)
-                reactionsFormatted += "\n" + reaction + " " + role.name
-                addedReactionsAsci.append(letter.lower())
-                addedReactionsEmoji.append(reaction)
-            else:
-                letter = getNextOpenLetter(addedReactionsAsci)
-                reaction = getReaction(letter)
-                reactionsFormatted += "\n" + reaction + " " + role.name
-                addedReactionsAsci.append(letter.lower())
-                addedReactionsEmoji.append(reaction)
-        elif _type == "Numbers":
-            letter = role.name[0]
-            reaction = getNumberReaction(count)
-            reactionsFormatted += "\n" + reaction + " " + role.name
-            addedReactionsAsci.append(letter.lower())
-            addedReactionsEmoji.append(reaction)
-            count += 1
-        else:
-            index = roles.index(role)
-            emoji = emojis[index].strip()
-            reactionsFormatted += "\n" + emoji + " " + role.name
-            addedReactionsEmoji.append(emoji)  
-
+    # Post message
     embed = nextcord.Embed(title = title, description = message, color =  nextcord.Color.teal())
-    embed.add_field(name = "React for the following roles", value = reactionsFormatted, inline = False)
+    embed.add_field(name = "React for the following roles", value = optionsFormatted, inline = False)
 
     partialMessage = await interaction.followup.send(embed = embed, wait = True)
 
-    voteMessage = partialMessage
-    for reaction in addedReactionsEmoji:
+    # Add Reactions
+    reactionRoleMessage = partialMessage
+    for reaction in addedReactions_Emojis:
         try:
-            await voteMessage.add_reaction(emoji = reaction)
+            await reactionRoleMessage.add_reaction(emoji = reaction)
         except nextcord.errors.Forbidden or nextcord.errors.HTTPException:
             try:
                 await interaction.followup.send(embed = nextcord.Embed(title = "Emoji Error", description = f"InfiniBot is unable to apply the emoji: {reaction}. If the emoji *is* valid, check that InfiniBot has the permission \"Add Reactions\".", color = nextcord.Color.red()))
@@ -7713,9 +7823,9 @@ async def createReactionRole(interaction: Interaction, title: str, message: str,
                 await sendErrorMessageToOwner(interaction.guild, "Add Reactions")
             break
     
-    #finally, add the reaction role to our active messages for future editing
+    # Add the Reaction Role to Active Messages for Future Editing
     server = Server(interaction.guild.id);
-    try: parameters = [REACTIONROLETYPES.index(_type)]
+    try: parameters = [REACTIONROLETYPES.index(_type), ("1" if mentionRoles else "0")]
     except ValueError: parameters = []
     server.messages.add("Reaction Role", interaction.channel.id, partialMessage.id, interaction.user.id, parameters = parameters)
     server.messages.save()
@@ -7724,74 +7834,93 @@ async def createReactionRole(interaction: Interaction, title: str, message: str,
 async def on_raw_reaction_add(payload: nextcord.RawReactionActionEvent):
     emoji = payload.emoji
 
+    # Get the guild
     guild = None
     for Guild in bot.guilds:
         if Guild.id == payload.guild_id:
             guild = Guild
     if guild == None: return
 
+    # Get the user
     user = guild.get_member(payload.user_id)
     if user == None: return
 
+    # Get the message
     try:
         message = await guild.get_channel(payload.channel_id).fetch_message(payload.message_id)
     except nextcord.errors.Forbidden:
         return
     except AttributeError:
         return
+    
+    # Declare some functions
+    def getRole(string: str):
+        pattern = r"^(<@&)(.*)>$"  # Regular expression pattern with a capturing group
+        match = re.search(pattern, string)
+        if match:
+            id = int(match.group(2))
+            role = nextcord.utils.get(guild.roles, id = id)
+        else:
+            role = nextcord.utils.get(guild.roles, name = string)
+        return role
+    
+    async def sendNoRoleError():
+        await message.channel.send(embed = nextcord.Embed(title = "Role Not Found", description = f"Infinibot cannot find one or more of those roles. Check to make sure all roles still exist.", color = nextcord.Color.red()), reference = message)
+    
+    async def sendNoPermissionsError(role: nextcord.Role, user: nextcord.Member):
+        try:
+            await message.channel.send(embed = nextcord.Embed(title = "Missing Permissions", description = f"Infinibot does not have a high enough role to assign/remove {role.mention} to/from {user.mention}. To fix this, promote the role \"Infinibot\" to the highest role on the server or give InfiniBot administrator privileges.", color = nextcord.Color.red()), reference = message)
+        except nextcord.errors.Forbidden:
+            await sendErrorMessageToOwner(guild, None, message = f"Infinibot does not have a high enough role to assign/remove {role.name} (id: {role.id}) to/from {user} (id: {user.id}). To fix this, promote the role \"Infinibot\" to the highest role on the server or give InfiniBot administrator privileges.")
 
-    try:
-        if message.author.id == bot.application_id and not user.bot:
-            if message.embeds:
-                if message.embeds[0].fields[0].name == "React for the following roles": #we are pretty sure that this is a reaction role message
-                    if not message.channel.permissions_for(guild.me).manage_roles:
-                        await sendErrorMessageToOwner(guild, "Manage Roles", guildPermission = True)
-                        return
-                    
-                    
-                    info = message.embeds[0].fields[0].value
-                    info = info.split("\n")
-                    for line in info:
-                        lineSplit = line.split(" ")
-                        if str(lineSplit[0]) == str(emoji):
-                            for role in user.roles:
-                                if role.name == " ".join(lineSplit[1:]):
-                                    try:
-                                        try:
-                                            role = nextcord.utils.get(guild.roles, name = " ".join(lineSplit[1:]))
-                                        except:
-                                            await message.channel.send(embed = nextcord.Embed(title = "Error", description = f"Infinibot cannot find the role {role.name}. Check to make sure that role still exists and that the name has not been changed.", color = nextcord.Color.red()))
-                                            return
-                                        await user.remove_roles(role)
-                                        await message.remove_reaction(emoji, user)
-                                        
-                                    except nextcord.errors.Forbidden:
-                                        try:
-                                            await message.channel.send(embed = nextcord.Embed(title = "Error", description = f"Infinibot does not have a high enough role to assign/remove {role.name} to/from {user}. To fix this, promote the role \"Infinibot\" to the highest role on the server or give InfiniBot Administrator.", color = nextcord.Color.red()))
-                                        except nextcord.errors.Forbidden:
-                                            await sendErrorMessageToOwner(guild, None, message = f"Infinibot does not have a high enough role to assign/remove {role.name} to/from {user}. To fix this, promote the role \"Infinibot\" to the highest role on the server or give InfiniBot Administrator Privileges.")
-                                    
-                                    return
-
+    # If it was our message and it was not a bot reacting,
+    if message.author.id == bot.application_id and not user.bot:
+        if message.embeds:
+            # Check to see if this is actually a reaction role
+            server = Server(guild.id)
+            messageInfo = server.messages.get(message.id)
+            if messageInfo and messageInfo.type == "Reaction Role": # This message IS a reaction role
+                del server, messageInfo # Don't need them
+                
+                # Can we manage roles? If not, there's not point to any of this
+                if not message.channel.permissions_for(guild.me).manage_roles:
+                    await sendErrorMessageToOwner(guild, "Manage Roles", guildPermission = True)
+                    return
+                
+                # Get all options
+                info = message.embeds[0].fields[0].value
+                info = info.split("\n")
+                
+                # For each option
+                for line in info:
+                    lineSplit = line.split(" ")
+                    if str(lineSplit[0]) == str(emoji): # Ensure that this is a real option
+                        # Get the discord role
+                        discordRole = getRole(" ".join(lineSplit[1:]))
+                        if discordRole: # If it exists
+                            # Check the user's roles
+                            userRole = nextcord.utils.get(user.roles, id = discordRole.id)
+                            # Give / Take the role
                             try:
-                                try:
-                                    role = nextcord.utils.get(guild.roles, name = " ".join(lineSplit[1:]))
-                                except:
-                                    await message.channel.send(embed = nextcord.Embed(title = "Error", description = f"Infinibot cannot find the role {role.name}. Check to make sure that role still exists and that the name has not been changed.", color = nextcord.Color.red()))
-                                    return
-                                await user.add_roles(role)
-                                await message.remove_reaction(emoji, user)
-                                
+                                if userRole:
+                                    await user.remove_roles(discordRole)
+                                else:
+                                    await user.add_roles(discordRole)
                             except nextcord.errors.Forbidden:
-                                try:
-                                    await message.channel.send(embed = nextcord.Embed(title = "Error", description = f"Infinibot does not have a high enough role to assign/remove {role.name} to/from {user}. To fix this, promote the role \"Infinibot\" to the highest role on the server or give InfiniBot Administrator.", color = nextcord.Color.red()))
-                                except nextcord.errors.Forbidden:
-                                    await sendErrorMessageToOwner(guild, None, message = f"Infinibot does not have a high enough role to assign/remove {role.name} to/from {user}. To fix this, promote the role \"Infinibot\" to the highest role on the server or give InfiniBot Administrator Privileges.")
-                                    return
-                                
+                                # No permissions. Send an error
+                                await sendNoPermissionsError(discordRole, user)
+                            
+                            # Remove their reaction
+                            await message.remove_reaction(emoji, user)
+                        else:
+                            # If the discord role does not exist, send an error
+                            await sendNoRoleError()
+                            # Try to remove their reaction. If we can't, it's fine
+                            try:
+                                await message.remove_reaction(emoji, user)
+                            except nextcord.errors.Forbidden:
+                                pass
                             return
-    except Exception:
-        return
 #END of reaction bot functionality: ------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -8215,11 +8344,11 @@ async def trigger_edit_log(guild: nextcord.Guild, beforeMessage: nextcord.Messag
     
     # Format messages if they're embeds
     if len(beforeMessage.embeds) != 0:
-        beforeMessage = f"Title: {beforeMessage.embeds[0].title}\nDescription: {beforeMessage.embeds[0].description}"
+        beforeMessage = f"**Title:** {beforeMessage.embeds[0].title}\n**Description:** {beforeMessage.embeds[0].description}"
     else:
         beforeMessage = beforeMessage.content
     if len(afterMessage.embeds) != 0:
-        afterMessage = f"Title: {afterMessage.embeds[0].title}\nDescription: {afterMessage.embeds[0].description}"
+        afterMessage = f"**Title:** {afterMessage.embeds[0].title}\n**Description:** {afterMessage.embeds[0].description}"
     else:
         afterMessage = afterMessage.system_content
     
@@ -9424,8 +9553,430 @@ class EditVote(nextcord.ui.View):
         
         async def callback(self, interaction: Interaction):
             await self.warningView(self.outer, interaction.guild.id, self.messageID).setup(interaction)
-          
-    
+
+class EditReactionRole(nextcord.ui.View):
+    def __init__(self, messageID: int):
+        super().__init__(timeout = None)
+        self.messageID = messageID
+        
+    async def loadButtons(self, interaction: Interaction):
+        self.message = await interaction.channel.fetch_message(self.messageID)
+        self.server = Server(interaction.guild.id)
+        self.messageInfo = self.server.messages.get(self.messageID)
+        
+        self.clear_items()
+        
+        editTextBtn = self.editTextButton(self)
+        self.add_item(editTextBtn)
+        
+        editOptionsBtn = self.editOptionsButton(self, self.messageInfo)
+        self.add_item(editOptionsBtn)
+        
+        editPersistencyBtn = self.editPersistencyButton(self, self.messageInfo)
+        self.add_item(editPersistencyBtn)
+        
+    async def setup(self, interaction: Interaction):
+        await self.loadButtons(interaction)
+        
+        mainEmbed = nextcord.Embed(title = "Edit Reaction Role", description = "Edit the following reaction role's text and options.", color = nextcord.Color.yellow())
+        editEmbed = self.message.embeds[0]
+        embeds = [mainEmbed, editEmbed]
+        try:
+            await interaction.response.edit_message(embeds = embeds, view = self)
+        except:
+            await interaction.response.send_message(embeds = embeds, view = self, ephemeral = True)
+  
+    class editTextButton(nextcord.ui.Button):
+        def __init__(self, outer):
+            super().__init__(label = "Edit Text", emoji = "✏️")
+            self.outer = outer;
+        
+        class editTextModal(nextcord.ui.Modal):
+            def __init__(self, outer):
+                super().__init__(title = "Edit Text")
+                self.outer = outer;
+                
+                self.titleInput = nextcord.ui.TextInput(label = "Title", min_length = 1, max_length = 256, placeholder = "Title", default_value = outer.message.embeds[0].title)
+                self.add_item(self.titleInput)
+                
+                self.descriptionInput = nextcord.ui.TextInput(label = "Description", min_length = 1, max_length = 4000, placeholder = "Description", default_value = outer.message.embeds[0].description, style = nextcord.TextInputStyle.paragraph)
+                self.add_item(self.descriptionInput)
+                
+            async def callback(self, interaction: Interaction):
+                self.stop();
+                beforeMessage = await interaction.channel.fetch_message(self.outer.message.id)
+                
+                embed = nextcord.Embed(title = self.titleInput.value, description = self.descriptionInput.value, color = beforeMessage.embeds[0].color)
+                for field in beforeMessage.embeds[0].fields:
+                    embed.add_field(name = field.name, value = field.value, inline = field.inline)
+                    
+                await beforeMessage.edit(embed = embed)
+                await self.outer.setup(interaction);
+                
+                # Trigger Edit Log
+                afterMessage = await interaction.channel.fetch_message(self.outer.message.id)
+                await trigger_edit_log(interaction.guild, beforeMessage, afterMessage, user = interaction.user)
+        
+        async def callback(self, interaction: Interaction):
+            await interaction.response.send_modal(self.editTextModal(self.outer))
+  
+    class editOptionsButton(nextcord.ui.Button):
+        def __init__(self, outer, messageInfo: Message):
+            super().__init__(label = "Edit Options", emoji = "🎚️")
+            self.outer = outer;
+            self.messageInfo = messageInfo
+        
+        class editOptionsView(nextcord.ui.View):
+            def __init__(self, outer, messageInfo: Message):
+                super().__init__(timeout = None)
+                self.outer = outer
+                self.messageInfo = messageInfo
+                self.addedReactions_Emojis = []
+                self.addedRoles_IDs = []
+                self.addedOptions_noFormat = []
+                self.messageID = None
+                
+                self.addBtn = self.addButton(self, self.messageInfo)
+                self.add_item(self.addBtn)
+                
+                self.deleteBtn = self.deleteButton(self, self.messageInfo)
+                self.add_item(self.deleteBtn)
+                
+                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.gray, row = 1) 
+                self.backBtn.callback = self.backBtnCallback
+                self.add_item(self.backBtn)
+                
+            async def setup(self, interaction: Interaction):             
+                # Get the message
+                channel = await interaction.guild.fetch_channel(self.messageInfo.channel_id)
+                message = await channel.fetch_message(self.messageInfo.message_id)       
+                            
+                # Get all options
+                options = message.embeds[0].fields[0].value.split("\n")
+                self.optionsFormatted, problem = self.formatOptions(interaction.guild, options)
+                
+                # Create UI
+                embed = nextcord.Embed(title = "Edit Reaction Role - Edit Options",
+                                       description = "Add, Manage, and Delete Options.",
+                                       color = nextcord.Color.yellow())
+                
+                embed.add_field(name = "Roles", value = "\n".join(self.optionsFormatted))
+                
+                # Help Messages
+                if problem:
+                    embed.add_field(name = "⚠️ Issue With One or More Roles ⚠️", value = "One or more of your roles no longer exist.", inline = False)
+                    
+                    
+                # ============================================ OTHER SETUP ============================================
+                
+                
+                #Prepare Available Roles
+                self.availableRoles = []
+                
+                for role in interaction.guild.roles:
+                    if role.name == "@everyone": continue
+                    if role.id in self.addedRoles_IDs: continue
+                    if canAssignRole(role): self.availableRoles.append(role)
+                    
+                
+                # Check Buttons and their Availability
+                if len(self.optionsFormatted) >= 10 and len(self.availableRoles) > 0:
+                    self.addBtn.disabled = True
+                else:
+                    self.addBtn.disabled = False
+                    
+                if len(self.optionsFormatted) <= 1:
+                    self.deleteBtn.disabled = True
+                else:
+                    self.deleteBtn.disabled = False
+                    
+                    
+                # Edit the message
+                try:
+                    message = await interaction.response.edit_message(embed = embed, view = self)
+                    self.messageID = message.id
+                except:
+                    await interaction.followup.edit_message(message_id = self.messageID, embed = embed, view = self)
+
+            async def backBtnCallback(self, interaction: Interaction):
+                await self.outer.setup(interaction)
+           
+            def getRole(self, guild: nextcord.Guild, string: str):
+                pattern = r"^(<@&)(.*)>$"  # "<@&...>"
+                match = re.search(pattern, string)
+                if match:
+                    id = int(match.group(2))
+                    role = nextcord.utils.get(guild.roles, id = id)
+                elif string.isdigit():
+                    role = nextcord.utils.get(guild.roles, id = int(string))
+                else:
+                    role = nextcord.utils.get(guild.roles, name = string)
+                    
+                return role
+           
+            def formatOptions(self, guild: nextcord.Guild, lines: list[str], packetToModify = None, displayErrors = True):
+                self.addedRoles_IDs = []
+                self.addedReactions_Emojis = []
+                self.addedOptions_noFormat = []
+                
+                returnList = []
+                problem = False
+                
+                _type = self.messageInfo.parameters[0]
+                mentionRoles = (True if self.messageInfo.parameters[1] == "1" else False)
+                
+                # Inject another role if we are modifying a role. If we are deleting the role, well, we actually have it twice and ignore it twice.
+                if packetToModify:
+                    if packetToModify[0] == None: packetToModify[0] = "🚫"
+                    lines.append(f"{packetToModify[0]} {packetToModify[1]}")
+
+                addedOptions_Asci = []
+                number = 1
+                ignoreExtraPacket = False
+                for index, line in enumerate(lines):
+                    lineSplit = line.split(" ") # Emoji, Role
+                    rawRoleName = " ".join(lineSplit[1:])
+                    role: nextcord.Role = self.getRole(guild, rawRoleName)
+                    
+                    # Do some modification checks
+                    if packetToModify:
+                        if role.id == int(packetToModify[1]): # If the ids match
+                            if ignoreExtraPacket:
+                                continue
+                            if index != (len(lines) - 1): # If this is not the last item in the list
+                                ignoreExtraPacket = True
+                                continue
+                    
+                    # Manage the apparent name of the role
+                    if role:
+                        name = (role.mention if mentionRoles else role.name)
+                        firstLetter = role.name[0].lower()
+                        nonFormattedName = role.name
+                    else:
+                        if not displayErrors: continue
+                        name = f"⚠️ {rawRoleName} ⚠️"
+                        nonFormattedName = f"⚠️ {rawRoleName} ⚠️"
+                        firstLetter = None
+                        problem = True
+                    
+                    if firstLetter:
+                        if _type == "0":
+                            # Letter Reaction Role
+                            if not firstLetter in addedOptions_Asci: # If this letter has not already been used as a reaction
+                                emoji = asci_to_emoji(firstLetter)
+                                addedOptions_Asci.append(firstLetter)
+                            else:
+                                nextOpenLetter = getNextOpenLetter(firstLetter)
+                                emoji = asci_to_emoji(nextOpenLetter)
+                                addedOptions_Asci.append(nextOpenLetter)
+                        elif _type == "1":
+                            # Number Reaction Role
+                            emoji = asci_to_emoji(number)
+                            number += 1
+                        else:
+                            # Custom Reaction Role
+                            emoji = lineSplit[0]
+                    else:
+                        emoji = "❌"
+                        
+                    self.addedRoles_IDs.append(role.id)
+                    self.addedReactions_Emojis.append(emoji)
+                    self.addedOptions_noFormat.append(f"{emoji} {nonFormattedName}")
+                    returnList.append(f"{emoji} {name}")
+                    
+                return returnList, problem
+
+            async def addOrRemoveOption(self, interaction: Interaction, emoji, roleID, index = None):
+                # Get the message
+                channel = await interaction.guild.fetch_channel(self.messageInfo.channel_id)
+                message = await channel.fetch_message(self.messageInfo.message_id)
+                            
+                # Get all options
+                options = message.embeds[0].fields[0].value.split("\n")
+                
+                # (Add some helping code for deleting)
+                if index is not None:
+                    emoji = self.addedReactions_Emojis[index]
+                    roleID = self.addedRoles_IDs[index]
+                
+                # Continue getting the options
+                optionsFormatted, problem = self.formatOptions(interaction.guild, options, packetToModify = [emoji, roleID], displayErrors = False)
+                
+                
+                # Get new embed
+                newEmbed = nextcord.Embed(title = message.embeds[0].title, description = message.embeds[0].description, color = message.embeds[0].color)
+                newEmbed.add_field(name = "React for the following roles", value = "\n".join(optionsFormatted), inline = False)
+                
+                # Update embed
+                await message.edit(embed = newEmbed)
+                
+                # Go back
+                await self.setup(interaction)
+                
+                # Update Reactions
+                await message.clear_reactions()
+                addedEmojiUses = 0
+                for index, reaction in enumerate(self.addedReactions_Emojis):
+                    if reaction == emoji:
+                        addedEmojiUses += 1
+                        if addedEmojiUses >= 2:
+                            # If this is the emoji that we're using now and this isn't the last thing,
+                            # We messed up. We gotta remove this guy
+                            await self.addOrRemoveOption(interaction, emoji, roleID)
+                            await interaction.followup.send(embed = nextcord.Embed(title = "Can't Use the Same Emoji", description = "Every Emoji has to be unique. Try again.", color = nextcord.Color.red()), ephemeral = True)
+                            return
+                    try:
+                        await message.add_reaction(emoji = reaction)
+                    except (nextcord.errors.Forbidden, nextcord.errors.HTTPException):
+                        try:
+                            await interaction.followup.send(embed = nextcord.Embed(title = "Emoji Error", description = f"InfiniBot is unable to apply the emoji: \"{reaction}\". If the emoji *is* valid, check that InfiniBot has the permission \"Add Reactions\".", color = nextcord.Color.red()), ephemeral = True)
+                        except nextcord.errors.Forbidden:
+                            await sendErrorMessageToOwner(interaction.guild, "Add Reactions")
+                        await self.addOrRemoveOption(interaction, reaction, self.addedRoles_IDs[index])
+                     
+            class addButton(nextcord.ui.Button):
+                def __init__(self, outer, messageInfo: Message):
+                    super().__init__(label = "Add Role")
+                    self.outer = outer
+                    self.messageInfo = messageInfo
+                    
+                async def callback(self, interaction: Interaction):                     
+                    selectOptions = []
+                    availableRoles: list[nextcord.Role] = self.outer.availableRoles
+                    for role in availableRoles:
+                        selectOptions.append(nextcord.SelectOption(label = role.name, value = role.id, description = role.id))
+                    
+                    await SelectView("Edit Reaction Role - Edit Options - Add Role", "Add a Role to your Reaction Role.\n\n**Don't See Your Role?**\nMake sure InfiniBot has permission to assign it (higher role or administrator).", selectOptions, self.SelectViewCallback, continueButtonLabel = "Add Role", preserveOrder = True).setup(interaction)
+                    
+                async def SelectViewCallback(self, interaction: Interaction, selection):
+                    if selection == None: 
+                        await self.outer.setup(interaction)
+                        return
+                    
+                    if self.messageInfo.parameters[0] == "2": # If this is a custom reaction role,
+                        await self.emojiSelectView(self.outer, selection).setup(interaction)
+                        return;
+                    
+                    await self.outer.addOrRemoveOption(interaction, None, selection)
+                    
+                class emojiSelectView(nextcord.ui.View):
+                    def __init__(self, outer, selection):
+                        super().__init__(timeout = None)
+                        self.outer = outer
+                        self.selection = selection
+                        
+                        backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger)
+                        backBtn.callback = self.backBtnCallback
+                        self.add_item(backBtn)
+                        
+                        nextBtn = nextcord.ui.Button(label = "Next", style = nextcord.ButtonStyle.blurple)
+                        nextBtn.callback = self.nextBtnCallback
+                        self.add_item(nextBtn)
+                        
+                    async def setup(self, interaction: Interaction):
+                        embed = nextcord.Embed(title = "Edit Reaction Role - Edit Options - Add Role", description = "Because this is a custom reaction role, InfiniBot requires an emoji. Therefore, you need to get an emoji into your clipboard (unless you're fancy and know unicode.)\n\n**How?**\nGo to a channel that you don't care about (or InfiniBot's dms) and select the emoji you want. Then, send it, and copy what you sent. Now, come back and click \"Next\".", color = nextcord.Color.yellow())
+                        await interaction.response.edit_message(embed = embed, view = self)
+                        
+                    async def backBtnCallback(self, interaction: Interaction):
+                        await self.outer.setup(interaction)
+                        
+                    async def nextBtnCallback(self, interaction: Interaction):
+                        await interaction.response.send_modal(self.emojiSelectModal(self.outer, self.selection))
+                   
+                    class emojiSelectModal(nextcord.ui.Modal):
+                        def __init__(self, outer, selection):
+                            super().__init__(title = "Emoji Selection")
+                            self.outer = outer
+                            self.selection = selection
+                            
+                            self.emojiTextInput = nextcord.ui.TextInput(label = "Paste the emoji for this option.", max_length = 100)     
+                            self.add_item(self.emojiTextInput)
+                            
+                        async def callback(self, interaction: Interaction):
+                            await self.outer.addOrRemoveOption(interaction, self.emojiTextInput.value, self.selection)
+                              
+            class deleteButton(nextcord.ui.Button):
+                def __init__(self, outer, messageInfo: Message):
+                    super().__init__(label = "Delete Role")
+                    self.outer = outer
+                    self.messageInfo = messageInfo
+                    
+                async def callback(self, interaction: Interaction):                     
+                    selectOptions = []
+                    
+                    for index, option in enumerate(self.outer.addedOptions_noFormat):
+                        selectOptions.append(nextcord.SelectOption(label = option, value = index))
+                    
+                    await SelectView("Edit Reaction Role - Edit Options - Delete Role", "Delete a Role from your Reaction Role.", selectOptions, self.SelectViewCallback, continueButtonLabel = "Delete Role", preserveOrder = True).setup(interaction)
+                    
+                async def SelectViewCallback(self, interaction: Interaction, selection):
+                    if selection == None: 
+                        await self.outer.setup(interaction)
+                        return
+                    
+                    await self.outer.addOrRemoveOption(interaction, None, None, index = int(selection))
+                           
+        async def callback(self, interaction: Interaction):
+            await self.editOptionsView(self.outer, self.messageInfo).setup(interaction)
+        
+    class editPersistencyButton(nextcord.ui.Button):
+        def __init__(self, outer, messageInfo: Message):
+            if messageInfo.persistent:
+                text = "Deprioritize"
+                icon = "🔓"
+            else:
+                text = "Prioritize"
+                icon = "🔒"
+                
+            super().__init__(label = text, emoji = icon)
+            self.outer = outer
+            self.messageID = messageInfo.message_id
+        
+        class warningView(nextcord.ui.View):
+            def __init__(self, outer, guildID: int, messageID: int):
+                super().__init__(timeout = None)
+                self.outer = outer
+                
+                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger) 
+                self.backBtn.callback = self.backBtnCallback
+                self.add_item(self.backBtn)
+                
+                self.continueBtn = self.continueButton(self.outer, guildID, messageID)
+                self.add_item(self.continueBtn)
+                
+            async def setup(self, interaction: Interaction):
+                embed = nextcord.Embed(title = "Edit Vote - Prioritize / Deprioritize", 
+                                       description = "InfiniBot, similar to all free software, has its limitations. Regrettably, we are unable to continuously cache every reaction role ever created in our systems. Consequently, each server is allocated a maximum of 10 active (cached) reaction roles. As a result, there may come a point when this reaction role can no longer be edited.\n\n**What is Prioritizing?**\nPrioritizing ensures that this particular reaction role remains active indefinitely, enabling it to be edited well into the future. However, this comes at the expense of one of the server's active reaction role slots (10). This feature is particularly useful for reaction roles for server roles, verification roles, and similar content.", 
+                                       color = nextcord.Color.yellow())
+                
+                await interaction.response.edit_message(embed = embed, view = self)
+                
+            async def backBtnCallback(self, interaction: Interaction):
+                await self.outer.setup(interaction)
+        
+            class continueButton(nextcord.ui.Button):
+                def __init__(self, outer, guildID: int, messageID: int):
+                    self.server = Server(guildID)
+                    self.messageInfo = self.server.messages.get(messageID)
+                    
+                    if self.messageInfo.persistent:
+                        text = "Deprioritize"
+                    else:
+                        text = "Prioritize"
+                        
+                    super().__init__(label = text, style = nextcord.ButtonStyle.blurple)
+                    self.outer = outer
+                    
+                async def callback(self, interaction: Interaction):
+                    self.messageInfo.persistent = not self.messageInfo.persistent
+                    self.server.messages.save()
+                    
+                    await self.outer.setup(interaction)
+        
+        async def callback(self, interaction: Interaction):
+            await self.warningView(self.outer, interaction.guild.id, self.messageID).setup(interaction)
+
+
 @bot.message_command(name = "Edit", dm_permission = False)
 async def editMessageCommand(interaction: Interaction, message: nextcord.Message):
     #check to see if it's InfiniBot's message
@@ -9452,6 +10003,8 @@ async def editMessageCommand(interaction: Interaction, message: nextcord.Message
         await EditEmbed(message.id).setup(interaction)
     elif messageInfo.type == "Vote":
         await EditVote(message.id).setup(interaction)
+    elif messageInfo.type == "Reaction Role":
+        await EditReactionRole(message.id).setup(interaction)
 #Editing Messages END: ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -9500,9 +10053,9 @@ async def help(interaction: Interaction):
     embed = nextcord.Embed(title = "Help", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral=True, view = SupportAndInviteView())
 
-@help.subcommand(name = "profanity_moderation", description = "Help with the Admin Channel, Strikes, Infinibot Mod, Flagged/Profane Words, and more.")
+@help.subcommand(name = "moderation_profanity", description = "Help with the Admin Channel, Strikes, Infinibot Mod, Flagged/Profane Words, and more.")
 async def profanityModerationHelp(interaction: Interaction):
-    description = f"""Out of the box, profanity moderation is *mostly* set up. The only thing left to do is to set up the \"Admin Channel\". To do this, go to __*{dashboard.get_mention()} → Moderation → Profanity → Admin Channel*__ and select a secure channel that only admins can see.
+    description = f"""Out of the box, profanity moderation is *mostly* set up. The only thing left to do is to set up the \"Admin Channel\". To do this, go to `/dashboard → Moderation → Profanity → Admin Channel` and select a secure channel that only admins can see.
     
     **What is the Admin Channel?**
         • Whenever a member says a flagged word, their message will be automatically deleted, and they will recieve a strike. All strikes will be reported to the Admin Channel where admins can look over the strike and decide whether it was legitimate.
@@ -9510,26 +10063,26 @@ async def profanityModerationHelp(interaction: Interaction):
             → Note: Make sure the channel has application commands enabled and InfiniBot has access to it!
         
     **What happens when you get a strike?**
-        • One strike on its own is not dangerous. However, they can build up. Once you reach the server's __maximum strikes__ (to find, go to __*{dashboard.get_mention()} → Moderation → Profanity*__), you will be timed out for the server's __timeout duration__ (to find, go to __*{dashboard.get_mention()} → Moderation → Profanity*__).
+        • One strike on its own is not dangerous. However, they can build up. Once you reach the server's __maximum strikes__ (to find, go to `/dashboard → Moderation → Profanity`), you will be timed out for the server's __timeout duration__ (to find, go to `/dashboard → Moderation → Profanity`).
         • Once you serve your timeout, you will be back at 0 strikes.
     
-        • In some servers, another way to clear strikes is by waiting. Once the \"strike expire time\" has passed (to find, go to __*{dashboard.get_mention()} → Moderation → Profanity*__), you will be refunded one strike.
+        • In some servers, another way to clear strikes is by waiting. Once the \"strike expire time\" has passed (to find, go to `/dashboard → Moderation → Profanity`), you will be refunded one strike.
     
     **It says I need Infinibot Mod?**
         • Some features are locked down so that only admins can use them. If you are an admin, go ahead and assign yourself the role Infinibot Mod (which should have been automatically created by InfiniBot). Once you have this role, you will have full access to InfiniBot and its features.
     
     **How do I add/delete a flagged/Profane word?**
-        • Go to __*{dashboard.get_mention()}*__ and navigate to __*Moderation → Profanity → Filtered Words*__. In here, you can add, delete, and view all the words InfiniBot will filter.
+        • Go to `/dashboard → Moderation → Profanity → Filtered Words`. In here, you can add, delete, and view all the words InfiniBot will filter.
             → Note: InfiniBot will also listen for variations of these words.
         
     **Don't want it?**
-        • Don't think profanity moderation is what your server needs? That's fine! You can turn it off by going to __*{dashboard.get_mention()} → Enable/Disable Features → Profanity Moderation*__, and selecting "Disable"
+        • Don't think profanity moderation is what your server needs? That's fine! You can turn it off by going to `/dashboard → Enable/Disable Features → Profanity Moderation`, and selecting "Disable"
     
     **Extra Commands**
-        • __*{viewstrikes.get_mention()}*__ allows you to see another member's strikes. (This works without Infinibot Mod)
-        • __*{mystrikes.get_mention()}*__ allows you to see your own strikes. (This works without Infinibot Mod)
-        • __*{dashboard.get_mention()} → Moderation → Profanity*__ allows you to configure specific features in Profanity Moderation.
-        • __*{dashboard.get_mention()} → Moderation → Profanity → Manage Members*__ allows you to view and configure strikes.
+        • `/view_strikes` allows you to see another member's strikes. (This works without Infinibot Mod)
+        • `/my_strikes` allows you to see your own strikes. (This works without Infinibot Mod)
+        • `/dashboard → Moderation → Profanity` allows you to configure specific features in Profanity Moderation.
+        • `/dashboard → Moderation → Profanity → Manage Members` allows you to view and configure strikes.
     
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
     """
@@ -9540,18 +10093,18 @@ async def profanityModerationHelp(interaction: Interaction):
     embed = nextcord.Embed(title = "How profanity moderation works with InfiniBot", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView())
     
-@help.subcommand(name = "spam_moderation", description = "Help with spam moderation")
+@help.subcommand(name = "moderation_spam", description = "Help with spam moderation")
 async def spamModerationHelp(interaction: Interaction):
     description = f"""Out of the box, spam moderation is all set up! However, you can configure it for your needs!
     
     **Settings**
         • You can adjust certain features to better fit your server. Here's how:
-            → Go to __*{dashboard.get_mention()} → Moderation → Spam*__
+            → Go to `/dashboard → Moderation → Spam`
             → You can configure the timeout duration of the penalty when a member spams too much (Click on Timeout Duration)
             → You can also configure the messages threshold (the number of messages until the member recieves a timeout). (Click on Messages Threshold)
     
     **Don't want it?**
-        • Don't think you need spam moderation? That's fine! You can turn it off by going to __*{dashboard.get_mention()} → Enable/Disable Features → Spam Moderation*__, and selecting "Disable"
+        • Don't think you need spam moderation? That's fine! You can turn it off by going to `/dashboard → Enable/Disable Features → Spam Moderation`, and selecting "Disable"
     
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
     """
@@ -9568,27 +10121,27 @@ async def musicHelp(interaction: Interaction):
     
     **How to use it**
         1) First, join any voice channel that InfiniBot can access.
-        2) Go to any text channel that allows application commands (and that InfiniBot can access) and type __*{play.get_mention()} [music]*__
+        2) Go to any text channel that allows application commands (and that InfiniBot can access) and type `/play [music]`
         3) InfiniBot should join your voice channel and start playing music!
             → Note: If InfiniBot is already playing music somewhere else on the server, your song will be added to the queue, and InfiniBot will come to that channel once it is your time.
         
     **What's the queue?**
-        • If two or more songs are requested, InfiniBot will start up a queue. Once one song ends, the next song will begin. You can skip a song by typing __*{skip.get_mention()}*__, or stop the bot by typing __*{stop.get_mention()}*__ or __*{leave.get_mention()}*__.
+        • If two or more songs are requested, InfiniBot will start up a queue. Once one song ends, the next song will begin. You can skip a song by typing `/skip`, or stop the bot by typing `/stop` or `/leave`.
     
     **What can I play?**
-        • InfiniBot is capable of searching YouTube for any song that you like. Type __*{play.get_mention()}*__ and describe your song as if you were looking it up. You can search via words or a YouTube url.
+        • InfiniBot is capable of searching YouTube for any song that you like. Type `/play` and describe your song as if you were looking it up. You can search via words or a YouTube url.
             → Note: InfiniBot *cannot* play livestreams, playlists, or anything like that.
     
     **Don't want it?**
-        • Running a server that doesn't need Music? That's fine! You can turn it off by going to __*{dashboard.get_mention()} → Enable/Disable Features → Music*__, and selecting "Disable"
+        • Running a server that doesn't need Music? That's fine! You can turn it off by going to `/dashboard → Enable/Disable Features → Music`, and selecting "Disable"
     
     **Extra Commands**
-        • __*{pause.get_mention()}*__ will pause the song and queue.
-        • __*{resume.get_mention()}*__ will resume the song and queue.
-        • __*{clear.get_mention()}*__ will clear the queue, but the current song will keep playing
-        • __*{queue.get_mention()}*__ will let you see what's playing, and what's coming up next.
-        • __*{volume.get_mention()}*__ will let you set the volume server-wide (remember that you can always do this for yourself by right-clicking on InfiniBot, and changing the User Volume)
-        • __*{loop.get_mention()}*__ will let you loop your favorite song and not have to type the command for it over and over.
+        • `/pause` will pause the song and queue.
+        • `/resume` will resume the song and queue.
+        • `/clear` will clear the queue, but the current song will keep playing
+        • `/queue` will let you see what's playing, and what's coming up next.
+        • `/volume` will let you set the volume server-wide (remember that you can always do this for yourself by right-clicking on InfiniBot, and changing the User Volume)
+        • `/loop` will let you loop your favorite song and not have to type the command for it over and over.
        
     
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
@@ -9606,7 +10159,7 @@ async def votingHelp(interaction: Interaction):
     description = f"""Voting has always been hard in Discord. InfiniBot makes it less painful.
     
     **How to use it**
-        • Type __*{voteCommand.get_mention()}*__ and select either "Letters" or "Numbers". Your choice will be the symbols for the votes.
+        • Type `/create vote` and select either "Letters" or "Numbers". Your choice will be the symbols for the votes.
         • Now, run the command, and you should see a window pop up. Fill in the title, description, and the options.
             → Tip: Remember that the options must be formatted with a comma and a space in between (ex: ", ").
         • Finally, click Submit.
@@ -9620,10 +10173,16 @@ async def votingHelp(interaction: Interaction):
     
     **Custom Votes**
         • Custom votes are a little trickier, but you can customize the reactions. Here's how to do it.
-        • Type __*{customVoteCommand.get_mention()}*__ and in the options format it like this: "Emoji = Option, Emoji = Option, Emoji = Option, etc"
+        • Type `/create custom_vote` and in the options format it like this: "Emoji = Option, Emoji = Option, Emoji = Option, etc"
              → example: "😄 = Yes, 😢 = No"
         • From there, run the command, and choose the Title and Description.
-    
+        
+    **Edit Votes**
+        • To edit your vote, right click on the message, and go to `Apps → Edit → Edit Text`. Here you can edit the text of your vote
+        
+    **Close Votes**
+        • To close your vote, right click on the message, and go to `Apps → Edit → Close Vote`. This will disable your vote and finalize the results.
+        
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
     """
     
@@ -9638,7 +10197,7 @@ async def reactionRolesHelp(interaction: Interaction):
     description = f"""Set up reaction roles to allow members to give themselves roles!
     
     **How to use it**
-        • Type __*{reactionRoleCommand.get_mention()}*__ and select either "Letters" or "Numbers". Your choice will be the symbols for the reactions.
+        • Type `/create reaction_role` and select either "Letters" or "Numbers". Your choice will be the symbols for the reactions.
         • Now, run the command, and you should see a window pop up. Fill in the title and description.
         • Click Submit, and you should see a new message with a dropdown box. Go ahead and select all the roles you would like the reaction role to give.
         • Finally, click Create, and you should see your reaction role come to life!
@@ -9661,10 +10220,13 @@ async def reactionRolesHelp(interaction: Interaction):
         
     **Custom Reaction Roles**
         • Custom reaction roles are a little trickier, but you can customize the reactions. Here's how to do it.
-        • Type __*{customReactionRoleCommand.get_mention()}*__ and in the options format it like this: "Emoji = @role, Emoji = @role, Emoji = @role, etc"
+        • Type `/create custom_reaction_role` and in the options format it like this: "Emoji = @role, Emoji = @role, Emoji = @role, etc"
             → example: "👍 = @Member, 🥸 = @Gamer"
         • From there, run the command, and choose the Title and Description.
             → Note: The role select menu will not show seeing how you already selected the roles when you declared the emojis.
+            
+    **Edit Reaction Roles**
+        • To edit your reaction role, right click, and go to `Apps → Edit`. From here, you can edit the text and options of the reaction role.
         
     
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
@@ -9682,15 +10244,15 @@ async def joinLeaveMessagesHelp(interaction: Interaction):
     description = f"""Want to greet your members? Go ahead and set up join / leave messages!
     
     **How to set a join / leave message**
-        • Type __*{dashboard.get_mention()}*__ and navigate to "Join / Leave Messages". In here, select either "Join Message" or "Leave Message" and write your message! If you want to reference the member who joined, include "[member]" in your message.
+        • Go to `/dashboard → Join / Leave Messages`. In here, select either "Join Message" or "Leave Message" and write your message! If you want to reference the member who joined, include "[member]" in your message.
         • After running this command, InfiniBot will greet and say farewell to members however you would like!
         
     **Don't want it?**
-        • Don't need this feature? That's fine! You can turn it off by going to __*{dashboard.get_mention()} → Join / Leave Messages*__ and editing the "Join Message" and "Leave Message" to be blank.
+        • Don't need this feature? That's fine! You can turn it off by going to `/dashboard → Join / Leave Messages` and editing the "Join Message" and "Leave Message" to be blank.
     
     **Extra Commands**
-        • __*{dashboard.get_mention()} → Join / Leave Messages → Join Message Channel*__ allows you to configure where the join message will be sent.
-        • __*{dashboard.get_mention()} → Join / Leave Messages → Leave Message Channel*__ allows you to configure where the leave message will be sent.
+        • `/dashboard → Join / Leave Messages → Join Message Channel` allows you to configure where the join message will be sent.
+        • `/dashboard → Join / Leave Messages → Leave Message Channel` allows you to configure where the leave message will be sent.
        
     
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
@@ -9707,15 +10269,15 @@ async def birthdaysHelp(interaction: Interaction):
     description = f"""Never forget a birthday again and let InfiniBot do all the work!
     
     **How to add a birthday**
-        • Go to __*{dashboard.get_mention()} → Birthdays → Add*__ and choose the member, click next, and then enter the date of thier birthday. This MUST be formatted as month, day, year (MM/DD/YYYY).
+        • Go to `/dashboard → Birthdays → Add` and choose the member, click next, and then enter the date of thier birthday. This MUST be formatted as month, day, year (MM/DD/YYYY).
         • If you know it, you can even include thier real name!
         • Now, on thier birthday at 8:00 AM MDT, they will be wished a happy birthday on the server and via a dm!
         
     **Editing and Deleting**
-        • You can go to __*{dashboard.get_mention()} → Birthdays*__ and use both "Edit" and "Delete" incase you made a mistake, or don't want InfiniBot to celebrate their birthday anymore.
+        • You can go to `/dashboard → Birthdays` and use both "Edit" and "Delete" incase you made a mistake, or don't want InfiniBot to celebrate their birthday anymore.
         
     **Extra Commands**
-        • __*{dashboard.get_mention()} → Birthdays → Delete All*__ will delete all the birthdays in the server.
+        • `/dashboard → Birthdays → Delete All` will delete all the birthdays in the server.
     
     
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
@@ -9732,7 +10294,7 @@ async def loggingHelp(interaction: Interaction):
     description = f"""Ever find it annoying how members can edit or delete thier message and leave you with no proof? With logging enabled, you will never have to worry about this again.
     
     **What is the Log Channel?**
-        • Whenever a log is created, it has to go somewhere! Creating a private channel specifically for logs is highly encouraged. Go to __*{dashboard.get_mention()} → Logging → Log Channel*__ and choose a channel to automatically be used for logging.
+        • Whenever a log is created, it has to go somewhere! Creating a private channel specifically for logs is highly encouraged. Go to `/dashboard → Logging → Log Channel` and choose a channel to automatically be used for logging.
             → Note: Make sure the channel has application commands enabled and InfiniBot has access to it!
             → Tip: Go ahead and turn notifications to "Nothing" for this channel, as it will constently be logging.
     
@@ -9749,7 +10311,7 @@ async def loggingHelp(interaction: Interaction):
         • Discord has a slight limitation regarding deleted messages. Therefore, in some senarios, the logs may not include the actual message, and/or author/deleter. By clicking "More Information", more information will be presented about the specific situation.
         
     **Don't want it?**
-        • Don't feel like logging suits your needs? That's fine! You can turn it off by going to __*{dashboard.get_mention()} → Enable/Disable Features → Logging*__, and selecting "Disable"
+        • Don't feel like logging suits your needs? That's fine! You can turn it off by going to `/dashboard → Enable/Disable Features → Logging`, and selecting "Disable"
 
     
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
@@ -9769,7 +10331,7 @@ async def levelingHelp(interaction: Interaction):
     
     **Set up Level Rewards**
         • Create specific roles for once members reach a certain level. For example, you could create a member-plus role with the ability to add custom emojis to the server, and you could use that as a level reward. Here's how to set that up:
-        • Go to __*{dashboard.get_mention()} → Leveling → Level Rewards → Create*__ and select the role you would like to assign. Then, choose a level. Now, once members reach that level, they can get that role, but if they loose that level, they will loose the role.
+        • Go to `/dashboard → Leveling → Level Rewards → Create` and select the role you would like to assign. Then, choose a level. Now, once members reach that level, they can get that role, but if they loose that level, they will loose the role.
             → Tip: Don't choose too high of a level. Levels are calculated via the equation 0.1x^0.65, so each level will make the next harder and harder to get to.
             → Warning: If you link a role to a level reward, anyone who does not meet that level will have that role automatically taken from them once thier level updates, so be careful.
     
@@ -9779,19 +10341,19 @@ async def levelingHelp(interaction: Interaction):
         
     **How do I loose points?**
         • Every day at midnight MDT, every member will loose a certain amount of points from thier score. This is not thier levels, but thier points. Overtime, this can add up and it can take your levels, so be careful!
-        • The amount of points lost per day can be changed via __*{dashboard.get_mention()} → Leveling → Points Lost Per Day*__. The default is 2 per day.
+        • The amount of points lost per day can be changed via `/dashboard → Leveling → Points Lost Per Day`. The default is 2 per day.
         
     **Don't want it?**
-        • Think that it doesn't work for you? That's fine! You can turn it off by going to __*{dashboard.get_mention()} → Enable/Disable Features → Leveling*__, and selecting "Disable"
+        • Think that it doesn't work for you? That's fine! You can turn it off by going to `/dashboard → Enable/Disable Features → Leveling`, and selecting "Disable"
         
     **Extra Commands**
-        • __*{leaderboard.get_mention()}*__ allows you to see where you rank with the rest of the server.
-        • __*{setLevel.get_mention()}*__ allows you to set the level of any member on the server via a slash command (you can also do this within the dashboard).
-        • __*{setScore.get_mention()}*__ allows you to set the score of any member on the server via a slash command (you can also do this within the dashboard).
-        • __*{dashboard.get_mention()} → Leveling → Leveling Channel*__ lets you set a channel to be the announcement place for level ups / level rewards.
-        • __*{dashboard.get_mention()} → Leveling → Level Up Message*__ allows you to change what message will be sent when someone levels up.
-        • __*{levelsView.get_mention()} [level]*__ lets you calculate the score requirement for each level.
-        • __*{dashboard.get_mention()} → Leveling → Manage Members → Reset*__ will set everyone in the server back to level 0.
+        • `/leaderboard` allows you to see where you rank with the rest of the server.
+        • `/set level` allows you to set the level of any member on the server via a slash command (you can also do this within the dashboard).
+        • `/set score` allows you to set the score of any member on the server via a slash command (you can also do this within the dashboard).
+        • `/dashboard → Leveling → Leveling Channel` lets you set a channel to be the announcement place for level ups / level rewards.
+        • `/dashboard → Leveling → Level Up Message` allows you to change what message will be sent when someone levels up.
+        • `/view levels [level]` lets you calculate the score requirement for each level.
+        • `/dashboard → Leveling → Manage Members → Reset` will set everyone in the server back to level 0.
     
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
     """
@@ -9804,34 +10366,36 @@ async def levelingHelp(interaction: Interaction):
 
 @help.subcommand(name = "other", description = "Help with other features.")
 async def otherHelp(interaction: Interaction):
-    description = f"""**Purging Channels**
-        • To purge a channel, type __*{purge.get_mention()} [all]*__ and the whole channel should be deleted
-            → Note: for big channels, __*{purge.get_mention()} [all]*__ is much more efficient than deleting messages one with the following option.
-        • Another way to purge a channel is to use *{purge.get_mention()} [100]* and InfiniBot will purge the channel of 100 messages.
+    description = f"""InfiniBot has a lot of useful features, but some were a bit miscellaneous. Below are those features.
+    
+    **Purging Channels**
+        • To purge a channel, type `/purge [all]` and the whole channel should be deleted
+            → Note: for big channels, `/purge [all]` is much more efficient than deleting messages one with the following option.
+        • Another way to purge a channel is to use `/dashboard [100]` and InfiniBot will purge the channel of 100 messages.
             → Tip: You can use any number — 100 was an example.
     
     **Emotional Support**
-        • Type __*{emotionalSupport.get_mention()}*__ and get, uh, a motivational statement — if you squint.
+        • Type `/emotional_support` and get, uh, a motivational statement — if you squint.
         
     **Change Nickname**
-        • Type __*{change_nick.get_mention()} [member] [new nickname]*__ and be able to change a member's nickname via a command.
+        • Type`/change_nick [member] [new nickname]` and be able to change a member's nickname via a command.
             → Tip: For bigger servers, it might not be worth your time to scroll though the members list. Therefore, you can use a command instead.
         
     **Default Roles**
-        • A default roles are roles that will be given to anyone who joins the server. To set this up, go to __*{dashboard.get_mention()} → Default Roles*__ and choose up to 5 roles. Now, any time a member joins the server, they will be greeted with those roles.
+        • A default roles are roles that will be given to anyone who joins the server. To set this up, go to `/dashboard → Default Roles` and choose up to 5 roles. Now, any time a member joins the server, they will be greeted with those roles.
        
     **Delete Invites**
-        • If you are managing a large server and don't want people advertising thier servers, you can enable this feature. Go to __*{dashboard.get_mention()} → Enable / Disable Features → Delete Invites*__ and select "Enable". InfiniBot will now delete any message that includes an invite.
+        • If you are managing a large server and don't want people advertising thier servers, you can enable this feature. Go to `/dashboard → Enable / Disable Features → Delete Invites` and select "Enable". InfiniBot will now delete any message that includes an invite.
             → Note: If you have the permission "Administrator", you are immune to this.
         
     **Check InfiniBot's Permissions**
-        • It's always a good idea to check InfiniBot's permissions to make sure that it has everything it needs. To do this, simply use {check_infinibot_permissions.get_mention()} and give InfiniBot the permissions it wants.
+        • It's always a good idea to check InfiniBot's permissions to make sure that it has everything it needs. To do this, simply use `/check_infinibot_permissions` and give InfiniBot the permissions it wants.
         
     **DM Commands**
         • If you feel like your dm from InfiniBot is getting a little cluttered, there's a simple fix to that!
-        • Typing __*del*__ in a dm channel will have InfiniBot delete the last message it sent to you.
-        • Typing __*clear*__ in a dm will have InfiniBot delete all the messages it sent to you.
-        • You can also opt in and out of dm notifications using {opt_into_dms.get_mention()} and {opt_out_of_dms.get_mention()}.
+        • Typing `del` in InfiniBot's dm channel will have InfiniBot delete the last message it sent to you.
+        • Typing `clear` in InfiniBot's dm will have InfiniBot delete all the messages it sent to you.
+        • You can also opt in and out of dm notifications using `/opt_into_dms` and `/opt_out_of_dms`.
     
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
     """
@@ -9861,7 +10425,7 @@ async def joinToCreateVoiceChannelsHelp(interaction: Interaction):
     description = f"""Want to have a voice channel for everyone in the server but not feel cluttered? Join To Create Voice Channels are the way to go.
     
     **How to set up a Join-To-Create Voice Channel**
-        • Go to __*{dashboard.get_mention()}* → Join-To-Create VCs → Configure → Add__.  
+        • Go to `/dashboard → Join-To-Create VCs → Configure → Add`.  
         • Select your channel and click "Add".
             → Tip: Don't see your voice channel? Check to make sure that InfiniBot has the permissions to view it.
         
@@ -9869,7 +10433,7 @@ async def joinToCreateVoiceChannelsHelp(interaction: Interaction):
         • Now, you can join that voice channel, and it will move you to a new voice channel with your name on it! Once everyone leaves, the channel will be deleted.
     
     **Disable this feature on a voice channel**
-        • To disable this feature on any voice channel, go to __*{dashboard.get_mention()}* → Join-To-Create VCs → Configure → Delete__ and select the voice channel.
+        • To disable this feature on any voice channel, go to `/dashboard → Join-To-Create VCs → Configure → Delete` and select the voice channel.
         • Click "Delete"
        
     
@@ -9887,7 +10451,7 @@ async def statsHelp(interaction: Interaction):
     description = f"""Want to know how many people are in your server? Use server statistics to always keep track.
     
     **How to set up a Server Statistics message**
-        • Use __*{setupStats.get_mention()}*__ in the channel where you want to have the Statistics message.
+        • Use `/setup_stats` in the channel where you want to have the Statistics message.
             → Tip: Every time a member joins or leaves the server, this message will update.
         
     **Why can't I create another?**
@@ -9902,18 +10466,18 @@ async def statsHelp(interaction: Interaction):
     embed = nextcord.Embed(title = "How to set up statistics messages with InfiniBot", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView())  
        
-@help.subcommand(name = "auto_bans", description = "Help with Server Statistics messages")
+@help.subcommand(name = "auto_bans", description = "Help with Auto Bans")
 async def autoBansHelp(interaction: Interaction):
     description = f"""Banning is a powerful tool, however, Discord limits you in some cases. With InfiniBot, you can ban members even before and after they join your server.  
         
     **How to Auto-Ban a Member (Never Joined your Server)**
         ★ Make sure InfiniBot has the "Ban Members" permission.
-        • Go to __*{dashboard.get_mention()} → Auto-Bans → Add*__ and follow the instructions.
+        • Go to `/dashboard → Auto-Bans → Add` and follow the instructions.
         • Once you finish, they will be auto-banned the second they join this server.   
         
     **How to Revoke an Auto-Ban**
         ★ Make sure InfiniBot has the "Ban Members" permission.
-        • Go to __*{dashboard.get_mention()} → Auto-Bans → Revoke*__ and select any member to revoke their auto-ban.
+        • Go to `/dashboard → Auto-Bans → Revoke` and select any member to revoke their auto-ban.
         • Click "Revoke Auto-Ban"
         
     **How to Ban a Member (still in the server or after they have left)**
@@ -9931,7 +10495,28 @@ async def autoBansHelp(interaction: Interaction):
     
     embed = nextcord.Embed(title = "How to set up auto-bans with InfiniBot", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView()) 
+   
+@help.subcommand(name = "embeds", description = "Help with Embeds")
+async def embedsHelp(interaction: Interaction):
+    description = f"""Discord's default messages *can* look really good. But sometimes, the default message just doesn't cut it. For that, use embeds!
+        
+    **How to Create an Embed**
+        • Type `/create embed` and choose your title, text, and color.
+        
+    **How to Edit an Embed**
+        • Go to the embed, and right click. Go to `Apps → Edit`
+        • From here, you can edit the embed's title, description, and color
+         
+    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    """
     
+    # On Mobile, extra spaces cause problems. We'll get rid of them here:
+    description = standardizeStrIndention(description)
+    
+    embed = nextcord.Embed(title = "How to use embeds with InfiniBot", description = description, color = nextcord.Color.greyple())
+    await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView()) 
+    
+ 
 #Help END: ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
