@@ -6574,6 +6574,7 @@ def checkRepeatedWordsPercentage(text, threshold=0.7):
         
     # Calculate the total number of words and the number of repeated words
     totalWords = len(words)
+    if totalWords == 0: return False
     repeatedWords = sum(count for count in counts.values() if count > 0.5)
 
     # Calculate the percentage of repeated words
