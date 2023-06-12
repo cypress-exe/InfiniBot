@@ -7746,7 +7746,7 @@ async def customReactionRoleCommand(interaction: Interaction, options: str = Sla
         
         await createReactionRole(interaction, modal.titleValue, modal.descriptionValue, [option.strip() for option in options.split(",")], "Custom", mentionRoles)
 
-def reactionRoleOptionsFormatter(_type: str, roles: list[nextcord.Role], emojis: (list[str] | None), mentionRoles: bool):
+def reactionRoleOptionsFormatter(_type: str, roles: list[nextcord.Role], emojis: list[str], mentionRoles: bool):
     reactionsFormatted = "" # Returned
     addedOptions_Emojis = [] # Returned
     addedOptions_Asci = []
