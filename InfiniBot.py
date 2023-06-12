@@ -6835,6 +6835,7 @@ async def punnishProfanity(server: Server, message: nextcord.Message):
     
     if not server.profanityBool: return
     if message.channel.is_nsfw(): return
+    if message.author == message.guild.owner: return
     
     msg = message.content.lower()
     messageSplit = msg.split(" ")
