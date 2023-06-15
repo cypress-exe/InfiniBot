@@ -4877,20 +4877,36 @@ class Dashboard(nextcord.ui.View):
                         
                     async def setup(self, interaction: Interaction):
                         server = Server(interaction.guild.id)
-                        await server.messages.checkAll()
+                        
                         messages = server.messages.getAll(self._type)
                         
                         maxMessages = server.messages.maxOf(self._type)
                         
                         messagesFormatted = []
+                        save = False
                         for index, message in enumerate(messages):
+                            # Get the Channel
                             discordChannel = await interaction.guild.fetch_channel(message.channel_id)
-                            discordMessage = await discordChannel.fetch_message(message.message_id)
+                            if not discordChannel: 
+                                server.messages.delete(message.message_id)
+                                save = True
+                                continue
                             
+                            # Get the Message
+                            discordMessage = await discordChannel.fetch_message(message.message_id)
+                            if not discordMessage: 
+                                server.messages.delete(message.message_id)
+                                save = True
+                                continue
+                            
+                            # Create the UI
                             title = discordMessage.embeds[0].title
                             persistent = " 🔒" if message.persistent else ""
                             
                             messagesFormatted.append(f"{index + 1}/{maxMessages}) [{title}]({message.getLink(interaction.guild.id)}){persistent}")
+                            
+                        # Save if needed
+                        server.messages.save()
                             
                         if messagesFormatted == []:
                             messagesFormatted.append(f"You don't have any active {self._type}s yet! Create one!")
@@ -10654,10 +10670,7 @@ async def getAllGuilds(interaction: Interaction):
         for guild in bot.guilds:
             server = Server(guild.id)
             bots = len(guild.bots)
-            if server.invite != None:
-                formattedGuilds += f"{number}) Name: {guild.name}, ID: {guild.id}, Member Count: `{guild.member_count}`, Bot Count: `{bots}`, {server.invite}\n"
-            else:
-                formattedGuilds += f"{number}) Name: {guild.name}, ID: {guild.id}, Member Count: `{guild.member_count}`, Bot Count: `{bots}`\n"
+            formattedGuilds += f"{number}) Name: {guild.name}, ID: {guild.id}, Member Count: `{guild.member_count}`, Bot Count: `{bots}`\n"
             del server
             
             number += 1
