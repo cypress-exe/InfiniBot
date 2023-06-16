@@ -6951,9 +6951,9 @@ async def checkSpam(message: nextcord.Message, server: Server):
     messagesLeftToTest = MAX_MESSAGE_GAPS
     for _message in previousMessages:
         # and checkRepeatedWordsPercentage(_message.content)
-        if _message.content:
-            isSpam = True
-            break
+        # if _message.content:
+        #     isSpam = True
+        #     break
         if _message.content == message.content or compareAttachments(_message.attachments, message.attachments):
             timeNow = datetime.datetime.utcnow() - datetime.timedelta(seconds=5 * server.messagesThreshold)
             timeNow = timeNow.replace(tzinfo=datetime.timezone.utc)  # Make timeNow offset-aware
