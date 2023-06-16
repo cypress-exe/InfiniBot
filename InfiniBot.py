@@ -6950,7 +6950,8 @@ async def checkSpam(message: nextcord.Message, server: Server):
     duplicateMessages = []
     messagesLeftToTest = MAX_MESSAGE_GAPS
     for _message in previousMessages:
-        if _message.content and checkRepeatedWordsPercentage(_message.content):
+        # and checkRepeatedWordsPercentage(_message.content)
+        if _message.content:
             isSpam = True
             break
         if _message.content == message.content or compareAttachments(_message.attachments, message.attachments):
