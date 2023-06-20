@@ -6599,6 +6599,27 @@ def checkRepeatedWordsPercentage(text, threshold=0.7):
     # Check if the percentage exceeds the threshold
     return repeatedPercentage >= threshold
 
+def compareAttachments(attachments1: List[nextcord.Attachment], attachments2: List[nextcord.Attachment]):
+        # quick optimizations
+        if not attachments1 or not attachments2:
+            return False
+        if attachments1 == attachments2:
+            return True
+
+        for attachment1 in attachments1:
+            for attachment2 in attachments2:
+                if (
+                    attachment1.url == attachment2.url
+                    or (
+                        attachment1.filename == attachment2.filename
+                        and attachment1.width == attachment2.width
+                        and attachment1.height == attachment2.height
+                        and attachment1.size == attachment2.size
+                    )
+                ):
+                    return True
+        return False
+
 guildsCheckingForRole = []
 async def checkForRole(guild: nextcord.Guild):
     '''Check to see if InfiniBot Mod Role Exists. If not, create it.'''
@@ -6909,73 +6930,62 @@ async def punnishProfanity(server: Server, message: nextcord.Message):
             await sendErrorMessageToOwner(message.guild, "Manage Messages")
 
 async def checkSpam(message: nextcord.Message, server: Server):
-    MAX_MESSAGE_GAPS = 2
+    MAX_MESSAGES_TO_CHECK = 11    # The MAXIMUM messages InfiniBot will try to check for spam
+    MESSAGE_CHARS_TO_CHECK_REPETITION = 140    # A message requires these many characters before it is checked for repetition
 
-    if not server.spamBool:
-        return
-
-    if server.messagesThreshold > 11:
-        limit = server.messagesThreshold + 1
-    else:
-        limit = 11
-
+    # If Spam is Enabled
+    if not server.spamBool: return
+    
+    # Check if we can view the audit log
     if not message.guild.me.guild_permissions.view_audit_log:
         await sendErrorMessageToOwner(message.guild, "View Audit Log", channel=message.channel.name)
         return
 
+    # Configure limit (the most messages that we're willing to check)
+    if server.messagesThreshold < MAX_MESSAGES_TO_CHECK:
+        limit = server.messagesThreshold + 1 # Add one because of the existing message
+    else:
+        limit = MAX_MESSAGES_TO_CHECK
+        
+    
+
+    # Get previous messages
     previousMessages = await message.channel.history(limit=limit).flatten()
-
-    def compareAttachments(attachments1: List[nextcord.Attachment], attachments2: List[nextcord.Attachment]):
-        # quick optimizations
-        if not attachments1 or not attachments2:
-            return False
-        if attachments1 == attachments2:
-            return True
-
-        for attachment1 in attachments1:
-            for attachment2 in attachments2:
-                if (
-                    attachment1.url == attachment2.url
-                    or (
-                        attachment1.filename == attachment2.filename
-                        and attachment1.width == attachment2.width
-                        and attachment1.height == attachment2.height
-                        and attachment1.size == attachment2.size
-                    )
-                ):
-                    return True
-        return False
-
-    isSpam = False
+    
+    # Loop through each previous message and test it
     duplicateMessages = []
-    messagesLeftToTest = MAX_MESSAGE_GAPS
     for _message in previousMessages:
-        # and checkRepeatedWordsPercentage(_message.content)
-        # if _message.content:
-        #     isSpam = True
-        #     break
+        # Check word count percentage
+        if _message.content and len(_message.content) >= MESSAGE_CHARS_TO_CHECK_REPETITION and checkRepeatedWordsPercentage(_message.content):
+            duplicateMessages.append(_message)
+            break
+        
+        # Check message content and attachments
         if _message.content == message.content or compareAttachments(_message.attachments, message.attachments):
-            timeNow = datetime.datetime.utcnow() - datetime.timedelta(seconds=5 * server.messagesThreshold)
+            timeNow = datetime.datetime.utcnow() - datetime.timedelta(seconds = 2 * server.messagesThreshold) # ======= Time Threshold =========
             timeNow = timeNow.replace(tzinfo=datetime.timezone.utc)  # Make timeNow offset-aware
+            
+            # If the message is within the time threshold window, add that message.
             if _message.created_at >= timeNow:
                 duplicateMessages.append(_message)
-                messagesLeftToTest = MAX_MESSAGE_GAPS
             else:
-                break
-        else:
-            messagesLeftToTest -= 1
-            if messagesLeftToTest <= 0:
+                # If this message was outside of the time window, previous messages will also be, so this loop can stop
                 break
 
-    if isSpam or len(duplicateMessages) + 1 >= server.messagesThreshold:
+
+    # Punnish the member (if needed)
+    if len(duplicateMessages) >= server.messagesThreshold:
         try:
+            # Time them out
             await timeout(message.author, server.spamTimeoutTime, reason=f"Spam Moderation: User exceeded spam message limit of {server.messagesThreshold}.")
+            
+            # Send them a message (if they want it)
             if Member(message.author.id).dmsEnabledBool:
                 dm = await message.author.create_dm()
                 await dm.send(
                     embed=nextcord.Embed(
                         title="Spam Timeout",
-                        description=f"You were flagged for spamming in \"{message.guild.name}\". You have been timed out for {server.spamTimeoutTime}.",
+                        description=f"You were flagged for spamming in \"{message.guild.name}\". You have been timed out for {server.spamTimeoutTime}.\n\nPlease contact the admins if you think this is a mistake.",
                         color=nextcord.Color.red(),
                     )
                 )
