@@ -9039,17 +9039,23 @@ async def banMemberAction(interaction: Interaction, member: nextcord.Member):
 
 
 #Other Features: -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@bot.slash_command(name = "emotional_support", description = "Get a motivational statement", dm_permission=False)
+@bot.slash_command(name = "motivational_statement", description = "Get, uh, a motivational statement", dm_permission=False)
 async def emotionalSupport(interaction: Interaction):
     messages = [
         "Don't stress over something today; it will be worse tomorrow.",
         "Time to leave the past behind and start over in life; your existence didn't mean anything anyway.",
         "If you think life is horrible right now, you're wrong. It will always get worse count on it.",
         "Keep working. Though you will never find success, your family might remember your meaningless life.",
-        "If you fail to find success over and over, give up. You're not good enough to do it anyway, and you never will be."
+        "If you fail to find success over and over, give up. You're not good enough to do it anyway, and you never will be.",
+        "The cookies you were looking foreward to all day burned to a crisp.",
+        "Are others really talking about you behind your back? Yes. Yes they are.",
+        "You lie awake at night thinking about how much of a disapointment you are."
     ]
 
-    await interaction.response.send_message(embed = nextcord.Embed(title = "Emotional Support", description = messages[random.randint(0, len(messages) - 1)], color =  nextcord.Color.blue()))
+    embed = nextcord.Embed(title = "Motivational Statement", description = messages[random.randint(0, len(messages) - 1)], color =  nextcord.Color.blue())
+    embed.set_footer(text = "Disclaimer: This is obviously not real motivational advice. For real advice, seek the help of a licenced professional.")
+
+    await interaction.response.send_message(embed = embed)
 
 @bot.slash_command(name = "change_nick", description = "Change the nickname of any user. (Requires a higher role, and manage nicknames permission)", dm_permission=False)
 async def change_nick(interaction: Interaction, member: nextcord.Member, nickname: str = SlashOption(description = "List a nickname. \"CLEAR\" will clear an existing nickname.")):
@@ -10404,8 +10410,8 @@ async def otherHelp(interaction: Interaction):
         • Another way to purge a channel is to use `/dashboard [100]` and InfiniBot will purge the channel of 100 messages.
             → Tip: You can use any number — 100 was an example.
     
-    **Emotional Support**
-        • Type `/emotional_support` and get, uh, a motivational statement — if you squint.
+    **Motivational Statement**
+        • Type `/motivational_statement` and get, uh, a motivational statement — if you squint.
         
     **Change Nickname**
         • Type`/change_nick [member] [new nickname]` and be able to change a member's nickname via a command.
