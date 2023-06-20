@@ -227,7 +227,8 @@ class FileOperations:
                 'spamModeration': True,
                 'logging': True,
                 'leveling': True,
-                'deleteInvites': False
+                'deleteInvites': False,
+                'getUpdates': True
             },
             'channels': {
                 'admin': None,
@@ -909,6 +910,7 @@ class Server:
             self.loggingBool = self.rawData['active']['logging']
             self.levelingBool = self.rawData['active']['leveling']
             self.deleteInvitesBool = self.rawData['active']['deleteInvites']
+            self.getUpdates = self.rawData['active']['getUpdates']
             
             self.adminChannel = loadChannel(self.rawData['channels']['admin'])
             self.logChannel = loadChannel(self.rawData['channels']['log'])
@@ -1070,7 +1072,8 @@ class Server:
                 'spamModeration': self.spamBool,
                 'logging': self.loggingBool,
                 'leveling': self.levelingBool,
-                'deleteInvites': self.deleteInvitesBool
+                'deleteInvites': self.deleteInvitesBool,
+                'getUpdates': self.getUpdates
             },
             'channels': {
                 'admin': formatChannel(self.adminChannel),
@@ -4941,11 +4944,11 @@ class Dashboard(nextcord.ui.View):
                 self.autoDeleteInvitesBtn = self.EnableDisableButton(self, "Delete Invites", self.server, row = 1)
                 self.add_item(self.autoDeleteInvitesBtn)
                 
-                self.musicBtn = self.EnableDisableButton(self, "Music", self.server, row = 1)
-                #self.add_item(self.musicBtn)
+                self.getUpdatesBtn = self.EnableDisableButton(self, "Update Messages", self.server, row = 2)
+                self.add_item(self.getUpdatesBtn)
                 
                 
-                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 2)
+                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 3)
                 self.backBtn.callback = self.backBtnCallback
                 self.add_item(self.backBtn)
                 
@@ -4956,9 +4959,18 @@ class Dashboard(nextcord.ui.View):
                 
                 self.server = Server(interaction.guild.id)
                 
-                settingsValue = f"{self.boolToString(self.server.profanityBool)} - Profanity Moderation\n{self.boolToString(self.server.spamBool)} - Spam Moderation\n{self.boolToString(self.server.loggingBool)} - Logging\n{self.boolToString(self.server.levelingBool)} - Leveling\n{self.boolToString(self.server.deleteInvitesBool)}- Delete Invites"
+                settingsValue = f"""
+                {self.boolToString(self.server.profanityBool)} - Profanity Moderation
+                {self.boolToString(self.server.spamBool)} - Spam Moderation
+                {self.boolToString(self.server.loggingBool)} - Logging
+                {self.boolToString(self.server.levelingBool)} - Leveling
+                {self.boolToString(self.server.deleteInvitesBool)} - Delete Invites
+                {self.boolToString(self.server.getUpdates)} - Update Messages
+                """
                 
-                # \n{self.boolToString(self.server.musicBool)} - Music
+                # On Mobile, extra spaces cause problems. We'll get rid of them here:
+                settingsValue = standardizeStrIndention(settingsValue)
+                
                 embed = nextcord.Embed(title = "Dashboard - Enable / Disable Panel", description = f"Choose a feature to enable / disable", color = nextcord.Color.blue())
                 embed.add_field(name = "Settings", value = settingsValue, inline = True)
                 await interaction.response.edit_message(embed = embed, view = self)
@@ -5029,9 +5041,9 @@ class Dashboard(nextcord.ui.View):
                         if name == "Delete Invites": 
                             if change: self.server.deleteInvitesBool = not self.server.deleteInvitesBool
                             return self.server.deleteInvitesBool
-                        if name == "Music":
-                            if change: self.server.musicBool = not self.server.musicBool
-                            return self.server.musicBool
+                        if name == "Update Messages":
+                            if change: self.server.getUpdates = not self.server.getUpdates
+                            return self.server.getUpdates
                         
                     
                         print("ERROR: Button Name does not correspond with possible values in ChooseView.findVariable")
@@ -10328,13 +10340,22 @@ async def sendMessageToAllGuilds(interaction: Interaction):
 
         for guild in bot.guilds:
             try:
+                # If the server wants updates
+                server = Server(guild.id)
+                if not server.getUpdates:
+                    continue
+                
+                # Find a channel
                 general = nextcord.utils.find(lambda x: x.name == 'general',  guild.text_channels)
                 if general: await general.send(embed = embed, view = SupportAndInviteView())
                 else: 
                     channel = await getChannel(guild)
-                    if channel != None: await channel.send(embed = embed, view = SupportAndInviteView())
+                    if channel != None: 
+                        # Send message
+                        await channel.send(embed = embed, view = SupportAndInviteView())
                 print(f"Message sent to server: {guild.name}, id: {guild.id}")
                 
+                # Do some special stuff if it's the InfiniBot server
                 if guild.id == infinibotGuild:
                     channel = guild.get_channel(updatesChannel)
                     role = guild.get_role(infinibotUpdatesRole)
