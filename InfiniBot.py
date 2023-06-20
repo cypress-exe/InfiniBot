@@ -10401,39 +10401,6 @@ async def getAllGuilds(interaction: Interaction):
     else:
         await interaction.followup.send(embed = nextcord.Embed(title = "User Error", description = "You do not have access to this command", color = nextcord.Color.red()), ephemeral = True)
         
-@admin.subcommand(name = "timeout_member", description = "Only usable by bot owner.")
-async def timeoutUser(interaction: Interaction, guild_id_number, member_id_number, time):
-    if interaction.user.id in developerID:
-        Guild = None
-        for guild in bot.guilds:
-            if guild.id == int(guild_id_number):
-                Guild = guild
-        
-        if Guild == None: 
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Error", description = "Guild not found", color = nextcord.Color.red()), ephemeral = True)
-            return
-            
-        try:    
-            member: nextcord.Member = await Guild.fetch_member(int(member_id_number))
-        except:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Error", description = "Member not found", color = nextcord.Color.red()), ephemeral = True)
-            return
-        
-        time = humanfriendly.parse_timespan(time)
-        if time == "0":
-            await member.edit(timeout=None)
-        else:
-            await member.edit(timeout=nextcord.utils.utcnow()+datetime.timedelta(seconds=time))
-        
-        if time != "0":
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Done", description = f"{interaction.user} timed out {member} in {Guild.name} for {time}.", color = nextcord.Color.green()))
-        else:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Done", description = f"{interaction.user} removed timeout for {member} in {Guild.name}.", color = nextcord.Color.green()))
-                
-    
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "User Error", description = "You do not have access to this command", color = nextcord.Color.red()), ephemeral = True)
-
 async def adminCommands(message: nextcord.Message):
     global guildsCheckingForRole, purging
     messageContent = message.content.lower()
