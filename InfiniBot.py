@@ -243,8 +243,7 @@ class FileOperations:
                 'spamModeration': True,
                 'logging': True,
                 'leveling': True,
-                'deleteInvites': False,
-                'music': True
+                'deleteInvites': False
             },
             'channels': {
                 'admin': None,
@@ -926,7 +925,6 @@ class Server:
             self.loggingBool = self.rawData['active']['logging']
             self.levelingBool = self.rawData['active']['leveling']
             self.deleteInvitesBool = self.rawData['active']['deleteInvites']
-            self.musicBool = self.rawData['active']['music']
             
             self.adminChannel = loadChannel(self.rawData['channels']['admin'])
             self.logChannel = loadChannel(self.rawData['channels']['log'])
@@ -1088,8 +1086,7 @@ class Server:
                 'spamModeration': self.spamBool,
                 'logging': self.loggingBool,
                 'leveling': self.levelingBool,
-                'deleteInvites': self.deleteInvitesBool,
-                'music': self.musicBool
+                'deleteInvites': self.deleteInvitesBool
             },
             'channels': {
                 'admin': formatChannel(self.adminChannel),
