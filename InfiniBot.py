@@ -7058,7 +7058,7 @@ async def adminCommands(message: nextcord.Message):
             membercount += guild.member_count
 
         embed = nextcord.Embed(title = "Server Stats:", description = f"Server Count: {str(servercount)}\nTotal Members: {str(membercount)}\n\n*A watched pot never boils*", color = nextcord.Color.blue())
-        await message.channel.send(embed = embed)
+        await message.channel.send(embed = embed, view = TopGGVoteView())
         return
         
     # Level 2 ----------------------------------------------------------------------
