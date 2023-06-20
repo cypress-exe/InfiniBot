@@ -13,7 +13,6 @@ import asyncio
 import random
 import time
 import Levenshtein
-import calendar
 import typing
 import json
 import io
@@ -22,20 +21,9 @@ import sys
 import re
 
 
-intents = nextcord.Intents.default()
-intents.message_content = True
-intents.members = True
-intents.voice_states = True
-intents.reactions = True
 
-guildIDS = [968872260557488158, 995459530202808332]
-developmentGuild = [968872260557488158, 995459530202808332]
-developerID = [836701982425219072]
-supportServerLink = 'https://discord.gg/mWgJJ8ZqwR'
-topggLink = "https://top.gg/bot/991832387015159911"
-topggVoteLink = "https://top.gg/bot/991832387015159911/vote"
-topggReviewLink = "https://top.gg/bot/991832387015159911#reviews"
-inviteLink = "https://discord.com/oauth2/authorize?client_id=991832387015159911&permissions=1374809222364&scope=bot"
+
+
 
 
 
@@ -54,11 +42,26 @@ VERSION = 2.0
 
 
 
+# IDs
+guildIDS = [968872260557488158, 995459530202808332]
+developmentGuild = [968872260557488158, 995459530202808332]
+developerID = [836701982425219072]
+infinibotGuild = 1009127888483799110
+issueReportChannel = 1012433924011597875
+submissionChannel = 1009139174256935103
+updatesChannel = 1009132479036276826
+infinibotUpdatesRole = 1087605721060872262
 
-abcs = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+# Links
+supportServerLink = 'https://discord.gg/mWgJJ8ZqwR'
+topggLink = "https://top.gg/bot/991832387015159911"
+topggVoteLink = "https://top.gg/bot/991832387015159911/vote"
+topggReviewLink = "https://top.gg/bot/991832387015159911#reviews"
+inviteLink = "https://discord.com/oauth2/authorize?client_id=991832387015159911&permissions=1374809222364&scope=bot"
 
-
-
+# Global Variables
+autoDeletedMessageTime = None
+nicknameChanged = []
 requiredPermissions = """
 \n**Text Channel Permissions**:
 • View Channels
@@ -76,51 +79,32 @@ requiredPermissions = """
 
 **Voice Channel Permissions**:
 • Connect
-• Speak
 • Move Members
 
 → Tip: Make sure that InfiniBot has all of these permissions in all of the channels in your server."""
 
 
-# topGGIsSafeMessage = """
-# **What is Top.gg?**
-# Top.gg is a website that allows users to find, review, and vote for their favorite Discord bots. The site offers a comprehensive directory of bots that can perform various tasks, such as moderation, music playback, and gaming. Users can browse through different categories, including the most popular bots, new releases, and staff picks.
-
-# **It wants me to login?**
-# Top.gg is currently the #1 discord bot list. It is trusted by thousands of people on a day-to-day basis. When you sign into your Discord account on top.gg, that information is actually not given to top.gg. Rather, Discord authenticates your password, and only tells Top.gg who you are (your passwords and emails are not given).
-# """
-        
-# def voteLockMessage(level):
-#     return f"""To use this command, you need to have a level of {level} or higher on your profile.
-        
-#     Luckily, it's free and easy to get levels! Simply click the button below and vote for InfiniBot on top.gg!
-    
-#     {topGGIsSafeMessage}
-#     """
-
-nicknameChanged = []
 
 
 
-
-
-
-
+# INIT BOT ==============================================================================================================================================================
+intents = nextcord.Intents.default()
+intents.message_content = True
+intents.members = True
+intents.voice_states = True
+intents.reactions = True
 
 bot = commands.Bot(intents = intents, allowed_mentions = nextcord.AllowedMentions(everyone = True), help_command=None)
 
-infinibotGuild = 1009127888483799110
-issueReportChannel = 1012433924011597875
-submissionChannel = 1009139174256935103
-updatesChannel = 1009132479036276826
-infinibotUpdatesRole = 1087605721060872262
-
-autoDeletedMessageTime = None
 
 
-#Core Infrastructure
 
-#functions
+
+
+
+
+
+# Files, Profile, and Dashboard general functions
 def standardizeDictProperties(defaultDict: dict, objectDict: dict, aliases: dict = {}):
     """A recursive function that makes sure that the two dictionaries have the same properties.
 
@@ -1912,7 +1896,8 @@ main = Main()
 #Buttons and UI
 
 
-
+# CUSTOM VIEWS ==========================================================================================================================================================
+# Strikes "Mark Incorrect" Button
 class IncorrectButton(nextcord.ui.View):
   def __init__(self):
     super().__init__(timeout = None)
@@ -1939,6 +1924,7 @@ class IncorrectButton(nextcord.ui.View):
     
     self.stop()
     
+# Deleted Message Logs "Show More" Button
 class ShowMoreButton(nextcord.ui.View):
   def __init__(self):
     super().__init__(timeout = None)
@@ -1967,7 +1953,8 @@ class ShowMoreButton(nextcord.ui.View):
     
     self.stop()
   
-class ErrorViewMoreButton(nextcord.ui.View):
+# Error "Why Administrator Privileges?" Button
+class ErrorWhyAdminPrivilegesButton(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
     
@@ -1980,8 +1967,6 @@ class ErrorViewMoreButton(nextcord.ui.View):
         button.disabled = True
         
         await interaction.response.edit_message(view = self, embed = embed)
-
-
 
 
 
@@ -2201,7 +2186,7 @@ class SupportInviteTopGGVoteAndPermissionsCheckView(nextcord.ui.View):
         self.add_item(permissionsCheckBtn)
 
 
-
+# CUSTOM MODALS ==========================================================================================================================================================
 class VotingModal(nextcord.ui.Modal):
     def __init__(self, interaction, type, options = None):
         super().__init__(title = "Create a Vote")
@@ -2355,8 +2340,7 @@ class GeneralInputModal(nextcord.ui.Modal):
         self.stop()
 
 
-
-# await SelectView(title, description, options (list of nextcord.SelectOption), return Command, OPTIONAL(embedFields (embed.fields), embedColor (nextcord.Color), placeholder, continueButtonLabel, cancelButtonLabel).setup(interaction)
+# COMPLICATED UI ==========================================================================================================================================================
 class SelectView(nextcord.ui.View):
     def __init__(self, title: str, description: str, options: list[nextcord.SelectOption], returnCommand, embedColor: nextcord.Color = nextcord.Color.blue(), embedFields = [], placeholder: str = None, continueButtonLabel = "Continue", cancelButtonLabel = "Cancel", preserveOrder = False):
         """Creates a select view that has pages if needed.
@@ -5639,19 +5623,6 @@ class Profile(nextcord.ui.View):
 #Real Code (YAY) ------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-
-@bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", dm_permission=False)
-async def dashboard(interaction: Interaction):
-    if await hasRole(interaction):
-        view = Dashboard(interaction)
-        await view.setup(interaction)
-    
-@bot.slash_command(name = "profile", description = "Configure Your Profile In InfiniBot")
-async def profile(interaction: Interaction):
-    view = Profile()
-    await view.setup(interaction)
-    
-    
     
   
 @bot.slash_command(name = "opt_into_dms", description = "Opt out of dm notifications from InfiniBot.")
@@ -5690,90 +5661,6 @@ async def opt_out_of_dms(interaction: Interaction):
 
 
 
-statsInvalidMessage = nextcord.Embed(title = "Invalid Server Statistics", description = f"You can only have one server statistics message at once. Use /setup_stats to reactivate another link.", color = nextcord.Color.red())
-def getStatsMessage(guild: nextcord.Guild):
-    statsMessageEmbed = nextcord.Embed(title = "Server Statistics", description = f"Total Members: {guild.member_count}\nTotal Bots: {len(guild.bots)}", color = nextcord.Color.gold())
-    return statsMessageEmbed
-
-async def sendErrorMessageToOwner(guild: nextcord.Guild, permission, message = None, administrator = True, channel = None, guildPermission = False):
-    """Sends an error message to the owner of the server via dm
-    
-    -----------------------
-    NEEDS TO BE AWAITED
-    
-    Returns None
-    
-    -----------------------
-    Args:
-        guild (nextcord.Guild): the guild in which the error occured
-        permission (str): the permission needed
-        -----------------
-    Optional Args:
-        message (str): a custom message to send (the opt out info is appended to this). Defaults to None.
-        administrator (bool): Whether to include info about giving InfiniBot adminstrator. Defaults to True.
-        channel (str): the channel where the permission is needed. Defaults to None (meaning the message says "one or more channels").
-        guildPermission (bool): whether the permission is a guild permission. If so, channel (↑) is overwritten. Defaults to False.
-    """
-    
-    member = guild.owner
-    
-    if member == None: return
-    memberSettings = Member(member.id)
-    if not memberSettings.dmsEnabledBool: return
-    
-    if channel != None:
-        channels = channel
-    else:
-        channels = "one or more channels"
-        
-    if guildPermission:
-        inChannels = ""
-    else:
-        inChannels = f" in {channels}"
-        
-    
-    
-    if message == None:
-        if permission != None: 
-            embed = nextcord.Embed(title = f"Missing Permissions in in \"{guild.name}\" Server", description = f"InfiniBot is missing the **{permission}** permission{inChannels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red())
-        else:
-            embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"InfiniBot is missing a permission{inChannels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red())
-    else:
-        embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"{message}\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red())
-
-    embed.timestamp = datetime.datetime.now()
-
-    try:
-        dm = await member.create_dm()
-        if administrator:
-            await dm.send(embed = embed, view = ErrorViewMoreButton())
-        else:
-            await dm.send(embed = embed)
-    except:
-        return
-
-async def getChannel(guild: nextcord.Guild):
-    if guild.system_channel: return guild.system_channel
-    else:
-        general = nextcord.utils.find(lambda x: x.name == 'general',  guild.text_channels)
-        if general and general.permissions_for(guild.get_member(bot.application_id)).send_messages and general.permissions_for(guild.get_member(bot.application_id)).embed_links: 
-            return general
-        else: 
-            welcome = nextcord.utils.find(lambda x: x.name == 'welcome',  guild.text_channels)
-            if welcome and welcome.permissions_for(guild.get_member(bot.application_id)).send_messages and welcome.permissions_for(guild.get_member(bot.application_id)).embed_links: 
-                return welcome
-            else:
-                greetings = nextcord.utils.find(lambda x: x.name == "greetings", guild.text_channels)
-                if greetings and greetings.permissions_for(guild.get_member(bot.application_id)).send_messages and greetings.permissions_for(guild.get_member(bot.application_id)).embed_links: 
-                    return greetings
-                else: 
-                    for channel in guild.text_channels:
-                        if channel.permissions_for(guild.get_member(bot.application_id)).send_messages and channel.permissions_for(guild.get_member(bot.application_id)).embed_links:
-                            return channel
-                    await sendErrorMessageToOwner(guild, "Send Messages")
-                    return None
-
-
 
 viewsInitialized = False
 @bot.event#------------------------------------------------------------------------
@@ -5785,7 +5672,7 @@ async def on_ready():
     if not viewsInitialized:
         bot.add_view(IncorrectButton())
         bot.add_view(ShowMoreButton())
-        bot.add_view(ErrorViewMoreButton())
+        bot.add_view(ErrorWhyAdminPrivilegesButton())
         viewsInitialized = True
         
     print(f"Logged in as: {bot.user.name}")
@@ -5824,15 +5711,168 @@ async def on_ready():
     await runEveryMinute()
 
 
-def lowerList(list):
-    newlist = []
-    for x in list:
-        newlist.append(x.lower())
+
+   
+       
+
+
+
+@bot.slash_command(name = "view", description = "Requires Infinibot Mod", dm_permission=False)
+async def view(interaction: Interaction):
+    pass
+
+@bot.slash_command(name = "set", description = "Requires Infinibot Mod", dm_permission=False)
+async def set(interaction: Interaction):
+    pass
+
+@bot.slash_command(name = "create", description = "Requires Infinibot Mod", dm_permission=False)
+async def create(interaction: Interaction):
+    pass
+
+
+
+
+
+
+#Manage Joining and Leaving: -----------------------------------------------------------------------------------------------------------------------------------------------------------------
+@bot.event
+async def on_guild_join(guild: nextcord.Guild):
+    # Prepare a list of Embeds
+    embeds = []
     
-    return newlist
+    # Greetings Embed --------------------------------------------------------------------------------------------
+    join_message = f"""
+    Hello! I am InfiniBot! Here's what you need to know:
+    
+    
+    1) Assign the role \"Infinibot Mod\" to anyone and they will have access to exclusive admin-only features!
+    
+    2) Make sure that the Infinibot role is the highest role. If this requirement is not met, some features may not function as expected.
+        → Alternatively, give InfiniBot Administrator  
+    
+    You're all set up! Type {dashboard.get_mention()} to get started or {help.get_mention()} for help.
+    
+    For any help or suggestions, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    """
+    
+    # On Mobile, extra spaces cause problems. We'll get rid of them here:
+    join_message = standardizeStrIndention(join_message)
+    
+    greetingsEmbed = nextcord.Embed(title = "Greetings!", description = join_message, color = nextcord.Color.gold())
+    embeds.append(greetingsEmbed)
+    
+    
+    
+    # Handle Permissions ------------------------------------------------------------------------------------------
+    _globalPermissions, _channelPermissions = neededPermissions(guild)
+    
+    # Handle Global Permissions Embed Content
+    if len(_globalPermissions) > 0:
+        globalPermissionsStr = "\n".join([f"• {permission}" for permission in _globalPermissions])
+        globalPermissionsEmbed = nextcord.Embed(title = "Wait! InfiniBot still needs some permissions!", description = f"InfiniBot is missing the following permissions:\n{globalPermissionsStr}\n\nAlternatively, give InfiniBot Administrator Priveleges.", color = nextcord.Color.red())
+        embeds.append(globalPermissionsEmbed)
+        
+    # Handle Channel Permissions Embed Content
+    if len(_channelPermissions) > 0:
+        channelPermissionsEmbed = nextcord.Embed(title = "InfiniBot also needs some permissions in these channels:", color = nextcord.Color.red())
+        for package in _channelPermissions:
+            permissions = "\n".join([f"• {permission}" for permission in package[1]])
+            channelPermissionsEmbed.add_field(name = str(package[0]), value = permissions)
+        embeds.append(channelPermissionsEmbed)
+        
+    if not guild.me.guild_permissions.manage_roles and (getInfinibotModRoleId(guild) == None):
+        infiniBotModEmbed = nextcord.Embed(title = "InfiniBot Mod Role Can't Generate", description = "Because InfiniBot does not have the \"Manage Roles\" permission, it can't create an important role called \"InfiniBot Mod\". Grant InfiniBot this permission, and the role should appear.", color = nextcord.Color.red())
+        embeds.append(infiniBotModEmbed)
+    
+    # Send Embeds -------------------------------------------------------------------------------------------------
+    channel = await getChannel(guild)
+    view = SupportInviteTopGGVoteAndPermissionsCheckView()
+    if channel != None: await channel.send(embeds = embeds, view=view)
+    else: 
+        try:
+            dm = await guild.owner.create_dm()
+            await dm.send(embeds = embeds, view=view)
+        except Exception as err:
+            print(err)
+            return
+
+@bot.event
+async def on_guild_remove(guild: nextcord.Guild):
+    server = Server(guild.id)
+    server.deleteServer()
+#Manage Joining and Leaving END: -------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
+
+
+
+# ON MESSAGE =================================================================================================================================================================================
+@bot.event
+async def on_message(message: nextcord.Message):
+    global guildsCheckingForRole
+    
+    if message == None: return
+    
+    # DM Commands ---------------------------------------------
+    if message.guild == None: 
+        if message.content.lower() == "clear":
+            for message in await message.channel.history().flatten():
+                if message.author.id == bot.application_id:
+                    await message.delete()
+                    
+        elif message.content.lower() == "del":
+            for message in await message.channel.history().flatten():
+                if message.author.id == bot.application_id:
+                    await message.delete()
+                    return
+                
+        await adminCommands(message)    
+        return
+    
+    
+    # Regular Functionality
+    server = Server(message.guild.id)
+    await checkForExpiration(server)
+    
+    # Check for InfiniBot Mod Role Existence
+    await checkForRole(message.guild)
+    if message.guild.id in guildsCheckingForRole: guildsCheckingForRole.remove(message.guild.id)
+    
+    # Don't do any of this if this is a bot
+    if message.author.bot:
+        return
+
+    # Profanity
+    Profane = False
+    if server.profanityBool:
+        Profane = await punnishProfanity(server, message)
+       
+
+    # Other Things
+    if not Profane:
+        # Check Invites
+        if server.deleteInvitesBool and not message.author.guild_permissions.administrator:
+            if "discord.gg/" in message.content.lower(): await message.delete()
+        # Check spam
+        if server.spamBool and not message.author.guild_permissions.administrator:
+            await checkSpam(message, server)
+        # Give levels
+        if server.levelingBool: await giveLevels(message)
+        await adminCommands(message)
+
+
+    # Continue with the Rest of the Bot Commands
+    await bot.process_commands(message)
+
+
+
+
+
+
+
+
+# RUN EVERY MINUTE ===========================================================================================================================================================================
 dbl_token = ""
 with open("./RequiredFiles/TOKEN.txt", "r") as file:
     dbl_token = file.read().split("\n")[1]
@@ -5914,14 +5954,748 @@ async def runEveryMinute():
                 except Exception as err:
                     print(f"ERROR When checking levels (server): {err}")
                     continue
-       
-       
-       
-       
-       
-       
-       
-       
+    
+
+
+
+
+
+
+
+# GENERAL FUNCTIONS ==========================================================================================================================================================================
+async def sendErrorMessageToOwner(guild: nextcord.Guild, permission, message = None, administrator = True, channel = None, guildPermission = False):
+    """Sends an error message to the owner of the server via dm
+    
+    -----------------------
+    NEEDS TO BE AWAITED
+    
+    Returns None
+    
+    -----------------------
+    Args:
+        guild (nextcord.Guild): the guild in which the error occured
+        permission (str): the permission needed
+        -----------------
+    Optional Args:
+        message (str): a custom message to send (the opt out info is appended to this). Defaults to None.
+        administrator (bool): Whether to include info about giving InfiniBot adminstrator. Defaults to True.
+        channel (str): the channel where the permission is needed. Defaults to None (meaning the message says "one or more channels").
+        guildPermission (bool): whether the permission is a guild permission. If so, channel (↑) is overwritten. Defaults to False.
+    """
+    
+    member = guild.owner
+    
+    if member == None: return
+    memberSettings = Member(member.id)
+    if not memberSettings.dmsEnabledBool: return
+    
+    if channel != None:
+        channels = channel
+    else:
+        channels = "one or more channels"
+        
+    if guildPermission:
+        inChannels = ""
+    else:
+        inChannels = f" in {channels}"
+        
+    
+    
+    if message == None:
+        if permission != None: 
+            embed = nextcord.Embed(title = f"Missing Permissions in in \"{guild.name}\" Server", description = f"InfiniBot is missing the **{permission}** permission{inChannels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red())
+        else:
+            embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"InfiniBot is missing a permission{inChannels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red())
+    else:
+        embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"{message}\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red())
+
+    embed.timestamp = datetime.datetime.now()
+
+    try:
+        dm = await member.create_dm()
+        if administrator:
+            await dm.send(embed = embed, view = ErrorWhyAdminPrivilegesButton())
+        else:
+            await dm.send(embed = embed)
+    except:
+        return
+
+async def getChannel(guild: nextcord.Guild):
+    if guild.system_channel: return guild.system_channel
+    else:
+        general = nextcord.utils.find(lambda x: x.name == 'general',  guild.text_channels)
+        if general and general.permissions_for(guild.get_member(bot.application_id)).send_messages and general.permissions_for(guild.get_member(bot.application_id)).embed_links: 
+            return general
+        else: 
+            welcome = nextcord.utils.find(lambda x: x.name == 'welcome',  guild.text_channels)
+            if welcome and welcome.permissions_for(guild.get_member(bot.application_id)).send_messages and welcome.permissions_for(guild.get_member(bot.application_id)).embed_links: 
+                return welcome
+            else:
+                greetings = nextcord.utils.find(lambda x: x.name == "greetings", guild.text_channels)
+                if greetings and greetings.permissions_for(guild.get_member(bot.application_id)).send_messages and greetings.permissions_for(guild.get_member(bot.application_id)).embed_links: 
+                    return greetings
+                else: 
+                    for channel in guild.text_channels:
+                        if channel.permissions_for(guild.get_member(bot.application_id)).send_messages and channel.permissions_for(guild.get_member(bot.application_id)).embed_links:
+                            return channel
+                    await sendErrorMessageToOwner(guild, "Send Messages")
+                    return None
+
+guildsCheckingForRole = []
+async def checkForRole(guild: nextcord.Guild):
+    '''Check to see if InfiniBot Mod Role Exists. If not, create it.'''
+    global guildsCheckingForRole
+    
+    roles = guild.roles
+    for x in range(0, len(roles)): roles[x] = roles[x].name
+
+    if not "Infinibot Mod" in roles:
+        try:
+            if not guild.id in guildsCheckingForRole:
+                guildsCheckingForRole.append(guild.id)
+                await guild.create_role(name = "Infinibot Mod")
+                await asyncio.sleep(1)
+                if guild.id in guildsCheckingForRole: guildsCheckingForRole.remove(guild.id)
+            else: return
+        except nextcord.errors.Forbidden:
+            if guild.id in guildsCheckingForRole: guildsCheckingForRole.remove(guild.id)
+            if guild.id == 33394969196219596: return #this is the top.gg guild id. I don't want them denying me because of dms
+            await sendErrorMessageToOwner(guild, None, message = "InfiniBot is missing the **Manage Roles** permission which prevents it from creating the role *InfiniBot Mod*. Please give InfiniBot this permission.", administrator=False)
+
+def getInfinibotModRoleId(guild: nextcord.Guild):
+    roles = guild.roles
+
+    for role in roles:
+        if role.name == "Infinibot Mod":
+            return role.id
+    
+    return None
+
+def getInfinibotTopRoleId(guild: nextcord.Guild):
+    return guild.me.top_role.id
+
+def canAssignRole(role: nextcord.Role):
+    if role.is_default(): return False
+    if role.is_integration(): return False
+    
+    return role.is_assignable()   
+    
+async def hasRole(interaction: Interaction, message = True):
+    if interaction.guild.owner == interaction.user: return True
+    
+    infinibotMod_role = nextcord.utils.get(interaction.guild.roles, name='Infinibot Mod')
+    if infinibotMod_role in interaction.user.roles:
+        return True
+
+    if message: await interaction.response.send_message(embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.", color = nextcord.Color.red()), ephemeral = True)
+    return False
+
+async def checkTextChannel(interaction: Interaction):
+    """Check to see if the channel that this slash command was used in was a text channel"""
+    
+    if type(interaction.channel) == nextcord.TextChannel:
+        return True
+    else:
+        await interaction.response.send_message(embed = nextcord.Embed(title = "You can't use that here!", description = "You can only use this command in text channels.", color = nextcord.Color.red()), ephemeral=True)
+        return
+
+def timedeltaToEnglish(td: datetime.timedelta):
+    # Get the total number of seconds in the timedelta
+    total_seconds = int(td.total_seconds())
+
+    # Compute the number of hours, minutes, and seconds
+    hours, seconds = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+
+    # Create a list of strings with the appropriate units
+    parts = []
+    if hours > 0:
+        parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
+    if minutes > 0:
+        parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+    if seconds > 0:
+        parts.append(f"{seconds} second{'s' if seconds != 1 else ''}")
+
+    # Join the parts with commas and "and" as appropriate
+    if len(parts) == 0:
+        return "0 seconds"
+    elif len(parts) == 1:
+        return parts[0]
+    else:
+        return ", ".join(parts[:-1]) + f", and {parts[-1]}"
+
+def lowerList(list: list[str]):
+    newlist = []
+    for x in list:
+        newlist.append(x.lower())
+    
+    return newlist
+
+
+
+
+
+
+#Check Permissions
+def neededPermissions(guild: nextcord.Guild):
+    if guild.me.guild_permissions.administrator:
+        return [], []
+    
+    guildPermissions = []
+    
+    if not guild.me.guild_permissions.view_channel:
+        guildPermissions.append("View Channels")
+    if not guild.me.guild_permissions.send_messages:
+        guildPermissions.append("Send Messages")
+    if not guild.me.guild_permissions.embed_links:
+        guildPermissions.append("Embed Links")
+    if not guild.me.guild_permissions.manage_roles:
+        guildPermissions.append("Manage Roles")
+    if not guild.me.guild_permissions.manage_channels:
+        guildPermissions.append("Manage Channels")
+    if not guild.me.guild_permissions.manage_messages:
+        guildPermissions.append("Manage Messages")
+    if not guild.me.guild_permissions.manage_nicknames:
+        guildPermissions.append("Manage Nicknames")
+    if not guild.me.guild_permissions.view_audit_log:
+        guildPermissions.append("View Audit Log")
+    if not guild.me.guild_permissions.attach_files:
+        guildPermissions.append("Attach Files")
+    if not guild.me.guild_permissions.add_reactions:
+        guildPermissions.append("Add Reactions")
+    if not guild.me.guild_permissions.moderate_members:
+        guildPermissions.append("Timeout Members")
+    if not guild.me.guild_permissions.ban_members:
+        guildPermissions.append("Ban Members")
+    if not guild.me.guild_permissions.read_message_history:
+        guildPermissions.append("Read Message History")
+    if not guild.me.guild_permissions.connect:
+        guildPermissions.append("Connect (Voice)")
+    if not guild.me.guild_permissions.move_members:
+        guildPermissions.append("Move Members")
+    
+    channelPermissions = []
+    for channel in guild.channels:
+        _channelPermissions = []
+        
+        if type(channel) == nextcord.CategoryChannel: continue
+        
+        if not channel.permissions_for(guild.me).view_channel and ("View Channels" not in guildPermissions):
+            _channelPermissions.append("View Channels")
+        if not channel.permissions_for(guild.me).send_messages and ("Send Messages" not in guildPermissions):
+            _channelPermissions.append("Send Messages")
+        if not channel.permissions_for(guild.me).embed_links and ("Embed Links" not in guildPermissions):
+            _channelPermissions.append("Embed Links")
+        if not channel.permissions_for(guild.me).manage_channels and ("Manage Channels" not in guildPermissions):
+            _channelPermissions.append("Manage Channels")
+        if not channel.permissions_for(guild.me).manage_messages and ("Manage Messages" not in guildPermissions):
+            _channelPermissions.append("Manage Messages")
+        if not channel.permissions_for(guild.me).attach_files and ("Attach Files" not in guildPermissions):
+            _channelPermissions.append("Attach Files")
+        if not channel.permissions_for(guild.me).add_reactions and ("Add Reactions" not in guildPermissions):
+            _channelPermissions.append("Add Reactions")
+        if not channel.permissions_for(guild.me).read_message_history and ("Read Message History" not in guildPermissions):
+            _channelPermissions.append("Read Message History")
+        if type(channel) == nextcord.VoiceChannel:
+            if not channel.permissions_for(guild.me).connect and ("Connect (Voice)" not in guildPermissions):
+                _channelPermissions.append("Connect (Voice)")
+            if not channel.permissions_for(guild.me).move_members and ("Move Members" not in guildPermissions):
+                _channelPermissions.append("Move Members")
+            
+        if len(_channelPermissions) > 0:
+            channelPermissions.append([channel, _channelPermissions])
+        
+    return guildPermissions, channelPermissions
+
+@bot.slash_command(name = "check_infinibot_permissions", description = "Check InfiniBot's permissions to help diagnose issues.", dm_permission=False)
+async def check_infinibot_permissions(interaction: Interaction):
+    _guildPermissions, _channelPermissions = neededPermissions(interaction.guild)
+    
+    # Return if everything is good
+    if len(_guildPermissions) == 0 and len(_channelPermissions) == 0:
+        embed = nextcord.Embed(title = "InfiniBot Permission Report", description = f"InfiniBot has every permission it needs! Nice work!", color = nextcord.Color.blue())
+        await interaction.response.send_message(embed = embed, ephemeral=True, view = SupportandPermissionsCheckView())
+        return
+
+    # Guild Permissions
+    if len(_guildPermissions) > 0:
+        guildPermissions = ""
+        for permission in _guildPermissions:
+            guildPermissions += f"\n• {permission}"
+        guildPermissionsSection = f"\n\n**Server Permissions** (Give the InfiniBot role these permissions):\n{guildPermissions}"
+    else: guildPermissionsSection = ""
+        
+    # Channel Permissions
+    if len(_channelPermissions) > 0:
+        channelPermissions = ""
+        for channel in _channelPermissions:
+            channelPermissions += f"\n**{channel[0]}** ({channel[0].mention})"
+            for permission in channel[1]:
+                channelPermissions += f"\n• {permission}"
+            channelPermissions += "\n"
+        channelPermissionsSection = f"\n\n**Channel Permissions** (Give the InfiniBot role these permissions in each channel):\n\nNote: These permissions are in order of importance. Grant the first one, and the others may be granted automatically.\n{channelPermissions}"
+    else: channelPermissionsSection = ""
+        
+    # Advice  
+    advice = ""
+    if len(_guildPermissions) + len(_channelPermissions) > 5:
+        advice = "```Alternatively to the options below, you could give InfiniBot Administrator```\n\n"
+    
+    # Sending The Embed
+    embed = nextcord.Embed(title = "InfiniBot Permission Report", description = f"{advice}InfiniBot is missing the following permissions:{guildPermissionsSection}{channelPermissionsSection}", color = nextcord.Color.blue())
+    await interaction.response.send_message(embed = embed, ephemeral=True, view = SupportandPermissionsCheckView())
+
+@bot.event
+async def on_guild_role_update(before: nextcord.Role, after: nextcord.Role):
+    await asyncio.sleep(3) #wait 3 seconds to let stuff sink in
+    
+    guild = after.guild
+    #it *could* have been us... Let's just double check some things now...
+    await checkForRole(guild)
+
+
+
+
+
+
+# Dashboard and Profile
+@bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", dm_permission=False)
+async def dashboard(interaction: Interaction):
+    if await hasRole(interaction):
+        view = Dashboard(interaction)
+        await view.setup(interaction)
+    
+@bot.slash_command(name = "profile", description = "Configure Your Profile In InfiniBot")
+async def profile(interaction: Interaction):
+    view = Profile()
+    await view.setup(interaction)
+
+
+
+
+
+
+
+#Moderation Bot Functionality --------------------------------------------------------------------------------------------------------------
+async def timeout(member: nextcord.Member, time: str, reason = None):
+    try:
+        time = humanfriendly.parse_timespan(time)
+        await member.edit(timeout=nextcord.utils.utcnow()+datetime.timedelta(seconds=time), reason = reason)
+        return True
+    except Exception as error:
+        return error
+
+async def giveStrike(guild_id, userID, channel: nextcord.TextChannel, factor: int):
+    server = Server(guild_id)
+
+    userStrike = server.getStrike(userID)
+    
+    if factor == 1: #handle adding a strike
+        if userStrike == None: #they are at strike 0
+            server.addStrike(userID, 1)
+            server.saveStrikes()
+            return 1
+        
+        elif userStrike.strike < int(server.maxStrikes):
+            userStrike.strike = userStrike.strike + 1
+            userStrike.lastStrike = datetime.date.today()
+            server.saveStrikes()
+            return userStrike.strike
+        
+        else:
+            #user needs to be timed out...          
+            if not channel.permissions_for(channel.guild.me).moderate_members:
+                await sendErrorMessageToOwner(channel.guild, "Timeout Members", guildPermission = True)
+                return
+            
+            response = await timeout(userStrike.member, server.profanityTimeoutTime, reason = f"Profanity Moderation: User exceeded strike limit of {server.maxStrikes}.")
+                
+            if response == "Success": 
+                if channel != None: 
+                    await channel.send(embed = nextcord.Embed(title = "Timeout Given", description = f"{userStrike.member} is now timed out for {server.profanityTimeoutTime}", color = nextcord.Color.dark_red()))
+                    server.deleteStrike(userStrike.memberID)
+                    server.saveStrikes()
+                    return 0
+                else:
+                    return userStrike.strike
+
+            else: 
+                if isinstance(response, nextcord.errors.Forbidden):
+                    await channel.send(embed = nextcord.Embed(title = "Timeout Error", description = f"Failed to timeout {userStrike.member} for {server.profanityTimeoutTime}. \n\nError: Member is of a higher rank than InfiniBot", color = nextcord.Color.red()))
+                else:
+                    await channel.send(embed = nextcord.Embed(title = "Timeout Error", description = f"Failed to timeout {userStrike.member} for {server.profanityTimeoutTime}. \n\nError: {response}", color = nextcord.Color.red()))
+                return userStrike.strike
+        
+    else:
+        if userStrike != None:
+            if userStrike.strike == 1:
+                server.deleteStrike(userID)
+                server.saveStrikes()
+                return 0
+            else:
+                userStrike.strike -= 1
+                userStrike.lastStrike = datetime.date.today()
+                server.saveStrikes()
+                return userStrike.strike
+                
+        else:
+            return 0
+
+async def checkForExpiration(server: Server):
+    '''Check All Strikes in the Server for Expiration'''
+    if server.strikeExpireTime == None or server.strikeExpireTime == 0: return
+    
+    for strike in server.strikes:
+        try:
+            referenceDate = datetime.datetime.strptime(strike.lastStrike, f"%Y-%m-%d")
+            currentDate = datetime.datetime.today()
+            
+            dayDelta = (currentDate - referenceDate).days
+
+            if int(dayDelta) >= int(server.strikeExpireTime):
+                compensate = int(math.floor(int(dayDelta) / int(server.strikeExpireTime)))
+
+                for x in range(0, compensate):
+                    await giveStrike(server.guild_id, strike.memberID, None, -1) #remove a strike
+        except Exception as err:
+            print("Error when checking for expiration: " + str(err))
+
+def checkProfanity(messageSplit, database):
+    messageSplit = lowerList(messageSplit)
+    database = lowerList(database)
+
+    for word in messageSplit:
+        if word == "he'll": continue
+        word = ''.join(filter(str.isalnum, word))
+        for dbWord in database:
+            if word == dbWord: return word
+            if word == dbWord + "s": return word
+            if word == dbWord + "er": return word
+            if word == dbWord + "ers": return word
+            if word == dbWord + "ing": return word
+            if word == dbWord + "ed": return word
+            if word == dbWord + "y": return word
+            if word == dbWord + "or": return word
+            if word == dbWord + "ness": return word
+            if word == dbWord + "tion": return word
+            if word == dbWord + "sion": return word
+            if word == dbWord + "ship": return word
+            if word == dbWord + "ment": return word
+            if word == "mother" + dbWord: return word
+            if word == "mother" + dbWord + "er": return word
+            if word == "mother" + dbWord + "ers": return word
+            if word == dbWord: return word
+            
+    return None
+
+def removeSymbols(string):
+    return re.sub(r'\W+', '', string)
+
+def checkRepeatedWordsPercentage(text, threshold=0.7):
+    words = re.findall(r'\w+', text.lower())  # Convert text to lowercase and extract words
+    counts = defaultdict(lambda: 0)  # Dictionary to store word counts
+    
+    # Remove symbols from the words
+    words = [removeSymbols(word) for word in words]
+
+    # Iterate over the words and count their occurrences
+    lastWords = []
+    for word in words:
+        if word not in lastWords:
+            counts[word] += 0.5
+        else:
+            counts[word] += 1
+        lastWords.insert(0, word)
+        if len(lastWords) >= 5:
+            lastWords.pop(3)
+        
+    # Calculate the total number of words and the number of repeated words
+    totalWords = len(words)
+    if totalWords == 0: return False
+    repeatedWords = sum(count for count in counts.values() if count > 0.5)
+
+    # Calculate the percentage of repeated words
+    repeatedPercentage = repeatedWords / totalWords
+
+    # Check if the percentage exceeds the threshold
+    return repeatedPercentage >= threshold
+
+def compareAttachments(attachments1: List[nextcord.Attachment], attachments2: List[nextcord.Attachment]):
+        # quick optimizations
+        if not attachments1 or not attachments2:
+            return False
+        if attachments1 == attachments2:
+            return True
+
+        for attachment1 in attachments1:
+            for attachment2 in attachments2:
+                if (
+                    attachment1.url == attachment2.url
+                    or (
+                        attachment1.filename == attachment2.filename
+                        and attachment1.width == attachment2.width
+                        and attachment1.height == attachment2.height
+                        and attachment1.size == attachment2.size
+                    )
+                ):
+                    return True
+        return False
+
+async def checkNickname(guild: nextcord.Guild, update: nextcord.Member):
+    """Check to ensure that the edited nickname is in compliance with moderation"""
+    
+    member = guild.get_member(update.id)
+    nickname = update.nick
+    
+    server = Server(guild.id)
+
+    nicknameSplit = nickname.split(" ")
+    result = checkProfanity(nicknameSplit, server.ProfaneWords)
+    if result != None:
+        channel = await getChannel(guild)
+        if channel == None: return
+        strikes = await giveStrike(guild.id, member.id, channel, 1)
+        await channel.send(embed = nextcord.Embed(title = "Profanity Detected", description = f"{member} was flagged thier nickname of \"{nickname}\"\n\n{member} is now at {strikes} strike(s)", color = nextcord.Color.dark_red()))
+
+        if server.adminChannel == None:
+            return
+        else:
+            view = IncorrectButton()
+            embed =  nextcord.Embed(title = "Profanity Detected", description = f"{member} was flagged thier nickname of \"{nickname}\"\n\n{member} is now at {strikes} strike(s)", color = nextcord.Color.dark_red())
+            embed.set_footer(text = f"Member ID: {str(member.id)}")
+            await server.adminChannel.send(view = view, embed = embed)
+
+            await view.wait()
+
+            await giveStrike(guild.id, member.id, None, -1)
+            
+async def canModerate(interaction: Interaction, server: Server):
+    """Runs a check whether moderation is active. NOT SILENT!"""
+    if server.profanityBool:
+        return True
+    else:
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Moderation Tools Disabled", description = "Moderation has been turned off. type \"/enable moderation\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
+        return False
+
+async def punnishProfanity(server: Server, message: nextcord.Message):
+    global autoDeletedMessageTime
+    
+    if not server.profanityBool: return
+    if message.channel.is_nsfw(): return
+    if message.author == message.guild.owner: return
+    
+    msg = message.content.lower()
+    messageSplit = msg.split(" ")
+
+    if len(msg) == 0 or msg[0] == "/":
+        await bot.process_commands(message)
+        return
+    
+    result = checkProfanity(messageSplit, server.ProfaneWords)
+    if result != None:
+        #if they are in violation and need to be punnished...
+        strikes = await giveStrike(message.guild.id, message.author.id, message.channel, 1)
+        
+        #dm them (if they want)
+        memberSettings = Member(message.author.id)
+        if memberSettings.dmsEnabledBool:
+            try:
+                dm = await message.author.create_dm()
+                if strikes == 0:
+                    embed = nextcord.Embed(title = "Profanity Log", description = f"You were flagged for saying \"{result}\" in \"{message.content}\" in \"{message.guild.name}\". You are now timed out for {server.profanityTimeoutTime}.\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
+                    await dm.send(embed = embed)
+                else:
+                    embed = nextcord.Embed(title = "Profanity Log", description = f"You were flagged for saying \"{result}\" in \"{message.content}\" in \"{message.guild.name}\". You are now at strike {strikes}.\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
+                    await dm.send(embed = embed)
+            except:
+                pass #the user has dms turned off. It's not a big deal, they just don't get notified.
+        
+        #Send message in channel where bad word was sent.
+        if message.channel.permissions_for(message.guild.me).embed_links:
+            embed = nextcord.Embed(title = "Profanity Detected", description = f"{message.author.mention} was flagged for saying a Profane word. The message was automatically deleted.\n\n{message.author.mention} is now at {strikes} strike(s)\n\nContact a server admin for more info.", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
+            await message.channel.send(embed = embed, view = InviteView())
+        else:
+            await sendErrorMessageToOwner(message.guild, "Embed Links")
+        
+        #Send message to admin channel (if enabled)
+        if server.adminChannel != None:
+            if server.adminChannel.permissions_for(message.guild.me).send_messages and server.adminChannel.permissions_for(message.guild.me).embed_links:
+                view = IncorrectButton()
+
+                embed = nextcord.Embed(title = "Profanity Detected", description = f"{message.author} was flagged for saying \"{result}\" in \"{message.content}\".\n\nThis message was automatically deleted.\n\n{message.author} is now at {strikes} strike(s)", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
+                embed.set_footer(text = f"Member ID: {str(message.author.id)}")
+                
+                await server.adminChannel.send(view = view, embed = embed)
+            else:
+                await sendErrorMessageToOwner(message.guild, "Send Messages and/or Embed Links", channel = f"#{server.adminChannel.name}")
+
+            
+        #delete the message
+        autoDeletedMessageTime = datetime.datetime.utcnow()
+        
+        try:
+            await message.delete()
+        except nextcord.errors.Forbidden:
+            await sendErrorMessageToOwner(message.guild, "Manage Messages")
+
+async def checkSpam(message: nextcord.Message, server: Server):
+    MAX_MESSAGES_TO_CHECK = 11    # The MAXIMUM messages InfiniBot will try to check for spam
+    MESSAGE_CHARS_TO_CHECK_REPETITION = 140    # A message requires these many characters before it is checked for repetition
+
+    # If Spam is Enabled
+    if not server.spamBool: return
+    
+    # Check if we can view the audit log
+    if not message.guild.me.guild_permissions.view_audit_log:
+        await sendErrorMessageToOwner(message.guild, "View Audit Log", channel=message.channel.name)
+        return
+
+    # Configure limit (the most messages that we're willing to check)
+    if server.messagesThreshold < MAX_MESSAGES_TO_CHECK:
+        limit = server.messagesThreshold + 1 # Add one because of the existing message
+    else:
+        limit = MAX_MESSAGES_TO_CHECK
+        
+    
+
+    # Get previous messages
+    previousMessages = await message.channel.history(limit=limit).flatten()
+    
+    # Loop through each previous message and test it
+    duplicateMessages = []
+    for _message in previousMessages:
+        # Check word count percentage
+        if _message.content and len(_message.content) >= MESSAGE_CHARS_TO_CHECK_REPETITION and checkRepeatedWordsPercentage(_message.content):
+            duplicateMessages.append(_message)
+            break
+        
+        # Check message content and attachments
+        if _message.content == message.content or compareAttachments(_message.attachments, message.attachments):
+            timeNow = datetime.datetime.utcnow() - datetime.timedelta(seconds = 2 * server.messagesThreshold) # ======= Time Threshold =========
+            timeNow = timeNow.replace(tzinfo=datetime.timezone.utc)  # Make timeNow offset-aware
+            
+            # If the message is within the time threshold window, add that message.
+            if _message.created_at >= timeNow:
+                duplicateMessages.append(_message)
+            else:
+                # If this message was outside of the time window, previous messages will also be, so this loop can stop
+                break
+
+
+    # Punnish the member (if needed)
+    if len(duplicateMessages) >= server.messagesThreshold:
+        try:
+            # Time them out
+            await timeout(message.author, server.spamTimeoutTime, reason=f"Spam Moderation: User exceeded spam message limit of {server.messagesThreshold}.")
+            
+            # Send them a message (if they want it)
+            if Member(message.author.id).dmsEnabledBool:
+                dm = await message.author.create_dm()
+                await dm.send(
+                    embed=nextcord.Embed(
+                        title="Spam Timeout",
+                        description=f"You were flagged for spamming in \"{message.guild.name}\". You have been timed out for {server.spamTimeoutTime}.\n\nPlease contact the admins if you think this is a mistake.",
+                        color=nextcord.Color.red(),
+                    )
+                )
+        except nextcord.errors.Forbidden:
+            await sendErrorMessageToOwner(message.guild, "Timeout Members", guildPermission=True)
+
+# At refatoring time, remove these and integrate with dashboard
+def addWord(word: str, guild_id):
+    server = Server(guild_id)
+    
+    if word.lower() in lowerList(server.ProfaneWords):
+        return nextcord.Embed(title = "Word Already Exists", description = f"The word \"{word}\" already exists in the database.", color = nextcord.Color.red())
+
+    if "———" in word:
+        return nextcord.Embed(title = "Word Cannot Contain Unique Case", description = f"Your word cannot contain \"———\" as it is reserved for other uses", color = nextcord.Color.red())
+
+    #add word
+    server.ProfaneWords.append(word.lower())
+
+    server.saveProfaneWords()
+
+    return True
+def deleteWord(word: str, guild_id):
+    server = Server(guild_id) 
+    server.ProfaneWords.pop(server.ProfaneWords.index(word))
+    server.saveProfaneWords()
+
+@set.subcommand(name = "strikes", description = "Set any user's strikes (requires Infinibot Mod)")
+async def setstrikescommand(interaction: Interaction, member: nextcord.Member, strike: str = SlashOption(description = "\"+1\" adds a strike, \"-1\" subtracts a strike. Or, input a number to overide strike count.")):
+    if await hasRole(interaction):
+        try:
+            int(strike)
+        except TypeError:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "Strikes must be a number", color = nextcord.Color.red()), ephemeral = True)
+            return
+
+        if strike == "-1":
+            for x in range(0, int(strike[1:])):
+                await giveStrike(interaction.guild_id, member.id, None, -1)
+                await interaction.response.send_message(embed = nextcord.Embed(title = "Strikes Modified", description = f"{interaction.user} decreased {member}'s strikes by {strike}.", color = nextcord.Color.green()))
+                return
+
+        if strike == "+1":
+            for x in range(0, int(strike[1:])):
+                await giveStrike(interaction.guild_id, member.id, None, 1)
+                await interaction.response.send_message(embed = nextcord.Embed(title = "Strikes Modified", description = f"{interaction.user} increased {member}'s strikes by {strike}.", color = nextcord.Color.green()))
+                return
+            
+            
+        server = Server(interaction.guild.id)
+        if not await canModerate(interaction, server): return
+        
+        thierStrike = server.getStrike(member.id)
+        
+        if thierStrike != None:
+            if int(strike) != 0: server.getStrike(member.id).strike = int(strike)
+            else: server.deleteStrike(member.id)
+        else:
+            server.addStrike(member.id, strike)
+        
+        server.saveStrikes()
+
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Strikes Modified", description = f"{interaction.user} changed {member}'s strikes to {strike}.", color = nextcord.Color.green()))
+
+@bot.slash_command(name = "my_strikes", description = "Get your strikes", dm_permission=False)
+async def mystrikes(interaction: Interaction):
+    server = Server(interaction.guild.id)
+    if not await canModerate(interaction, server): return
+
+    thierStrike = server.getStrike(interaction.user.id)
+    if thierStrike != None:
+        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {interaction.user}", description = f"You are at {str(thierStrike.strike)} strike(s)", color =  nextcord.Color.blue()))
+    else:
+        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {interaction.user}", description = f"You are at 0 strike(s)", color =  nextcord.Color.blue()))
+
+@bot.slash_command(name = "view_strikes", description = "View another member's strikes", dm_permission=False)
+async def viewstrikes(interaction: Interaction, member: nextcord.Member):
+    server = Server(interaction.guild.id)
+    if not await canModerate(interaction, server): return
+
+    thierStrike = server.getStrike(member.id)
+    if thierStrike != None:
+        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {member}", description = f"{member} is at {str(thierStrike.strike)} strike(s).\n\nAction done by {interaction.user}", color =  nextcord.Color.blue()))
+    else:
+        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {member}", description = f"{member} is at 0 strikes.\n\nAction done by {interaction.user}", color =  nextcord.Color.blue()))
+
+@set.subcommand(name = "admin_channel", description = "Use this channel to log strikes. Channel should only be viewable by admins. (requires Infinibot Mod)")
+async def setAdminChannel(interaction: Interaction):
+   if await hasRole(interaction) and await checkTextChannel(interaction):
+        server = Server(interaction.guild.id)
+
+        server.adminChannel = interaction.channel
+        server.saveData()
+
+
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Admin Channel Set", description = f"Strikes will now be logged in this channel.\n**IMPORTANT: MAKE SURE THAT THIS CHANNEL IS ONLY ACCESSABLE BY ADMINS!**\nThis channel will allow members to mark strikes as incorrect. Thus, you only want admins to see it.\n\nAction done by {interaction.user}", color =  nextcord.Color.green()), view = SupportAndInviteView())
+#END OF MODERATION BOT FUNCTIONALITY -----------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
 
 
 #Music Bot Functionality ----------------------------------------------------------------------------------------------------------------------
@@ -6319,1169 +7093,6 @@ async def loop(interaction: Interaction):
         serverData.loop = False
         await interaction.response.send_message(embed = nextcord.Embed(title = "Un-Looped Current Song", description = f"Action done by {interaction.user}", color = nextcord.Color.dark_green()))
 #Music Bot Functionality END ---------------------------------------------------------------------------------------------------------------
-
-
-
-
-
-
-def getTimestamp():
-    '''DEPRICATED ||| Returns a discord time box thingy.'''
-    date = datetime.datetime.utcnow()
-    utc_time = calendar.timegm(date.utctimetuple())
-    discord_time = f"<t:{utc_time}:t>"
-    return discord_time
-
-
-
-
-
-
-#Check Permissions
-def neededPermissions(guild: nextcord.Guild):
-    if guild.me.guild_permissions.administrator:
-        return [], []
-    
-    guildPermissions = []
-    
-    if not guild.me.guild_permissions.view_channel:
-        guildPermissions.append("View Channels")
-    if not guild.me.guild_permissions.send_messages:
-        guildPermissions.append("Send Messages")
-    if not guild.me.guild_permissions.embed_links:
-        guildPermissions.append("Embed Links")
-    if not guild.me.guild_permissions.manage_roles:
-        guildPermissions.append("Manage Roles")
-    if not guild.me.guild_permissions.manage_channels:
-        guildPermissions.append("Manage Channels")
-    if not guild.me.guild_permissions.manage_messages:
-        guildPermissions.append("Manage Messages")
-    if not guild.me.guild_permissions.manage_nicknames:
-        guildPermissions.append("Manage Nicknames")
-    if not guild.me.guild_permissions.view_audit_log:
-        guildPermissions.append("View Audit Log")
-    if not guild.me.guild_permissions.attach_files:
-        guildPermissions.append("Attach Files")
-    if not guild.me.guild_permissions.add_reactions:
-        guildPermissions.append("Add Reactions")
-    if not guild.me.guild_permissions.moderate_members:
-        guildPermissions.append("Timeout Members")
-    if not guild.me.guild_permissions.ban_members:
-        guildPermissions.append("Ban Members")
-    if not guild.me.guild_permissions.read_message_history:
-        guildPermissions.append("Read Message History")
-    if not guild.me.guild_permissions.connect:
-        guildPermissions.append("Connect (Voice)")
-    # if not guild.me.guild_permissions.speak:
-    #     guildPermissions.append("Speak (Voice)")
-    if not guild.me.guild_permissions.move_members:
-        guildPermissions.append("Move Members")
-    
-    channelPermissions = []
-    for channel in guild.channels:
-        _channelPermissions = []
-        
-        if type(channel) == nextcord.CategoryChannel: continue
-        
-        if not channel.permissions_for(guild.me).view_channel and ("View Channels" not in guildPermissions):
-            _channelPermissions.append("View Channels")
-        if not channel.permissions_for(guild.me).send_messages and ("Send Messages" not in guildPermissions):
-            _channelPermissions.append("Send Messages")
-        if not channel.permissions_for(guild.me).embed_links and ("Embed Links" not in guildPermissions):
-            _channelPermissions.append("Embed Links")
-        if not channel.permissions_for(guild.me).manage_channels and ("Manage Channels" not in guildPermissions):
-            _channelPermissions.append("Manage Channels")
-        if not channel.permissions_for(guild.me).manage_messages and ("Manage Messages" not in guildPermissions):
-            _channelPermissions.append("Manage Messages")
-        if not channel.permissions_for(guild.me).attach_files and ("Attach Files" not in guildPermissions):
-            _channelPermissions.append("Attach Files")
-        if not channel.permissions_for(guild.me).add_reactions and ("Add Reactions" not in guildPermissions):
-            _channelPermissions.append("Add Reactions")
-        if not channel.permissions_for(guild.me).read_message_history and ("Read Message History" not in guildPermissions):
-            _channelPermissions.append("Read Message History")
-        if type(channel) == nextcord.VoiceChannel:
-            if not channel.permissions_for(guild.me).connect and ("Connect (Voice)" not in guildPermissions):
-                _channelPermissions.append("Connect (Voice)")
-            # if not channel.permissions_for(guild.me).speak and ("Speak (Voice)" not in guildPermissions):
-            #     _channelPermissions.append("Speak (Voice)")
-            if not channel.permissions_for(guild.me).move_members and ("Move Members" not in guildPermissions):
-                _channelPermissions.append("Move Members")
-            
-        if len(_channelPermissions) > 0:
-            channelPermissions.append([channel, _channelPermissions])
-        
-    return guildPermissions, channelPermissions
-
-@bot.slash_command(name = "check_infinibot_permissions", description = "Check InfiniBot's permissions to help diagnose issues.", dm_permission=False)
-async def check_infinibot_permissions(interaction: Interaction):
-    _guildPermissions, _channelPermissions = neededPermissions(interaction.guild)
-    
-    # Return if everything is good
-    if len(_guildPermissions) == 0 and len(_channelPermissions) == 0:
-        embed = nextcord.Embed(title = "InfiniBot Permission Report", description = f"InfiniBot has every permission it needs! Nice work!", color = nextcord.Color.blue())
-        await interaction.response.send_message(embed = embed, ephemeral=True, view = SupportandPermissionsCheckView())
-        return
-
-    # Guild Permissions
-    if len(_guildPermissions) > 0:
-        guildPermissions = ""
-        for permission in _guildPermissions:
-            guildPermissions += f"\n• {permission}"
-        guildPermissionsSection = f"\n\n**Server Permissions** (Give the InfiniBot role these permissions):\n{guildPermissions}"
-    else: guildPermissionsSection = ""
-        
-    # Channel Permissions
-    if len(_channelPermissions) > 0:
-        channelPermissions = ""
-        for channel in _channelPermissions:
-            channelPermissions += f"\n**{channel[0]}** ({channel[0].mention})"
-            for permission in channel[1]:
-                channelPermissions += f"\n• {permission}"
-            channelPermissions += "\n"
-        channelPermissionsSection = f"\n\n**Channel Permissions** (Give the InfiniBot role these permissions in each channel):\n\nNote: These permissions are in order of importance. Grant the first one, and the others may be granted automatically.\n{channelPermissions}"
-    else: channelPermissionsSection = ""
-        
-    # Advice  
-    advice = ""
-    if len(_guildPermissions) + len(_channelPermissions) > 5:
-        advice = "```Alternatively to the options below, you could give InfiniBot Administrator```\n\n"
-    
-    # Sending The Embed
-    embed = nextcord.Embed(title = "InfiniBot Permission Report", description = f"{advice}InfiniBot is missing the following permissions:{guildPermissionsSection}{channelPermissionsSection}", color = nextcord.Color.blue())
-    await interaction.response.send_message(embed = embed, ephemeral=True, view = SupportandPermissionsCheckView())
-
-
-
-#Moderation Bot Functionality --------------------------------------------------------------------------------------------------------------
-async def timeout(member: nextcord.Member, time: str, reason = None):
-    try:
-        time = humanfriendly.parse_timespan(time)
-        await member.edit(timeout=nextcord.utils.utcnow()+datetime.timedelta(seconds=time), reason = reason)
-        return True
-    except Exception as error:
-        return error
-
-async def giveStrike(guild_id, userID, channel: nextcord.TextChannel, factor: int):
-    server = Server(guild_id)
-
-    userStrike = server.getStrike(userID)
-    
-    if factor == 1: #handle adding a strike
-        if userStrike == None: #they are at strike 0
-            server.addStrike(userID, 1)
-            server.saveStrikes()
-            return 1
-        
-        elif userStrike.strike < int(server.maxStrikes):
-            userStrike.strike = userStrike.strike + 1
-            userStrike.lastStrike = datetime.date.today()
-            server.saveStrikes()
-            return userStrike.strike
-        
-        else:
-            #user needs to be timed out...          
-            if not channel.permissions_for(channel.guild.me).moderate_members:
-                await sendErrorMessageToOwner(channel.guild, "Timeout Members", guildPermission = True)
-                return
-            
-            response = await timeout(userStrike.member, server.profanityTimeoutTime, reason = f"Profanity Moderation: User exceeded strike limit of {server.maxStrikes}.")
-                
-            if response == "Success": 
-                if channel != None: 
-                    await channel.send(embed = nextcord.Embed(title = "Timeout Given", description = f"{userStrike.member} is now timed out for {server.profanityTimeoutTime}", color = nextcord.Color.dark_red()))
-                    server.deleteStrike(userStrike.memberID)
-                    server.saveStrikes()
-                    return 0
-                else:
-                    return userStrike.strike
-
-            else: 
-                if isinstance(response, nextcord.errors.Forbidden):
-                    await channel.send(embed = nextcord.Embed(title = "Timeout Error", description = f"Failed to timeout {userStrike.member} for {server.profanityTimeoutTime}. \n\nError: Member is of a higher rank than InfiniBot", color = nextcord.Color.red()))
-                else:
-                    await channel.send(embed = nextcord.Embed(title = "Timeout Error", description = f"Failed to timeout {userStrike.member} for {server.profanityTimeoutTime}. \n\nError: {response}", color = nextcord.Color.red()))
-                return userStrike.strike
-        
-    else:
-        if userStrike != None:
-            if userStrike.strike == 1:
-                server.deleteStrike(userID)
-                server.saveStrikes()
-                return 0
-            else:
-                userStrike.strike -= 1
-                userStrike.lastStrike = datetime.date.today()
-                server.saveStrikes()
-                return userStrike.strike
-                
-        else:
-            return 0
-
-async def checkForExpiration(server: Server):
-    '''Check All Strikes in the Server for Expiration'''
-    if server.strikeExpireTime == None or server.strikeExpireTime == 0: return
-    
-    for strike in server.strikes:
-        try:
-            referenceDate = datetime.datetime.strptime(strike.lastStrike, f"%Y-%m-%d")
-            currentDate = datetime.datetime.today()
-            
-            dayDelta = (currentDate - referenceDate).days
-
-            if int(dayDelta) >= int(server.strikeExpireTime):
-                compensate = int(math.floor(int(dayDelta) / int(server.strikeExpireTime)))
-
-                for x in range(0, compensate):
-                    await giveStrike(server.guild_id, strike.memberID, None, -1) #remove a strike
-        except Exception as err:
-            print("Error when checking for expiration: " + str(err))
-
-def checkProfanity(messageSplit, database):
-    messageSplit = lowerList(messageSplit)
-    database = lowerList(database)
-
-    for word in messageSplit:
-        if word == "he'll": continue
-        word = ''.join(filter(str.isalnum, word))
-        for dbWord in database:
-            if word == dbWord: return word
-            if word == dbWord + "s": return word
-            if word == dbWord + "er": return word
-            if word == dbWord + "ers": return word
-            if word == dbWord + "ing": return word
-            if word == dbWord + "ed": return word
-            if word == dbWord + "y": return word
-            if word == dbWord + "or": return word
-            if word == dbWord + "ness": return word
-            if word == dbWord + "tion": return word
-            if word == dbWord + "sion": return word
-            if word == dbWord + "ship": return word
-            if word == dbWord + "ment": return word
-            if word == "mother" + dbWord: return word
-            if word == "mother" + dbWord + "er": return word
-            if word == "mother" + dbWord + "ers": return word
-            if word == dbWord: return word
-            
-    return None
-
-def removeSymbols(string):
-    return re.sub(r'\W+', '', string)
-
-def checkRepeatedWordsPercentage(text, threshold=0.7):
-    words = re.findall(r'\w+', text.lower())  # Convert text to lowercase and extract words
-    counts = defaultdict(lambda: 0)  # Dictionary to store word counts
-    
-    # Remove symbols from the words
-    words = [removeSymbols(word) for word in words]
-
-    # Iterate over the words and count their occurrences
-    lastWords = []
-    for word in words:
-        if word not in lastWords:
-            counts[word] += 0.5
-        else:
-            counts[word] += 1
-        lastWords.insert(0, word)
-        if len(lastWords) >= 5:
-            lastWords.pop(3)
-        
-    # Calculate the total number of words and the number of repeated words
-    totalWords = len(words)
-    if totalWords == 0: return False
-    repeatedWords = sum(count for count in counts.values() if count > 0.5)
-
-    # Calculate the percentage of repeated words
-    repeatedPercentage = repeatedWords / totalWords
-
-    # Check if the percentage exceeds the threshold
-    return repeatedPercentage >= threshold
-
-def compareAttachments(attachments1: List[nextcord.Attachment], attachments2: List[nextcord.Attachment]):
-        # quick optimizations
-        if not attachments1 or not attachments2:
-            return False
-        if attachments1 == attachments2:
-            return True
-
-        for attachment1 in attachments1:
-            for attachment2 in attachments2:
-                if (
-                    attachment1.url == attachment2.url
-                    or (
-                        attachment1.filename == attachment2.filename
-                        and attachment1.width == attachment2.width
-                        and attachment1.height == attachment2.height
-                        and attachment1.size == attachment2.size
-                    )
-                ):
-                    return True
-        return False
-
-guildsCheckingForRole = []
-async def checkForRole(guild: nextcord.Guild):
-    '''Check to see if InfiniBot Mod Role Exists. If not, create it.'''
-    global guildsCheckingForRole
-    
-    roles = guild.roles
-    for x in range(0, len(roles)): roles[x] = roles[x].name
-
-    if not "Infinibot Mod" in roles:
-        try:
-            if not guild.id in guildsCheckingForRole:
-                guildsCheckingForRole.append(guild.id)
-                await guild.create_role(name = "Infinibot Mod")
-                await asyncio.sleep(1)
-                if guild.id in guildsCheckingForRole: guildsCheckingForRole.remove(guild.id)
-            else: return
-        except nextcord.errors.Forbidden:
-            if guild.id in guildsCheckingForRole: guildsCheckingForRole.remove(guild.id)
-            if guild.id == 33394969196219596: return #this is the top.gg guild id. I don't want them denying me because of dms
-            await sendErrorMessageToOwner(guild, None, message = "InfiniBot is missing the **Manage Roles** permission which prevents it from creating the role *InfiniBot Mod*. Please give InfiniBot this permission.", administrator=False)
-
-def getInfinibotModRoleId(guild: nextcord.Guild):
-    roles = guild.roles
-
-    for role in roles:
-        if role.name == "Infinibot Mod":
-            return role.id
-    
-    return None
-
-def getInfinibotTopRoleId(guild: nextcord.Guild):
-    return guild.me.top_role.id
-
-def getInfinibotTopRole(guild: nextcord.Guild):
-    infinibot = guild.get_member(bot.application_id)
-    role = infinibot.top_role
-    
-    return role
-
-def canAssignRole(role: nextcord.Role):
-    if role.is_default(): return False
-    if role.is_integration(): return False
-    
-    return role.is_assignable()   
-    
-async def hasRole(interaction: Interaction, message = True):
-    if interaction.guild.owner == interaction.user: return True
-    
-    infinibotMod_role = nextcord.utils.get(interaction.guild.roles, name='Infinibot Mod')
-    if infinibotMod_role in interaction.user.roles:
-        return True
-
-    if message: await interaction.response.send_message(embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.", color = nextcord.Color.red()), ephemeral = True)
-    return False
-
-async def checkTextChannel(interaction: Interaction):
-    if type(interaction.channel) == nextcord.TextChannel:
-        return True
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "You can't use that here!", description = "You can only use this command in text channels.", color = nextcord.Color.red()), ephemeral=True)
-        return
-
-async def checkNickname(guild: nextcord.Guild, update: nextcord.Member):
-    member = guild.get_member(update.id)
-    nickname = update.nick
-    
-    server = Server(guild.id)
-
-    nicknameSplit = nickname.split(" ")
-    result = checkProfanity(nicknameSplit, server.ProfaneWords)
-    if result != None:
-        channel = await getChannel(guild)
-        if channel == None: return
-        strikes = await giveStrike(guild.id, member.id, channel, 1)
-        await channel.send(embed = nextcord.Embed(title = "Profanity Detected", description = f"{member} was flagged thier nickname of \"{nickname}\"\n\n{member} is now at {strikes} strike(s)", color = nextcord.Color.dark_red()))
-
-        if server.adminChannel == None:
-            return
-        else:
-            view = IncorrectButton()
-            embed =  nextcord.Embed(title = "Profanity Detected", description = f"{member} was flagged thier nickname of \"{nickname}\"\n\n{member} is now at {strikes} strike(s)", color = nextcord.Color.dark_red())
-            embed.set_footer(text = f"Member ID: {str(member.id)}")
-            await server.adminChannel.send(view = view, embed = embed)
-
-            await view.wait()
-
-            await giveStrike(guild.id, member.id, None, -1)
-            
-def timedeltaToEnglish(td: datetime.timedelta):
-    # Get the total number of seconds in the timedelta
-    total_seconds = int(td.total_seconds())
-
-    # Compute the number of hours, minutes, and seconds
-    hours, seconds = divmod(total_seconds, 3600)
-    minutes, seconds = divmod(seconds, 60)
-
-    # Create a list of strings with the appropriate units
-    parts = []
-    if hours > 0:
-        parts.append(f"{hours} hour{'s' if hours != 1 else ''}")
-    if minutes > 0:
-        parts.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
-    if seconds > 0:
-        parts.append(f"{seconds} second{'s' if seconds != 1 else ''}")
-
-    # Join the parts with commas and "and" as appropriate
-    if len(parts) == 0:
-        return "0 seconds"
-    elif len(parts) == 1:
-        return parts[0]
-    else:
-        return ", ".join(parts[:-1]) + f", and {parts[-1]}"
-
-async def checkForLevelsAndLevelRewards(guild: nextcord.Guild, member: nextcord.Member, levelup_announce: bool = False, silent = False):
-    server = Server(guild.id)
-    memberLevel = server.levels.getMember(member.id)
-    if memberLevel != None:
-        score = memberLevel.score
-        level = getLevel(score)
-    else:
-        score = 0
-        level = 0
-    
-    
-    
-    memberOptions = Member(member.id)
-    
-    
-    #level-up messages
-    if levelup_announce and (not silent) and (server.levelingMessage != None):
-        message = server.levelingMessage.replace("[level]", str(level))
-        embed = nextcord.Embed(title = f"Congratulations, {member}!", description = message, color = nextcord.Color.from_rgb(235, 235, 235))
-        embeds = [embed]
-        
-        #get the card (if needed)
-        if server.allowLevelCardsBool:
-            memberData = Member(member.id)
-            if memberData.levelCard.enabled:
-                card = memberData.levelCard.embed()
-                card.description = card.description.replace("[level]", str(level))
-                embeds.append(card)
-        
-        
-        if server.levelingChannel != None:
-            await server.levelingChannel.send(embeds = embeds) #white-ish
-        else:
-            channel = await getChannel(guild)
-            if channel != None: await channel.send(embeds = embeds) #white-ish
-    
-    #level-reward messages
-    for levelReward in server.levels.levelRewards:
-        if levelReward.level <= level:
-            #we need to give them this role.
-            if not levelReward.role in member.roles:
-                try:
-                    await member.add_roles(levelReward.role)
-                except nextcord.errors.Forbidden:
-                    await sendErrorMessageToOwner(guild, "Manage Roles", guildPermission = True)
-                    return
-                
-                try:    
-                    if server.levelingChannel != None and (not silent): await server.levelingChannel.send(embed = nextcord.Embed(title = f"Role Granted to {member}", description = f"{member.mention} has been granted the role of {levelReward.role.mention} as a result of reaching level {str(levelReward.level)}!", color = nextcord.Color.purple()))
-                    else: 
-                        channel = await getChannel(guild)
-                        if channel != None and (not silent): await channel.send(embed = nextcord.Embed(title = f"Role Granted to {member}", description = f"{member.mention} has been granted the role of {levelReward.role.mention} as a result of reaching level {str(levelReward.level)}!", color = nextcord.Color.purple()))
-                    
-                    if memberOptions.dmsEnabledBool and (not silent): await member.send(embed = nextcord.Embed(title = f"Congratulations! You reached level {str(levelReward.level)} in \"{guild.name}\"!", description = f"As a result, you were granted the role of \"{levelReward.role.name}\". Keep your levels up, or else you will loose it!\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.purple()))
-                except nextcord.errors.Forbidden:
-                    await sendErrorMessageToOwner(guild, "Send Messages")
-                    return
-                
-        else:
-            #we need to take the role
-            if levelReward.role in member.roles:
-                try:
-                    await member.remove_roles(levelReward.role)
-                except nextcord.errors.Forbidden:
-                    await sendErrorMessageToOwner(guild, "Manage Roles", guildPermission = True)
-                    return
-                
-                try:
-                    if server.levelingChannel != None and (not silent): await server.levelingChannel.send(embed = nextcord.Embed(title = f"Role Revoked from {member}", description = f"{member.mention} has been revoked the role of {levelReward.role.mention} as a result of loosing level {str(levelReward.level)}", color = nextcord.Color.dark_purple()))
-                    else:
-                        channel = await getChannel(guild) 
-                        if channel != None and (not silent): channel.send(embed = nextcord.Embed(title = f"Role Revoked from {member}", description = f"{member.mention} has been revoked the role of {levelReward.role.mention} as a result of loosing level {str(levelReward.level)}", color = nextcord.Color.dark_purple()))
-                    
-                    if memberOptions.dmsEnabledBool and (not silent): await member.send(embed = nextcord.Embed(title = f"Oh, no! You lost a level and are now at level {str(levelReward.level)} in \"{guild.name}\"!", description = f"As a result, the role of \"{levelReward.role.name}\" has been revoked. Bring your levels back up, and win back your role!\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.dark_purple()))
-                except nextcord.errors.Forbidden:
-                    await sendErrorMessageToOwner(guild, "Send Messages")
-                    return
-
-async def giveLevels(message: nextcord.Message): 
-    member = message.author
-    if member.id == bot.application_id: return
-
-    channel = message.channel
-    
-    server = Server(message.guild.id)
-    if message.channel.id in [channel.id for channel in server.levelingExemptChannels]: return
-    
-    lastFiveMessages = channel.history(limit = 6) #it is 6 because this includes the message just sent.
-    
-    count = 0
-    async for _message in lastFiveMessages:
-        if count == 0: 
-            count += 1 
-            continue
-        if _message.content == None or _message.content == "": 
-            continue
-        if Levenshtein.distance(message.content, _message.content) < 3:
-            return
-        
-        count += 1
-
-    words = message.content.split(" ")
-    totalPoints = 0
-    for word in words:
-        for _ in word: totalPoints += 1
-        
-    totalPoints /= 10
-    roundedPoints = round(totalPoints)
-    
-    MAX_POINTS_PER_MESSAGE = 40
-    if roundedPoints > MAX_POINTS_PER_MESSAGE:
-        roundedPoints = MAX_POINTS_PER_MESSAGE
-    
-    memberLevel = server.levels.getMember(member.id)
-    if memberLevel != None:
-        originalLevel = getLevel(memberLevel.score)
-        memberLevel.score += roundedPoints
-    else:
-        originalLevel = 0
-        server.levels.addMember(member.id, roundedPoints)
-        memberLevel = server.levels.getMember(member.id)
-        
-    nowLevel = getLevel(memberLevel.score)
-    server.saveLevels()
-    
-    if originalLevel != nowLevel:
-        await checkForLevelsAndLevelRewards(message.guild, message.author, levelup_announce = True)
-    
-async def canModerate(interaction: Interaction, server: Server):
-    if server.profanityBool:
-        return True
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Moderation Tools Disabled", description = "Moderation has been turned off. type \"/enable moderation\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
-        return False
-
-async def punnishProfanity(server: Server, message: nextcord.Message):
-    global autoDeletedMessageTime
-    
-    if not server.profanityBool: return
-    if message.channel.is_nsfw(): return
-    if message.author == message.guild.owner: return
-    
-    msg = message.content.lower()
-    messageSplit = msg.split(" ")
-
-    if len(msg) == 0 or msg[0] == "/":
-        await bot.process_commands(message)
-        return
-    
-    result = checkProfanity(messageSplit, server.ProfaneWords)
-    if result != None:
-        #if they are in violation and need to be punnished...
-        strikes = await giveStrike(message.guild.id, message.author.id, message.channel, 1)
-        
-        #dm them (if they want)
-        memberSettings = Member(message.author.id)
-        if memberSettings.dmsEnabledBool:
-            try:
-                dm = await message.author.create_dm()
-                if strikes == 0:
-                    embed = nextcord.Embed(title = "Profanity Log", description = f"You were flagged for saying \"{result}\" in \"{message.content}\" in \"{message.guild.name}\". You are now timed out for {server.profanityTimeoutTime}.\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
-                    await dm.send(embed = embed)
-                else:
-                    embed = nextcord.Embed(title = "Profanity Log", description = f"You were flagged for saying \"{result}\" in \"{message.content}\" in \"{message.guild.name}\". You are now at strike {strikes}.\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
-                    await dm.send(embed = embed)
-            except:
-                pass #the user has dms turned off. It's not a big deal, they just don't get notified.
-        
-        #Send message in channel where bad word was sent.
-        if message.channel.permissions_for(message.guild.me).embed_links:
-            embed = nextcord.Embed(title = "Profanity Detected", description = f"{message.author.mention} was flagged for saying a Profane word. The message was automatically deleted.\n\n{message.author.mention} is now at {strikes} strike(s)\n\nContact a server admin for more info.", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
-            await message.channel.send(embed = embed, view = InviteView())
-        else:
-            await sendErrorMessageToOwner(message.guild, "Embed Links")
-        
-        #Send message to admin channel (if enabled)
-        if server.adminChannel != None:
-            if server.adminChannel.permissions_for(message.guild.me).send_messages and server.adminChannel.permissions_for(message.guild.me).embed_links:
-                view = IncorrectButton()
-
-                embed = nextcord.Embed(title = "Profanity Detected", description = f"{message.author} was flagged for saying \"{result}\" in \"{message.content}\".\n\nThis message was automatically deleted.\n\n{message.author} is now at {strikes} strike(s)", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
-                embed.set_footer(text = f"Member ID: {str(message.author.id)}")
-                
-                await server.adminChannel.send(view = view, embed = embed)
-            else:
-                await sendErrorMessageToOwner(message.guild, "Send Messages and/or Embed Links", channel = f"#{server.adminChannel.name}")
-
-            
-        #delete the message
-        autoDeletedMessageTime = datetime.datetime.utcnow()
-        
-        try:
-            await message.delete()
-        except nextcord.errors.Forbidden:
-            await sendErrorMessageToOwner(message.guild, "Manage Messages")
-
-async def checkSpam(message: nextcord.Message, server: Server):
-    MAX_MESSAGES_TO_CHECK = 11    # The MAXIMUM messages InfiniBot will try to check for spam
-    MESSAGE_CHARS_TO_CHECK_REPETITION = 140    # A message requires these many characters before it is checked for repetition
-
-    # If Spam is Enabled
-    if not server.spamBool: return
-    
-    # Check if we can view the audit log
-    if not message.guild.me.guild_permissions.view_audit_log:
-        await sendErrorMessageToOwner(message.guild, "View Audit Log", channel=message.channel.name)
-        return
-
-    # Configure limit (the most messages that we're willing to check)
-    if server.messagesThreshold < MAX_MESSAGES_TO_CHECK:
-        limit = server.messagesThreshold + 1 # Add one because of the existing message
-    else:
-        limit = MAX_MESSAGES_TO_CHECK
-        
-    
-
-    # Get previous messages
-    previousMessages = await message.channel.history(limit=limit).flatten()
-    
-    # Loop through each previous message and test it
-    duplicateMessages = []
-    for _message in previousMessages:
-        # Check word count percentage
-        if _message.content and len(_message.content) >= MESSAGE_CHARS_TO_CHECK_REPETITION and checkRepeatedWordsPercentage(_message.content):
-            duplicateMessages.append(_message)
-            break
-        
-        # Check message content and attachments
-        if _message.content == message.content or compareAttachments(_message.attachments, message.attachments):
-            timeNow = datetime.datetime.utcnow() - datetime.timedelta(seconds = 2 * server.messagesThreshold) # ======= Time Threshold =========
-            timeNow = timeNow.replace(tzinfo=datetime.timezone.utc)  # Make timeNow offset-aware
-            
-            # If the message is within the time threshold window, add that message.
-            if _message.created_at >= timeNow:
-                duplicateMessages.append(_message)
-            else:
-                # If this message was outside of the time window, previous messages will also be, so this loop can stop
-                break
-
-
-    # Punnish the member (if needed)
-    if len(duplicateMessages) >= server.messagesThreshold:
-        try:
-            # Time them out
-            await timeout(message.author, server.spamTimeoutTime, reason=f"Spam Moderation: User exceeded spam message limit of {server.messagesThreshold}.")
-            
-            # Send them a message (if they want it)
-            if Member(message.author.id).dmsEnabledBool:
-                dm = await message.author.create_dm()
-                await dm.send(
-                    embed=nextcord.Embed(
-                        title="Spam Timeout",
-                        description=f"You were flagged for spamming in \"{message.guild.name}\". You have been timed out for {server.spamTimeoutTime}.\n\nPlease contact the admins if you think this is a mistake.",
-                        color=nextcord.Color.red(),
-                    )
-                )
-        except nextcord.errors.Forbidden:
-            await sendErrorMessageToOwner(message.guild, "Timeout Members", guildPermission=True)
-
-async def adminCommands(message: nextcord.Message):
-    global guildsCheckingForRole, purging
-    messageContent = message.content.lower()
-    messageContentList = messageContent.split(" ")
-    
-    
-    #get admins
-    with open("./RequiredFiles/AdminIDS.txt", "r") as file:
-        admins = file.read().split("\n")
-        
-    allAdmins = []
-    levelOneAdmins = [] #others whom I trust
-    levelTwoAdmins = [] #support staff
-    levelThreeAdmins = [] #total control
-    
-    for admin in admins:
-        if admin == "": continue
-        parts = admin.split("|||")
-        id = int(parts[0])
-        level = int(parts[1])
-        allAdmins.append([id, level])
-        if level == 1:
-            levelOneAdmins.append(id)
-        if level == 2:
-            levelOneAdmins.append(id)
-            levelTwoAdmins.append(id)
-        if level == 3:
-            levelOneAdmins.append(id)
-            levelTwoAdmins.append(id)
-            levelThreeAdmins.append(id)
-        
-    #commands
-    
-    # Level 1 ----------------------------------------------------------------------
-    
-    if messageContent == "-help" and message.author.id in levelOneAdmins: #-help
-        description = """
-        ### **Level 1**
-        • `-stats`: display InfiniBot satistics
-        
-        ### **Level 2**
-        • `-info`: display info about a server or owner of a server that uses InfiniBot
-        • `-resetServerConfigurations`: reset a server's configurations and set them back to default
-        • `-checkActiveMessages`: check a server's active messages to make sure that they all exist
-        • `-InfiniBotModHelp`: give a help message to those who need help with InfiniBotMod
-        
-        ### **Level 3**
-        • `-refresh`: refresh InfiniBot
-        • `-restart`: restart InfiniBot
-        • `-addAdmin`: add an admin
-        • `-editAdmin`: edit an admin
-        • `-deleteAdmin`: delete an admin"""
-        
-        # On Mobile, extra spaces cause problems. We'll get rid of them here:
-        description = standardizeStrIndention(description)
-        
-        embed = nextcord.Embed(title = "Help Commands for Admins", description = description, color = nextcord.Color.blue())
-        await message.channel.send(embed = embed)
-    
-    if messageContent == "-stats" and message.author.id in levelOneAdmins: #-stats
-        membercount = 0
-        servercount = 0
-        
-        print(f"Guilds requested by: {message.author}")
-        for guild in bot.guilds:
-            servercount += 1
-            membercount += guild.member_count
-
-        embed = nextcord.Embed(title = "Server Stats:", description = f"Server Count: {str(servercount)}\nTotal Members: {str(membercount)}\n\n*A watched pot never boils*", color = nextcord.Color.blue())
-        await message.channel.send(embed = embed, view = TopGGVoteView())
-        return
-        
-    # Level 2 ----------------------------------------------------------------------
-        
-    if messageContentList[0] == "-info" and message.author.id in levelTwoAdmins:
-        if not (len(messageContentList) > 1 and messageContentList[1].isdigit()):
-            embed = nextcord.Embed(title = "Incorrect Format", description = f"Format like this: `-info [serverID or ownerID]`", color = nextcord.Color.red())
-            await message.channel.send(embed = embed)
-            return
-        
-        id = int(messageContentList[1])
-        
-        #test server ids and owner ids simultaniously:
-        guilds:list[nextcord.Guild] = []
-        for _guild in bot.guilds:
-            if _guild.id == id or _guild.owner.id == id:
-                #add it
-                guilds.append(_guild)
-                
-        if len(guilds) == 0:
-            embed = nextcord.Embed(title = "Server or Owner Could Not Be Found", description = "Make sure you are formatting correctly: `-info [serverID or ownerID]`", color = nextcord.Color.red())
-            await message.channel.send(embed = embed)
-            return
-                
-        #we should have them all. We now need to display them:
-        for guild in guilds:
-            server = Server(guild.id)
-            description = f"""Owner: {guild.owner} ({guild.owner.id})
-            Members: {len(guild.members)}
-            Bots: {len(guild.bots)}
-            
-            **Configurations:**
-            {server.rawData}"""
-            
-            # On Mobile, extra spaces cause problems. We'll get rid of them here:
-            description = standardizeStrIndention(description)
-            
-            embed = nextcord.Embed(title = f"Server: {guild.name} ({guild.id})", description = description, color = nextcord.Color.blue())
-            await message.channel.send(embed = embed)
-            print(f"{message.author} requested info about the server {guild.name} ({guild.id})")
-            
-    if messageContentList[0] == "-resetserverconfigurations" and message.author.id in levelTwoAdmins:
-        if not (len(messageContentList) > 1 and messageContentList[1].isdigit()):
-            embed = nextcord.Embed(title = "Incorrect Format", description = f"Format like this: `-resetserverconfigurations [serverID]`", color = nextcord.Color.red())
-            await message.channel.send(embed = embed)
-            return
-        
-        id = int(messageContentList[1])
-        
-        #test server id
-        server = Server(id)
-                
-        if server.guild == None:
-            embed = nextcord.Embed(title = "Server Could Not Be Found", description = "Make sure you are formatting correctly: `-resetserverconfigurations [serverID]`", color = nextcord.Color.red())
-            await message.channel.send(embed = embed)
-            return
-                
-        #we should have it. Now we just need to delete the server.
-        server.deleteServer()
-        
-        #display it
-        embed = nextcord.Embed(title = "Server Configurations Reset", description = f"The configurations for the server {server.guild.name} ({server.guild.id}) have been reset to defaults.", color = nextcord.Color.green())
-        await message.channel.send(embed = embed)
-        print(f"{message.author} reset configurations in the server {guild.name} ({guild.id})")
-        
-    if messageContentList[0] == "-checkactivemessages" and message.author.id in levelTwoAdmins:
-        if not (len(messageContentList) > 1 and messageContentList[1].isdigit()):
-            embed = nextcord.Embed(title = "Incorrect Format", description = f"Format like this: `-checkActiveMessages [serverID]`", color = nextcord.Color.red())
-            await message.channel.send(embed = embed)
-            return
-        
-        id = int(messageContentList[1])
-        
-        #test server id
-        server = Server(id)
-                
-        if server.guild == None:
-            embed = nextcord.Embed(title = "Server Could Not Be Found", description = "Make sure you are formatting correctly: `-checkActiveMessages [serverID]`", color = nextcord.Color.red())
-            await message.channel.send(embed = embed)
-            return
-                
-        #we should have it. Now we just need to check the active messages
-        await server.messages.checkAll()
-        server.messages.save()
-        
-        #display it
-        embed = nextcord.Embed(title = "Server Active Messages Checked", description = f"The active messages for the server {server.guild.name} ({server.guild.id}) have been checked. All active messages exist.", color = nextcord.Color.green())
-        await message.channel.send(embed = embed)
-        print(f"{message.author} checked active messages in the server {server.guild.name} ({server.guild.id})")
-            
-    #server help commands
-    if messageContent == "-infinibotmodhelp" and message.author.id in levelTwoAdmins:
-        description = f"""**It says I need Infinibot Mod?**
-        • Some features are locked down so that only admins can use them. If you are an admin, go ahead and assign yourself the role Infinibot Mod (which should have been automatically created by InfiniBot). Once you have this role, you will have full access to InfiniBot and its features.
-        
-        • If this role does not appear, try one of these two things:
-            → Make sure that InfiniBot has the Manage Roles permission
-            → Create a role named "Infinibot Mod" (exact same spelling) with no permissions"""
-            
-        # On Mobile, extra spaces cause problems. We'll get rid of them here:
-        description = standardizeStrIndention(description)
-        
-        await message.channel.send(embed = nextcord.Embed(title = "InfiniBot Mod Help", description = description, color = nextcord.Color.blurple()))
-     
-    # Level 3 ----------------------------------------------------------------------   
-    
-    if messageContent == "-refresh" and message.author.id in levelThreeAdmins: #-reset
-        guildsCheckingForRole = []
-        purging = []
-
-        embed = nextcord.Embed(title = "Infinibot Refreshed", description = "GuildsCheckingForRole and Purging has been reset.", color = nextcord.Color.green())
-        await message.channel.send(embed = embed)
-        print(f"{message.author} refeshed InfiniBot")
-        
-    if messageContent == "-restart" and message.author.id in levelThreeAdmins:
-        embed = nextcord.Embed(title = "InfiniBot Restarting", description = "InfiniBot is restarting.", color = nextcord.Color.green())
-        await message.channel.send(embed = embed)
-        
-        print(f"{message.author} requested InfiniBot to be restarted. Restarting...")
-        
-        main.login_response_guildID = message.guild.id
-        main.login_response_channelID = message.channel.id
-        main.savePersistentData()
-        
-        python = sys.executable
-        os.execl(python, python, * sys.argv)   
-        
-    if messageContentList[0] == "-addadmin" and message.author.id in levelThreeAdmins: #-addAdmin
-        if len(messageContentList) > 2 and messageContentList[1].isdigit() and messageContentList[2].isdigit():
-            userID = messageContentList[1]
-            userLevel = int(messageContentList[2])
-            if 0 < userLevel <= 3: #if level is within 1-3
-                if not int(userID) in [admin[0] for admin in allAdmins]:
-                    #everything is correct
-                    with open("./RequiredFiles/AdminIDS.txt", "a") as file:
-                        file.write(f"\n{userID}|||{userLevel}")
-                        
-                    embed = nextcord.Embed(title = "Admin Added", description = f"\"{userID}\" added as an admin (level {userLevel})", color = nextcord.Color.green())
-                    await message.channel.send(embed = embed)
-                    return 
-                else:
-                    embed = nextcord.Embed(title = "Already Admin", description = f"\"{userID}\" is already an admin.", color = nextcord.Color.red())
-                    await message.channel.send(embed = embed)
-                    return 
-            else:
-                embed = nextcord.Embed(title = "Incorrect Level", description = f"Level can only be between 1 and 3.", color = nextcord.Color.red())
-                await message.channel.send(embed = embed)
-                return 
-        else:
-            embed = nextcord.Embed(title = "Incorrect Format", description = f"Format like this: `-addAdmin 12345678912345689 [1-3]`", color = nextcord.Color.red())
-            await message.channel.send(embed = embed)
-            return
-
-    if messageContentList[0] == "-editadmin" and message.author.id in levelThreeAdmins: #-editAdmin
-        if len(messageContentList) > 2 and messageContentList[1].isdigit() and messageContentList[2].isdigit():
-            userID = int(messageContentList[1])
-            userLevel = int(messageContentList[2])
-            if 0 < userLevel <= 3: #if level is within 1-3
-                if userID in [admin[0] for admin in allAdmins]:
-                    #everything is correct
-                    with open("./RequiredFiles/AdminIDS.txt", "r") as file:
-                        admins = file.read().split("\n")
-                    
-                    changed = False
-                    for admin in admins:
-                        parts = admin.split("|||")
-                        id = int(parts[0])
-                        if id == userID:
-                            #we need to change the level
-                            admins[admins.index(admin)] = f"{id}|||{userLevel}"
-                            changed = True
-                            break
-                    
-                    if not changed:
-                        embed = nextcord.Embed(title = "Error", description = f"The admin was not edited for some reason.", color = nextcord.Color.red())
-                        await message.channel.send(embed = embed)
-                        return 
-                    
-                    with open("./RequiredFiles/AdminIDS.txt", "w") as file:
-                        file.write("\n".join(admins))
-                         
-                    embed = nextcord.Embed(title = "Admin Edited", description = f"\"{userID}\" was edited to be of level {userLevel}", color = nextcord.Color.green())
-                    await message.channel.send(embed = embed)
-                    return 
-                else:
-                    embed = nextcord.Embed(title = "Not Admin", description = f"\"{userID}\" is not an admin.", color = nextcord.Color.red())
-                    await message.channel.send(embed = embed)
-                    return 
-            else:
-                embed = nextcord.Embed(title = "Incorrect Level", description = f"Level can only be between 1 and 3.", color = nextcord.Color.red())
-                await message.channel.send(embed = embed)
-                return 
-        else:
-            embed = nextcord.Embed(title = "Incorrect Format", description = f"Format like this: `-editAdmin 12345678912345689 [1-3]`", color = nextcord.Color.red())
-            await message.channel.send(embed = embed)
-            return
-
-    if messageContentList[0] == "-deleteadmin" and message.author.id in levelThreeAdmins: #-deleteAdmin
-        if len(messageContentList) > 1 and messageContentList[1].isdigit():
-            userID = int(messageContentList[1])
-            if userID in [admin[0] for admin in allAdmins]:
-                #everything is correct
-                with open("./RequiredFiles/AdminIDS.txt", "r") as file:
-                    admins = file.read().split("\n")
-                
-                changed = False
-                newAdmins = []
-                for admin in admins:
-                    parts = admin.split("|||")
-                    id = int(parts[0])
-                    if id == userID:
-                        #we need to delete this admin.
-                        #We do this by not adding it to the new Admins.
-                        changed = True
-                    else:
-                        newAdmins.append(admin)
-                
-                if not changed:
-                    embed = nextcord.Embed(title = "Error", description = f"The admin was not deleted for some reason.", color = nextcord.Color.red())
-                    await message.channel.send(embed = embed)
-                    return 
-                
-                with open("./RequiredFiles/AdminIDS.txt", "w") as file:
-                    file.write("\n".join(newAdmins))
-                        
-                embed = nextcord.Embed(title = "Admin Deleted", description = f"\"{userID}\" was deleted as an admin.", color = nextcord.Color.green())
-                await message.channel.send(embed = embed)
-                return 
-            else:
-                embed = nextcord.Embed(title = "Not Admin", description = f"\"{userID}\" is not an admin.", color = nextcord.Color.red())
-                await message.channel.send(embed = embed)
-                return 
-        else:
-            embed = nextcord.Embed(title = "Incorrect Format", description = f"Format like this: `-deleteAdmin 12345678912345689`", color = nextcord.Color.red())
-            await message.channel.send(embed = embed)
-            return
-
-@bot.event
-async def on_guild_role_update(before: nextcord.Role, after: nextcord.Role):
-    await asyncio.sleep(3) #wait 3 seconds to let stuff sink in
-    
-    guild = after.guild
-    #it *could* have been us... Let's just double check some things now...
-    await checkForRole(guild)
-
-
-
-
-
-
-@bot.event
-async def on_message(message: nextcord.Message):
-    global guildsCheckingForRole
-    
-    if message == None: return
-    
-    # DM Commands ---------------------------------------------
-    if message.guild == None: 
-        if message.content.lower() == "clear":
-            for message in await message.channel.history().flatten():
-                if message.author.id == bot.application_id:
-                    await message.delete()
-                    
-        elif message.content.lower() == "del":
-            for message in await message.channel.history().flatten():
-                if message.author.id == bot.application_id:
-                    await message.delete()
-                    return
-                
-        await adminCommands(message)    
-        return
-    
-    
-    # Regular Functionality
-    server = Server(message.guild.id)
-    await checkForExpiration(server)
-    
-    # Check for InfiniBot Mod Role Existence
-    await checkForRole(message.guild)
-    if message.guild.id in guildsCheckingForRole: guildsCheckingForRole.remove(message.guild.id)
-    
-    # Don't Do any of this if this is a bot
-    if message.author.bot:
-        return
-
-    # Profanity
-    Profane = False
-    if server.profanityBool:
-        Profane = await punnishProfanity(server, message)
-       
-
-    # Other Things
-    if not Profane:
-        if server.deleteInvitesBool and not message.author.guild_permissions.administrator:
-            if "discord.gg/" in message.content.lower(): await message.delete()
-        if server.spamBool and not message.author.guild_permissions.administrator:
-            await checkSpam(message, server)
-        if server.levelingBool: await giveLevels(message)
-        await adminCommands(message)
-
-
-    # Continue with the Rest of the Bot Commands
-    await bot.process_commands(message)
-
-
-
-
-
-
-
-
-def addWord(word: str, guild_id):
-    server = Server(guild_id)
-    
-    if word.lower() in lowerList(server.ProfaneWords):
-        return nextcord.Embed(title = "Word Already Exists", description = f"The word \"{word}\" already exists in the database.", color = nextcord.Color.red())
-
-    if "———" in word:
-        return nextcord.Embed(title = "Word Cannot Contain Unique Case", description = f"Your word cannot contain \"———\" as it is reserved for other uses", color = nextcord.Color.red())
-
-    #add word
-    server.ProfaneWords.append(word.lower())
-
-    server.saveProfaneWords()
-
-    return True
-
-def deleteWord(word: str, guild_id):
-    server = Server(guild_id) 
-    server.ProfaneWords.pop(server.ProfaneWords.index(word))
-    server.saveProfaneWords()
-
-
-
-
-
-
-@bot.slash_command(name = "view", description = "Requires Infinibot Mod", dm_permission=False)
-async def view(interaction: Interaction):
-    pass
-
-@bot.slash_command(name = "set", description = "Requires Infinibot Mod", dm_permission=False)
-async def set(interaction: Interaction):
-    pass
-
-@bot.slash_command(name = "create", description = "Requires Infinibot Mod", dm_permission=False)
-async def create(interaction: Interaction):
-    pass
-
-
-
-
-
-@set.subcommand(name = "strikes", description = "Set any user's strikes (requires Infinibot Mod)")
-async def setstrikescommand(interaction: Interaction, member: nextcord.Member, strike: str = SlashOption(description = "\"+1\" adds a strike, \"-1\" subtracts a strike. Or, input a number to overide strike count.")):
-    if await hasRole(interaction):
-        try:
-            int(strike)
-        except TypeError:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "Strikes must be a number", color = nextcord.Color.red()), ephemeral = True)
-            return
-
-        if strike == "-1":
-            for x in range(0, int(strike[1:])):
-                await giveStrike(interaction.guild_id, member.id, None, -1)
-                await interaction.response.send_message(embed = nextcord.Embed(title = "Strikes Modified", description = f"{interaction.user} decreased {member}'s strikes by {strike}.", color = nextcord.Color.green()))
-                return
-
-        if strike == "+1":
-            for x in range(0, int(strike[1:])):
-                await giveStrike(interaction.guild_id, member.id, None, 1)
-                await interaction.response.send_message(embed = nextcord.Embed(title = "Strikes Modified", description = f"{interaction.user} increased {member}'s strikes by {strike}.", color = nextcord.Color.green()))
-                return
-            
-            
-        server = Server(interaction.guild.id)
-        if not await canModerate(interaction, server): return
-        
-        thierStrike = server.getStrike(member.id)
-        
-        if thierStrike != None:
-            if int(strike) != 0: server.getStrike(member.id).strike = int(strike)
-            else: server.deleteStrike(member.id)
-        else:
-            server.addStrike(member.id, strike)
-        
-        server.saveStrikes()
-
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Strikes Modified", description = f"{interaction.user} changed {member}'s strikes to {strike}.", color = nextcord.Color.green()))
-
-@bot.slash_command(name = "my_strikes", description = "Get your strikes", dm_permission=False)
-async def mystrikes(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canModerate(interaction, server): return
-
-    thierStrike = server.getStrike(interaction.user.id)
-    if thierStrike != None:
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {interaction.user}", description = f"You are at {str(thierStrike.strike)} strike(s)", color =  nextcord.Color.blue()))
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {interaction.user}", description = f"You are at 0 strike(s)", color =  nextcord.Color.blue()))
-
-@bot.slash_command(name = "view_strikes", description = "View another member's strikes", dm_permission=False)
-async def viewstrikes(interaction: Interaction, member: nextcord.Member):
-    server = Server(interaction.guild.id)
-    if not await canModerate(interaction, server): return
-
-    thierStrike = server.getStrike(member.id)
-    if thierStrike != None:
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {member}", description = f"{member} is at {str(thierStrike.strike)} strike(s).\n\nAction done by {interaction.user}", color =  nextcord.Color.blue()))
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {member}", description = f"{member} is at 0 strikes.\n\nAction done by {interaction.user}", color =  nextcord.Color.blue()))
-
-@set.subcommand(name = "admin_channel", description = "Use this channel to log strikes. Channel should only be viewable by admins. (requires Infinibot Mod)")
-async def setAdminChannel(interaction: Interaction):
-   if await hasRole(interaction) and await checkTextChannel(interaction):
-        server = Server(interaction.guild.id)
-
-        server.adminChannel = interaction.channel
-        server.saveData()
-
-
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Admin Channel Set", description = f"Strikes will now be logged in this channel.\n**IMPORTANT: MAKE SURE THAT THIS CHANNEL IS ONLY ACCESSABLE BY ADMINS!**\nThis channel will allow members to mark strikes as incorrect. Thus, you only want admins to see it.\n\nAction done by {interaction.user}", color =  nextcord.Color.green()), view = SupportAndInviteView())
-#END OF MODERATION BOT FUNCTIONALITY -----------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -8773,12 +8384,156 @@ def getScore(level: int):
     
     return(score) #levels are calculated by x^0.65
 
+def setScoreOfMember(server: Server, member_id, score):
+    if score != 0: #if we are not reseting thier score
+        memberLevel = server.levels.getMember(member_id)
+        
+        if memberLevel != None: memberLevel.score = score #if they already had a score
+        else: server.levels.addMember(member_id, score = score) #else, create one
+    else:
+        server.levels.deleteMember(member_id)
+            
+    server.saveLevels()
+
 async def canLevel(interaction: Interaction, server: Server):
+    """Determins whether or not leveling is enabled for the server. NOT SILENT!"""
     if server.levelingBool:
         return True
     else:
         await interaction.response.send_message(embed = nextcord.Embed(title = "Leveling Disabled", description = "Leveling has been turned off. type \"/enable leveling\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
         return False
+
+async def giveLevels(message: nextcord.Message):
+    """Manages the distribution of points (and also levels and level rewards, but indirect). Simply requires a message."""
+    MAX_POINTS_PER_MESSAGE = 40 # Messages are capped at these amount of points
+    
+    
+    member = message.author
+    if member.id == bot.application_id: return
+
+    channel = message.channel
+    
+    server = Server(message.guild.id)
+    if message.channel.id in [channel.id for channel in server.levelingExemptChannels]: return
+    
+    lastFiveMessages = channel.history(limit = 6) #it is 6 because this includes the message just sent.
+    
+    count = 0
+    async for _message in lastFiveMessages:
+        if count == 0: 
+            count += 1 
+            continue
+        if _message.content == None or _message.content == "": 
+            continue
+        if Levenshtein.distance(message.content, _message.content) < 3:
+            return
+        
+        count += 1
+
+    words = message.content.split(" ")
+    totalPoints = 0
+    for word in words:
+        for _ in word: totalPoints += 1
+        
+    totalPoints /= 10
+    roundedPoints = round(totalPoints)
+    
+    if roundedPoints > MAX_POINTS_PER_MESSAGE:
+        roundedPoints = MAX_POINTS_PER_MESSAGE
+    
+    memberLevel = server.levels.getMember(member.id)
+    if memberLevel != None:
+        originalLevel = getLevel(memberLevel.score)
+        memberLevel.score += roundedPoints
+    else:
+        originalLevel = 0
+        server.levels.addMember(member.id, roundedPoints)
+        memberLevel = server.levels.getMember(member.id)
+        
+    nowLevel = getLevel(memberLevel.score)
+    server.saveLevels()
+    
+    if originalLevel != nowLevel:
+        await checkForLevelsAndLevelRewards(message.guild, message.author, levelup_announce = True)
+  
+async def checkForLevelsAndLevelRewards(guild: nextcord.Guild, member: nextcord.Member, levelup_announce: bool = False, silent = False):
+    """Handles the distribution of levels and level rewards"""
+    server = Server(guild.id)
+    memberLevel = server.levels.getMember(member.id)
+    if memberLevel != None:
+        score = memberLevel.score
+        level = getLevel(score)
+    else:
+        score = 0
+        level = 0
+    
+    
+    memberOptions = Member(member.id)
+    
+    
+    #level-up messages
+    if levelup_announce and (not silent) and (server.levelingMessage != None):
+        message = server.levelingMessage.replace("[level]", str(level))
+        embed = nextcord.Embed(title = f"Congratulations, {member}!", description = message, color = nextcord.Color.from_rgb(235, 235, 235))
+        embeds = [embed]
+        
+        #get the card (if needed)
+        if server.allowLevelCardsBool:
+            memberData = Member(member.id)
+            if memberData.levelCard.enabled:
+                card = memberData.levelCard.embed()
+                card.description = card.description.replace("[level]", str(level))
+                embeds.append(card)
+        
+        
+        if server.levelingChannel != None:
+            await server.levelingChannel.send(embeds = embeds) #white-ish
+        else:
+            channel = await getChannel(guild)
+            if channel != None: await channel.send(embeds = embeds) #white-ish
+    
+    #level-reward messages
+    for levelReward in server.levels.levelRewards:
+        if levelReward.level <= level:
+            #we need to give them this role.
+            if not levelReward.role in member.roles:
+                try:
+                    await member.add_roles(levelReward.role)
+                except nextcord.errors.Forbidden:
+                    await sendErrorMessageToOwner(guild, "Manage Roles", guildPermission = True)
+                    return
+                
+                try:    
+                    if server.levelingChannel != None and (not silent): await server.levelingChannel.send(embed = nextcord.Embed(title = f"Role Granted to {member}", description = f"{member.mention} has been granted the role of {levelReward.role.mention} as a result of reaching level {str(levelReward.level)}!", color = nextcord.Color.purple()))
+                    else: 
+                        channel = await getChannel(guild)
+                        if channel != None and (not silent): await channel.send(embed = nextcord.Embed(title = f"Role Granted to {member}", description = f"{member.mention} has been granted the role of {levelReward.role.mention} as a result of reaching level {str(levelReward.level)}!", color = nextcord.Color.purple()))
+                    
+                    if memberOptions.dmsEnabledBool and (not silent): await member.send(embed = nextcord.Embed(title = f"Congratulations! You reached level {str(levelReward.level)} in \"{guild.name}\"!", description = f"As a result, you were granted the role of \"{levelReward.role.name}\". Keep your levels up, or else you will loose it!\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.purple()))
+                except nextcord.errors.Forbidden:
+                    await sendErrorMessageToOwner(guild, "Send Messages")
+                    return
+                
+        else:
+            #we need to take the role
+            if levelReward.role in member.roles:
+                try:
+                    await member.remove_roles(levelReward.role)
+                except nextcord.errors.Forbidden:
+                    await sendErrorMessageToOwner(guild, "Manage Roles", guildPermission = True)
+                    return
+                
+                try:
+                    if server.levelingChannel != None and (not silent): await server.levelingChannel.send(embed = nextcord.Embed(title = f"Role Revoked from {member}", description = f"{member.mention} has been revoked the role of {levelReward.role.mention} as a result of loosing level {str(levelReward.level)}", color = nextcord.Color.dark_purple()))
+                    else:
+                        channel = await getChannel(guild) 
+                        if channel != None and (not silent): channel.send(embed = nextcord.Embed(title = f"Role Revoked from {member}", description = f"{member.mention} has been revoked the role of {levelReward.role.mention} as a result of loosing level {str(levelReward.level)}", color = nextcord.Color.dark_purple()))
+                    
+                    if memberOptions.dmsEnabledBool and (not silent): await member.send(embed = nextcord.Embed(title = f"Oh, no! You lost a level and are now at level {str(levelReward.level)} in \"{guild.name}\"!", description = f"As a result, the role of \"{levelReward.role.name}\" has been revoked. Bring your levels back up, and win back your role!\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.dark_purple()))
+                except nextcord.errors.Forbidden:
+                    await sendErrorMessageToOwner(guild, "Send Messages")
+                    return
+  
 
 @bot.slash_command(name = "leaderboard", description = "Get your level and the level of everyone on the server.", dm_permission=False)
 async def leaderboard(interaction: Interaction):
@@ -8857,17 +8612,6 @@ async def levelsView(interaction: Interaction, level: int):
     else:
         await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "\"Level\" cannot be negative", color = nextcord.Color.red()), ephemeral=True)
 
-def setScoreOfMember(server: Server, member_id, score):
-    if score != 0: #if we are not reseting thier score
-        memberLevel = server.levels.getMember(member_id)
-        
-        if memberLevel != None: memberLevel.score = score #if they already had a score
-        else: server.levels.addMember(member_id, score = score) #else, create one
-    else:
-        server.levels.deleteMember(member_id)
-            
-    server.saveLevels()
-
 @set.subcommand(name = "level", description = "Set levels for any individual (Requires Infinibot Mod)")
 async def setLevel(interaction: Interaction, member: nextcord.Member, level: int):
     if await hasRole(interaction):
@@ -8907,6 +8651,7 @@ async def setScore(interaction: Interaction, member: nextcord.Member, score: int
         await interaction.response.send_message(embed = nextcord.Embed(title = "Levels Changed", description = f"{interaction.user} changed {member}'s score to {str(score)} (level: {str(level)})", color = nextcord.Color.green()))
         
         if getLevel(beforeScore) != level: await checkForLevelsAndLevelRewards(interaction.guild, member)
+
 #Leveling END: ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -8914,6 +8659,11 @@ async def setScore(interaction: Interaction, member: nextcord.Member, score: int
 
 
 #Stats: --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+statsInvalidMessage = nextcord.Embed(title = "Invalid Server Statistics", description = f"You can only have one server statistics message at once. Use /setup_stats to reactivate another link.", color = nextcord.Color.red())
+def getStatsMessage(guild: nextcord.Guild):
+    statsMessageEmbed = nextcord.Embed(title = "Server Statistics", description = f"Total Members: {guild.member_count}\nTotal Bots: {len(guild.bots)}", color = nextcord.Color.gold())
+    return statsMessageEmbed
+
 @bot.slash_command(name = "setup_stats", description = "Creates a stats message which will auto-update. (Requires InfiniBot Mod)", dm_permission = False, force_global = True)
 async def setupStats(interaction: Interaction):
     global statsInvalidMessage
@@ -10555,75 +10305,6 @@ async def embedsHelp(interaction: Interaction):
 
 
 
-#Manage Joining and Leaving: -----------------------------------------------------------------------------------------------------------------------------------------------------------------
-@bot.event
-async def on_guild_join(guild: nextcord.Guild):
-    # Prepare a list of Embeds
-    embeds = []
-    
-    # Greetings Embed --------------------------------------------------------------------------------------------
-    join_message = f"""
-    Hello! I am InfiniBot! Here's what you need to know:
-    
-    
-    1) Assign the role \"Infinibot Mod\" to anyone and they will have access to exclusive admin-only features!
-    
-    2) Make sure that the Infinibot role is the highest role. If this requirement is not met, some features may not function as expected.
-        → Alternatively, give InfiniBot Administrator  
-    
-    You're all set up! Type {dashboard.get_mention()} to get started or {help.get_mention()} for help.
-    
-    For any help or suggestions, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
-    """
-    
-    # On Mobile, extra spaces cause problems. We'll get rid of them here:
-    join_message = standardizeStrIndention(join_message)
-    
-    greetingsEmbed = nextcord.Embed(title = "Greetings!", description = join_message, color = nextcord.Color.gold())
-    embeds.append(greetingsEmbed)
-    
-    
-    
-    # Handle Permissions ------------------------------------------------------------------------------------------
-    _globalPermissions, _channelPermissions = neededPermissions(guild)
-    
-    # Handle Global Permissions Embed Content
-    if len(_globalPermissions) > 0:
-        globalPermissionsStr = "\n".join([f"• {permission}" for permission in _globalPermissions])
-        globalPermissionsEmbed = nextcord.Embed(title = "Wait! InfiniBot still needs some permissions!", description = f"InfiniBot is missing the following permissions:\n{globalPermissionsStr}\n\nAlternatively, give InfiniBot Administrator Priveleges.", color = nextcord.Color.red())
-        embeds.append(globalPermissionsEmbed)
-        
-    # Handle Channel Permissions Embed Content
-    if len(_channelPermissions) > 0:
-        channelPermissionsEmbed = nextcord.Embed(title = "InfiniBot also needs some permissions in these channels:", color = nextcord.Color.red())
-        for package in _channelPermissions:
-            permissions = "\n".join([f"• {permission}" for permission in package[1]])
-            channelPermissionsEmbed.add_field(name = str(package[0]), value = permissions)
-        embeds.append(channelPermissionsEmbed)
-        
-    if not guild.me.guild_permissions.manage_roles and (getInfinibotModRoleId(guild) == None):
-        infiniBotModEmbed = nextcord.Embed(title = "InfiniBot Mod Role Can't Generate", description = "Because InfiniBot does not have the \"Manage Roles\" permission, it can't create an important role called \"InfiniBot Mod\". Grant InfiniBot this permission, and the role should appear.", color = nextcord.Color.red())
-        embeds.append(infiniBotModEmbed)
-    
-    # Send Embeds -------------------------------------------------------------------------------------------------
-    channel = await getChannel(guild)
-    view = SupportInviteTopGGVoteAndPermissionsCheckView()
-    if channel != None: await channel.send(embeds = embeds, view=view)
-    else: 
-        try:
-            dm = await guild.owner.create_dm()
-            await dm.send(embeds = embeds, view=view)
-        except Exception as err:
-            print(err)
-            return
-
-@bot.event
-async def on_guild_remove(guild: nextcord.Guild):
-    server = Server(guild.id)
-    server.deleteServer()
-#Manage Joining and Leaving END: -------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
 
 
 @bot.slash_command("admin", guild_ids = developmentGuild)
@@ -10732,6 +10413,312 @@ async def timeoutUser(interaction: Interaction, guild_id_number, member_id_numbe
     else:
         await interaction.response.send_message(embed = nextcord.Embed(title = "User Error", description = "You do not have access to this command", color = nextcord.Color.red()), ephemeral = True)
 
+async def adminCommands(message: nextcord.Message):
+    global guildsCheckingForRole, purging
+    messageContent = message.content.lower()
+    messageContentList = messageContent.split(" ")
+    
+    
+    #get admins
+    with open("./RequiredFiles/AdminIDS.txt", "r") as file:
+        admins = file.read().split("\n")
+        
+    allAdmins = []
+    levelOneAdmins = [] #others whom I trust
+    levelTwoAdmins = [] #support staff
+    levelThreeAdmins = [] #total control
+    
+    for admin in admins:
+        if admin == "": continue
+        parts = admin.split("|||")
+        id = int(parts[0])
+        level = int(parts[1])
+        allAdmins.append([id, level])
+        if level == 1:
+            levelOneAdmins.append(id)
+        if level == 2:
+            levelOneAdmins.append(id)
+            levelTwoAdmins.append(id)
+        if level == 3:
+            levelOneAdmins.append(id)
+            levelTwoAdmins.append(id)
+            levelThreeAdmins.append(id)
+        
+    #commands
+    
+    # Level 1 ----------------------------------------------------------------------
+    
+    if messageContent == "-help" and message.author.id in levelOneAdmins: #-help
+        description = """
+        ### **Level 1**
+        • `-stats`: display InfiniBot satistics
+        
+        ### **Level 2**
+        • `-info`: display info about a server or owner of a server that uses InfiniBot
+        • `-resetServerConfigurations`: reset a server's configurations and set them back to default
+        • `-checkActiveMessages`: check a server's active messages to make sure that they all exist
+        • `-InfiniBotModHelp`: give a help message to those who need help with InfiniBotMod
+        
+        ### **Level 3**
+        • `-refresh`: refresh InfiniBot
+        • `-restart`: restart InfiniBot
+        • `-addAdmin`: add an admin
+        • `-editAdmin`: edit an admin
+        • `-deleteAdmin`: delete an admin"""
+        
+        # On Mobile, extra spaces cause problems. We'll get rid of them here:
+        description = standardizeStrIndention(description)
+        
+        embed = nextcord.Embed(title = "Help Commands for Admins", description = description, color = nextcord.Color.blue())
+        await message.channel.send(embed = embed)
+    
+    if messageContent == "-stats" and message.author.id in levelOneAdmins: #-stats
+        membercount = 0
+        servercount = 0
+        
+        print(f"Guilds requested by: {message.author}")
+        for guild in bot.guilds:
+            servercount += 1
+            membercount += guild.member_count
+
+        embed = nextcord.Embed(title = "Server Stats:", description = f"Server Count: {str(servercount)}\nTotal Members: {str(membercount)}\n\n*A watched pot never boils*", color = nextcord.Color.blue())
+        await message.channel.send(embed = embed, view = TopGGVoteView())
+        return
+        
+    # Level 2 ----------------------------------------------------------------------
+        
+    if messageContentList[0] == "-info" and message.author.id in levelTwoAdmins:
+        if not (len(messageContentList) > 1 and messageContentList[1].isdigit()):
+            embed = nextcord.Embed(title = "Incorrect Format", description = f"Format like this: `-info [serverID or ownerID]`", color = nextcord.Color.red())
+            await message.channel.send(embed = embed)
+            return
+        
+        id = int(messageContentList[1])
+        
+        #test server ids and owner ids simultaniously:
+        guilds:list[nextcord.Guild] = []
+        for _guild in bot.guilds:
+            if _guild.id == id or _guild.owner.id == id:
+                #add it
+                guilds.append(_guild)
+                
+        if len(guilds) == 0:
+            embed = nextcord.Embed(title = "Server or Owner Could Not Be Found", description = "Make sure you are formatting correctly: `-info [serverID or ownerID]`", color = nextcord.Color.red())
+            await message.channel.send(embed = embed)
+            return
+                
+        #we should have them all. We now need to display them:
+        for guild in guilds:
+            server = Server(guild.id)
+            description = f"""Owner: {guild.owner} ({guild.owner.id})
+            Members: {len(guild.members)}
+            Bots: {len(guild.bots)}
+            
+            **Configurations:**
+            {server.rawData}"""
+            
+            # On Mobile, extra spaces cause problems. We'll get rid of them here:
+            description = standardizeStrIndention(description)
+            
+            embed = nextcord.Embed(title = f"Server: {guild.name} ({guild.id})", description = description, color = nextcord.Color.blue())
+            await message.channel.send(embed = embed)
+            print(f"{message.author} requested info about the server {guild.name} ({guild.id})")
+            
+    if messageContentList[0] == "-resetserverconfigurations" and message.author.id in levelTwoAdmins:
+        if not (len(messageContentList) > 1 and messageContentList[1].isdigit()):
+            embed = nextcord.Embed(title = "Incorrect Format", description = f"Format like this: `-resetserverconfigurations [serverID]`", color = nextcord.Color.red())
+            await message.channel.send(embed = embed)
+            return
+        
+        id = int(messageContentList[1])
+        
+        #test server id
+        server = Server(id)
+                
+        if server.guild == None:
+            embed = nextcord.Embed(title = "Server Could Not Be Found", description = "Make sure you are formatting correctly: `-resetserverconfigurations [serverID]`", color = nextcord.Color.red())
+            await message.channel.send(embed = embed)
+            return
+                
+        #we should have it. Now we just need to delete the server.
+        server.deleteServer()
+        
+        #display it
+        embed = nextcord.Embed(title = "Server Configurations Reset", description = f"The configurations for the server {server.guild.name} ({server.guild.id}) have been reset to defaults.", color = nextcord.Color.green())
+        await message.channel.send(embed = embed)
+        print(f"{message.author} reset configurations in the server {guild.name} ({guild.id})")
+        
+    if messageContentList[0] == "-checkactivemessages" and message.author.id in levelTwoAdmins:
+        if not (len(messageContentList) > 1 and messageContentList[1].isdigit()):
+            embed = nextcord.Embed(title = "Incorrect Format", description = f"Format like this: `-checkActiveMessages [serverID]`", color = nextcord.Color.red())
+            await message.channel.send(embed = embed)
+            return
+        
+        id = int(messageContentList[1])
+        
+        #test server id
+        server = Server(id)
+                
+        if server.guild == None:
+            embed = nextcord.Embed(title = "Server Could Not Be Found", description = "Make sure you are formatting correctly: `-checkActiveMessages [serverID]`", color = nextcord.Color.red())
+            await message.channel.send(embed = embed)
+            return
+                
+        #we should have it. Now we just need to check the active messages
+        await server.messages.checkAll()
+        server.messages.save()
+        
+        #display it
+        embed = nextcord.Embed(title = "Server Active Messages Checked", description = f"The active messages for the server {server.guild.name} ({server.guild.id}) have been checked. All active messages exist.", color = nextcord.Color.green())
+        await message.channel.send(embed = embed)
+        print(f"{message.author} checked active messages in the server {server.guild.name} ({server.guild.id})")
+            
+    #server help commands
+    if messageContent == "-infinibotmodhelp" and message.author.id in levelTwoAdmins:
+        description = f"""**It says I need Infinibot Mod?**
+        • Some features are locked down so that only admins can use them. If you are an admin, go ahead and assign yourself the role Infinibot Mod (which should have been automatically created by InfiniBot). Once you have this role, you will have full access to InfiniBot and its features.
+        
+        • If this role does not appear, try one of these two things:
+            → Make sure that InfiniBot has the Manage Roles permission
+            → Create a role named "Infinibot Mod" (exact same spelling) with no permissions"""
+            
+        # On Mobile, extra spaces cause problems. We'll get rid of them here:
+        description = standardizeStrIndention(description)
+        
+        await message.channel.send(embed = nextcord.Embed(title = "InfiniBot Mod Help", description = description, color = nextcord.Color.blurple()))
+     
+    # Level 3 ----------------------------------------------------------------------   
+    
+    if messageContent == "-refresh" and message.author.id in levelThreeAdmins: #-reset
+        guildsCheckingForRole = []
+        purging = []
+
+        embed = nextcord.Embed(title = "Infinibot Refreshed", description = "GuildsCheckingForRole and Purging has been reset.", color = nextcord.Color.green())
+        await message.channel.send(embed = embed)
+        print(f"{message.author} refeshed InfiniBot")
+        
+    if messageContent == "-restart" and message.author.id in levelThreeAdmins:
+        embed = nextcord.Embed(title = "InfiniBot Restarting", description = "InfiniBot is restarting.", color = nextcord.Color.green())
+        await message.channel.send(embed = embed)
+        
+        print(f"{message.author} requested InfiniBot to be restarted. Restarting...")
+        
+        main.login_response_guildID = message.guild.id
+        main.login_response_channelID = message.channel.id
+        main.savePersistentData()
+        
+        python = sys.executable
+        os.execl(python, python, * sys.argv)   
+        
+    if messageContentList[0] == "-addadmin" and message.author.id in levelThreeAdmins: #-addAdmin
+        if len(messageContentList) > 2 and messageContentList[1].isdigit() and messageContentList[2].isdigit():
+            userID = messageContentList[1]
+            userLevel = int(messageContentList[2])
+            if 0 < userLevel <= 3: #if level is within 1-3
+                if not int(userID) in [admin[0] for admin in allAdmins]:
+                    #everything is correct
+                    with open("./RequiredFiles/AdminIDS.txt", "a") as file:
+                        file.write(f"\n{userID}|||{userLevel}")
+                        
+                    embed = nextcord.Embed(title = "Admin Added", description = f"\"{userID}\" added as an admin (level {userLevel})", color = nextcord.Color.green())
+                    await message.channel.send(embed = embed)
+                    return 
+                else:
+                    embed = nextcord.Embed(title = "Already Admin", description = f"\"{userID}\" is already an admin.", color = nextcord.Color.red())
+                    await message.channel.send(embed = embed)
+                    return 
+            else:
+                embed = nextcord.Embed(title = "Incorrect Level", description = f"Level can only be between 1 and 3.", color = nextcord.Color.red())
+                await message.channel.send(embed = embed)
+                return 
+        else:
+            embed = nextcord.Embed(title = "Incorrect Format", description = f"Format like this: `-addAdmin 12345678912345689 [1-3]`", color = nextcord.Color.red())
+            await message.channel.send(embed = embed)
+            return
+
+    if messageContentList[0] == "-editadmin" and message.author.id in levelThreeAdmins: #-editAdmin
+        if len(messageContentList) > 2 and messageContentList[1].isdigit() and messageContentList[2].isdigit():
+            userID = int(messageContentList[1])
+            userLevel = int(messageContentList[2])
+            if 0 < userLevel <= 3: #if level is within 1-3
+                if userID in [admin[0] for admin in allAdmins]:
+                    #everything is correct
+                    with open("./RequiredFiles/AdminIDS.txt", "r") as file:
+                        admins = file.read().split("\n")
+                    
+                    changed = False
+                    for admin in admins:
+                        parts = admin.split("|||")
+                        id = int(parts[0])
+                        if id == userID:
+                            #we need to change the level
+                            admins[admins.index(admin)] = f"{id}|||{userLevel}"
+                            changed = True
+                            break
+                    
+                    if not changed:
+                        embed = nextcord.Embed(title = "Error", description = f"The admin was not edited for some reason.", color = nextcord.Color.red())
+                        await message.channel.send(embed = embed)
+                        return 
+                    
+                    with open("./RequiredFiles/AdminIDS.txt", "w") as file:
+                        file.write("\n".join(admins))
+                         
+                    embed = nextcord.Embed(title = "Admin Edited", description = f"\"{userID}\" was edited to be of level {userLevel}", color = nextcord.Color.green())
+                    await message.channel.send(embed = embed)
+                    return 
+                else:
+                    embed = nextcord.Embed(title = "Not Admin", description = f"\"{userID}\" is not an admin.", color = nextcord.Color.red())
+                    await message.channel.send(embed = embed)
+                    return 
+            else:
+                embed = nextcord.Embed(title = "Incorrect Level", description = f"Level can only be between 1 and 3.", color = nextcord.Color.red())
+                await message.channel.send(embed = embed)
+                return 
+        else:
+            embed = nextcord.Embed(title = "Incorrect Format", description = f"Format like this: `-editAdmin 12345678912345689 [1-3]`", color = nextcord.Color.red())
+            await message.channel.send(embed = embed)
+            return
+
+    if messageContentList[0] == "-deleteadmin" and message.author.id in levelThreeAdmins: #-deleteAdmin
+        if len(messageContentList) > 1 and messageContentList[1].isdigit():
+            userID = int(messageContentList[1])
+            if userID in [admin[0] for admin in allAdmins]:
+                #everything is correct
+                with open("./RequiredFiles/AdminIDS.txt", "r") as file:
+                    admins = file.read().split("\n")
+                
+                changed = False
+                newAdmins = []
+                for admin in admins:
+                    parts = admin.split("|||")
+                    id = int(parts[0])
+                    if id == userID:
+                        #we need to delete this admin.
+                        #We do this by not adding it to the new Admins.
+                        changed = True
+                    else:
+                        newAdmins.append(admin)
+                
+                if not changed:
+                    embed = nextcord.Embed(title = "Error", description = f"The admin was not deleted for some reason.", color = nextcord.Color.red())
+                    await message.channel.send(embed = embed)
+                    return 
+                
+                with open("./RequiredFiles/AdminIDS.txt", "w") as file:
+                    file.write("\n".join(newAdmins))
+                        
+                embed = nextcord.Embed(title = "Admin Deleted", description = f"\"{userID}\" was deleted as an admin.", color = nextcord.Color.green())
+                await message.channel.send(embed = embed)
+                return 
+            else:
+                embed = nextcord.Embed(title = "Not Admin", description = f"\"{userID}\" is not an admin.", color = nextcord.Color.red())
+                await message.channel.send(embed = embed)
+                return 
+        else:
+            embed = nextcord.Embed(title = "Incorrect Format", description = f"Format like this: `-deleteAdmin 12345678912345689`", color = nextcord.Color.red())
+            await message.channel.send(embed = embed)
+            return
 
 
 
