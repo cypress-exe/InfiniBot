@@ -2990,7 +2990,7 @@ class Dashboard(nextcord.ui.View):
                                 if channel.category != None: categoryName = channel.category.name
                                 else: categoryName = None
                                 #check permissions
-                                if channel.permissions_for(interaction.guild.me).send_messages:
+                                if await checkTextChannelPermissions(channel, False):
                                     selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.adminChannel != None and server.adminChannel.id == channel.id)))
                             
                             
@@ -6036,19 +6036,19 @@ async def getChannel(guild: nextcord.Guild):
     if guild.system_channel: return guild.system_channel
     else:
         general = nextcord.utils.find(lambda x: x.name == 'general',  guild.text_channels)
-        if general and general.permissions_for(guild.get_member(bot.application_id)).send_messages and general.permissions_for(guild.get_member(bot.application_id)).embed_links: 
+        if await checkTextChannelPermissions(general, False):
             return general
         else: 
             welcome = nextcord.utils.find(lambda x: x.name == 'welcome',  guild.text_channels)
-            if welcome and welcome.permissions_for(guild.get_member(bot.application_id)).send_messages and welcome.permissions_for(guild.get_member(bot.application_id)).embed_links: 
+            if await checkTextChannelPermissions(welcome, False):
                 return welcome
             else:
                 greetings = nextcord.utils.find(lambda x: x.name == "greetings", guild.text_channels)
-                if greetings and greetings.permissions_for(guild.get_member(bot.application_id)).send_messages and greetings.permissions_for(guild.get_member(bot.application_id)).embed_links: 
+                if await checkTextChannelPermissions(greetings, False):
                     return greetings
                 else: 
                     for channel in guild.text_channels:
-                        if channel.permissions_for(guild.get_member(bot.application_id)).send_messages and channel.permissions_for(guild.get_member(bot.application_id)).embed_links:
+                        if await checkTextChannelPermissions(channel, False):
                             return channel
                     await sendErrorMessageToOwner(guild, "Send Messages")
                     return None
@@ -6102,7 +6102,7 @@ async def hasRole(interaction: Interaction, message = True):
     if message: await interaction.response.send_message(embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.", color = nextcord.Color.red()), ephemeral = True)
     return False
 
-async def checkTextChannel(interaction: Interaction):
+async def checkIfTextChannel(interaction: Interaction):
     """Check to see if the channel that this slash command was used in was a text channel"""
     
     if type(interaction.channel) == nextcord.TextChannel:
@@ -6143,8 +6143,30 @@ def lowerList(list: list[str]):
     
     return newlist
 
+async def checkTextChannelPermissions(channel: nextcord.TextChannel, autoWarn, customChannelName = None):
+    if channel == None:
+        return False
+    
+    if channel.guild == None:
+        return False
+    
+    if channel.guild.me == None:
+        return False
+    
+    channelName = (customChannelName if customChannelName else channel.name)
+    
+    if channel.permissions_for(channel.guild.me).view_channel:
+        if channel.permissions_for(channel.guild.me).send_messages:
+            if channel.permissions_for(channel.guild.me).embed_links:
+                return True
+            elif autoWarn:
+                await sendErrorMessageToOwner(channel.guild, "Embed Links", channel = channelName, administrator = False)
+        elif autoWarn:
+            await sendErrorMessageToOwner(channel.guild, "Send Messages and/or Embed Links", channel = channelName, administrator = False)
+    elif autoWarn:
+        await sendErrorMessageToOwner(channel.guild, "View Channels", channel = channelName, administrator = False)
 
-
+    return False
 
 
 
@@ -6523,23 +6545,19 @@ async def punnishProfanity(server: Server, message: nextcord.Message):
                 pass #the user has dms turned off. It's not a big deal, they just don't get notified.
         
         #Send message in channel where bad word was sent.
-        if message.channel.permissions_for(message.guild.me).embed_links:
+        if await checkTextChannelPermissions(message.channel, True):
             embed = nextcord.Embed(title = "Profanity Detected", description = f"{message.author.mention} was flagged for saying a Profane word. The message was automatically deleted.\n\n{message.author.mention} is now at {strikes} strike(s)\n\nContact a server admin for more info.", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
             await message.channel.send(embed = embed, view = InviteView())
-        else:
-            await sendErrorMessageToOwner(message.guild, "Embed Links")
         
         #Send message to admin channel (if enabled)
         if server.adminChannel != None:
-            if server.adminChannel.permissions_for(message.guild.me).send_messages and server.adminChannel.permissions_for(message.guild.me).embed_links:
+            if server.adminChannel and await checkTextChannelPermissions(server.adminChannel, True, customChannelName = f"Admin Channel (#{server.adminChannel.name})"):
                 view = IncorrectButton()
 
                 embed = nextcord.Embed(title = "Profanity Detected", description = f"{message.author} was flagged for saying \"{result}\" in \"{message.content}\".\n\nThis message was automatically deleted.\n\n{message.author} is now at {strikes} strike(s)", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
                 embed.set_footer(text = f"Member ID: {str(message.author.id)}")
                 
                 await server.adminChannel.send(view = view, embed = embed)
-            else:
-                await sendErrorMessageToOwner(message.guild, "Send Messages and/or Embed Links", channel = f"#{server.adminChannel.name}")
 
             
         #delete the message
@@ -6695,7 +6713,7 @@ async def viewstrikes(interaction: Interaction, member: nextcord.Member):
 
 @set.subcommand(name = "admin_channel", description = "Use this channel to log strikes. Channel should only be viewable by admins. (requires Infinibot Mod)")
 async def setAdminChannel(interaction: Interaction):
-   if await hasRole(interaction) and await checkTextChannel(interaction):
+   if await hasRole(interaction) and await checkIfTextChannel(interaction):
         server = Server(interaction.guild.id)
 
         server.adminChannel = interaction.channel
@@ -7623,8 +7641,7 @@ async def on_member_join(member: nextcord.Member):
                 channel = None #if we set channel to none here, all other processes will be jumped
         
         #double check permissions
-        if channel != None and not channel.permissions_for(member.guild.me).send_messages: #double check permissions
-            await sendErrorMessageToOwner(member.guild, "Send Messages", channel = f"Join Message Channel (#{channel.name})", administrator = False)
+        if channel and not await checkTextChannelPermissions(channel, True, customChannelName = f"Join Message Channel (#{channel.name})"): #double check permissions
             channel = None
             
             
@@ -7707,8 +7724,7 @@ async def on_member_remove(member: nextcord.Member):
                 channel = None #if we set channel to none here, all other processes will be jumped
         
         #double check permissions
-        if channel != None and not channel.permissions_for(member.guild.me).send_messages: #double check permissions
-            await sendErrorMessageToOwner(member.guild, "Send Messages", channel = f"Leave Message Channel (#{channel.name})", administrator = False)
+        if channel and not await checkTextChannelPermissions(channel, True, customChannelName = f"Leave Message Channel (#{channel.name})"): #double check permissions
             channel = None
             
             
@@ -7915,7 +7931,7 @@ def shouldLog(guild_id):
 
 @set.subcommand(name = "log_channel", description = "Use this channel for logging. Channel should only be viewable by admins. (requires Infinibot Mod)")
 async def setLogChannel(interaction: Interaction):
-   if await hasRole(interaction) and await checkTextChannel(interaction):
+   if await hasRole(interaction) and await checkIfTextChannel(interaction):
         server = Server(interaction.guild.id)
 
         server.logChannel = interaction.channel
@@ -8015,8 +8031,8 @@ async def trigger_edit_log(guild: nextcord.Guild, beforeMessage: nextcord.Messag
     
     Embed.add_field(name = "More", value = f"[Go to Message]({url})", inline = False)
 
-    if logChannel.permissions_for(guild.me).send_messages == True: await logChannel.send(embed = Embed)
-    else: await sendErrorMessageToOwner(guild, "Send Messages", channel = f"Log Message Channel (#{logChannel.name})")
+    if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"): 
+        await logChannel.send(embed = Embed)
     
 async def file_computation(file: nextcord.Attachment):
     #disclaimer: I truthfully have no idea how this bit of the code works. I mean, I have *some* idea, but chatgpt wrote it, so...
@@ -8174,12 +8190,10 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
 
         #actually send the embed
         view = ShowMoreButton()
-        if logChannel.permissions_for(logChannel.guild.me).send_messages == True: 
+        if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"): 
             logMessage = await logChannel.send(view = view, embeds = ([embed] + (embeds[0:8] if len(embeds) >= 10 else embeds)))
             if message and message.attachments != []:
                 await files_computation(message, logChannel, logMessage)
-            
-        else: await sendErrorMessageToOwner(logChannel.guild, "Send Messages", channel = f"Log Message Channel (#{channel.name})")
 
 @bot.event
 async def on_guild_channel_delete(channel: nextcord.abc.GuildChannel):
@@ -8206,8 +8220,8 @@ async def on_member_update(before: nextcord.Member, after: nextcord.Member):
             if after.nick != None: embed.add_field(name = "After", value = after.nick, inline = True)
             else: embed.add_field(name = "After", value = "None", inline = True)
             
-            if logChannel.permissions_for(logChannel.guild.me).send_messages == True: await logChannel.send(embed = embed)
-            else: await sendErrorMessageToOwner(logChannel.guild, "Send Messages", channel = f"Log Message Channel (#{logChannel.name})")
+            if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"): 
+                await logChannel.send(embed = embed)
             
             
         if after.nick != None: await checkNickname(after.guild, after)
@@ -8255,8 +8269,8 @@ async def on_member_update(before: nextcord.Member, after: nextcord.Member):
             if len(deletedRoles) > 0:
                 embed.add_field(name = "Removed", value = "\n".join(deletedRoles), inline = False)
 
-            if logChannel.permissions_for(logChannel.guild.me).send_messages == True: await logChannel.send(embed = embed)
-            else: await sendErrorMessageToOwner(logChannel.guild, "Send Messages", channel = f"Log Message Channel (#{logChannel.name})")
+            if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"): 
+                await logChannel.send(embed = embed)
             
     if before.communication_disabled_until != after.communication_disabled_until:
         ShouldLog, logChannel = shouldLog(after.guild.id)
@@ -8276,14 +8290,14 @@ async def on_member_update(before: nextcord.Member, after: nextcord.Member):
                 if entry.reason != None:
                     embed.add_field(name = "Reason", value = entry.reason)
                 
-                if logChannel.permissions_for(logChannel.guild.me).send_messages == True: await logChannel.send(embed = embed)
-                else: await sendErrorMessageToOwner(logChannel.guild, "Send Messages", channel = f"Log Message Channel (#{logChannel.name})")
+                if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"): 
+                    await logChannel.send(embed = embed)
                 
             elif after.communication_disabled_until == None: #their timeout was removed manually
                 embed = nextcord.Embed(title = "Timeout Revoked", description = f"{user} revoked {after}'s timeout", color = nextcord.Color.orange(), timestamp = datetime.datetime.now())
                 
-                if logChannel.permissions_for(logChannel.guild.me).send_messages == True: await logChannel.send(embed = embed)
-                else: await sendErrorMessageToOwner(logChannel.guild, "Send Messages", channel = f"Log Message Channel (#{logChannel.name})")
+                if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"): 
+                    await logChannel.send(embed = embed)
 
 async def memberRemove(guild: nextcord.Guild, member: nextcord.Member):
     if guild == None: return
@@ -8315,8 +8329,8 @@ async def memberRemove(guild: nextcord.Guild, member: nextcord.Member):
         else:
             return
         
-        if channel.permissions_for(channel.guild.me).send_messages == True: await channel.send(embed = embed)
-        else: await sendErrorMessageToOwner(channel.guild, "Send Messages", channel = f"Log Message Channel (#{channel.name})")     
+        if channel and await checkTextChannelPermissions(channel, True, customChannelName = f"Log Message Channel (#{channel.name})"):
+            await channel.send(embed = embed)
 #END of logging bot functionality: -------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -8703,9 +8717,9 @@ async def setupStats(interaction: Interaction):
             #next, add new one...
             statsMessage = getStatsMessage(interaction.guild)
             
-            if not (interaction.channel.permissions_for(interaction.guild.me).send_messages and interaction.channel.permissions_for(interaction.guild.me).embed_links):
-                await sendErrorMessageToOwner(interaction.guild, "Send Messages and/or Embed Links", channel = interaction.channel.name)
+            if not await checkTextChannelPermissions(interaction.channel, True):
                 return
+            
             message = await interaction.channel.send(embed = statsMessage)
             
             server.statsMessage.setValue(message)
@@ -8716,9 +8730,9 @@ async def setupStats(interaction: Interaction):
             #they do not have a stats message.
             statsMessage = getStatsMessage(interaction.guild)
             
-            if not (interaction.channel.permissions_for(interaction.guild.me).send_messages and interaction.channel.permissions_for(interaction.guild.me).embed_links):
-                await sendErrorMessageToOwner(interaction.guild, "Send Messages and/or Embed Links", channel = interaction.channel.name)
+            if not await checkTextChannelPermissions(interaction.channel, True):
                 return
+            
             message = await interaction.channel.send(embed = statsMessage)
             
             server.statsMessage.setValue(message)
@@ -8793,156 +8807,6 @@ async def banMemberAction(interaction: Interaction, member: nextcord.Member):
 
 
 
-
-
-
-
-#Other Features: -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@bot.slash_command(name = "motivational_statement", description = "Get, uh, a motivational statement", dm_permission=False)
-async def emotionalSupport(interaction: Interaction):
-    messages = [
-        "Don't stress over something today; it will be worse tomorrow.",
-        "Time to leave the past behind and start over in life; your existence didn't mean anything anyway.",
-        "If you think life is horrible right now, you're wrong. It will always get worse count on it.",
-        "Keep working. Though you will never find success, your family might remember your meaningless life.",
-        "If you fail to find success over and over, give up. You're not good enough to do it anyway, and you never will be.",
-        "The cookies you were looking foreward to all day burned to a crisp.",
-        "Are others really talking about you behind your back? Yes. Yes they are.",
-        "You lie awake at night thinking about how much of a disapointment you are."
-    ]
-
-    embed = nextcord.Embed(title = "Motivational Statement", description = messages[random.randint(0, len(messages) - 1)], color =  nextcord.Color.blue())
-    embed.set_footer(text = "Disclaimer: This is obviously not real motivational advice. For real advice, seek the help of a licenced professional.")
-
-    await interaction.response.send_message(embed = embed)
-
-@bot.slash_command(name = "change_nick", description = "Change the nickname of any user. (Requires a higher role, and manage nicknames permission)", dm_permission=False)
-async def change_nick(interaction: Interaction, member: nextcord.Member, nickname: str = SlashOption(description = "List a nickname. \"CLEAR\" will clear an existing nickname.")):
-    global nicknameChanged
-    
-    if not interaction.user.guild_permissions.manage_nicknames:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Permission Error", description = "You do not have the \"manage nicknames\" permission which is required to use this command.", color =  nextcord.Color.red()), ephemeral=True)
-        return
-    if interaction.user.top_role.position <= member.top_role.position and interaction.user.id != member.id and interaction.user.id != interaction.guild.owner.id:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Permission Error", description = f"You do not have a higher role than {member}.", color =  nextcord.Color.red()), ephemeral=True)
-        return
-    if not interaction.channel.permissions_for(interaction.guild.me).manage_nicknames:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Permission Error", description = "InfiniBot needs the Manage Nicknames permission for this action.", color =  nextcord.Color.red()), ephemeral=True)
-        return
-    
-    if not interaction.guild_id in nicknameChanged:
-        nicknameChanged.append(interaction.guild_id)
-    
-    beforeNick = member.nick
-    
-    try:
-        if nickname != "CLEAR":
-            await member.edit(nick = nickname)    
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Nickname Changed", description = f"{interaction.user} changed {member}'s nickname to {nickname}", color =  nextcord.Color.green()))
-        else:
-            await member.edit(nick = None)
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Nickname Changed", description = f"{interaction.user} cleared {member}'s nickname", color =  nextcord.Color.green()))
-    
-        should_log, channel = shouldLog(interaction.guild.id)
-        if channel != None and should_log:
-            embed = nextcord.Embed(title = "Nickname Changed", description = f"{interaction.user} changed {member}'s nickname.", color = nextcord.Color.blue())
-
-            if beforeNick != None: embed.add_field(name = "Before", value = beforeNick, inline = True)
-            else: embed.add_field(name = "Before", value = "None", inline = True)
-
-            if member.nick != None: embed.add_field(name = "After", value = member.nick, inline = True)
-            else: embed.add_field(name = "After", value = "None", inline = True)
-
-            await channel.send(embed = embed)
-    
-    
-    
-    except:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Permission Error", description = "Infinibot does not have a high enough role to do this for you.", color =  nextcord.Color.red()), ephemeral=True)
-
-
-    await asyncio.sleep(1)
-    if interaction.guild.id in nicknameChanged:
-        nicknameChanged.pop(nicknameChanged.index(interaction.guild.id))
-
-@set.subcommand(name = "default_role", description = "Set a default role that will be given to anyone who joins the server. (Requires Infinibot Mod)")
-async def defaultRole(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Leave blank to disable this feature.", required=False)):
-    if await hasRole(interaction):
-        if role != None:
-            botMember: nextcord.Member = await interaction.guild.fetch_member(bot.application_id)
-            if role.position >= botMember.top_role.position:
-                infinibotRole = interaction.guild.get_role(getInfinibotTopRoleId(interaction.guild))
-                await interaction.response.send_message(embed = nextcord.Embed(title = "Infinibot cannot grant this permission", description = f"{role.mention} is equal to or above the role {infinibotRole.mention}. Therefore, it cannot grant the role to any member.", color = nextcord.Color.red()), ephemeral=True)
-                return
-        
-        server = Server(interaction.guild.id)
-        if role != None: server.defaultRoles = role
-        else: server.defaultRoles = []
-        server.saveData()
-        
-        if role != None: await interaction.response.send_message(embed = nextcord.Embed(title = "Default Role Set", description = f"Any member who joins this server will get the role {role.mention}.\nAction done by {interaction.user}", color = nextcord.Color.green()))
-        else: await interaction.response.send_message(embed = nextcord.Embed(title = "Default Role Disabled", description = f"Any member who joins this server will not recieve any role automatically by Infinibot\nAction done by {interaction.user}.", color = nextcord.Color.green()))
-
-@create.subcommand(name = "embed", description = "Create a beautiful embed!")
-async def createEmbed(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Role to Ping", required = False)):
-    #handle the pinging
-    content = ""
-    if role != None:
-        if interaction.guild.me.guild_permissions.mention_everyone or role.mentionable:
-            content = role.mention
-        else:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Can't Ping that Role", description = "InfiniBot can't ping that role. Either *allow anyone to @mention this role*, or give InfiniBot permission to *mention @everyone, @here, and All Roles*.", color = nextcord.Color.red()), ephemeral = True)
-            return
-        
-    #create the modal
-    modal = EmbedModal()
-    await interaction.response.send_modal(modal)
-    await modal.wait()
-    
-    embedTitle = modal.titleValue
-    embedDescription = modal.descriptionValue
-    
-    #now we get the color
-    def icon(levelRequirement, level):
-        if level >= levelRequirement:
-            return "✅"
-        return "❌"
-
-    description = f"""Choose what color you would like the embed to be:
-    
-    **Colors Available**
-    Red, Green, Blue, Yellow, White
-    Blurple, Greyple, Teal, Purple
-    Gold, Magenta, Fuchsia"""
-    
-    
-    # On Mobile, extra spaces cause problems. We'll get rid of them here:
-    description = standardizeStrIndention(description)
-    
-    
-    
-    embed = nextcord.Embed(title = "Choose a Color", description = description, color = nextcord.Color.blue())
-    view = EmbedColorView()
-    
-    await interaction.followup.send(embed = embed, view = view, ephemeral=True)
-    
-    await view.wait()
-    
-    color = view.selection
-    
-    
-    #now, we have to process the color into something that our code can read:
-    discordColor = getDiscordColorFromString(color)
-    
-    #noway, we just displ the embed!
-    embed = nextcord.Embed(title = embedTitle, description = embedDescription, color = discordColor)
-    interaction_response = await interaction.followup.send(content = content, embed = embed, wait = True)
-    
-    #finally, add the embed to our active messages for future editing
-    server = Server(interaction.guild.id);
-    server.messages.add("Embed", interaction.channel.id, interaction_response.id, interaction.user.id)
-    server.messages.save()
-#Other Features END: ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -9801,6 +9665,157 @@ async def editMessageCommand(interaction: Interaction, message: nextcord.Message
     elif messageInfo.type == "Reaction Role":
         await EditReactionRole(message.id).setup(interaction)
 #Editing Messages END: ----------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+#Other Features: -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+@bot.slash_command(name = "motivational_statement", description = "Get, uh, a motivational statement", dm_permission=False)
+async def emotionalSupport(interaction: Interaction):
+    messages = [
+        "Don't stress over something today; it will be worse tomorrow.",
+        "Time to leave the past behind and start over in life; your existence didn't mean anything anyway.",
+        "If you think life is horrible right now, you're wrong. It will always get worse count on it.",
+        "Keep working. Though you will never find success, your family might remember your meaningless life.",
+        "If you fail to find success over and over, give up. You're not good enough to do it anyway, and you never will be.",
+        "The cookies you were looking foreward to all day burned to a crisp.",
+        "Are others really talking about you behind your back? Yes. Yes they are.",
+        "You lie awake at night thinking about how much of a disapointment you are."
+    ]
+
+    embed = nextcord.Embed(title = "Motivational Statement", description = messages[random.randint(0, len(messages) - 1)], color =  nextcord.Color.blue())
+    embed.set_footer(text = "Disclaimer: This is obviously not real motivational advice. For real advice, seek the help of a licenced professional.")
+
+    await interaction.response.send_message(embed = embed)
+
+@bot.slash_command(name = "change_nick", description = "Change the nickname of any user. (Requires a higher role, and manage nicknames permission)", dm_permission=False)
+async def change_nick(interaction: Interaction, member: nextcord.Member, nickname: str = SlashOption(description = "List a nickname. \"CLEAR\" will clear an existing nickname.")):
+    global nicknameChanged
+    
+    if not interaction.user.guild_permissions.manage_nicknames:
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Permission Error", description = "You do not have the \"manage nicknames\" permission which is required to use this command.", color =  nextcord.Color.red()), ephemeral=True)
+        return
+    if interaction.user.top_role.position <= member.top_role.position and interaction.user.id != member.id and interaction.user.id != interaction.guild.owner.id:
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Permission Error", description = f"You do not have a higher role than {member}.", color =  nextcord.Color.red()), ephemeral=True)
+        return
+    if not interaction.channel.permissions_for(interaction.guild.me).manage_nicknames:
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Permission Error", description = "InfiniBot needs the Manage Nicknames permission for this action.", color =  nextcord.Color.red()), ephemeral=True)
+        return
+    
+    if not interaction.guild_id in nicknameChanged:
+        nicknameChanged.append(interaction.guild_id)
+    
+    beforeNick = member.nick
+    
+    try:
+        if nickname != "CLEAR":
+            await member.edit(nick = nickname)    
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Nickname Changed", description = f"{interaction.user} changed {member}'s nickname to {nickname}", color =  nextcord.Color.green()))
+        else:
+            await member.edit(nick = None)
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Nickname Changed", description = f"{interaction.user} cleared {member}'s nickname", color =  nextcord.Color.green()))
+    
+        should_log, channel = shouldLog(interaction.guild.id)
+        if channel != None and should_log:
+            embed = nextcord.Embed(title = "Nickname Changed", description = f"{interaction.user} changed {member}'s nickname.", color = nextcord.Color.blue())
+
+            if beforeNick != None: embed.add_field(name = "Before", value = beforeNick, inline = True)
+            else: embed.add_field(name = "Before", value = "None", inline = True)
+
+            if member.nick != None: embed.add_field(name = "After", value = member.nick, inline = True)
+            else: embed.add_field(name = "After", value = "None", inline = True)
+
+            await channel.send(embed = embed)
+    
+    
+    
+    except:
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Permission Error", description = "Infinibot does not have a high enough role to do this for you.", color =  nextcord.Color.red()), ephemeral=True)
+
+
+    await asyncio.sleep(1)
+    if interaction.guild.id in nicknameChanged:
+        nicknameChanged.pop(nicknameChanged.index(interaction.guild.id))
+
+@set.subcommand(name = "default_role", description = "Set a default role that will be given to anyone who joins the server. (Requires Infinibot Mod)")
+async def defaultRole(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Leave blank to disable this feature.", required=False)):
+    if await hasRole(interaction):
+        if role != None:
+            botMember: nextcord.Member = await interaction.guild.fetch_member(bot.application_id)
+            if role.position >= botMember.top_role.position:
+                infinibotRole = interaction.guild.get_role(getInfinibotTopRoleId(interaction.guild))
+                await interaction.response.send_message(embed = nextcord.Embed(title = "Infinibot cannot grant this permission", description = f"{role.mention} is equal to or above the role {infinibotRole.mention}. Therefore, it cannot grant the role to any member.", color = nextcord.Color.red()), ephemeral=True)
+                return
+        
+        server = Server(interaction.guild.id)
+        if role != None: server.defaultRoles = role
+        else: server.defaultRoles = []
+        server.saveData()
+        
+        if role != None: await interaction.response.send_message(embed = nextcord.Embed(title = "Default Role Set", description = f"Any member who joins this server will get the role {role.mention}.\nAction done by {interaction.user}", color = nextcord.Color.green()))
+        else: await interaction.response.send_message(embed = nextcord.Embed(title = "Default Role Disabled", description = f"Any member who joins this server will not recieve any role automatically by Infinibot\nAction done by {interaction.user}.", color = nextcord.Color.green()))
+
+@create.subcommand(name = "embed", description = "Create a beautiful embed!")
+async def createEmbed(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Role to Ping", required = False)):
+    #handle the pinging
+    content = ""
+    if role != None:
+        if interaction.guild.me.guild_permissions.mention_everyone or role.mentionable:
+            content = role.mention
+        else:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Can't Ping that Role", description = "InfiniBot can't ping that role. Either *allow anyone to @mention this role*, or give InfiniBot permission to *mention @everyone, @here, and All Roles*.", color = nextcord.Color.red()), ephemeral = True)
+            return
+        
+    #create the modal
+    modal = EmbedModal()
+    await interaction.response.send_modal(modal)
+    await modal.wait()
+    
+    embedTitle = modal.titleValue
+    embedDescription = modal.descriptionValue
+    
+    #now we get the color
+    def icon(levelRequirement, level):
+        if level >= levelRequirement:
+            return "✅"
+        return "❌"
+
+    description = f"""Choose what color you would like the embed to be:
+    
+    **Colors Available**
+    Red, Green, Blue, Yellow, White
+    Blurple, Greyple, Teal, Purple
+    Gold, Magenta, Fuchsia"""
+    
+    
+    # On Mobile, extra spaces cause problems. We'll get rid of them here:
+    description = standardizeStrIndention(description)
+    
+    
+    
+    embed = nextcord.Embed(title = "Choose a Color", description = description, color = nextcord.Color.blue())
+    view = EmbedColorView()
+    
+    await interaction.followup.send(embed = embed, view = view, ephemeral=True)
+    
+    await view.wait()
+    
+    color = view.selection
+    
+    
+    #now, we have to process the color into something that our code can read:
+    discordColor = getDiscordColorFromString(color)
+    
+    #noway, we just displ the embed!
+    embed = nextcord.Embed(title = embedTitle, description = embedDescription, color = discordColor)
+    interaction_response = await interaction.followup.send(content = content, embed = embed, wait = True)
+    
+    #finally, add the embed to our active messages for future editing
+    server = Server(interaction.guild.id);
+    server.messages.add("Embed", interaction.channel.id, interaction_response.id, interaction.user.id)
+    server.messages.save()
+#Other Features END: ------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 
 
 
