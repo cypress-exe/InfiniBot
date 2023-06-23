@@ -6344,7 +6344,7 @@ async def giveStrike(guild_id, userID, channel: nextcord.TextChannel, factor: in
             
             response = await timeout(userStrike.member, server.profanityTimeoutTime, reason = f"Profanity Moderation: User exceeded strike limit of {server.maxStrikes}.")
                 
-            if response == "Success": 
+            if response == True: 
                 if channel != None: 
                     await channel.send(embed = nextcord.Embed(title = "Timeout Given", description = f"{userStrike.member} is now timed out for {server.profanityTimeoutTime}", color = nextcord.Color.dark_red()))
                     server.deleteStrike(userStrike.memberID)
