@@ -8743,18 +8743,161 @@ async def setupStats(interaction: Interaction):
 
 
 
+# Message and User Dropdowns
+class MessageCommandOptionsView(nextcord.ui.View):
+    def __init__(self, interaction: Interaction, message: nextcord.Message, hasRole: bool):
+        super().__init__(timeout = None)
+        self.interaction = interaction
+        self.message = message
+        self.hasRole = hasRole
+        
+        self.thisMessage_id = None
+        
+        # Add buttons
+        self.DeleteDMButton(self, interaction, message)
+        self.EditButton(self, interaction, message)
+        self.BanButton(self, interaction, message)
+        
+    async def setup(self, interaction: Interaction):
+        if len(self.children) == 0:
+            description = "Hmmm. You don't have any options for this message."
+            color = nextcord.Color.red()
+        else:
+            description = "This message supports the options below:"
+            color = nextcord.Color.blue()
+        
+        embed = nextcord.Embed(title = "Message Options", description = description, color = color)
+        
+        await interaction.response.send_message(embed = embed, view = self, ephemeral = True)
+        
+    async def disableAll(self, interaction: Interaction):
+        for child in self.children:
+            if isinstance(child, nextcord.ui.Button):
+                child.disabled = True
+                
+        embed = nextcord.Embed(title = "Message Options", description = "This message has been deleted.", color = nextcord.Color.red())
+        
+        try:
+            self.thisMessage_id = await interaction.response.edit_message(embed = embed, view = self)
+        except:
+            await interaction.followup.edit_message(self.thisMessage_id.id, embed = embed, view = self)
+        
+    class DeleteDMButton(nextcord.ui.Button):
+        def __init__(self, outer, interaction: Interaction, message: nextcord.Message):
+            super().__init__(label = "Delete Message")
+            
+            self.outer = outer
+            self.interaction = interaction
+            self.message = message
+            
+            # Check Message Compatibility
+            if not interaction.guild and message.author.id == bot.application_id:
+                self.outer.add_item(self)
+                
+        async def callback(self, interaction: Interaction):
+            await self.message.delete()
+            await self.outer.disableAll(interaction)
+
+    class EditButton(nextcord.ui.Button):
+        def __init__(self, outer, interaction: Interaction, message: nextcord.Message):
+            super().__init__(label = "Edit Message")
+            
+            self.outer = outer
+            self.interaction = interaction
+            self.message = message
+            
+            # Check Message Compatibility
+            server = Server(interaction.guild.id);
+            server.messages.initialize();
+            self.messageInfo = server.messages.get(message.id);
+            
+            if (interaction.guild and message.author == interaction.guild.me
+                and self.messageInfo and interaction.user.id == self.messageInfo.owner_id):
+                self.outer.add_item(self)
+                
+        async def callback(self, interaction: Interaction):
+            if self.messageInfo.type == "Embed":
+                await EditEmbed(self.message.id).setup(interaction)
+            elif self.messageInfo.type == "Vote":
+                await EditVote(self.message.id).setup(interaction)
+            elif self.messageInfo.type == "Reaction Role":
+                await EditReactionRole(self.message.id).setup(interaction)
+
+    class BanButton(nextcord.ui.Button):
+        def __init__(self, outer, interaction: Interaction, message: nextcord.Message):
+            super().__init__(label = "Ban Message Author")
+            
+            self.outer = outer
+            self.interaction = interaction
+            self.message = message
+            
+            # Check Message Compatibility
+            enabled = False
+            if (interaction.user.guild_permissions.ban_members and interaction.guild.me.guild_permissions.ban_members
+                and interaction.user.id != self.message.author.id):
+                # We have basic permissions to ban
+                if (self.message.author in interaction.guild.members):
+                    if (bot.application_id != self.message.author.id and interaction.guild.me.top_role.position > self.message.author.top_role.position):
+                        enabled = True
+                else:
+                    enabled = True
+            
+            if enabled:
+                self.outer.add_item(self)
+                
+        class BanView(nextcord.ui.View):
+            def __init__(self, outer, message: nextcord.Message):
+                super().__init__(timeout = None)
+                self.outer = outer
+                self.message = message
+                
+
+                noBtn = nextcord.ui.Button(label = "No, Cancel", style = nextcord.ButtonStyle.danger)
+                noBtn.callback = self.noBtnCallback
+                self.add_item(noBtn)
+
+                yesBtn = nextcord.ui.Button(label = "Yes, Ban", style = nextcord.ButtonStyle.green)
+                yesBtn.callback = self.yesBtnCallback
+                self.add_item(yesBtn)
+                
+            async def setup(self, interaction: Interaction):
+                if self.message.author in interaction.guild.members:
+                    #if member is in server
+                    description = f"Are you sure that you want to ban {self.message.author.mention}?\n\nThis means that they will be kicked and not be able to re-join this server unless they are un-baned.\n\nNo messages will be deleted."
+                else:
+                    #if member is not in the server
+                    description = f"Are you sure that you want to ban \"{self.message.author}\"?\n\nThis means that they will not be able to join this server unless they are un-baned.\n\nNo messages will be deleted."
+                embed = nextcord.Embed(title = "Confirm Ban?", description = description, color = nextcord.Color.orange())
+                await interaction.response.edit_message(embed = embed, view = self)
+                
+            async def noBtnCallback(self, interaction: Interaction):
+                await self.outer.setup(interaction)
+                
+            async def yesBtnCallback(self, interaction: Interaction):
+                try:
+                    await interaction.guild.ban(user = self.message.author, reason = f"{interaction.user} requested that this user be banned.", delete_message_seconds = 0)
+                    await self.outer.disableAll(interaction)
+                except Exception as error:
+                    print(f"Error When Banning Member: {error}")
+                    await self.outer.setup(interaction)
+                    await interaction.followup.send(embed = nextcord.Embed(title = "An Unknown Error Occured", description = "An unknown error occured while performing this action.", color = nextcord.Color.red()), ephemeral = True)
+                    
+        async def callback(self, interaction: Interaction):
+            await self.BanView(self.outer, self.message).setup(interaction)
+
+@bot.message_command(name = "Options", dm_permission = True)
+async def messageCommandOptions(interaction: Interaction, message: nextcord.Message):
+    _hasRole = (await hasRole(interaction, message) if interaction.guild else True)
+    await MessageCommandOptionsView(interaction, message, _hasRole).setup(interaction)
+
+
+
+
 
 
 #Bans: ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-@bot.message_command(name = "Ban Message Author", dm_permission = False)
-async def messageCommandBanMember(interaction: Interaction, message: nextcord.Message):
-    await banMemberAction(interaction, message.author)
-    
 @bot.user_command(name = "Ban Member", dm_permission = False)
 async def messageCommandBanMember(interaction: Interaction, member: nextcord.Member):
-    await banMemberAction(interaction, member)
-    
-async def banMemberAction(interaction: Interaction, member: nextcord.Member):
     #double check that the user can ban members
     if interaction.user.guild_permissions.ban_members: #user can ban members
         if interaction.guild.me.guild_permissions.ban_members: #InfiniBot can ban members
@@ -8839,10 +8982,7 @@ class EditEmbed(nextcord.ui.View):
         mainEmbed = nextcord.Embed(title = "Edit Embed", description = "Edit the following embed's text and color.", color = nextcord.Color.yellow())
         editEmbed = self.message.embeds[0]
         embeds = [mainEmbed, editEmbed]
-        try:
-            await interaction.response.edit_message(embeds = embeds, view = self)
-        except:
-            await interaction.response.send_message(embeds = embeds, view = self, ephemeral = True)
+        await interaction.response.edit_message(embeds = embeds, view = self)
   
     class editTextButton(nextcord.ui.Button):
         def __init__(self, outer):
@@ -9016,10 +9156,7 @@ class EditVote(nextcord.ui.View):
         mainEmbed = nextcord.Embed(title = "Edit Vote", description = "Edit the text of the following vote or close the vote.", color = nextcord.Color.yellow())
         editEmbed = self.message.embeds[0]
         embeds = [mainEmbed, editEmbed]
-        try:
-            await interaction.response.edit_message(embeds = embeds, view = self)
-        except:
-            await interaction.response.send_message(embeds = embeds, view = self, ephemeral = True)
+        await interaction.response.edit_message(embeds = embeds, view = self)
   
     class editTextButton(nextcord.ui.Button):
         def __init__(self, outer):
@@ -9239,10 +9376,7 @@ class EditReactionRole(nextcord.ui.View):
         mainEmbed = nextcord.Embed(title = "Edit Reaction Role", description = "Edit the following reaction role's text and options.", color = nextcord.Color.yellow())
         editEmbed = self.message.embeds[0]
         embeds = [mainEmbed, editEmbed]
-        try:
-            await interaction.response.edit_message(embeds = embeds, view = self)
-        except:
-            await interaction.response.send_message(embeds = embeds, view = self, ephemeral = True)
+        await interaction.response.edit_message(embeds = embeds, view = self)
   
     class editTextButton(nextcord.ui.Button):
         def __init__(self, outer):
@@ -9634,36 +9768,6 @@ class EditReactionRole(nextcord.ui.View):
         
         async def callback(self, interaction: Interaction):
             await self.warningView(self.outer, interaction.guild.id, self.messageID).setup(interaction)
-
-
-@bot.message_command(name = "Edit", dm_permission = False)
-async def editMessageCommand(interaction: Interaction, message: nextcord.Message):
-    #check to see if it's InfiniBot's message
-    if message.author.id != bot.application_id:
-        embed = nextcord.Embed(title = "This Action is not Supported", description = "This command only works on select messages by InfiniBot.", color = nextcord.Color.red())
-        await interaction.response.send_message(embed = embed, ephemeral = True)
-        return
-    
-    server = Server(interaction.guild.id);
-    server.messages.initialize();
-    messageInfo = server.messages.get(message.id);
-    if messageInfo == None:
-        embed = nextcord.Embed(title = "This Action is not Supported", description = "This command only works on select messages by InfiniBot that are still cached.\n\nFor future messages that support this feature, be sure to make them persistent if you want this feature forever.", color = nextcord.Color.red())
-        await interaction.response.send_message(embed = embed, ephemeral = True)
-        return
-    
-    if interaction.user != interaction.guild.owner and interaction.user.id != messageInfo.owner_id:
-        embed = nextcord.Embed(title = "Permission Denied", description = "This command can only be used if you are the owner of the message and/or server.", color = nextcord.Color.red())
-        await interaction.response.send_message(embed = embed, ephemeral = True)
-        return
-    
-    # All checks have been completed. Let's begin sectioning off the actual code:
-    if messageInfo.type == "Embed":
-        await EditEmbed(message.id).setup(interaction)
-    elif messageInfo.type == "Vote":
-        await EditVote(message.id).setup(interaction)
-    elif messageInfo.type == "Reaction Role":
-        await EditReactionRole(message.id).setup(interaction)
 #Editing Messages END: ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -9988,10 +10092,12 @@ async def votingHelp(interaction: Interaction):
         • From there, run the command, and choose the Title and Description.
         
     **Edit Votes**
-        • To edit your vote, right click on the message, and go to `Apps → Edit → Edit Text`. Here you can edit the text of your vote
+        • To edit your vote, right click on the message, and go to `Apps → Options → Edit → Edit Text`. Here you can edit the text of your vote
+            → Tip: If you don't see the Edit option, check that the message is from InfiniBot, is a vote, and that it is still an active message.
         
     **Close Votes**
-        • To close your vote, right click on the message, and go to `Apps → Edit → Close Vote`. This will disable your vote and finalize the results.
+        • To close your vote, right click on the message, and go to `Apps → Options → Edit → Close Vote`. This will disable your vote and finalize the results.
+            → Tip: If you don't see the Edit option, check that the message is from InfiniBot, is a vote, and that it is still an active message.
         
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
     """
@@ -10036,7 +10142,8 @@ async def reactionRolesHelp(interaction: Interaction):
             → Note: The role select menu will not show seeing how you already selected the roles when you declared the emojis.
             
     **Edit Reaction Roles**
-        • To edit your reaction role, right click, and go to `Apps → Edit`. From here, you can edit the text and options of the reaction role.
+        • To edit your reaction role, right click, and go to `Apps → Options → Edit`. From here, you can edit the text and options of the reaction role.
+            → Tip: If you don't see the Edit option, check that the message is from InfiniBot, is a reaction role, and that it is still an active message.
         
     
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
@@ -10202,8 +10309,8 @@ async def otherHelp(interaction: Interaction):
         • It's always a good idea to check InfiniBot's permissions to make sure that it has everything it needs. To do this, simply use `/check_infinibot_permissions` and give InfiniBot the permissions it wants.
         
     **DM Commands**
-        • If you feel like your dm from InfiniBot is getting a little cluttered, there's a simple fix to that!
-        • Typing `del` in InfiniBot's dm channel will have InfiniBot delete the last message it sent to you.
+        • You can right click on any dm that InfiniBot sent you, go to `Options → Delete Message` and InfiniBot will delete that message it sent to you.
+            → Similarly, typing `del` in InfiniBot's dm channel will have InfiniBot delete the last message it sent to you.
         • Typing `clear` in InfiniBot's dm will have InfiniBot delete all the messages it sent to you.
         • You can also opt in and out of dm notifications using `/opt_into_dms` and `/opt_out_of_dms`.
     
@@ -10292,7 +10399,8 @@ async def autoBansHelp(interaction: Interaction):
         
     **How to Ban a Member (still in the server or after they have left)**
         ★ Make sure both you and InfiniBot have the "Ban Members" permission.
-        • Right click on the member or message, select "Apps", and click ether "Ban Member" or "Ban Message Author".
+        • Right click on the member or message, select "Apps", and click ether "Ban Member" or "Options → Ban Message Author".
+            → Tip: If you don't see the "Ban Message Author" option in the Options popup, check that both you and InfiniBot have permission to ban the user.
         • Click "Yes, ban" on the message that will appear.
         • The member is now banned from this server.
     
@@ -10314,7 +10422,8 @@ async def embedsHelp(interaction: Interaction):
         • Type `/create embed` and choose your title, text, and color.
         
     **How to Edit an Embed**
-        • Go to the embed, and right click. Go to `Apps → Edit`
+        • Go to the embed, and right click. Go to `Apps → Options → Edit`
+            → Tip: If you don't see the Edit option, check that the message is from InfiniBot, is an embed, and that it is still an active message.
         • From here, you can edit the embed's title, description, and color
          
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
