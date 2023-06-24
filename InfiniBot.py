@@ -10464,28 +10464,28 @@ async def sendMessageToAllGuilds(interaction: Interaction):
 
         for guild in bot.guilds:
             try:
-                # If the server wants updates
-                server = Server(guild.id)
-                if not server.getUpdates:
-                    continue
-                
-                # Find a channel
-                general = nextcord.utils.find(lambda x: x.name == 'general',  guild.text_channels)
-                if general: await general.send(embed = embed, view = SupportAndInviteView())
-                else: 
-                    channel = await getChannel(guild)
-                    if channel != None: 
-                        # Send message
-                        await channel.send(embed = embed, view = SupportAndInviteView())
-                print(f"Message sent to server: {guild.name}, id: {guild.id}")
-                
                 # Do some special stuff if it's the InfiniBot server
                 if guild.id == infinibotGuild:
                     channel = guild.get_channel(updatesChannel)
                     role = guild.get_role(infinibotUpdatesRole)
                     await channel.send(content = role.mention, embed = embed, view = SupportAndInviteView())
                     print(f"Message sent to InfiniBot Server Updates Area")
-                        
+                    
+                else:
+                    # If the server wants updates
+                    server = Server(guild.id)
+                    if not server.getUpdates:
+                        continue
+                    
+                    # Find a channel
+                    general = nextcord.utils.find(lambda x: x.name == 'general',  guild.text_channels)
+                    if general: await general.send(embed = embed, view = SupportAndInviteView())
+                    else: 
+                        channel = await getChannel(guild)
+                        if channel != None: 
+                            # Send message
+                            await channel.send(embed = embed, view = SupportAndInviteView())
+                    print(f"Message sent to server: {guild.name}, id: {guild.id}")
                 
             except:
                 await sendErrorMessageToOwner(guild, "Send Messages")
