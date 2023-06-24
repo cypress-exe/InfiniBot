@@ -10622,12 +10622,19 @@ async def adminCommands(message: nextcord.Message):
         #we should have them all. We now need to display them:
         for guild in guilds:
             server = Server(guild.id)
+            
+            joined_at = guild.me.joined_at.replace(tzinfo=datetime.timezone.utc)
+            now = datetime.datetime.now(datetime.timezone.utc)
+            duration = now - joined_at
+            
             description = f"""Owner: {guild.owner} ({guild.owner.id})
             Members: {len(guild.members)}
             Bots: {len(guild.bots)}
             
             **Configurations:**
-            {server.rawData}"""
+            {server.rawData}
+            
+            **Time In Server**: {duration.days} days"""
             
             # On Mobile, extra spaces cause problems. We'll get rid of them here:
             description = standardizeStrIndention(description)
