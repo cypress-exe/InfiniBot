@@ -265,8 +265,28 @@ class FileOperations:
         self.PERSISTENTDATADEFAULT = {
             'login_response': {
                 'guild': None,
-                'channel': None
-            }
+                'channel': None,
+            },
+            'global_kill': {
+              'profanity_moderation': False,
+              'spam_moderation': False,
+              'logging': False,
+              'leveling': False,
+              'level_rewards': False,
+              'join_leave_messages': False,
+              'birthdays': False,
+              'default_roles': False,
+              'join_to_create_vcs': False,
+              'auto_bans': False,
+              'active_messages': False,
+              'votes': False,
+              'reaction_roles': False,
+              'embeds': False,
+              'purging': False,
+              'motivational_statements': False,
+              'dashboard': False,
+              'profile': False,
+            },
         }
 
     def getPersistentData(self):
@@ -1878,6 +1898,28 @@ class Main:
         
         self.login_response_guildID = self.rawPersistentData['login_response']['guild']
         self.login_response_channelID = self.rawPersistentData['login_response']['channel']
+        
+        self.global_kill_profanity_moderation = self.rawPersistentData['global_kill']['profanity_moderation']
+        self.global_kill_spam_moderation = self.rawPersistentData['global_kill']['spam_moderation']
+        self.global_kill_logging = self.rawPersistentData['global_kill']['logging']
+        self.global_kill_leveling = self.rawPersistentData['global_kill']['leveling']
+        self.global_kill_level_rewards = self.rawPersistentData['global_kill']['level_rewards']
+        self.global_kill_join_leave_messages = self.rawPersistentData['global_kill']['join_leave_messages']
+        self.global_kill_birthdays = self.rawPersistentData['global_kill']['birthdays']
+        self.global_kill_default_roles = self.rawPersistentData['global_kill']['default_roles']
+        self.global_kill_join_to_create_vcs = self.rawPersistentData['global_kill']['join_to_create_vcs']
+        self.global_kill_auto_bans = self.rawPersistentData['global_kill']['auto_bans']
+        self.global_kill_active_messages = self.rawPersistentData['global_kill']['active_messages']
+        self.global_kill_votes = self.rawPersistentData['global_kill']['votes']
+        self.global_kill_reaction_roles = self.rawPersistentData['global_kill']['reaction_roles']
+        self.global_kill_embeds = self.rawPersistentData['global_kill']['embeds']
+        self.global_kill_purging = self.rawPersistentData['global_kill']['purging']
+        self.global_kill_motivational_statements = self.rawPersistentData['global_kill']['motivational_statements']
+        self.global_kill_dashboard = self.rawPersistentData['global_kill']['dashboard']
+        self.global_kill_profile = self.rawPersistentData['global_kill']['profile']
+    
+    def reload(self):
+        self.rawPersistentData = self.__getPersistentData()
     
     def __getPersistentData(self):
         rawData = fileOperations.getPersistentData()
@@ -1887,8 +1929,28 @@ class Main:
         dataDict = {
             'login_response': {
                 'guild': self.login_response_guildID,
-                'channel': self.login_response_channelID
-            }
+                'channel': self.login_response_channelID,
+            },
+            'global_kill': {
+              'profanity_moderation': self.global_kill_profanity_moderation,
+              'spam_moderation': self.global_kill_spam_moderation,
+              'logging': self.global_kill_logging,
+              'leveling': self.global_kill_leveling,
+              'level_rewards': self.global_kill_level_rewards,
+              'join_leave_messages': self.global_kill_join_leave_messages,
+              'birthdays': self.global_kill_birthdays,
+              'default_roles': self.global_kill_default_roles,
+              'join_to_create_vcs': self.global_kill_join_to_create_vcs,
+              'auto_bans': self.global_kill_auto_bans,
+              'active_messages': self.global_kill_active_messages,
+              'votes': self.global_kill_votes,
+              'reaction_roles': self.global_kill_reaction_roles,
+              'embeds': self.global_kill_embeds,
+              'purging': self.global_kill_purging,
+              'motivational_statements': self.global_kill_motivational_statements,
+              'dashboard': self.global_kill_dashboard,
+              'profile': self.global_kill_profile,
+            },
         }
         
         dataToSave = standardizeDictProperties(fileOperations.PERSISTENTDATADEFAULT, dataDict)
@@ -1896,6 +1958,282 @@ class Main:
  
 main = Main()       
 
+class Utils:
+    def __init__(self):
+        self.enabled = self.Enabled()
+        
+    class Enabled:
+        def ProfanityModeration(self, guild_id: str = None, server: Server = None, check = True):
+            """Returns if profanity moderation is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None: 
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (server.profanityBool and not main.global_kill_profanity_moderation)
+        
+        def SpamModeration(self, guild_id: str = None, server: Server = None, check = True):
+            """Returns if spam moderation is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (server.spamBool and not main.global_kill_spam_moderation)
+        
+        def Logging(self, guild_id: str = None, server: Server = None, check = True):
+            """Returns if logging is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (server.loggingBool and not main.global_kill_logging)
+        
+        def Leveling(self, guild_id: str = None, server: Server = None, check = True):
+            """Returns if leveling is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (server.levelingBool and not main.global_kill_leveling)
+        
+        def LevelRewards(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if level rewards is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_level_rewards)
+        
+        def JoinLeaveMessages(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if join and/or leave messages is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_join_leave_messages)
+        
+        def Birthdays(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if birthdays is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_birthdays)
+        
+        def DefaultRoles(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if default roles is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_default_roles)
+        
+        def JoinToCreateVCs(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if join to create VCs are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_join_to_create_vcs)
+        
+        def AutoBans(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if auto bans are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_auto_bans)
+        
+        def ActiveMessages(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if active messages are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_active_messages)
+        
+        def Votes(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if votes are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_votes)
+        
+        def ReactionRoles(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if reaction roles is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_reaction_roles)
+        
+        def Embeds(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if embeds are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_embeds)
+        
+        def Purging(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if purging is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_purging)
+        
+        def MotivationalStatement(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if motivational statements are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_motivational_statements)
+
+        def Dashboard(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if the dashboard is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_dashboard)
+        
+        def Profile(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if the profile is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_profile)
+
+utils = Utils()
 #Buttons and UI
 
 
@@ -2481,7 +2819,22 @@ class SelectView(nextcord.ui.View):
         if len(self.Select.values) == 0: return
         await self.returnCommand(interaction, self.Select.values[0])
     
+# "Disabled Feature" override
+async def disabledFeatureOverride(self: nextcord.ui.View, interaction: Interaction):
+    # Only allow the back button
+    for child in list(self.children):
+        if isinstance(child, nextcord.ui.Button):
+            if child.style == nextcord.ButtonStyle.danger or child.style == nextcord.ButtonStyle.red:
+                child.label = "Back"
+                continue;
+            else:
+                self.remove_item(child)
     
+    # Replace with error
+    embed = nextcord.Embed(title = "Disabled Feature", description = "This feature has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red())
+    try: await interaction.response.edit_message(embed = embed, view = self)
+    except: await interaction.response.send_message(embed = embed, view = self, ephemeral=True)
+       
 class Dashboard(nextcord.ui.View):
     def __init__(self, interaction: Interaction):
         super().__init__(timeout = None)
@@ -2519,6 +2872,10 @@ class Dashboard(nextcord.ui.View):
     async def setup(self, interaction: Interaction):
         for child in self.children: del child
         self.__init__(interaction)
+        
+        if not utils.enabled.Dashboard(guild_id = interaction.guild.id):
+            await disabledFeatureOverride(self, interaction)
+            return
         
         description = """Welcome to the InfiniBot Dashboard! Choose a feature to setup / edit:"""
         
@@ -2603,6 +2960,11 @@ class Dashboard(nextcord.ui.View):
                             self.__init__(self.outer)
                         
                         server = Server(interaction.guild.id)
+                        
+                        if not utils.enabled.ProfanityModeration(server = server):
+                            await disabledFeatureOverride(self, interaction)
+                            return
+                        
                         if server.strikeExpireTime != None: strikeExpireTime =  str(server.strikeExpireTime) + " days"
                         else: strikeExpireTime = "Disabled"
                         if server.adminChannel: adminChannelName = server.adminChannel.mention
@@ -3037,6 +3399,11 @@ class Dashboard(nextcord.ui.View):
                         
                     async def setup(self, interaction: Interaction):
                         server = Server(interaction.guild.id)
+                        
+                        if not utils.enabled.SpamModeration(server = server):
+                            await disabledFeatureOverride(self, interaction)
+                            return
+                        
                         embed = nextcord.Embed(title = "Dashboard - Moderation - Spam", description = f"This feature will not work for anyone with Administrator priveleges or a higher role than InfiniBot.\n\nTimeout Duration: {server.spamTimeoutTime}\nMessages Threshold: {server.messagesThreshold} messages\n\nChoose a feature to setup / edit.", color = nextcord.Color.blue())
                         
                         await interaction.response.edit_message(embed = embed, view = self)
@@ -3143,6 +3510,11 @@ class Dashboard(nextcord.ui.View):
                     self.__init__(self.outer)
                 
                 server = Server(interaction.guild.id)
+                
+                if not utils.enabled.Logging(server = server):
+                    await disabledFeatureOverride(self, interaction)
+                    return
+                
                 if server.logChannel != None: logChannelName = server.logChannel.mention
                 else: logChannelName = "None"
                 
@@ -3236,6 +3608,10 @@ class Dashboard(nextcord.ui.View):
                     self.__init__(self.outer)
                 
                 server = Server(interaction.guild.id)
+                
+                if not utils.enabled.Leveling(server = server):
+                    await disabledFeatureOverride(self, interaction)
+                    return
                 
                 if server.levelingChannel != None: levelingChannelName = server.levelingChannel.mention
                 else: levelingChannelName = "System Messages Channel"
@@ -3450,6 +3826,11 @@ class Dashboard(nextcord.ui.View):
                         
                     async def setup(self, interaction: Interaction):
                         server = Server(interaction.guild.id)
+                        
+                        if not utils.enabled.LevelRewards(server = server):
+                            await disabledFeatureOverride(self, interaction)
+                            return
+                        
                         self.embed = nextcord.Embed(title = "Dashboard - Leveling - Level Rewards", color = nextcord.Color.blue())
                         
                         levelRewards = []
@@ -3910,6 +4291,10 @@ class Dashboard(nextcord.ui.View):
 
                 server = Server(interaction.guild.id)
                 
+                if not utils.enabled.JoinLeaveMessages(server = server):
+                    await disabledFeatureOverride(self, interaction)
+                    return
+                
                 if server.joinMessage != None: joinMessage = server.joinMessage
                 else: joinMessage = "DISABLED"
                 
@@ -4134,6 +4519,10 @@ class Dashboard(nextcord.ui.View):
                     self.__init__(self.outer)
                 
                 server = Server(interaction.guild.id)
+                
+                if not utils.enabled.Birthdays(server = server):
+                    await disabledFeatureOverride(self, interaction)
+                    return
                 
                 birthdays = []
                 for bday in server.birthdays:
@@ -4363,6 +4752,11 @@ class Dashboard(nextcord.ui.View):
                 
                 server = Server(interaction.guild.id)
                 
+                if not utils.enabled.DefaultRoles(server = server):
+                    self.add_item(self.cancelBtn)
+                    await disabledFeatureOverride(self, interaction)
+                    return
+                
                 selectOptions = []
                 for role in interaction.guild.roles:
                     if role.name == "@everyone": continue
@@ -4443,6 +4837,10 @@ class Dashboard(nextcord.ui.View):
                 return nextcord.Embed(title = "Dashboard - Join-To-Create-VCs", description = f"You may select up to five voice channels that will have this feature.\n\n**What is it?**\nWhen a user joins one of these Voice Channels, they will be moved to a custom voice channel created just for them. When everyone leaves, the channel will be removed.\n\n{description}", color = nextcord.Color.blue())
         
             async def setup(self, interaction: Interaction):
+                if not utils.enabled.JoinToCreateVCs(guild_id = interaction.guild.id):
+                    await disabledFeatureOverride(self, interaction)
+                    return
+                
                 await interaction.response.edit_message(embed = self.getMessageEmbed(interaction.guild), view = self)
                     
             async def backBtnCallback(self, interaction: Interaction):
@@ -4633,6 +5031,10 @@ class Dashboard(nextcord.ui.View):
                 if interaction.guild.me.guild_permissions.ban_members:
                     server = Server(interaction.guild.id)
                     
+                    if not utils.enabled.AutoBans(server = server):
+                        await disabledFeatureOverride(self, interaction)
+                        return
+                    
                     autoBans = []
                     for autoBan in server.autoBans:
                         autoBans.append(f"• {autoBan.memberName}  (ID: {autoBan.memberID})")
@@ -4821,12 +5223,17 @@ class Dashboard(nextcord.ui.View):
                 self.embedBtn = self.OptionButton(self, "Embed")
                 self.add_item(self.embedBtn)
                 
-                self.backBtn = nextcord.ui.Button(label = "Back", row = 1)
+                self.backBtn = nextcord.ui.Button(label = "Back", row = 1, style = nextcord.ButtonStyle.danger)
                 self.backBtn.callback = self.backBtnCallback
                 self.add_item(self.backBtn)
                 
             async def setup(self, interaction: Interaction):
                 server = Server(interaction.guild.id)
+                
+                if not utils.enabled.ActiveMessages(server = server):
+                    await disabledFeatureOverride(self, interaction)
+                    return
+                
                 description = f"""InfiniBot caches every vote, reaction role, and embedded message posted on this server (using InfiniBot), enabling the ability to edit these messages. However, there is a maximum limit for each type of message. Please refer to the list below to manage your active messages.
                 
                 Votes ({server.messages.countOf("Vote")}/10)
@@ -5073,7 +5480,9 @@ class Profile(nextcord.ui.View):
         for child in self.children: del child
         self.__init__()
     
-    
+        if not utils.enabled.Profile(guild_id = interaction.guild.id):
+            await disabledFeatureOverride(self, interaction)
+            return
     
         description = f"""Welcome to your InfiniBot Profile! Choose a setting:"""
         
@@ -5857,7 +6266,7 @@ async def on_message(message: nextcord.Message):
 
     # Profanity
     Profane = False
-    if server.profanityBool:
+    if utils.enabled.ProfanityModeration(server = server):
         Profane = await punnishProfanity(server, message)
        
 
@@ -5867,10 +6276,10 @@ async def on_message(message: nextcord.Message):
         if server.deleteInvitesBool and not message.author.guild_permissions.administrator:
             if "discord.gg/" in message.content.lower(): await message.delete()
         # Check spam
-        if server.spamBool and not message.author.guild_permissions.administrator:
+        if utils.enabled.SpamModeration(server = server) and not message.author.guild_permissions.administrator:
             await checkSpam(message, server)
         # Give levels
-        if server.levelingBool: await giveLevels(message)
+        if utils.enabled.Leveling(server = server): await giveLevels(message)
         await adminCommands(message)
 
 
@@ -5936,36 +6345,37 @@ async def runEveryMinute():
         
         if nextTime.hour == 0 and nextTime.minute == 1: #run at midnight + 1 (because [0 hours 0 minutes] is never reached for some reason)
             print("Checking Levels --------------------")
-            allGuildIDs = [guild.id for guild in bot.guilds]
-            for guild in bot.guilds:
-                try:
-                    if not guild.id in allGuildIDs: continue
-                    
-                    server = Server(guild.id)
-                    if server == None or server.guild == None: continue
-                    if server.levelingBool == False: continue
-                    if server.pointsLostPerDay == None: continue
-                    if server.pointsLostPerDay == 0: continue
-                    
-                    for level in server.levels.allMembers:
-                        try:
-                            level.score -= server.pointsLostPerDay
-                            if level.score <= 0:
-                                server.levels.deleteMember(level.memberID)
-                        except Exception as err:
-                            print(f"ERROR When checking levels (member): {err}")
-                            continue
-                    
-                    server.saveLevels()
-                    
-                    for member in server.levels.allMembers:
-                        await checkForLevelsAndLevelRewards(server.guild, member.member)
-                    
-                    del server
-                    
-                except Exception as err:
-                    print(f"ERROR When checking levels (server): {err}")
-                    continue
+            if not main.global_kill_leveling:
+                allGuildIDs = [guild.id for guild in bot.guilds]
+                for guild in bot.guilds:
+                    try:
+                        if not guild.id in allGuildIDs: continue
+                        
+                        server = Server(guild.id)
+                        if server == None or server.guild == None: continue
+                        if server.levelingBool == False: continue
+                        if server.pointsLostPerDay == None: continue
+                        if server.pointsLostPerDay == 0: continue
+                        
+                        for level in server.levels.allMembers:
+                            try:
+                                level.score -= server.pointsLostPerDay
+                                if level.score <= 0:
+                                    server.levels.deleteMember(level.memberID)
+                            except Exception as err:
+                                print(f"ERROR When checking levels (member): {err}")
+                                continue
+                        
+                        server.saveLevels()
+                        
+                        for member in server.levels.allMembers:
+                            await checkForLevelsAndLevelRewards(server.guild, member.member)
+                        
+                        del server
+                        
+                    except Exception as err:
+                        print(f"ERROR When checking levels (server): {err}")
+                        continue
     
 
 
@@ -6377,6 +6787,7 @@ async def giveStrike(guild_id, userID, channel: nextcord.TextChannel, factor: in
 
 async def checkForExpiration(server: Server):
     '''Check All Strikes in the Server for Expiration'''
+    if not utils.enabled.ProfanityModeration(server = server): return
     if server.strikeExpireTime == None or server.strikeExpireTime == 0: return
     
     for strike in server.strikes:
@@ -6482,6 +6893,8 @@ async def checkNickname(guild: nextcord.Guild, update: nextcord.Member):
     nickname = update.nick
     
     server = Server(guild.id)
+    
+    if not utils.enabled.ProfanityModeration(server = server): return
 
     nicknameSplit = nickname.split(" ")
     result = checkProfanity(nicknameSplit, server.ProfaneWords)
@@ -6505,16 +6918,20 @@ async def checkNickname(guild: nextcord.Guild, update: nextcord.Member):
             
 async def canModerate(interaction: Interaction, server: Server):
     """Runs a check whether moderation is active. NOT SILENT!"""
-    if server.profanityBool:
+    if utils.enabled.ProfanityModeration(server = server):
         return True
     else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Moderation Tools Disabled", description = "Moderation has been turned off. type \"/enable moderation\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
-        return False
+        if not main.global_kill_profanity_moderation:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Moderation Tools Disabled", description = "Moderation has been turned off. Type \"/enable moderation\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
+            return False
+        else:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Moderation Tools Disabled", description = "Moderation has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+            return False
 
 async def punnishProfanity(server: Server, message: nextcord.Message):
     global autoDeletedMessageTime
     
-    if not server.profanityBool: return
+    if not utils.enabled.ProfanityModeration(server = server): return
     if message.channel.is_nsfw(): return
     if message.author == message.guild.owner: return
     
@@ -6573,7 +6990,7 @@ async def checkSpam(message: nextcord.Message, server: Server):
     MESSAGE_CHARS_TO_CHECK_REPETITION = 140    # A message requires these many characters before it is checked for repetition
 
     # If Spam is Enabled
-    if not server.spamBool: return
+    if not utils.enabled.SpamModeration(server = server): return
     
     # Check if we can view the audit log
     if not message.guild.me.guild_permissions.view_audit_log:
@@ -7134,12 +7551,20 @@ async def loop(interaction: Interaction):
 VOTETYPES = ["Letters", "Numbers", "Custom"]
 @create.subcommand(name = "vote", description = "Automatically create a vote.")
 async def voteCommand(interaction: Interaction, type: str = SlashOption(choices = ["Letters", "Numbers"])):
+    if not utils.enabled.Votes(guild_id = interaction.guild.id):
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Votes Disabled", description = "Votes have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+        return
+        
     modal = VotingModal(interaction, type)
         
     await interaction.response.send_modal(modal)
        
 @create.subcommand(name = "custom_vote", description = "Automatically create a vote that you can customize with emojis.")
-async def customVoteCommand(interaction: Interaction, options: str = SlashOption(description = "Format: \"😄 = Yes, 😢 = No\"")):   
+async def customVoteCommand(interaction: Interaction, options: str = SlashOption(description = "Format: \"😄 = Yes, 😢 = No\"")):
+    if not utils.enabled.Votes(guild_id = interaction.guild.id):
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Votes Disabled", description = "Votes have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+        return
+    
     optionsSplit = options.split(",")
     optionsSplit = [option.strip() for option in optionsSplit]
     
@@ -7326,6 +7751,10 @@ REACTIONROLETYPES = ["Letters", "Numbers", "Custom"]
 @create.subcommand(name = "reaction_role", description = "Create a message that will allow users to add/remove roles from themselves. (Requires Infinibot Mod)")
 async def reactionRoleCommand(interaction: Interaction, type: str = SlashOption(choices = ["Letters", "Numbers"]), mentionRoles: bool = SlashOption(name = "mention_roles", description = "Mention the roles with @mention", required = False, default = True)):
     if await hasRole(interaction):
+        if not utils.enabled.ReactionRoles(guild_id = interaction.guild.id):
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Reaction Roles Disabled", description = "Reaction Roles have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+            return
+        
         if not interaction.guild.me.guild_permissions.manage_roles:
             await interaction.response.send_message(embed = nextcord.Embed(title = "InfiniBot Missing Permissions", description = "InfiniBot needs the \"Manage Roles\" permission in order to use this command. Grant InfiniBot this permission and try again.", color = nextcord.Color.red()), ephemeral = True)
             return
@@ -7363,6 +7792,10 @@ async def reactionRoleCommand(interaction: Interaction, type: str = SlashOption(
 @create.subcommand(name = "custom_reaction_role", description = "Automatically create a vote that you can customize with emojis.")
 async def customReactionRoleCommand(interaction: Interaction, options: str = SlashOption(description = "Format: \"👍 = @Member, 🥸 = @Gamer\""), mentionRoles: bool = SlashOption(name = "mention_roles", description = "Mention the roles with @mention", required = False, default = True)):   
     if await hasRole(interaction):
+        if not utils.enabled.ReactionRoles(guild_id = interaction.guild.id):
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Reaction Roles Disabled", description = "Reaction Roles have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+            return
+        
         if not interaction.guild.me.guild_permissions.manage_roles:
             await interaction.response.send_message(embed = nextcord.Embed(title = "InfiniBot Missing Permissions", description = "InfiniBot needs the \"Manage Roles\" permission in order to use this command. Grant InfiniBot this permission and try again.", color = nextcord.Color.red()), ephemeral = True)
             return
@@ -7603,7 +8036,7 @@ async def on_member_join(member: nextcord.Member):
     server = Server(member.guild.id)
     
     #banning------------------------------------------------------------
-    if server.autoBanExists(member.id):
+    if utils.enabled.AutoBans(server = server) and server.autoBanExists(member.id):
         server.deleteAutoBan(member.id)
         server.saveAutoBans()
         if member.guild.me.guild_permissions.ban_members:
@@ -7631,7 +8064,7 @@ async def on_member_join(member: nextcord.Member):
 
     #welcome them -----------------------------------------------------------------
     joinMessage: str = server.joinMessage
-    if joinMessage != None: #if we don't have a join message, what's the point?
+    if utils.enabled.JoinLeaveMessages(server = server) and joinMessage != None: #if we don't have a join message, what's the point?
         if server.joinChannel != None: #set the join channel (if none, then it is the system channel)
             channel = server.joinChannel
         else:
@@ -7662,8 +8095,9 @@ async def on_member_join(member: nextcord.Member):
             await channel.send(embeds = embeds)
     
     #give them roles --------------------------------------------------------------
-    for role in server.defaultRoles:
-        await member.add_roles(role)
+    if utils.enabled.DefaultRoles(server = server):
+        for role in server.defaultRoles:
+            await member.add_roles(role)
         
     #update stats --------------------------------------------------------------------
     if server.statsMessage.active:
@@ -7714,7 +8148,7 @@ async def on_member_remove(member: nextcord.Member):
             
     #say farewell to them: --------------------------------------------------------------------------------
     leaveMessage: str = server.leaveMessage
-    if leaveMessage != None: #if we don't have a leave message, what's the point?
+    if utils.enabled.JoinLeaveMessages(server = server) and leaveMessage != None: #if we don't have a leave message, what's the point?
         if server.leaveChannel != None: #set the leave channel (if none, then it is the system channel)
             channel = server.leaveChannel
         else:
@@ -7765,6 +8199,7 @@ async def on_member_remove(member: nextcord.Member):
 async def checkForBirthdays(nextTime, currentTime):
     print("checking birthdays -----------------------------------------------")
     #check for birthdays
+    if main.global_kill_birthdays: return
     birthdays_allServers = fileOperations.getAllBirthdays()
     for server in birthdays_allServers:
         try:
@@ -7855,6 +8290,10 @@ async def purge(interaction: Interaction, amount: str = SlashOption(description=
 
 
     if await hasRole(interaction):
+        if not utils.enabled.Purging(guild_id = interaction.guild.id):
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Purging Disabled", description = "Purging has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+            return;
+        
         if amount.lower() == "all":
             await interaction.response.defer()
             
@@ -7920,14 +8359,14 @@ async def purge(interaction: Interaction, amount: str = SlashOption(description=
 #Start of logging bot functionality: -----------------------------------------------------------------------------------------------------------------------------------------------------
 def shouldLog(guild_id):
     server = Server(guild_id)
-
-    if server.loggingBool == True:
-        if server.logChannel == None:
-            return False, None
-        else:
-            return True, server.logChannel
-    else:
+    
+    if not utils.enabled.Logging(server = server):
         return False, None
+
+    if server.logChannel == None:
+        return False, None
+    else:
+        return True, server.logChannel
 
 @set.subcommand(name = "log_channel", description = "Use this channel for logging. Channel should only be viewable by admins. (requires Infinibot Mod)")
 async def setLogChannel(interaction: Interaction):
@@ -8341,6 +8780,9 @@ async def memberRemove(guild: nextcord.Guild, member: nextcord.Member):
 #Join-to-create VC: -------------------------------------------------------------------------------------------------------------------------------------------------------------------     
 @bot.event
 async def on_voice_state_update(member: nextcord.Member, before: nextcord.VoiceState, after: nextcord.VoiceState):
+    if not utils.enabled.JoinToCreateVCs(guild_id = member.guild.id):
+        return
+    
     if before.channel == None and after.channel == None: return
     if after.channel != None:
         server = Server(member.guild.id)
@@ -8423,11 +8865,15 @@ def setScoreOfMember(server: Server, member_id, score):
 
 async def canLevel(interaction: Interaction, server: Server):
     """Determins whether or not leveling is enabled for the server. NOT SILENT!"""
-    if server.levelingBool:
+    if utils.enabled.Leveling(server = server):
         return True
     else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Leveling Disabled", description = "Leveling has been turned off. type \"/enable leveling\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
-        return False
+        if not main.global_kill_leveling:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Leveling Disabled", description = "Leveling has been turned off. type \"/enable leveling\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
+            return False
+        else:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Leveling Disabled", description = "Leveling has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+            return False
 
 async def giveLevels(message: nextcord.Message):
     """Manages the distribution of points (and also levels and level rewards, but indirect). Simply requires a message."""
@@ -8861,6 +9307,10 @@ class MessageCommandOptionsView(nextcord.ui.View):
                 self.add_item(yesBtn)
                 
             async def setup(self, interaction: Interaction):
+                if not utils.enabled.AutoBans(guild_id = interaction.guild.id):
+                    await disabledFeatureOverride(self, interaction)
+                    return
+                
                 if self.message.author in interaction.guild.members:
                     #if member is in server
                     description = f"Are you sure that you want to ban {self.message.author.mention}?\n\nThis means that they will be kicked and not be able to re-join this server unless they are un-baned.\n\nNo messages will be deleted."
@@ -8898,6 +9348,10 @@ async def messageCommandOptions(interaction: Interaction, message: nextcord.Mess
 #Bans: ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @bot.user_command(name = "Ban Member", dm_permission = False)
 async def messageCommandBanMember(interaction: Interaction, member: nextcord.Member):
+    if not utils.enabled.AutoBans(guild_id = interaction.guild.id):
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Banning Disabled", description = "Banning has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+        return;
+    
     #double check that the user can ban members
     if interaction.user.guild_permissions.ban_members: #user can ban members
         if interaction.guild.me.guild_permissions.ban_members: #InfiniBot can ban members
@@ -8978,6 +9432,10 @@ class EditEmbed(nextcord.ui.View):
         
     async def setup(self, interaction: Interaction):
         await self.loadButtons(interaction)
+        
+        if not utils.enabled.ActiveMessages(guild_id = interaction.guild.id):
+            await disabledFeatureOverride(self, interaction)
+            return
         
         mainEmbed = nextcord.Embed(title = "Edit Embed", description = "Edit the following embed's text and color.", color = nextcord.Color.yellow())
         editEmbed = self.message.embeds[0]
@@ -9152,6 +9610,10 @@ class EditVote(nextcord.ui.View):
         
     async def setup(self, interaction: Interaction):
         await self.loadButtons(interaction)
+        
+        if not utils.enabled.ActiveMessages(guild_id = interaction.guild.id):
+            await disabledFeatureOverride(self, interaction)
+            return
         
         mainEmbed = nextcord.Embed(title = "Edit Vote", description = "Edit the text of the following vote or close the vote.", color = nextcord.Color.yellow())
         editEmbed = self.message.embeds[0]
@@ -9372,6 +9834,10 @@ class EditReactionRole(nextcord.ui.View):
         
     async def setup(self, interaction: Interaction):
         await self.loadButtons(interaction)
+        
+        if not utils.enabled.ActiveMessages(guild_id = interaction.guild.id):
+            await disabledFeatureOverride(self, interaction)
+            return
         
         mainEmbed = nextcord.Embed(title = "Edit Reaction Role", description = "Edit the following reaction role's text and options.", color = nextcord.Color.yellow())
         editEmbed = self.message.embeds[0]
@@ -9775,7 +10241,11 @@ class EditReactionRole(nextcord.ui.View):
 
 #Other Features: -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @bot.slash_command(name = "motivational_statement", description = "Get, uh, a motivational statement", dm_permission=False)
-async def emotionalSupport(interaction: Interaction):
+async def motivationalStatement(interaction: Interaction):
+    if not utils.enabled.MotivationalStatement(guild_id = interaction.guild.id):
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Motivational Statements Disabled", description = "Motivational Statements have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+        return;
+    
     messages = [
         "Don't stress over something today; it will be worse tomorrow.",
         "Time to leave the past behind and start over in life; your existence didn't mean anything anyway.",
@@ -9843,6 +10313,10 @@ async def change_nick(interaction: Interaction, member: nextcord.Member, nicknam
 
 @set.subcommand(name = "default_role", description = "Set a default role that will be given to anyone who joins the server. (Requires Infinibot Mod)")
 async def defaultRole(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Leave blank to disable this feature.", required=False)):
+    if not utils.enabled.DefaultRoles(guild_id = interaction.guild.id):
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Default Roles Disabled", description = "Default Roles have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+        return;
+    
     if await hasRole(interaction):
         if role != None:
             botMember: nextcord.Member = await interaction.guild.fetch_member(bot.application_id)
@@ -9861,6 +10335,10 @@ async def defaultRole(interaction: Interaction, role: nextcord.Role = SlashOptio
 
 @create.subcommand(name = "embed", description = "Create a beautiful embed!")
 async def createEmbed(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Role to Ping", required = False)):
+    if not utils.enabled.Embeds(guild_id = interaction.guild.id):
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Embeds Disabled", description = "Embeds have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+        return;
+    
     #handle the pinging
     content = ""
     if role != None:
@@ -10574,6 +11052,7 @@ async def adminCommands(message: nextcord.Message):
         ### **Level 3**
         • `-refresh`: refresh InfiniBot
         • `-restart`: restart InfiniBot
+        • `-globalKill`: globaly kill any feature of InfiniBot. Use `-globalKill help` for a list of use cases.
         • `-addAdmin`: add an admin
         • `-editAdmin`: edit an admin
         • `-deleteAdmin`: delete an admin"""
@@ -10728,6 +11207,70 @@ async def adminCommands(message: nextcord.Message):
         
         python = sys.executable
         os.execl(python, python, * sys.argv)   
+        
+    if messageContentList[0] == "-globalkill" and message.author.id in levelThreeAdmins:
+        if len(messageContentList) <= 1:
+            await message.channel.send(embed = nextcord.Embed(title = "Incorrect Format", description = "Please include argument(s). Use the `-globalKill help` command for a list of arguments.", color = nextcord.Color.red()))
+            return
+        
+        argument = messageContentList[1]
+        
+        commands = {
+            'profanity_moderation': lambda value: setattr(main, 'global_kill_profanity_moderation', value),
+            'spam_moderation': lambda value: setattr(main, 'global_kill_spam_moderation', value),
+            'logging': lambda value: setattr(main, 'global_kill_logging', value),
+            'leveling': lambda value: setattr(main, 'global_kill_leveling', value),
+            'level_rewards': lambda value: setattr(main, 'global_kill_level_rewards', value),
+            'join_leave_messages': lambda value: setattr(main, 'global_kill_join_leave_messages', value),
+            'birthdays': lambda value: setattr(main, 'global_kill_birthdays', value),
+            'default_roles': lambda value: setattr(main, 'global_kill_default_roles', value),
+            'join_to_create_vcs': lambda value: setattr(main, 'global_kill_join_to_create_vcs', value),
+            'auto_bans': lambda value: setattr(main, 'global_kill_auto_bans', value),
+            'active_messages': lambda value: setattr(main, 'global_kill_active_messages', value),
+            'votes': lambda value: setattr(main, 'global_kill_votes', value),
+            'reaction_roles': lambda value: setattr(main, 'global_kill_reaction_roles', value),
+            'embeds': lambda value: setattr(main, 'global_kill_embeds', value),
+            'purging': lambda value: setattr(main, 'global_kill_purging', value),
+            'motivational_statements': lambda value: setattr(main, 'global_kill_motivational_statements', value),
+            'dashboard': lambda value: setattr(main, 'global_kill_dashboard', value),
+            'profile': lambda value: setattr(main, 'global_kill_profile', value),
+        }
+
+        
+        if argument.lower()  == "help":
+            commandsString = "-globalKill "+"\n-globalKill ".join(commands.keys())
+            
+            embed = nextcord.Embed(title = "Global Kill Commands", description = f"### ONLY USE THESE COMMANDS FOR EMERGENCIES!!! THIS GOES INTO EFFECT GLOBALLY ACROSS ALL GUILDS INSTANTLY!!!\n\n{commandsString}", color = nextcord.Color.blue())
+            await message.channel.send(embed = embed)
+            return
+        
+        else:
+            if argument.lower() in commands.keys():
+                if len(messageContentList) >= 3:
+                    action = None
+                    if messageContentList[2].lower() == "kill":
+                        action = True
+                    elif messageContentList[2].lower() == "revive":
+                        action = False
+                    else:
+                        await message.channel.send(embed = nextcord.Embed(title = "Invalid Argument", description = "Specify whether to `kill` or `revive`.", color = nextcord.Color.red()))
+                        return
+                    
+                    commands[argument.lower()](action)
+                    main.savePersistentData()
+                    main.reload()
+                    
+                    # Description. Yeah, it's a mess, but it works and has perfect English.
+                    description = f"{argument[0].capitalize()}{argument[1:].replace('_', ' ')} successfully {messageContentList[2]}{'e' if messageContentList[2].lower() == 'kill' else ''}d."
+                    await message.channel.send(embed = nextcord.Embed(title = "Success", description = description, color = nextcord.Color.green()))
+                    return
+                
+                else:
+                    await message.channel.send(embed = nextcord.Embed(title = "Invalid Argument", description = "Specify whether to `kill` or `revive`.", color = nextcord.Color.red()))
+                    return
+            else:
+                await message.channel.send(embed = nextcord.Embed(title = "Invalid Argument", description = "Use the `-globalKill help` command for a list of arguments.", color = nextcord.Color.red()))
+                return
         
     if messageContentList[0] == "-addadmin" and message.author.id in levelThreeAdmins: #-addAdmin
         if len(messageContentList) > 2 and messageContentList[1].isdigit() and messageContentList[2].isdigit():
