@@ -7977,11 +7977,7 @@ async def on_raw_reaction_add(payload: nextcord.RawReactionActionEvent):
     if message.author.id == bot.application_id and not user.bot:
         if message.embeds:
             # Check to see if this is actually a reaction role
-            server = Server(guild.id)
-            messageInfo = server.messages.get(message.id)
-            if messageInfo and messageInfo.type == "Reaction Role": # This message IS a reaction role
-                del server, messageInfo # Don't need them
-                
+            if len(message.embeds[0].fields) >= 1 and message.embeds[0].fields[0].name.lower().startswith("react"): # This message IS a reaction role
                 # Can we manage roles? If not, there's not point to any of this
                 if not message.channel.permissions_for(guild.me).manage_roles:
                     await sendErrorMessageToOwner(guild, "Manage Roles", guildPermission = True)
