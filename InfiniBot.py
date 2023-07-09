@@ -4970,7 +4970,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Add Channel", style = style, disabled = disabled)
                                                      
                         async def callback(self, interaction: Interaction):
-                            selectOptions = [nextcord.SelectOption(label = vc[0].name, value = vc[0].id, description = vc[0].category.name) for vc in [vc for vc in self.vcs if not vc[1]]]
+                            selectOptions = [nextcord.SelectOption(label = vc[0].name, value = vc[0].id, description = (vc[0].category.name if vc[0].category else "")) for vc in [vc for vc in self.vcs if not vc[1]]]
                             
                             description = """Select a Voice Channel to be a Join-To-Create Voice Channel.
                                 
@@ -5018,7 +5018,7 @@ class Dashboard(nextcord.ui.View):
                                                         
                         async def callback(self, interaction: Interaction):
                             server = Server(interaction.guild.id)
-                            selectOptions = [nextcord.SelectOption(label = vc.channel.name, value = vc.id, description = vc.channel.category.name) for vc in server.VCs]
+                            selectOptions = [nextcord.SelectOption(label = vc.channel.name, value = vc.id, description = (vc.channel.category.name if vc.channel.category else "")) for vc in server.VCs]
                                         
                             description = """Select a Join-To-Create Voice Channel to no longer be a Join-To-Create Voice Channel."""
                         
@@ -5201,6 +5201,11 @@ class Dashboard(nextcord.ui.View):
                             id = self.idInput.value
                             
                             embed = None
+                            
+                            if not id.isdigit():
+                                await self.outer.setup(interaction)
+                                await interaction.followup.send(embed = nextcord.Embed(title = "User ID must be a number", description = "The User ID must be a number. Try again.", color = nextcord.Color.red()), ephemeral = True);
+                                return;
                             
 
                             for member in interaction.guild.members:
