@@ -1,3 +1,5 @@
-Files/
+Files/*.*
+CriticalFiles/*.*
 # REMOVE ON MERGE
 Website/website
+Website/website/src

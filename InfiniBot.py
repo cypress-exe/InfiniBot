@@ -303,12 +303,12 @@ class FileOperations:
     def getPersistentData(self):
         '''Returns all PERSISTENT DATA in str form'''
         contents = ""
-        if os.path.exists("./RequiredFiles/Persistent.txt"):
-            with open("./RequiredFiles/Persistent.txt", "r") as file:
+        if os.path.exists("./CriticalFiles/Persistent.txt"):
+            with open("./CriticalFiles/Persistent.txt", "r") as file:
                 contents = file.read()
             
         else:
-            with open("./RequiredFiles/Persistent.txt", "w") as file:
+            with open("./CriticalFiles/Persistent.txt", "w") as file:
                 contents = json.dumps(self.PERSISTENTDATADEFAULT)
                 file.write(json.dumps(self.PERSISTENTDATADEFAULT))
         
@@ -521,7 +521,7 @@ class FileOperations:
 
     def savePersistentData(self, data):
         '''Saves a string of PERSISTENT DATA'''
-        with open("./RequiredFiles/Persistent.txt", "w") as file:
+        with open("./CriticalFiles/Persistent.txt", "w") as file:
             file.write(data)
 
     def saveData(self, list):
@@ -593,8 +593,8 @@ class FileOperations:
 
     def getDefaultProfaneWords(self):
         '''Returns default Profane words in hyphenated form (apple———banana———orange)'''
-        if os.path.exists("./RequiredFiles/ProfaneWordsDefault.binary"):
-            with open("./RequiredFiles/ProfaneWordsDefault.binary", "rb") as file:
+        if os.path.exists("./CriticalFiles/ProfaneWordsDefault.binary"):
+            with open("./CriticalFiles/ProfaneWordsDefault.binary", "rb") as file:
                 return file.read().decode()
         else:
             print("Default Profane Words are MISSING! ---------------------------")
@@ -6356,7 +6356,7 @@ async def on_message(message: nextcord.Message):
 
 # RUN EVERY MINUTE ===========================================================================================================================================================================
 dbl_token = ""
-with open("./RequiredFiles/TOKEN.txt", "r") as file:
+with open("./CriticalFiles/TOKEN.txt", "r") as file:
     dbl_token = file.read().split("\n")[1]
     
 if dbl_token != "NONE":
@@ -11254,7 +11254,7 @@ async def adminCommands(message: nextcord.Message):
     
     
     #get admins
-    with open("./RequiredFiles/AdminIDS.txt", "r") as file:
+    with open("./CriticalFiles/AdminIDS.txt", "r") as file:
         admins = file.read().split("\n")
         
     allAdmins = []
@@ -11523,7 +11523,7 @@ async def adminCommands(message: nextcord.Message):
             if 0 < userLevel <= 3: #if level is within 1-3
                 if not int(userID) in [admin[0] for admin in allAdmins]:
                     #everything is correct
-                    with open("./RequiredFiles/AdminIDS.txt", "a") as file:
+                    with open("./CriticalFiles/AdminIDS.txt", "a") as file:
                         file.write(f"\n{userID}|||{userLevel}")
                         
                     embed = nextcord.Embed(title = "Admin Added", description = f"\"{userID}\" added as an admin (level {userLevel})", color = nextcord.Color.green())
@@ -11549,7 +11549,7 @@ async def adminCommands(message: nextcord.Message):
             if 0 < userLevel <= 3: #if level is within 1-3
                 if userID in [admin[0] for admin in allAdmins]:
                     #everything is correct
-                    with open("./RequiredFiles/AdminIDS.txt", "r") as file:
+                    with open("./CriticalFiles/AdminIDS.txt", "r") as file:
                         admins = file.read().split("\n")
                     
                     changed = False
@@ -11567,7 +11567,7 @@ async def adminCommands(message: nextcord.Message):
                         await message.channel.send(embed = embed)
                         return 
                     
-                    with open("./RequiredFiles/AdminIDS.txt", "w") as file:
+                    with open("./CriticalFiles/AdminIDS.txt", "w") as file:
                         file.write("\n".join(admins))
                          
                     embed = nextcord.Embed(title = "Admin Edited", description = f"\"{userID}\" was edited to be of level {userLevel}", color = nextcord.Color.green())
@@ -11591,7 +11591,7 @@ async def adminCommands(message: nextcord.Message):
             userID = int(messageContentList[1])
             if userID in [admin[0] for admin in allAdmins]:
                 #everything is correct
-                with open("./RequiredFiles/AdminIDS.txt", "r") as file:
+                with open("./CriticalFiles/AdminIDS.txt", "r") as file:
                     admins = file.read().split("\n")
                 
                 changed = False
@@ -11611,7 +11611,7 @@ async def adminCommands(message: nextcord.Message):
                     await message.channel.send(embed = embed)
                     return 
                 
-                with open("./RequiredFiles/AdminIDS.txt", "w") as file:
+                with open("./CriticalFiles/AdminIDS.txt", "w") as file:
                     file.write("\n".join(newAdmins))
                         
                 embed = nextcord.Embed(title = "Admin Deleted", description = f"\"{userID}\" was deleted as an admin.", color = nextcord.Color.green())
@@ -11644,7 +11644,7 @@ async def adminCommands(message: nextcord.Message):
 
 
 token = ""
-with open("./RequiredFiles/TOKEN.txt", "r") as file:
+with open("./CriticalFiles/TOKEN.txt", "r") as file:
     token = file.read().split("\n")[0]
     
     
