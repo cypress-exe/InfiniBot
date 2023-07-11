@@ -664,7 +664,7 @@ class StatsMessage:
         '''Finds the message and determins whether it exists.'''
         if self.channelID == None or self.messageID == None:
             self.setValue(None)
-            return False
+            return False, None
         
         try:
             channel: nextcord.TextChannel = await self.guild.fetch_channel(self.channelID)
@@ -9383,7 +9383,8 @@ async def setupStats(interaction: Interaction):
     global statsInvalidMessage
     if await hasRole(interaction):
         server = Server(interaction.guild.id)
-        if await server.statsMessage.checkMessage():
+        exists, message = await server.statsMessage.checkMessage()
+        if exists:
             #they already have a stats message. We should double check that they want to continue.
             embed = nextcord.Embed(title = "Statistics Message Already Exists", description = f"Each server can only have one statistics message.\n\nCurrently, there is already a [statistics message]({server.statsMessage.link}). Would you like to replace it?", color = nextcord.Color.blue())
 
@@ -9397,7 +9398,6 @@ async def setupStats(interaction: Interaction):
             #they agree to override
             #first, change the existing one....
             try:
-                bool, message = await server.statsMessage.checkMessage()
                 await message.edit(embed = statsInvalidMessage)
             except nextcord.errors.Forbidden:
                 pass
@@ -9405,7 +9405,8 @@ async def setupStats(interaction: Interaction):
             #next, add new one...
             statsMessage = getStatsMessage(interaction.guild)
             
-            if not await checkTextChannelPermissions(interaction.channel, True):
+            if not await checkTextChannelPermissions(interaction.channel, False):
+                await interaction.followup.send(embed = nextcord.Embed(title = "Unable to Post Messages", description = "InfiniBot is unable to post messages in this channel. Please resolve this issue and try again.", color = nextcord.Color.red()), ephemeral = True)
                 return
             
             message = await interaction.channel.send(embed = statsMessage)
@@ -9418,7 +9419,8 @@ async def setupStats(interaction: Interaction):
             #they do not have a stats message.
             statsMessage = getStatsMessage(interaction.guild)
             
-            if not await checkTextChannelPermissions(interaction.channel, True):
+            if not await checkTextChannelPermissions(interaction.channel, False):
+                await interaction.followup.send(embed = nextcord.Embed(title = "Unable to Post Messages", description = "InfiniBot is unable to post messages in this channel. Please resolve this issue and try again.", color = nextcord.Color.red()), ephemeral = True)
                 return
             
             message = await interaction.channel.send(embed = statsMessage)
