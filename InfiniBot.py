@@ -1,7 +1,7 @@
 from nextcord import AuditLogAction, Interaction, SlashOption
 from nextcord.ext import commands
 #from youtube_dl import YoutubeDL
-from yt_dlp import YoutubeDL
+# from yt_dlp import YoutubeDL
 from collections import defaultdict
 from typing import List
 import nextcord
@@ -7392,399 +7392,400 @@ async def setAdminChannel(interaction: Interaction):
 
 
 #Music Bot Functionality ----------------------------------------------------------------------------------------------------------------------
-class Music:
-    def __init__(self, audioURL: str , title: str, videoURL:str , vc):
-        self.audioURL = audioURL
-        self.title = title
-        self.videoURL = videoURL
-        self.vc = vc
+if False:
+    class Music:
+        def __init__(self, audioURL: str , title: str, videoURL:str , vc):
+            self.audioURL = audioURL
+            self.title = title
+            self.videoURL = videoURL
+            self.vc = vc
 
 
-class Queue:
-    def __init__(self, serverID: int, playing: bool, paused: bool, vc: nextcord.voice_client, volume: int):
-        self.serverID = serverID
-        self.playing = playing
-        self.paused = paused
-        self.vc = vc
-        self.volume = volume
-        self.loop = False
-        self.queue: list[Music] = []
-    
-    def addSong(self, audioURL:str , title: str, videoURL:str , vc):
-        self.queue.append(Music(audioURL, title, videoURL, vc))
-
-    def deleteSong(self, index: int):
-        self.queue.pop(index)
-
-
-class MusicQueue:
-    def __init__(self):
-        self.queue: list[Queue] = []
-
-    def addServer(self, serverID: int):
-        self.queue.append(Queue(serverID, False, False, None, 100))
-        return self.getData(serverID)
-
-    def deleteServer(self, serverID: int):
-        index = None
-        for x in range(0, len(self.queue)):
-            if self.queue[x].serverID == serverID:
-                index = x
-                break
-
-        if not index == None:
-            self.queue.pop(index)
-            return True
-        return False
-
-    def getData(self, serverID: int):
-        index = None
-        for x in range(0, len(self.queue)):
-            if self.queue[x].serverID == serverID:
-                index = x
-                break
-
-        if index == None:
-            return musicQueue.addServer(serverID)
-
-        return self.queue[x]
+    class Queue:
+        def __init__(self, serverID: int, playing: bool, paused: bool, vc: nextcord.voice_client, volume: int):
+            self.serverID = serverID
+            self.playing = playing
+            self.paused = paused
+            self.vc = vc
+            self.volume = volume
+            self.loop = False
+            self.queue: list[Music] = []
         
+        def addSong(self, audioURL:str , title: str, videoURL:str , vc):
+            self.queue.append(Music(audioURL, title, videoURL, vc))
 
-musicQueue = MusicQueue()
-
-#add Server: musicQueue.addServer(serverID: int) returns the server's data
-#delete Server: musicQueue.deleteServer(serverID: int) #returns True if it was deleted, returns false if it didn't exist in the first place
-#get Server's data: musicQueue.getData(serverID: int)
-#add Song: musicQueue.getData(serverID: int).addSong(audioURL: str, title: str, videoURL: str, vc)
-#delete Song: musicQueue.getData(serverID: int).deleteSong(index: int)
-
-#get playing?: musicQueue.playing returns True or False
-#get paused?: musicQueue.paused returns True or False
-#get voice client: musicQueue.vc returns nextcord.voice_client/play 
-#get volume: musicQueue.volume returns int
-#get a song's audio URL: musicQueue.getData(serverID: int).queue[slot: int].audioURL returns str
-#get a song's title: musicQueue.getData(serverID: int).queue[slot: int].titleURL returns str
-#get a song's video URL: musicQueue.getData(serverID: int).queue[slot: int].videoURL returns str
-#get a song's vc: musicQueue.getData(serverID: int).queue[slot: int].vc returns vc (of any type)
-
-YDLP_OPTIONS = {'format':'bestaudio/best', 'noplaylist':'True', 'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}]}
-FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn'}
+        def deleteSong(self, index: int):
+            self.queue.pop(index)
 
 
+    class MusicQueue:
+        def __init__(self):
+            self.queue: list[Queue] = []
 
-async def canPlayMusic(interaction: Interaction, server: Server):
-    if server.musicBool:
-        return True
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Music Tools Disabled", description = "Music has been turned off. type \"/enable music\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
-        return False
+        def addServer(self, serverID: int):
+            self.queue.append(Queue(serverID, False, False, None, 100))
+            return self.getData(serverID)
 
+        def deleteServer(self, serverID: int):
+            index = None
+            for x in range(0, len(self.queue)):
+                if self.queue[x].serverID == serverID:
+                    index = x
+                    break
 
-def search_yt(item):
-    global YDLP_OPTIONS
-
-    with YoutubeDL(YDLP_OPTIONS) as ydlp:
-        try:
-            info = ydlp.extract_info("ytsearch:%s" % item, download=False)['entries'][0]
-        except Exception as exc:
-            print (exc)
+            if not index == None:
+                self.queue.pop(index)
+                return True
             return False
 
-    return {'source' : info['url'], 'title' : info['title'], 'video' : info['webpage_url']}
+        def getData(self, serverID: int):
+            index = None
+            for x in range(0, len(self.queue)):
+                if self.queue[x].serverID == serverID:
+                    index = x
+                    break
 
-async def stopVC(serverData: Queue, vc: nextcord.VoiceClient):
-    await vc.disconnect()
-    musicQueue.deleteServer(serverData.serverID)
+            if index == None:
+                return musicQueue.addServer(serverID)
 
-async def play_next(interaction: nextcord.Interaction):
-    serverData = musicQueue.getData(interaction.guild_id)
-    
-    if not serverData.loop:
-        serverData.deleteSong(0)
+            return self.queue[x]
+            
+
+    musicQueue = MusicQueue()
+
+    #add Server: musicQueue.addServer(serverID: int) returns the server's data
+    #delete Server: musicQueue.deleteServer(serverID: int) #returns True if it was deleted, returns false if it didn't exist in the first place
+    #get Server's data: musicQueue.getData(serverID: int)
+    #add Song: musicQueue.getData(serverID: int).addSong(audioURL: str, title: str, videoURL: str, vc)
+    #delete Song: musicQueue.getData(serverID: int).deleteSong(index: int)
+
+    #get playing?: musicQueue.playing returns True or False
+    #get paused?: musicQueue.paused returns True or False
+    #get voice client: musicQueue.vc returns nextcord.voice_client/play 
+    #get volume: musicQueue.volume returns int
+    #get a song's audio URL: musicQueue.getData(serverID: int).queue[slot: int].audioURL returns str
+    #get a song's title: musicQueue.getData(serverID: int).queue[slot: int].titleURL returns str
+    #get a song's video URL: musicQueue.getData(serverID: int).queue[slot: int].videoURL returns str
+    #get a song's vc: musicQueue.getData(serverID: int).queue[slot: int].vc returns vc (of any type)
+
+    YDLP_OPTIONS = {'format':'bestaudio/best', 'noplaylist':'True', 'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}]}
+    FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn'}
+
+
+
+    async def canPlayMusic(interaction: Interaction, server: Server):
+        if server.musicBool:
+            return True
+        else:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Music Tools Disabled", description = "Music has been turned off. type \"/enable music\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
+            return False
+
+
+    def search_yt(item):
+        global YDLP_OPTIONS
+
+        with YoutubeDL(YDLP_OPTIONS) as ydlp:
+            try:
+                info = ydlp.extract_info("ytsearch:%s" % item, download=False)['entries'][0]
+            except Exception as exc:
+                print (exc)
+                return False
+
+        return {'source' : info['url'], 'title' : info['title'], 'video' : info['webpage_url']}
+
+    async def stopVC(serverData: Queue, vc: nextcord.VoiceClient):
+        await vc.disconnect()
+        musicQueue.deleteServer(serverData.serverID)
+
+    async def play_next(interaction: nextcord.Interaction):
+        serverData = musicQueue.getData(interaction.guild_id)
         
-    if len(serverData.queue) > 0:
-        vc = serverData.queue[0].vc
-        if len(vc.members) == 1:
-            if vc.members[0].id == bot.application_id:
+        if not serverData.loop:
+            serverData.deleteSong(0)
+            
+        if len(serverData.queue) > 0:
+            vc = serverData.queue[0].vc
+            if len(vc.members) == 1:
+                if vc.members[0].id == bot.application_id:
+                    await stopVC(serverData, serverData.vc)
+                    return
+            elif len(vc.members) == 0:
                 await stopVC(serverData, serverData.vc)
                 return
-        elif len(vc.members) == 0:
+        else:
             await stopVC(serverData, serverData.vc)
             return
-    else:
-        await stopVC(serverData, serverData.vc)
-        return
-
-    await play_music(interaction)
-
-async def play_music(interaction: nextcord.Interaction):
-    serverData = musicQueue.getData(interaction.guild_id)
-    vc = serverData.vc
-
-    if len(serverData.queue) > 0: #if there is something in the queue
-        if vc is None or not vc.is_connected(): #if we need to connect to a vc
-            try:
-                vc = await serverData.queue[0].vc.connect()
-            except nextcord.errors.Forbidden:
-                await sendErrorMessageToOwner(interaction.guild, "Voice Connect and/or Speak")
-                return
-
-            if vc is None:
-                serverData.playing = False
-                serverData.paused = False
-                await vc.disconnect()
-                return
-
-            serverData.vc = vc
-
-        else:
-            try:
-                await vc.move_to(serverData.queue[0].vc)
-            except nextcord.errors.Forbidden:
-                await sendErrorMessageToOwner(interaction.guild, "Voice Connect and/or Speak")
-                return
-            else:
-                pass
-
-        m_url = serverData.queue[0].audioURL
-
-        serverData.playing = True
-        serverData.paused = False
-        vc.play(nextcord.PCMVolumeTransformer(nextcord.FFmpegPCMAudio(m_url, **FFMPEG_OPTIONS, executable = "./ffmpeg.exe")), after = lambda e: play_next(interaction)) # executable="/home/tasty-pie/Desktop/Infinibot/ffmpeg.exe"
-        vc.source.volume = serverData.volume
-
-    else:
-        serverData.playing = False
-        serverData.paused = False
-        try:
-            await vc.disconnect()
-        except:
-            return
-
-#@bot.slash_command(name = "play", description = "Play any song from YouTube", dm_permission=False)
-async def play(interaction: Interaction, music: str = SlashOption(description = "Can be a url or a search query")):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    #check search query for prohibited key-words
-    checkForNSFW = True
-    if checkForNSFW:
-        prohibitedWords = ["nude", "naked", "breast", "sex"]
-        for word in prohibitedWords:
-            if word in music:
-                await interaction.response.send_message(embed = nextcord.Embed(title = "Prohibited Search Query", description = "InfiniBot will not play that search query due to NSFW possibility", color = nextcord.Color.red()), ephemeral = True)
-                return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-
-    await interaction.response.defer()
-
-    if interaction.user.voice is None: #if the user is not in a voice channel
-        await interaction.followup.send(embed = nextcord.Embed(title = "Can't connect to your voice channel", description = "This command requires the user to be connected to a voice channel", color = nextcord.Color.red()), ephemeral = True)
-        return
-    
-    if not(interaction.user.voice.channel.permissions_for(interaction.guild.me).connect and interaction.user.voice.channel.permissions_for(interaction.guild.me).speak):
-        await interaction.followup.send(embed = nextcord.Embed(title = "Missing Permissions", description = "This command requires InfiniBot to have both **Voice Connect** and **Voice Speak** permissions.", color = nextcord.Color.red()), ephemeral = True)
-        await sendErrorMessageToOwner(interaction.guild, "Voice Connect and/or Speak", channel = f"#{interaction.user.voice.channel.name}")
-        return
-
-    if serverData.paused:
-        serverData.playing = True
-        serverData.paused = False
-        serverData.queue[0].vc.resume()
-
-    
-    music = search_yt(music)
-    if music == False:
-        embed = nextcord.Embed(title = "Could not Download Song", description = "Incorrect Format / Keyword", color = nextcord.Color.red())
-        embed.add_field(name = "Possible Reasons", value = "1. The keywords you used failed to yield a search result. Try a different keyword.\n2. The search result yielded a live stream result. You cannot play a live stream.\n3. The video is age-restricted.")
-        await interaction.followup.send(embed = embed, ephemeral = True)
-        return
-
-    print(music)
-    voice_channel = interaction.user.voice.channel
-
-    serverData.addSong(music['source'], music['title'], music['video'], voice_channel)
-    if serverData.playing:
-        embed = nextcord.Embed(title = "Music Added to Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green())
-        embed.add_field(name = music['title'], value = music['video'])
-        await interaction.followup.send(embed = embed, view = InviteView())
-
-    else:
-        embed = nextcord.Embed(title = "Playing Music", description = f"Action done by {interaction.user}", color = nextcord.Color.green())
-        embed.add_field(name = music['title'], value = music['video'])
-        await interaction.followup.send(embed = embed, view = InviteView())
-        
 
         await play_music(interaction)
 
-#@bot.slash_command(name = "skip", description="Skip the current song", dm_permission=False)
-async def skip(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-    vc = serverData.vc
+    async def play_music(interaction: nextcord.Interaction):
+        serverData = musicQueue.getData(interaction.guild_id)
+        vc = serverData.vc
 
-    if vc != None and vc:
-        vc.stop()
-        serverData.playing = True
-        serverData.paused = False
-        serverData.loop = False
-        if len(serverData.queue) > 1:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Song Skipped", description = f"Action done by {interaction.user}", color = nextcord.Color.yellow()))
+        if len(serverData.queue) > 0: #if there is something in the queue
+            if vc is None or not vc.is_connected(): #if we need to connect to a vc
+                try:
+                    vc = await serverData.queue[0].vc.connect()
+                except nextcord.errors.Forbidden:
+                    await sendErrorMessageToOwner(interaction.guild, "Voice Connect and/or Speak")
+                    return
+
+                if vc is None:
+                    serverData.playing = False
+                    serverData.paused = False
+                    await vc.disconnect()
+                    return
+
+                serverData.vc = vc
+
+            else:
+                try:
+                    await vc.move_to(serverData.queue[0].vc)
+                except nextcord.errors.Forbidden:
+                    await sendErrorMessageToOwner(interaction.guild, "Voice Connect and/or Speak")
+                    return
+                else:
+                    pass
+
+            m_url = serverData.queue[0].audioURL
+
+            serverData.playing = True
+            serverData.paused = False
+            vc.play(nextcord.PCMVolumeTransformer(nextcord.FFmpegPCMAudio(m_url, **FFMPEG_OPTIONS, executable = "./ffmpeg.exe")), after = lambda e: play_next(interaction)) # executable="/home/tasty-pie/Desktop/Infinibot/ffmpeg.exe"
+            vc.source.volume = serverData.volume
+
         else:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Song Skipped. No Music Left in Queue.", description = f"Action done by {interaction.user}", color = nextcord.Color.yellow()))
-            await stopVC(serverData, serverData.vc)
+            serverData.playing = False
+            serverData.paused = False
+            try:
+                await vc.disconnect()
+            except:
+                return
 
-    else:
-        serverData.playing = False
-        serverData.paused = False
-        await interaction.response.send_message(embed = nextcord.Embed(title = "No Music Playing", description = "Cannot skip when no music is playing", color = nextcord.Color.red()), ephemeral = True)
-
-#@bot.slash_command(name = "leave", description = "Leave the current voice channel and clear queue", dm_permission=False)
-async def leave(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-
-    if serverData.vc == None:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "No Music in Queue", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
-        return
-
-    await stopVC(serverData, serverData.vc)
-    await interaction.response.send_message(embed = nextcord.Embed(title = "Left voice channel", description = f"Action done by {interaction.user}", color = nextcord.Color.orange()))
-
-#@bot.slash_command(name = "stop", description = "Leave the current voice channel and clear queue", dm_permission=False)
-async def stop(interaction: Interaction):
-    await leave(interaction)
-
-#@bot.slash_command(name = "clear", description = "Clears all music in queue except for the current song", dm_permission=False)
-async def clear(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-
-    if serverData.vc == None:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "No Music in Queue", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
-        return
-    
-    for x in range(1, len(serverData.queue)):
-        serverData.deleteSong(1) #index is one because after we delete a song, the next songs shift up, so by always deleting one, we delete all the songs exept for song [0]
-
-    await interaction.response.send_message(embed = nextcord.Embed(title = "Queue Cleared", description = f"Action done by {interaction.user}", color = nextcord.Color.orange()))
-
-#@bot.slash_command(name = "queue", description = "Display the current queue", dm_permission=False)
-async def queue(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-
-    queueString = ""
-
-    for i in range(0, len(serverData.queue)):
-        if i > 9:
-            queueString += f"+{len(serverData.queue) - 10} more"
-            break
+    @bot.slash_command(name = "play", description = "Play any song from YouTube", dm_permission=False)
+    async def play(interaction: Interaction, music: str = SlashOption(description = "Can be a url or a search query")):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
         
-        if i == 0 and serverData.loop: queueString += f"1. {serverData.queue[i].title} (Looped)\n"
-        else: queueString += f"{str(i + 1)}. {serverData.queue[i].title}\n"
-
-    if queueString == "":
-        await interaction.response.send_message(embed = nextcord.Embed(title = "No Music in Queue", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
-        return
+        #check search query for prohibited key-words
+        checkForNSFW = True
+        if checkForNSFW:
+            prohibitedWords = ["nude", "naked", "breast", "sex"]
+            for word in prohibitedWords:
+                if word in music:
+                    await interaction.response.send_message(embed = nextcord.Embed(title = "Prohibited Search Query", description = "InfiniBot will not play that search query due to NSFW possibility", color = nextcord.Color.red()), ephemeral = True)
+                    return
         
-    await interaction.response.send_message(embed = nextcord.Embed(title = "Music Queue", description = queueString, color = nextcord.Color.blue()))
-
-#@bot.slash_command(name = "pause", description = "Pause the current song", dm_permission=False)
-async def pause(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-
-    if serverData.paused == False and serverData.playing == True:
-        serverData.playing = False
-        serverData.paused = True
-        serverData.vc.pause()
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Paused Current Song and Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
-
-    elif serverData.paused == True:
-        serverData.playing = True
-        serverData.paused = False
-        serverData.vc.resume()
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Resumed Current Song and Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
-
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "No music playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
-
-#@bot.slash_command(name = "resume", description = "Resume the current song", dm_permission=False)
-async def resume(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-
-    if serverData.paused == True:
-        serverData.playing = True
-        serverData.paused = False
-        serverData.vc.resume()
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Resumed Current Song and Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
-
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "No music playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
-
-#@bot.slash_command(name = "volume", description = "Get the volume or set the volume to any number between 0 and 100", dm_permission=False)
-async def volume(interaction: Interaction, volume: int = SlashOption(description = "Must be a number between 0 and 100", required = False)):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    if volume == None:
         serverData = musicQueue.getData(interaction.guild_id)
 
-        if serverData.vc == None: 
-            await interaction.response.send_message(embed = nextcord.Embed(title = "No music is playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+        await interaction.response.defer()
+
+        if interaction.user.voice is None: #if the user is not in a voice channel
+            await interaction.followup.send(embed = nextcord.Embed(title = "Can't connect to your voice channel", description = "This command requires the user to be connected to a voice channel", color = nextcord.Color.red()), ephemeral = True)
             return
         
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Volume at {int(serverData.vc.source.volume * 100)}%", description = "To change, type /volume [0-100]", color = nextcord.Color.blue()))
-        return
-    else:
+        if not(interaction.user.voice.channel.permissions_for(interaction.guild.me).connect and interaction.user.voice.channel.permissions_for(interaction.guild.me).speak):
+            await interaction.followup.send(embed = nextcord.Embed(title = "Missing Permissions", description = "This command requires InfiniBot to have both **Voice Connect** and **Voice Speak** permissions.", color = nextcord.Color.red()), ephemeral = True)
+            await sendErrorMessageToOwner(interaction.guild, "Voice Connect and/or Speak", channel = f"#{interaction.user.voice.channel.name}")
+            return
+
+        if serverData.paused:
+            serverData.playing = True
+            serverData.paused = False
+            serverData.queue[0].vc.resume()
+
+        
+        music = search_yt(music)
+        if music == False:
+            embed = nextcord.Embed(title = "Could not Download Song", description = "Incorrect Format / Keyword", color = nextcord.Color.red())
+            embed.add_field(name = "Possible Reasons", value = "1. The keywords you used failed to yield a search result. Try a different keyword.\n2. The search result yielded a live stream result. You cannot play a live stream.\n3. The video is age-restricted.")
+            await interaction.followup.send(embed = embed, ephemeral = True)
+            return
+
+        print(music)
+        voice_channel = interaction.user.voice.channel
+
+        serverData.addSong(music['source'], music['title'], music['video'], voice_channel)
+        if serverData.playing:
+            embed = nextcord.Embed(title = "Music Added to Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green())
+            embed.add_field(name = music['title'], value = music['video'])
+            await interaction.followup.send(embed = embed, view = InviteView())
+
+        else:
+            embed = nextcord.Embed(title = "Playing Music", description = f"Action done by {interaction.user}", color = nextcord.Color.green())
+            embed.add_field(name = music['title'], value = music['video'])
+            await interaction.followup.send(embed = embed, view = InviteView())
+            
+
+            await play_music(interaction)
+
+    @bot.slash_command(name = "skip", description="Skip the current song", dm_permission=False)
+    async def skip(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
+        serverData = musicQueue.getData(interaction.guild_id)
+        vc = serverData.vc
+
+        if vc != None and vc:
+            vc.stop()
+            serverData.playing = True
+            serverData.paused = False
+            serverData.loop = False
+            if len(serverData.queue) > 1:
+                await interaction.response.send_message(embed = nextcord.Embed(title = "Song Skipped", description = f"Action done by {interaction.user}", color = nextcord.Color.yellow()))
+            else:
+                await interaction.response.send_message(embed = nextcord.Embed(title = "Song Skipped. No Music Left in Queue.", description = f"Action done by {interaction.user}", color = nextcord.Color.yellow()))
+                await stopVC(serverData, serverData.vc)
+
+        else:
+            serverData.playing = False
+            serverData.paused = False
+            await interaction.response.send_message(embed = nextcord.Embed(title = "No Music Playing", description = "Cannot skip when no music is playing", color = nextcord.Color.red()), ephemeral = True)
+
+    @bot.slash_command(name = "leave", description = "Leave the current voice channel and clear queue", dm_permission=False)
+    async def leave(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
         serverData = musicQueue.getData(interaction.guild_id)
 
-        if serverData.vc == None: 
-            await interaction.response.send_message(embed = nextcord.Embed(title = "No music is playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+        if serverData.vc == None:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "No Music in Queue", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
             return
 
-        if int(volume) > 100 or int(volume) < 0:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Improper Format", description = "Volume must be between 0 and 100", color = nextcord.Color.red()), ephemeral = True)
+        await stopVC(serverData, serverData.vc)
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Left voice channel", description = f"Action done by {interaction.user}", color = nextcord.Color.orange()))
+
+    @bot.slash_command(name = "stop", description = "Leave the current voice channel and clear queue", dm_permission=False)
+    async def stop(interaction: Interaction):
+        await leave(interaction)
+
+    @bot.slash_command(name = "clear", description = "Clears all music in queue except for the current song", dm_permission=False)
+    async def clear(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
+        serverData = musicQueue.getData(interaction.guild_id)
+
+        if serverData.vc == None:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "No Music in Queue", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
             return
         
-        formattedVolume = int(volume) / 100 
+        for x in range(1, len(serverData.queue)):
+            serverData.deleteSong(1) #index is one because after we delete a song, the next songs shift up, so by always deleting one, we delete all the songs exept for song [0]
 
-        if not (serverData.vc == None): 
-            serverData.vc.source.volume = formattedVolume
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Queue Cleared", description = f"Action done by {interaction.user}", color = nextcord.Color.orange()))
 
-        serverData.volume = formattedVolume
+    @bot.slash_command(name = "queue", description = "Display the current queue", dm_permission=False)
+    async def queue(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
+        serverData = musicQueue.getData(interaction.guild_id)
 
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Volume Set to {volume}%", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+        queueString = ""
 
-#@bot.slash_command(name = "loop", description = "Loop / un-loop the current song", dm_permission=False)
-async def loop(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
+        for i in range(0, len(serverData.queue)):
+            if i > 9:
+                queueString += f"+{len(serverData.queue) - 10} more"
+                break
+            
+            if i == 0 and serverData.loop: queueString += f"1. {serverData.queue[i].title} (Looped)\n"
+            else: queueString += f"{str(i + 1)}. {serverData.queue[i].title}\n"
 
-    serverData = musicQueue.getData(interaction.guild_id)
+        if queueString == "":
+            await interaction.response.send_message(embed = nextcord.Embed(title = "No Music in Queue", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+            return
+            
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Music Queue", description = queueString, color = nextcord.Color.blue()))
 
-    if serverData.loop == False:
-        serverData.loop = True
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Looped Current Song", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+    @bot.slash_command(name = "pause", description = "Pause the current song", dm_permission=False)
+    async def pause(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
+        serverData = musicQueue.getData(interaction.guild_id)
 
-    else:
-        serverData.loop = False
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Un-Looped Current Song", description = f"Action done by {interaction.user}", color = nextcord.Color.dark_green()))
+        if serverData.paused == False and serverData.playing == True:
+            serverData.playing = False
+            serverData.paused = True
+            serverData.vc.pause()
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Paused Current Song and Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+
+        elif serverData.paused == True:
+            serverData.playing = True
+            serverData.paused = False
+            serverData.vc.resume()
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Resumed Current Song and Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+
+        else:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "No music playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+
+    @bot.slash_command(name = "resume", description = "Resume the current song", dm_permission=False)
+    async def resume(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
+        serverData = musicQueue.getData(interaction.guild_id)
+
+        if serverData.paused == True:
+            serverData.playing = True
+            serverData.paused = False
+            serverData.vc.resume()
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Resumed Current Song and Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+
+        else:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "No music playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+
+    @bot.slash_command(name = "volume", description = "Get the volume or set the volume to any number between 0 and 100", dm_permission=False)
+    async def volume(interaction: Interaction, volume: int = SlashOption(description = "Must be a number between 0 and 100", required = False)):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
+        if volume == None:
+            serverData = musicQueue.getData(interaction.guild_id)
+
+            if serverData.vc == None: 
+                await interaction.response.send_message(embed = nextcord.Embed(title = "No music is playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+                return
+            
+            await interaction.response.send_message(embed = nextcord.Embed(title = f"Volume at {int(serverData.vc.source.volume * 100)}%", description = "To change, type /volume [0-100]", color = nextcord.Color.blue()))
+            return
+        else:
+            serverData = musicQueue.getData(interaction.guild_id)
+
+            if serverData.vc == None: 
+                await interaction.response.send_message(embed = nextcord.Embed(title = "No music is playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+                return
+
+            if int(volume) > 100 or int(volume) < 0:
+                await interaction.response.send_message(embed = nextcord.Embed(title = "Improper Format", description = "Volume must be between 0 and 100", color = nextcord.Color.red()), ephemeral = True)
+                return
+            
+            formattedVolume = int(volume) / 100 
+
+            if not (serverData.vc == None): 
+                serverData.vc.source.volume = formattedVolume
+
+            serverData.volume = formattedVolume
+
+            await interaction.response.send_message(embed = nextcord.Embed(title = f"Volume Set to {volume}%", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+
+    @bot.slash_command(name = "loop", description = "Loop / un-loop the current song", dm_permission=False)
+    async def loop(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+
+        serverData = musicQueue.getData(interaction.guild_id)
+
+        if serverData.loop == False:
+            serverData.loop = True
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Looped Current Song", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+
+        else:
+            serverData.loop = False
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Un-Looped Current Song", description = f"Action done by {interaction.user}", color = nextcord.Color.dark_green()))
 #Music Bot Functionality END ---------------------------------------------------------------------------------------------------------------
 
 
