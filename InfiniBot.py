@@ -2376,7 +2376,7 @@ class RoleMessageButton_Single(nextcord.ui.View):
                 
                 options.append(nextcord.SelectOption(label = field.name, description = description, value = "|".join(roles), default = selected))
                 
-            self.select = nextcord.ui.Select(placeholder = "Choose Roles", min_values = 0, options = options)
+            self.select = nextcord.ui.Select(placeholder = "Choose a Role", min_values = 0, options = options)
             self.select.callback = self.selectCallback
             self.add_item(self.select)
                 
@@ -11576,6 +11576,10 @@ class EditRoleMessage(nextcord.ui.View):
                 self.select = nextcord.ui.Select(options = options, placeholder = "Choose a Mode")
                 self.add_item(self.select)
                 
+                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1) 
+                self.backBtn.callback = self.backBtnCallback
+                self.add_item(self.backBtn)
+                
                 self.createBtn = nextcord.ui.Button(label = "Change Mode", style = nextcord.ButtonStyle.blurple)
                 self.createBtn.callback = self.createBtnCallback
                 self.add_item(self.createBtn)
@@ -11583,6 +11587,9 @@ class EditRoleMessage(nextcord.ui.View):
             async def setup(self, interaction: Interaction):
                 embed = nextcord.Embed(title = "Edit Role Message - Change Mode", description = "Decide whether you want members to have the option to select multiple choices or just one.", color = nextcord.Color.yellow())
                 await interaction.response.edit_message(embed = embed, view = self)
+            
+            async def backBtnCallback(self, interaction: Interaction):
+                await self.outer.setup(interaction)
             
             async def createBtnCallback(self, interaction: Interaction):
                 values = self.select.values
