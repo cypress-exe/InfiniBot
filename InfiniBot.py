@@ -1,7 +1,7 @@
 from nextcord import AuditLogAction, Interaction, SlashOption
 from nextcord.ext import commands
 #from youtube_dl import YoutubeDL
-from yt_dlp import YoutubeDL
+# from yt_dlp import YoutubeDL
 from collections import defaultdict
 from typing import List
 import nextcord
@@ -293,6 +293,7 @@ class FileOperations:
               'votes': False,
               'reaction_roles': False,
               'embeds': False,
+              'role_messages': False,
               'purging': False,
               'motivational_statements': False,
               'dashboard': False,
@@ -1688,6 +1689,10 @@ class Messages:
             "Embed": {
                 "list": [],
                 "max_active_messages": 20
+            },
+            "Role Message": {
+                "list": [],
+                "max_active_messages": 10
             }
         }
         
@@ -1924,6 +1929,7 @@ class Main:
         self.global_kill_votes = self.rawPersistentData['global_kill']['votes']
         self.global_kill_reaction_roles = self.rawPersistentData['global_kill']['reaction_roles']
         self.global_kill_embeds = self.rawPersistentData['global_kill']['embeds']
+        self.global_kill_role_messages = self.rawPersistentData['global_kill']['role_messages']
         self.global_kill_purging = self.rawPersistentData['global_kill']['purging']
         self.global_kill_motivational_statements = self.rawPersistentData['global_kill']['motivational_statements']
         self.global_kill_dashboard = self.rawPersistentData['global_kill']['dashboard']
@@ -1957,6 +1963,7 @@ class Main:
               'votes': self.global_kill_votes,
               'reaction_roles': self.global_kill_reaction_roles,
               'embeds': self.global_kill_embeds,
+              'role_messages': self.global_kill_role_messages,
               'purging': self.global_kill_purging,
               'motivational_statements': self.global_kill_motivational_statements,
               'dashboard': self.global_kill_dashboard,
@@ -2183,6 +2190,21 @@ class Utils:
                     return None
                 
             return (not main.global_kill_embeds)
+
+        def RoleMessages(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if role messages are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_role_messages)
         
         def Purging(self, guild_id: str = None, server: Server = None, check = False):
             """Returns if purging is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
@@ -2319,6 +2341,172 @@ class ErrorWhyAdminPrivilegesButton(nextcord.ui.View):
         button.disabled = True
         
         await interaction.response.edit_message(view = self, embed = embed)
+
+# Role Message Button
+class RoleMessageButton_Single(nextcord.ui.View):
+    def __init__(self):
+        super().__init__(timeout = None)
+    
+    class View(nextcord.ui.View):
+        def __init__(self, user: nextcord.Member, message: nextcord.Message):
+            super().__init__(timeout = None)
+            self.message = message
+            self.availableRoles = []
+            
+            userRoleIds = [role.id for role in user.roles if role.name != "@everyone"]
+            
+            optionSelected = False
+            options = []
+            for field in self.message.embeds[0].fields:
+                description = "\n".join(field.value.split("\n")[:-1])
+                roles = self.extract_ids(field.value.split("/n")[-1])
+                self.add_available_roles(roles)
+                
+                # Check if the user has the roles
+                selected = False
+                for index, role in enumerate(roles):
+                    if not int(role) in userRoleIds:
+                        break
+                    else:
+                        if index == (len(roles) - 1): # If this is the last role to check
+                            if not optionSelected:
+                                selected = True
+                                optionSelected = True
+                            break
+                
+                options.append(nextcord.SelectOption(label = field.name, description = description, value = "|".join(roles), default = selected))
+                
+            self.select = nextcord.ui.Select(placeholder = "Choose Roles", min_values = 0, options = options)
+            self.select.callback = self.selectCallback
+            self.add_item(self.select)
+                
+        def extract_ids(self, input_string):
+            pattern = r"<@&(\d+)>"
+            matches = re.findall(pattern, input_string)
+            return matches
+            
+        def add_available_roles(self, rolesList):
+            for role in rolesList:
+                if int(role) not in self.availableRoles:
+                    self.availableRoles.append(int(role))
+            
+        async def setup(self, interaction: Interaction):
+            await interaction.response.send_message(view = self, ephemeral = True)
+            
+        async def selectCallback(self, interaction: Interaction):
+            selection = self.select.values
+            selectedRoles = []
+            for option in selection:
+                for role in option.split("|"):
+                    selectedRoles.append(int(role))
+                    
+            # Get the roles
+            
+            roles_add = []
+            roles_remove = []
+            for role in self.availableRoles:
+                if role in selectedRoles:
+                    roles_add.append(interaction.guild.get_role(int(role)))
+                else:
+                    roles_remove.append(interaction.guild.get_role(int(role)))
+                    
+            error = False
+            try:
+                await interaction.user.add_roles(*roles_add)
+                await interaction.user.remove_roles(*roles_remove)
+            except nextcord.errors.Forbidden:
+                error = True
+                
+            embed = nextcord.Embed(title = "Modified Roles", color = nextcord.Color.green())
+            if error: embed.description = "Warning: An error occurred with one or more roles. Please notify server admins."
+            
+            await interaction.response.edit_message(embed = embed, view = None, delete_after = 2.0)
+    
+    @nextcord.ui.button(label = "Get Role", style = nextcord.ButtonStyle.blurple, custom_id = "get_role")
+    async def event(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        message = interaction.message
+        await self.View(interaction.user, message).setup(interaction)
+
+class RoleMessageButton_Multiple(nextcord.ui.View):
+    def __init__(self):
+        super().__init__(timeout = None)
+    
+    class View(nextcord.ui.View):
+        def __init__(self, user: nextcord.Member, message: nextcord.Message):
+            super().__init__(timeout = None)
+            self.message = message
+            self.availableRoles = []
+            
+            userRoleIds = [role.id for role in user.roles if role.name != "@everyone"]
+            
+            options = []
+            for field in self.message.embeds[0].fields:
+                description = "\n".join(field.value.split("\n")[:-1])
+                roles = self.extract_ids(field.value.split("/n")[-1])
+                self.add_available_roles(roles)
+                
+                # Check if the user has the roles
+                selected = False
+                for index, role in enumerate(roles):
+                    if not int(role) in userRoleIds:
+                        break
+                    else:
+                        if index == (len(roles) - 1): # If this is the last role to check
+                            selected = True
+                            break
+                
+                options.append(nextcord.SelectOption(label = field.name, description = description, value = "|".join(roles), default = selected))
+                
+            self.select = nextcord.ui.Select(placeholder = "Choose Roles", min_values = 0, max_values = len(options), options = options)
+            self.select.callback = self.selectCallback
+            self.add_item(self.select)
+                
+        def extract_ids(self, input_string):
+            pattern = r"<@&(\d+)>"
+            matches = re.findall(pattern, input_string)
+            return matches
+            
+        def add_available_roles(self, rolesList):
+            for role in rolesList:
+                if int(role) not in self.availableRoles:
+                    self.availableRoles.append(int(role))
+            
+        async def setup(self, interaction: Interaction):
+            await interaction.response.send_message(view = self, ephemeral = True)
+            
+        async def selectCallback(self, interaction: Interaction):
+            selection = self.select.values
+            selectedRoles = []
+            for option in selection:
+                for role in option.split("|"):
+                    selectedRoles.append(int(role))
+                    
+            # Get the roles
+            
+            roles_add = []
+            roles_remove = []
+            for role in self.availableRoles:
+                if role in selectedRoles:
+                    roles_add.append(interaction.guild.get_role(int(role)))
+                else:
+                    roles_remove.append(interaction.guild.get_role(int(role)))
+                    
+            error = False
+            try:
+                await interaction.user.add_roles(*roles_add)
+                await interaction.user.remove_roles(*roles_remove)
+            except nextcord.errors.Forbidden:
+                error = True
+                
+            embed = nextcord.Embed(title = "Modified Roles", color = nextcord.Color.green())
+            if error: embed.description = "Warning: An error occurred with one or more roles. Please notify server admins."
+            
+            await interaction.response.edit_message(embed = embed, view = None, delete_after = 2.0)
+    
+    @nextcord.ui.button(label = "Get Roles", style = nextcord.ButtonStyle.blurple, custom_id = "get_roles")
+    async def event(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        message = interaction.message
+        await self.View(interaction.user, message).setup(interaction)
 
 
 
@@ -2703,8 +2891,8 @@ class SelectView(nextcord.ui.View):
         The embed
     options: `list[nextcord.SelectOption]`
         Options of the Select
-    returnCommand: `def(str | None)`
-        Command to call when finished
+    returnCommand: `def(interaction, str | None)`
+        Command to call when finished. Returns a value if the user selected something. Returns None if the user canceled.
         
     Optional Parameters
     ------
@@ -5282,6 +5470,9 @@ class Dashboard(nextcord.ui.View):
                 self.embedBtn = self.OptionButton(self, "Embed")
                 self.add_item(self.embedBtn)
                 
+                self.embedBtn = self.OptionButton(self, "Role Message")
+                self.add_item(self.embedBtn)
+                
                 self.backBtn = nextcord.ui.Button(label = "Back", row = 1, style = nextcord.ButtonStyle.danger)
                 self.backBtn.callback = self.backBtnCallback
                 self.add_item(self.backBtn)
@@ -5297,7 +5488,8 @@ class Dashboard(nextcord.ui.View):
                 
                 Votes ({server.messages.countOf("Vote")}/10)
                 Reaction Roles ({server.messages.countOf("Reaction Role")}/10)
-                Embeds ({server.messages.countOf("Embed")}/20)"""
+                Embeds ({server.messages.countOf("Embed")}/20)
+                Role Messages ({server.messages.countOf("Role Message")}/10)"""
                 
                 # On Mobile, extra spaces cause problems. We'll get rid of them here:
                 description = standardizeStrIndention(description)
@@ -6155,6 +6347,8 @@ async def on_ready():
         bot.add_view(IncorrectButton())
         bot.add_view(ShowMoreButton())
         bot.add_view(ErrorWhyAdminPrivilegesButton())
+        bot.add_view(RoleMessageButton_Single())
+        bot.add_view(RoleMessageButton_Multiple())
         viewsInitialized = True
         
     print(f"Logged in as: {bot.user.name}")
@@ -6688,7 +6882,7 @@ async def hasRole(interaction: Interaction, notify = True):
     if infinibotMod_role in interaction.user.roles:
         return True
 
-    if notify: await interaction.response.send_message(embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.", color = nextcord.Color.red()), ephemeral = True)
+    if notify: await interaction.response.send_message(embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.\n\nType `/help infinibot_mod` for more information.", color = nextcord.Color.red()), ephemeral = True)
     return False
 
 async def checkIfTextChannel(interaction: Interaction):
@@ -7392,399 +7586,400 @@ async def setAdminChannel(interaction: Interaction):
 
 
 #Music Bot Functionality ----------------------------------------------------------------------------------------------------------------------
-class Music:
-    def __init__(self, audioURL: str , title: str, videoURL:str , vc):
-        self.audioURL = audioURL
-        self.title = title
-        self.videoURL = videoURL
-        self.vc = vc
+if False:
+    class Music:
+        def __init__(self, audioURL: str , title: str, videoURL:str , vc):
+            self.audioURL = audioURL
+            self.title = title
+            self.videoURL = videoURL
+            self.vc = vc
 
 
-class Queue:
-    def __init__(self, serverID: int, playing: bool, paused: bool, vc: nextcord.voice_client, volume: int):
-        self.serverID = serverID
-        self.playing = playing
-        self.paused = paused
-        self.vc = vc
-        self.volume = volume
-        self.loop = False
-        self.queue: list[Music] = []
-    
-    def addSong(self, audioURL:str , title: str, videoURL:str , vc):
-        self.queue.append(Music(audioURL, title, videoURL, vc))
-
-    def deleteSong(self, index: int):
-        self.queue.pop(index)
-
-
-class MusicQueue:
-    def __init__(self):
-        self.queue: list[Queue] = []
-
-    def addServer(self, serverID: int):
-        self.queue.append(Queue(serverID, False, False, None, 100))
-        return self.getData(serverID)
-
-    def deleteServer(self, serverID: int):
-        index = None
-        for x in range(0, len(self.queue)):
-            if self.queue[x].serverID == serverID:
-                index = x
-                break
-
-        if not index == None:
-            self.queue.pop(index)
-            return True
-        return False
-
-    def getData(self, serverID: int):
-        index = None
-        for x in range(0, len(self.queue)):
-            if self.queue[x].serverID == serverID:
-                index = x
-                break
-
-        if index == None:
-            return musicQueue.addServer(serverID)
-
-        return self.queue[x]
+    class Queue:
+        def __init__(self, serverID: int, playing: bool, paused: bool, vc: nextcord.voice_client, volume: int):
+            self.serverID = serverID
+            self.playing = playing
+            self.paused = paused
+            self.vc = vc
+            self.volume = volume
+            self.loop = False
+            self.queue: list[Music] = []
         
+        def addSong(self, audioURL:str , title: str, videoURL:str , vc):
+            self.queue.append(Music(audioURL, title, videoURL, vc))
 
-musicQueue = MusicQueue()
-
-#add Server: musicQueue.addServer(serverID: int) returns the server's data
-#delete Server: musicQueue.deleteServer(serverID: int) #returns True if it was deleted, returns false if it didn't exist in the first place
-#get Server's data: musicQueue.getData(serverID: int)
-#add Song: musicQueue.getData(serverID: int).addSong(audioURL: str, title: str, videoURL: str, vc)
-#delete Song: musicQueue.getData(serverID: int).deleteSong(index: int)
-
-#get playing?: musicQueue.playing returns True or False
-#get paused?: musicQueue.paused returns True or False
-#get voice client: musicQueue.vc returns nextcord.voice_client/play 
-#get volume: musicQueue.volume returns int
-#get a song's audio URL: musicQueue.getData(serverID: int).queue[slot: int].audioURL returns str
-#get a song's title: musicQueue.getData(serverID: int).queue[slot: int].titleURL returns str
-#get a song's video URL: musicQueue.getData(serverID: int).queue[slot: int].videoURL returns str
-#get a song's vc: musicQueue.getData(serverID: int).queue[slot: int].vc returns vc (of any type)
-
-YDLP_OPTIONS = {'format':'bestaudio/best', 'noplaylist':'True', 'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}]}
-FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn'}
+        def deleteSong(self, index: int):
+            self.queue.pop(index)
 
 
+    class MusicQueue:
+        def __init__(self):
+            self.queue: list[Queue] = []
 
-async def canPlayMusic(interaction: Interaction, server: Server):
-    if server.musicBool:
-        return True
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Music Tools Disabled", description = "Music has been turned off. type \"/enable music\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
-        return False
+        def addServer(self, serverID: int):
+            self.queue.append(Queue(serverID, False, False, None, 100))
+            return self.getData(serverID)
 
+        def deleteServer(self, serverID: int):
+            index = None
+            for x in range(0, len(self.queue)):
+                if self.queue[x].serverID == serverID:
+                    index = x
+                    break
 
-def search_yt(item):
-    global YDLP_OPTIONS
-
-    with YoutubeDL(YDLP_OPTIONS) as ydlp:
-        try:
-            info = ydlp.extract_info("ytsearch:%s" % item, download=False)['entries'][0]
-        except Exception as exc:
-            print (exc)
+            if not index == None:
+                self.queue.pop(index)
+                return True
             return False
 
-    return {'source' : info['url'], 'title' : info['title'], 'video' : info['webpage_url']}
+        def getData(self, serverID: int):
+            index = None
+            for x in range(0, len(self.queue)):
+                if self.queue[x].serverID == serverID:
+                    index = x
+                    break
 
-async def stopVC(serverData: Queue, vc: nextcord.VoiceClient):
-    await vc.disconnect()
-    musicQueue.deleteServer(serverData.serverID)
+            if index == None:
+                return musicQueue.addServer(serverID)
 
-async def play_next(interaction: nextcord.Interaction):
-    serverData = musicQueue.getData(interaction.guild_id)
-    
-    if not serverData.loop:
-        serverData.deleteSong(0)
+            return self.queue[x]
+            
+
+    musicQueue = MusicQueue()
+
+    #add Server: musicQueue.addServer(serverID: int) returns the server's data
+    #delete Server: musicQueue.deleteServer(serverID: int) #returns True if it was deleted, returns false if it didn't exist in the first place
+    #get Server's data: musicQueue.getData(serverID: int)
+    #add Song: musicQueue.getData(serverID: int).addSong(audioURL: str, title: str, videoURL: str, vc)
+    #delete Song: musicQueue.getData(serverID: int).deleteSong(index: int)
+
+    #get playing?: musicQueue.playing returns True or False
+    #get paused?: musicQueue.paused returns True or False
+    #get voice client: musicQueue.vc returns nextcord.voice_client/play 
+    #get volume: musicQueue.volume returns int
+    #get a song's audio URL: musicQueue.getData(serverID: int).queue[slot: int].audioURL returns str
+    #get a song's title: musicQueue.getData(serverID: int).queue[slot: int].titleURL returns str
+    #get a song's video URL: musicQueue.getData(serverID: int).queue[slot: int].videoURL returns str
+    #get a song's vc: musicQueue.getData(serverID: int).queue[slot: int].vc returns vc (of any type)
+
+    YDLP_OPTIONS = {'format':'bestaudio/best', 'noplaylist':'True', 'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}]}
+    FFMPEG_OPTIONS = {'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5','options': '-vn'}
+
+
+
+    async def canPlayMusic(interaction: Interaction, server: Server):
+        if server.musicBool:
+            return True
+        else:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Music Tools Disabled", description = "Music has been turned off. type \"/enable music\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
+            return False
+
+
+    def search_yt(item):
+        global YDLP_OPTIONS
+
+        with YoutubeDL(YDLP_OPTIONS) as ydlp:
+            try:
+                info = ydlp.extract_info("ytsearch:%s" % item, download=False)['entries'][0]
+            except Exception as exc:
+                print (exc)
+                return False
+
+        return {'source' : info['url'], 'title' : info['title'], 'video' : info['webpage_url']}
+
+    async def stopVC(serverData: Queue, vc: nextcord.VoiceClient):
+        await vc.disconnect()
+        musicQueue.deleteServer(serverData.serverID)
+
+    async def play_next(interaction: nextcord.Interaction):
+        serverData = musicQueue.getData(interaction.guild_id)
         
-    if len(serverData.queue) > 0:
-        vc = serverData.queue[0].vc
-        if len(vc.members) == 1:
-            if vc.members[0].id == bot.application_id:
+        if not serverData.loop:
+            serverData.deleteSong(0)
+            
+        if len(serverData.queue) > 0:
+            vc = serverData.queue[0].vc
+            if len(vc.members) == 1:
+                if vc.members[0].id == bot.application_id:
+                    await stopVC(serverData, serverData.vc)
+                    return
+            elif len(vc.members) == 0:
                 await stopVC(serverData, serverData.vc)
                 return
-        elif len(vc.members) == 0:
+        else:
             await stopVC(serverData, serverData.vc)
             return
-    else:
-        await stopVC(serverData, serverData.vc)
-        return
-
-    await play_music(interaction)
-
-async def play_music(interaction: nextcord.Interaction):
-    serverData = musicQueue.getData(interaction.guild_id)
-    vc = serverData.vc
-
-    if len(serverData.queue) > 0: #if there is something in the queue
-        if vc is None or not vc.is_connected(): #if we need to connect to a vc
-            try:
-                vc = await serverData.queue[0].vc.connect()
-            except nextcord.errors.Forbidden:
-                await sendErrorMessageToOwner(interaction.guild, "Voice Connect and/or Speak")
-                return
-
-            if vc is None:
-                serverData.playing = False
-                serverData.paused = False
-                await vc.disconnect()
-                return
-
-            serverData.vc = vc
-
-        else:
-            try:
-                await vc.move_to(serverData.queue[0].vc)
-            except nextcord.errors.Forbidden:
-                await sendErrorMessageToOwner(interaction.guild, "Voice Connect and/or Speak")
-                return
-            else:
-                pass
-
-        m_url = serverData.queue[0].audioURL
-
-        serverData.playing = True
-        serverData.paused = False
-        vc.play(nextcord.PCMVolumeTransformer(nextcord.FFmpegPCMAudio(m_url, **FFMPEG_OPTIONS, executable = "./ffmpeg.exe")), after = lambda e: play_next(interaction)) # executable="/home/tasty-pie/Desktop/Infinibot/ffmpeg.exe"
-        vc.source.volume = serverData.volume
-
-    else:
-        serverData.playing = False
-        serverData.paused = False
-        try:
-            await vc.disconnect()
-        except:
-            return
-
-#@bot.slash_command(name = "play", description = "Play any song from YouTube", dm_permission=False)
-async def play(interaction: Interaction, music: str = SlashOption(description = "Can be a url or a search query")):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    #check search query for prohibited key-words
-    checkForNSFW = True
-    if checkForNSFW:
-        prohibitedWords = ["nude", "naked", "breast", "sex"]
-        for word in prohibitedWords:
-            if word in music:
-                await interaction.response.send_message(embed = nextcord.Embed(title = "Prohibited Search Query", description = "InfiniBot will not play that search query due to NSFW possibility", color = nextcord.Color.red()), ephemeral = True)
-                return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-
-    await interaction.response.defer()
-
-    if interaction.user.voice is None: #if the user is not in a voice channel
-        await interaction.followup.send(embed = nextcord.Embed(title = "Can't connect to your voice channel", description = "This command requires the user to be connected to a voice channel", color = nextcord.Color.red()), ephemeral = True)
-        return
-    
-    if not(interaction.user.voice.channel.permissions_for(interaction.guild.me).connect and interaction.user.voice.channel.permissions_for(interaction.guild.me).speak):
-        await interaction.followup.send(embed = nextcord.Embed(title = "Missing Permissions", description = "This command requires InfiniBot to have both **Voice Connect** and **Voice Speak** permissions.", color = nextcord.Color.red()), ephemeral = True)
-        await sendErrorMessageToOwner(interaction.guild, "Voice Connect and/or Speak", channel = f"#{interaction.user.voice.channel.name}")
-        return
-
-    if serverData.paused:
-        serverData.playing = True
-        serverData.paused = False
-        serverData.queue[0].vc.resume()
-
-    
-    music = search_yt(music)
-    if music == False:
-        embed = nextcord.Embed(title = "Could not Download Song", description = "Incorrect Format / Keyword", color = nextcord.Color.red())
-        embed.add_field(name = "Possible Reasons", value = "1. The keywords you used failed to yield a search result. Try a different keyword.\n2. The search result yielded a live stream result. You cannot play a live stream.\n3. The video is age-restricted.")
-        await interaction.followup.send(embed = embed, ephemeral = True)
-        return
-
-    print(music)
-    voice_channel = interaction.user.voice.channel
-
-    serverData.addSong(music['source'], music['title'], music['video'], voice_channel)
-    if serverData.playing:
-        embed = nextcord.Embed(title = "Music Added to Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green())
-        embed.add_field(name = music['title'], value = music['video'])
-        await interaction.followup.send(embed = embed, view = InviteView())
-
-    else:
-        embed = nextcord.Embed(title = "Playing Music", description = f"Action done by {interaction.user}", color = nextcord.Color.green())
-        embed.add_field(name = music['title'], value = music['video'])
-        await interaction.followup.send(embed = embed, view = InviteView())
-        
 
         await play_music(interaction)
 
-#@bot.slash_command(name = "skip", description="Skip the current song", dm_permission=False)
-async def skip(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-    vc = serverData.vc
+    async def play_music(interaction: nextcord.Interaction):
+        serverData = musicQueue.getData(interaction.guild_id)
+        vc = serverData.vc
 
-    if vc != None and vc:
-        vc.stop()
-        serverData.playing = True
-        serverData.paused = False
-        serverData.loop = False
-        if len(serverData.queue) > 1:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Song Skipped", description = f"Action done by {interaction.user}", color = nextcord.Color.yellow()))
+        if len(serverData.queue) > 0: #if there is something in the queue
+            if vc is None or not vc.is_connected(): #if we need to connect to a vc
+                try:
+                    vc = await serverData.queue[0].vc.connect()
+                except nextcord.errors.Forbidden:
+                    await sendErrorMessageToOwner(interaction.guild, "Voice Connect and/or Speak")
+                    return
+
+                if vc is None:
+                    serverData.playing = False
+                    serverData.paused = False
+                    await vc.disconnect()
+                    return
+
+                serverData.vc = vc
+
+            else:
+                try:
+                    await vc.move_to(serverData.queue[0].vc)
+                except nextcord.errors.Forbidden:
+                    await sendErrorMessageToOwner(interaction.guild, "Voice Connect and/or Speak")
+                    return
+                else:
+                    pass
+
+            m_url = serverData.queue[0].audioURL
+
+            serverData.playing = True
+            serverData.paused = False
+            vc.play(nextcord.PCMVolumeTransformer(nextcord.FFmpegPCMAudio(m_url, **FFMPEG_OPTIONS, executable = "./ffmpeg.exe")), after = lambda e: play_next(interaction)) # executable="/home/tasty-pie/Desktop/Infinibot/ffmpeg.exe"
+            vc.source.volume = serverData.volume
+
         else:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Song Skipped. No Music Left in Queue.", description = f"Action done by {interaction.user}", color = nextcord.Color.yellow()))
-            await stopVC(serverData, serverData.vc)
+            serverData.playing = False
+            serverData.paused = False
+            try:
+                await vc.disconnect()
+            except:
+                return
 
-    else:
-        serverData.playing = False
-        serverData.paused = False
-        await interaction.response.send_message(embed = nextcord.Embed(title = "No Music Playing", description = "Cannot skip when no music is playing", color = nextcord.Color.red()), ephemeral = True)
-
-#@bot.slash_command(name = "leave", description = "Leave the current voice channel and clear queue", dm_permission=False)
-async def leave(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-
-    if serverData.vc == None:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "No Music in Queue", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
-        return
-
-    await stopVC(serverData, serverData.vc)
-    await interaction.response.send_message(embed = nextcord.Embed(title = "Left voice channel", description = f"Action done by {interaction.user}", color = nextcord.Color.orange()))
-
-#@bot.slash_command(name = "stop", description = "Leave the current voice channel and clear queue", dm_permission=False)
-async def stop(interaction: Interaction):
-    await leave(interaction)
-
-#@bot.slash_command(name = "clear", description = "Clears all music in queue except for the current song", dm_permission=False)
-async def clear(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-
-    if serverData.vc == None:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "No Music in Queue", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
-        return
-    
-    for x in range(1, len(serverData.queue)):
-        serverData.deleteSong(1) #index is one because after we delete a song, the next songs shift up, so by always deleting one, we delete all the songs exept for song [0]
-
-    await interaction.response.send_message(embed = nextcord.Embed(title = "Queue Cleared", description = f"Action done by {interaction.user}", color = nextcord.Color.orange()))
-
-#@bot.slash_command(name = "queue", description = "Display the current queue", dm_permission=False)
-async def queue(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-
-    queueString = ""
-
-    for i in range(0, len(serverData.queue)):
-        if i > 9:
-            queueString += f"+{len(serverData.queue) - 10} more"
-            break
+    @bot.slash_command(name = "play", description = "Play any song from YouTube", dm_permission=False)
+    async def play(interaction: Interaction, music: str = SlashOption(description = "Can be a url or a search query")):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
         
-        if i == 0 and serverData.loop: queueString += f"1. {serverData.queue[i].title} (Looped)\n"
-        else: queueString += f"{str(i + 1)}. {serverData.queue[i].title}\n"
-
-    if queueString == "":
-        await interaction.response.send_message(embed = nextcord.Embed(title = "No Music in Queue", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
-        return
+        #check search query for prohibited key-words
+        checkForNSFW = True
+        if checkForNSFW:
+            prohibitedWords = ["nude", "naked", "breast", "sex"]
+            for word in prohibitedWords:
+                if word in music:
+                    await interaction.response.send_message(embed = nextcord.Embed(title = "Prohibited Search Query", description = "InfiniBot will not play that search query due to NSFW possibility", color = nextcord.Color.red()), ephemeral = True)
+                    return
         
-    await interaction.response.send_message(embed = nextcord.Embed(title = "Music Queue", description = queueString, color = nextcord.Color.blue()))
-
-#@bot.slash_command(name = "pause", description = "Pause the current song", dm_permission=False)
-async def pause(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-
-    if serverData.paused == False and serverData.playing == True:
-        serverData.playing = False
-        serverData.paused = True
-        serverData.vc.pause()
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Paused Current Song and Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
-
-    elif serverData.paused == True:
-        serverData.playing = True
-        serverData.paused = False
-        serverData.vc.resume()
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Resumed Current Song and Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
-
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "No music playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
-
-#@bot.slash_command(name = "resume", description = "Resume the current song", dm_permission=False)
-async def resume(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    serverData = musicQueue.getData(interaction.guild_id)
-
-    if serverData.paused == True:
-        serverData.playing = True
-        serverData.paused = False
-        serverData.vc.resume()
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Resumed Current Song and Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
-
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "No music playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
-
-#@bot.slash_command(name = "volume", description = "Get the volume or set the volume to any number between 0 and 100", dm_permission=False)
-async def volume(interaction: Interaction, volume: int = SlashOption(description = "Must be a number between 0 and 100", required = False)):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
-    
-    if volume == None:
         serverData = musicQueue.getData(interaction.guild_id)
 
-        if serverData.vc == None: 
-            await interaction.response.send_message(embed = nextcord.Embed(title = "No music is playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+        await interaction.response.defer()
+
+        if interaction.user.voice is None: #if the user is not in a voice channel
+            await interaction.followup.send(embed = nextcord.Embed(title = "Can't connect to your voice channel", description = "This command requires the user to be connected to a voice channel", color = nextcord.Color.red()), ephemeral = True)
             return
         
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Volume at {int(serverData.vc.source.volume * 100)}%", description = "To change, type /volume [0-100]", color = nextcord.Color.blue()))
-        return
-    else:
+        if not(interaction.user.voice.channel.permissions_for(interaction.guild.me).connect and interaction.user.voice.channel.permissions_for(interaction.guild.me).speak):
+            await interaction.followup.send(embed = nextcord.Embed(title = "Missing Permissions", description = "This command requires InfiniBot to have both **Voice Connect** and **Voice Speak** permissions.", color = nextcord.Color.red()), ephemeral = True)
+            await sendErrorMessageToOwner(interaction.guild, "Voice Connect and/or Speak", channel = f"#{interaction.user.voice.channel.name}")
+            return
+
+        if serverData.paused:
+            serverData.playing = True
+            serverData.paused = False
+            serverData.queue[0].vc.resume()
+
+        
+        music = search_yt(music)
+        if music == False:
+            embed = nextcord.Embed(title = "Could not Download Song", description = "Incorrect Format / Keyword", color = nextcord.Color.red())
+            embed.add_field(name = "Possible Reasons", value = "1. The keywords you used failed to yield a search result. Try a different keyword.\n2. The search result yielded a live stream result. You cannot play a live stream.\n3. The video is age-restricted.")
+            await interaction.followup.send(embed = embed, ephemeral = True)
+            return
+
+        print(music)
+        voice_channel = interaction.user.voice.channel
+
+        serverData.addSong(music['source'], music['title'], music['video'], voice_channel)
+        if serverData.playing:
+            embed = nextcord.Embed(title = "Music Added to Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green())
+            embed.add_field(name = music['title'], value = music['video'])
+            await interaction.followup.send(embed = embed, view = InviteView())
+
+        else:
+            embed = nextcord.Embed(title = "Playing Music", description = f"Action done by {interaction.user}", color = nextcord.Color.green())
+            embed.add_field(name = music['title'], value = music['video'])
+            await interaction.followup.send(embed = embed, view = InviteView())
+            
+
+            await play_music(interaction)
+
+    @bot.slash_command(name = "skip", description="Skip the current song", dm_permission=False)
+    async def skip(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
+        serverData = musicQueue.getData(interaction.guild_id)
+        vc = serverData.vc
+
+        if vc != None and vc:
+            vc.stop()
+            serverData.playing = True
+            serverData.paused = False
+            serverData.loop = False
+            if len(serverData.queue) > 1:
+                await interaction.response.send_message(embed = nextcord.Embed(title = "Song Skipped", description = f"Action done by {interaction.user}", color = nextcord.Color.yellow()))
+            else:
+                await interaction.response.send_message(embed = nextcord.Embed(title = "Song Skipped. No Music Left in Queue.", description = f"Action done by {interaction.user}", color = nextcord.Color.yellow()))
+                await stopVC(serverData, serverData.vc)
+
+        else:
+            serverData.playing = False
+            serverData.paused = False
+            await interaction.response.send_message(embed = nextcord.Embed(title = "No Music Playing", description = "Cannot skip when no music is playing", color = nextcord.Color.red()), ephemeral = True)
+
+    @bot.slash_command(name = "leave", description = "Leave the current voice channel and clear queue", dm_permission=False)
+    async def leave(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
         serverData = musicQueue.getData(interaction.guild_id)
 
-        if serverData.vc == None: 
-            await interaction.response.send_message(embed = nextcord.Embed(title = "No music is playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+        if serverData.vc == None:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "No Music in Queue", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
             return
 
-        if int(volume) > 100 or int(volume) < 0:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Improper Format", description = "Volume must be between 0 and 100", color = nextcord.Color.red()), ephemeral = True)
+        await stopVC(serverData, serverData.vc)
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Left voice channel", description = f"Action done by {interaction.user}", color = nextcord.Color.orange()))
+
+    @bot.slash_command(name = "stop", description = "Leave the current voice channel and clear queue", dm_permission=False)
+    async def stop(interaction: Interaction):
+        await leave(interaction)
+
+    @bot.slash_command(name = "clear", description = "Clears all music in queue except for the current song", dm_permission=False)
+    async def clear(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
+        serverData = musicQueue.getData(interaction.guild_id)
+
+        if serverData.vc == None:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "No Music in Queue", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
             return
         
-        formattedVolume = int(volume) / 100 
+        for x in range(1, len(serverData.queue)):
+            serverData.deleteSong(1) #index is one because after we delete a song, the next songs shift up, so by always deleting one, we delete all the songs exept for song [0]
 
-        if not (serverData.vc == None): 
-            serverData.vc.source.volume = formattedVolume
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Queue Cleared", description = f"Action done by {interaction.user}", color = nextcord.Color.orange()))
 
-        serverData.volume = formattedVolume
+    @bot.slash_command(name = "queue", description = "Display the current queue", dm_permission=False)
+    async def queue(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
+        serverData = musicQueue.getData(interaction.guild_id)
 
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Volume Set to {volume}%", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+        queueString = ""
 
-#@bot.slash_command(name = "loop", description = "Loop / un-loop the current song", dm_permission=False)
-async def loop(interaction: Interaction):
-    server = Server(interaction.guild.id)
-    if not await canPlayMusic(interaction, server): return
+        for i in range(0, len(serverData.queue)):
+            if i > 9:
+                queueString += f"+{len(serverData.queue) - 10} more"
+                break
+            
+            if i == 0 and serverData.loop: queueString += f"1. {serverData.queue[i].title} (Looped)\n"
+            else: queueString += f"{str(i + 1)}. {serverData.queue[i].title}\n"
 
-    serverData = musicQueue.getData(interaction.guild_id)
+        if queueString == "":
+            await interaction.response.send_message(embed = nextcord.Embed(title = "No Music in Queue", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+            return
+            
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Music Queue", description = queueString, color = nextcord.Color.blue()))
 
-    if serverData.loop == False:
-        serverData.loop = True
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Looped Current Song", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+    @bot.slash_command(name = "pause", description = "Pause the current song", dm_permission=False)
+    async def pause(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
+        serverData = musicQueue.getData(interaction.guild_id)
 
-    else:
-        serverData.loop = False
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Un-Looped Current Song", description = f"Action done by {interaction.user}", color = nextcord.Color.dark_green()))
+        if serverData.paused == False and serverData.playing == True:
+            serverData.playing = False
+            serverData.paused = True
+            serverData.vc.pause()
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Paused Current Song and Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+
+        elif serverData.paused == True:
+            serverData.playing = True
+            serverData.paused = False
+            serverData.vc.resume()
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Resumed Current Song and Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+
+        else:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "No music playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+
+    @bot.slash_command(name = "resume", description = "Resume the current song", dm_permission=False)
+    async def resume(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
+        serverData = musicQueue.getData(interaction.guild_id)
+
+        if serverData.paused == True:
+            serverData.playing = True
+            serverData.paused = False
+            serverData.vc.resume()
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Resumed Current Song and Queue", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+
+        else:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "No music playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+
+    @bot.slash_command(name = "volume", description = "Get the volume or set the volume to any number between 0 and 100", dm_permission=False)
+    async def volume(interaction: Interaction, volume: int = SlashOption(description = "Must be a number between 0 and 100", required = False)):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+        
+        if volume == None:
+            serverData = musicQueue.getData(interaction.guild_id)
+
+            if serverData.vc == None: 
+                await interaction.response.send_message(embed = nextcord.Embed(title = "No music is playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+                return
+            
+            await interaction.response.send_message(embed = nextcord.Embed(title = f"Volume at {int(serverData.vc.source.volume * 100)}%", description = "To change, type /volume [0-100]", color = nextcord.Color.blue()))
+            return
+        else:
+            serverData = musicQueue.getData(interaction.guild_id)
+
+            if serverData.vc == None: 
+                await interaction.response.send_message(embed = nextcord.Embed(title = "No music is playing", description = "Type /play [music] to play something", color = nextcord.Color.red()), ephemeral = True)
+                return
+
+            if int(volume) > 100 or int(volume) < 0:
+                await interaction.response.send_message(embed = nextcord.Embed(title = "Improper Format", description = "Volume must be between 0 and 100", color = nextcord.Color.red()), ephemeral = True)
+                return
+            
+            formattedVolume = int(volume) / 100 
+
+            if not (serverData.vc == None): 
+                serverData.vc.source.volume = formattedVolume
+
+            serverData.volume = formattedVolume
+
+            await interaction.response.send_message(embed = nextcord.Embed(title = f"Volume Set to {volume}%", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+
+    @bot.slash_command(name = "loop", description = "Loop / un-loop the current song", dm_permission=False)
+    async def loop(interaction: Interaction):
+        server = Server(interaction.guild.id)
+        if not await canPlayMusic(interaction, server): return
+
+        serverData = musicQueue.getData(interaction.guild_id)
+
+        if serverData.loop == False:
+            serverData.loop = True
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Looped Current Song", description = f"Action done by {interaction.user}", color = nextcord.Color.green()))
+
+        else:
+            serverData.loop = False
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Un-Looped Current Song", description = f"Action done by {interaction.user}", color = nextcord.Color.dark_green()))
 #Music Bot Functionality END ---------------------------------------------------------------------------------------------------------------
 
 
@@ -7994,7 +8189,7 @@ def getNextOpenLetter(list):
 
 #Start of reaction bot functionality: ----------------------------------------------------------------------------------------------------------------------------------------------------
 REACTIONROLETYPES = ["Letters", "Numbers", "Custom"]
-@create.subcommand(name = "reaction_role", description = "Create a message that will allow users to add/remove roles from themselves. (Requires Infinibot Mod)")
+@create.subcommand(name = "reaction_role", description = "Legacy: Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
 async def reactionRoleCommand(interaction: Interaction, type: str = SlashOption(choices = ["Letters", "Numbers"]), mentionRoles: bool = SlashOption(name = "mention_roles", description = "Mention the roles with @mention", required = False, default = True)):
     if await hasRole(interaction):
         if not utils.enabled.ReactionRoles(guild_id = interaction.guild.id):
@@ -8266,7 +8461,507 @@ async def on_raw_reaction_add(payload: nextcord.RawReactionActionEvent):
 #END of reaction bot functionality: ------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
+#Start of role messages functionality: ----------------------------------------------------------------------------------------------------------------------------------------
+class RoleMessageSetup(nextcord.ui.View):
+    def __init__(self):
+        super().__init__(timeout = None)
+        
+        nevermindBtn = self.NevermindButton(self)
+        self.add_item(nevermindBtn)
+        
+        getStartedBtn = self.GetStartedButton()
+        self.add_item(getStartedBtn)
+        
+    async def setup(self, interaction: Interaction):
+        if utils.enabled.RoleMessages(guild_id = interaction.guild.id):
+            embed = nextcord.Embed(title = "Role Message Creation Wizard", description = "We will guide you through the process of creating a custom message that enables users to assign themselves roles.\n★ Unlike reaction roles, this method utilizes a modern interface.\n\n**Click on \"Get Started\" to initiate the process!**", color = nextcord.Color.green())
+            await interaction.response.send_message(embed = embed, view = self, ephemeral = True)
+        else:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Role Messages Disabled", description = "Role Messages have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+        
+    class NevermindButton(nextcord.ui.Button):
+        def __init__(self, outer):
+            super().__init__(label = "Nevermind", style = nextcord.ButtonStyle.gray)
+            self.outer = outer
+            
+        async def callback(self, interaction: Interaction):
+            for child in self.outer.children:
+                if isinstance(child, nextcord.ui.Button):
+                    child.disabled = True
+                    
+            await interaction.response.edit_message(view = self.outer)
+        
+    class GetStartedButton(nextcord.ui.Button):
+        def __init__(self):
+            super().__init__(label = "Get Started", style = nextcord.ButtonStyle.blurple)
+            
+        class Modal(nextcord.ui.Modal):
+            def __init__(self):
+                super().__init__(title = "Role Message Creation Wizard", timeout = None)
+                
+                self.titleInput = nextcord.ui.TextInput(label = "To begin, please add a Title", max_length = "256")
+                self.add_item(self.titleInput)
+                
+                self.descriptionInput = nextcord.ui.TextInput(label = "And then a Description (if you want)", style = nextcord.TextInputStyle.paragraph, required = False)
+                self.add_item(self.descriptionInput)
+                
+            class RoleSelectWizardView(nextcord.ui.View):
+                def __init__(self, title, description):
+                    super().__init__(timeout = None)
+                    self.title = title
+                    self.description = description
+                    self.color = nextcord.Color.teal()
+                    self.options: list[list[list[int], str, str]] = []
+                    
+                    editTextBtn = self.EditTextButton(self)
+                    self.add_item(editTextBtn)
+                    
+                    editColorBtn = self.EditColorButton(self)
+                    self.add_item(editColorBtn)
+                    
+                    # Also known as "next" on the first time
+                    self.addBtn = self.AddBtn(self, self.options)
+                    self.add_item(self.addBtn)
+                    
+                    self.editBtn = self.EditBtn(self, self.options)
+                    
+                    self.removeBtn = self.RemoveBtn(self, self.options)
+                    
+                    self.finishBtn = self.FinishBtn(self)
+                    
+                class EditTextButton(nextcord.ui.Button):
+                    def __init__(self, outer):
+                        super().__init__(label = "Edit Text", emoji = "✏️")
+                        self.outer = outer;
+                    
+                    class EditTextModal(nextcord.ui.Modal):
+                        def __init__(self, outer):
+                            super().__init__(title = "Edit Text")
+                            self.outer = outer;
+                            
+                            self.titleInput = nextcord.ui.TextInput(label = "Title", min_length = 1, max_length = 256, placeholder = "Title", default_value = outer.title)
+                            self.add_item(self.titleInput)
+                            
+                            self.descriptionInput = nextcord.ui.TextInput(label = "Description", min_length = 1, max_length = 4000, placeholder = "Description", default_value = outer.description, style = nextcord.TextInputStyle.paragraph, required = False)
+                            self.add_item(self.descriptionInput)
+                            
+                        async def callback(self, interaction: Interaction):
+                            self.stop();
+                            self.outer.title = self.titleInput.value
+                            self.outer.description = self.descriptionInput.value
+                            
+                            await self.outer.setup(interaction)
+                    
+                    async def callback(self, interaction: Interaction):
+                        await interaction.response.send_modal(self.EditTextModal(self.outer))
+                    
+                class EditColorButton(nextcord.ui.Button):
+                    def __init__(self, outer):
+                        super().__init__(label = "Edit Color", emoji = "🎨")
+                        self.outer = outer
+                        
+                    class EditColorView(nextcord.ui.View):
+                        def __init__(self, outer):
+                            super().__init__()
+                            self.outer = outer;
+                            
+                            options = ["Red", "Green", "Blue", "Yellow", "White", "Blurple", "Greyple", "Teal", "Purple", "Gold", "Magenta", "Fuchsia"]
+                            
+                            originalColor = getStringFromDiscordColor(self.outer.color)        
+                            selectOptions = []
+                            for option in options:
+                                selectOptions.append(nextcord.SelectOption(label = option, value = option, default = (option == originalColor)))
+                            
+                            self.select = nextcord.ui.Select(placeholder = "Choose a color", options = selectOptions)
+                            
+                            self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.gray)
+                            self.backBtn.callback = self.backCallback
 
+                            self.button = nextcord.ui.Button(label = "Update Color", style = nextcord.ButtonStyle.blurple)
+                            self.button.callback = self.createCallback
+                            
+                            self.add_item(self.select)
+                            self.add_item(self.backBtn)
+                            self.add_item(self.button)
+                            
+                        async def setup(self, interaction: Interaction):
+                            description = f"""Choose what color you would like the role message to be:
+                            
+                            **Colors Available**
+                            Red, Green, Blue, Yellow, White
+                            Blurple, Greyple, Teal, Purple
+                            Gold, Magenta, Fuchsia"""
+                            
+                            
+                            # On Mobile, extra spaces cause problems. We'll get rid of them here:
+                            description = standardizeStrIndention(description)
+                
+                            embed = nextcord.Embed(title = "Role Message Creation Wizard - Edit Color", description = description, color = nextcord.Color.green())
+                            await interaction.response.edit_message(embed = embed, view = self)
+                                
+                        async def createCallback(self, interaction: Interaction):
+                            if self.select.values == []: return
+                            self.selection = self.select.values[0]
+                            self.stop()
+                            
+                            self.outer.color = getDiscordColorFromString(self.selection)
+                            
+                            await self.outer.setup(interaction)
+                
+                        async def backCallback(self, interaction: Interaction):
+                            await self.outer.setup(interaction)
+                
+                    async def callback(self, interaction: Interaction):
+                        await self.EditColorView(self.outer).setup(interaction)
+                    
+                class AddBtn(nextcord.ui.Button):
+                    def __init__(self, outer, options):
+                        if options == []:    
+                            super().__init__(label = "Next", style = nextcord.ButtonStyle.blurple)
+                        else:
+                            super().__init__(label = "Add Option", style = nextcord.ButtonStyle.gray, disabled = (len(options) >= 25), emoji = "🔨")
+                            
+                        self.outer = outer
+                        self.options = options
+                        
+                    class AddView(nextcord.ui.View):
+                        def __init__(self, outer, options, index = None):
+                            super().__init__(timeout = None)
+                            self.outer = outer
+                            self.options = options
+                            self.index = index
+                            
+                            if self.index == None:
+                                self.title = None
+                                self.description = None
+                                self.roles: list[int] = []
+                                self.editing = False
+                            else:
+                                self.title = self.options[index][1]
+                                self.description = self.options[index][2]
+                                self.roles: list[int] = self.options[index][0]
+                                self.editing = True
+                    
+                            # Make roles all ints
+                            self.roles = [int(role) for role in self.roles]
+                            
+                            changeTextBtn = nextcord.ui.Button(label = "Change Text")
+                            changeTextBtn.callback = self.changeTextBtnCallback
+                            self.add_item(changeTextBtn)
+                            
+                            self.addRoleBtn = nextcord.ui.Button(label = "Add Role")
+                            self.addRoleBtn.callback = self.addRoleBtnCallback
+                            self.add_item(self.addRoleBtn)
+                            
+                            self.removeRoleBtn = nextcord.ui.Button(label = "Remove Role")
+                            self.removeRoleBtn.callback = self.removeRoleBtnCallback
+                            self.add_item(self.removeRoleBtn)
+                            
+                            self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = (2 if len(self.outer.options) <= 1 else 1))
+                            self.backBtn.callback = self.backBtnCallback
+                            # Only add if this is not the first option
+                            if len(self.outer.options) > 0:
+                                self.add_item(self.backBtn)
+                            
+                            self.finishBtn = nextcord.ui.Button(label = ("Finish" if not self.editing else "Save"), style = nextcord.ButtonStyle.blurple, row = 1)
+                            self.finishBtn.callback = self.finishBtnCallback
+                            self.add_item(self.finishBtn)
+                            
+                        async def validateData(self, interaction: Interaction):
+                            """Make sure you refresh the view after running this"""
+                            self.addableRoles = []
+                            for role in interaction.guild.roles:
+                                if role.name == "@everyone": continue
+                                if role.id in self.roles: continue
+                                if canAssignRole(role):
+                                    self.addableRoles.append(nextcord.SelectOption(label = role.name, value = role.id))
+                                    
+                            self.removableRoles = []
+                            for role in self.roles:
+                                discordRole = interaction.guild.get_role(role)
+                                if discordRole:
+                                    self.removableRoles.append(nextcord.SelectOption(label = discordRole.name, value = role))
+                                else:
+                                    self.removableRoles.append(nextcord.SelectOption(label = "~ Deleted Role ~", value = role, emoji = "⚠️"))
+                                
+                            # Validate buttons
+                            self.addRoleBtn.disabled = len(self.addableRoles) == 0
+                            self.removeRoleBtn.disabled = len(self.removableRoles) <= 1
+                            
+                        async def setup(self, interaction: Interaction):
+                            # Validate Data
+                            await self.validateData(interaction)
+                            
+                            if len(self.roles) == 0 and not self.editing:
+                                # Send the user past this view.
+                                await self.addRoleBtnCallback(interaction)
+                            else:
+                                if not self.editing:
+                                    embed = nextcord.Embed(title = "Role Message Creation Wizard - Add Option", description = "You have the option to add more roles or make changes to the text. Here is a mockup of what this option will look like:", color = nextcord.Color.green())
+                                else:
+                                    embed = nextcord.Embed(title = "Role Message Creation Wizard - Edit Option", description = "You have the option to add more roles or make changes to the text. Here is a mockup of what this option will look like:", color = nextcord.Color.green())
+                                
+                                self.outer.addField(embed, [self.roles, self.title, self.description])
+                                
+                                await interaction.response.edit_message(embed = embed, view = self)
+                                
+                        async def addRoleBtnCallback(self, interaction: Interaction):
+                            # Update Information
+                            await self.validateData(interaction)
+                            if self.addRoleBtn.disabled:
+                                await self.setup(interaction)
+                                return
+                            
+                            # Have 2 embeds. One for the first visit, and another for a re-visit
+                            if len(self.roles) == 0:
+                                embed = nextcord.Embed(title = "Role Message Creation Wizard - Add Option", description = "Please select a role. This choice will be added as one of the options.\n\n**Unable to find a role?**\nIf you are unable to find a role, please ensure that InfiniBot has the necessary permissions to assign roles, such as managing messages and having a higher rank.", color = nextcord.Color.green())
+                            else:
+                                embed = nextcord.Embed(title = "Role Message Creation Wizard - Add Option - Add Role", description = "Select a role to be granted when the user chooses this option.\n\n**Unable to find a role?**\nIf you are unable to find a role, please ensure that InfiniBot has the necessary permissions to assign roles, such as managing messages and having a higher rank.", color = nextcord.Color.green())
+                            await SelectView(embed = embed, options = self.addableRoles, returnCommand = self.addRoleBtnSelectViewCallback, placeholder = "Choose a Role", continueButtonLabel = "Use Role").setup(interaction)
+                            
+                        async def addRoleBtnSelectViewCallback(self, interaction: Interaction, value: str):
+                            if value == None:
+                                # User canceled. Return them to us.
+                                # Unless they actually came from the original view. If so, let's send them back to that.
+                                if self.roles == []:
+                                    await self.outer.setup(interaction)
+                                    return
+                                else:
+                                    await self.setup(interaction)
+                                    return
+                                
+                            if value.isdigit():
+                                self.roles.append(int(value))
+                            
+                            # Send them to the modal, or just back home
+                            if self.title == None:
+                                await interaction.response.send_modal(self.OptionTitleAndDescriptionModal(self))
+                            else:
+                                await self.setup(interaction)
+                            
+                        class OptionTitleAndDescriptionModal(nextcord.ui.Modal):
+                            def __init__(self, outer):
+                                super().__init__(title = "Option Settings", timeout = None)
+                                self.outer = outer
+
+                                if self.outer.title == None:
+                                    self.titleInput = nextcord.ui.TextInput(label = "Please provide a name for that option", max_length = 100)
+                                else:
+                                    self.titleInput = nextcord.ui.TextInput(label = "Option Name", max_length = 100, default_value = self.outer.title)
+                                self.add_item(self.titleInput)
+                                
+                                if self.outer.description == None:
+                                    self.descriptionInput = nextcord.ui.TextInput(label = "Add a description (optional)", max_length = 100, required = False)
+                                else:
+                                    self.descriptionInput = nextcord.ui.TextInput(label = "Description (optional)", max_length = 100, required = False, default_value = self.outer.description)
+                                self.add_item(self.descriptionInput)
+                                
+                            async def callback(self, interaction: Interaction):
+                                self.outer.title = self.titleInput.value
+                                self.outer.description = self.descriptionInput.value
+                                
+                                await self.outer.setup(interaction)
+                                              
+                        async def changeTextBtnCallback(self, interaction: Interaction):
+                            await interaction.response.send_modal(self.OptionTitleAndDescriptionModal(self))
+                        
+                        async def removeRoleBtnCallback(self, interaction: Interaction): 
+                            # Update Information
+                            await self.validateData(interaction)
+                            if self.removeRoleBtn.disabled:
+                                await self.setup(interaction)
+                                return
+                            
+                            embed = nextcord.Embed(title = "Role Message Creation Wizard - Add Option - Remove Role", description = "Choose a role to be removed from this option.", color = nextcord.Color.green())
+                            await SelectView(embed = embed, options = self.removableRoles, returnCommand = self.removeRoleBtnSelectViewCallback, placeholder = "Choose a Role", continueButtonLabel = "Remove Role").setup(interaction)
+                            
+                        async def removeRoleBtnSelectViewCallback(self, interaction: Interaction, value: str):
+                            if value == None:
+                                await self.setup(interaction)
+                                return
+                                
+                            if value.isdigit() and int(value) in self.roles:
+                                self.roles.remove(int(value))
+                            
+                            await self.setup(interaction)
+                          
+                        async def backBtnCallback(self, interaction: Interaction):
+                            await self.outer.setup(interaction)
+                                                                      
+                        async def finishBtnCallback(self, interaction: Interaction):
+                            if not self.editing:
+                                # Add data to self.outer.options in the form of list[list[int], str, str]
+                                self.outer.options.append([self.roles, self.title, self.description])
+                            else:
+                                self.outer.options[self.index] = [self.roles, self.title, self.description]
+                            
+                            await self.outer.setup(interaction)
+                                         
+                    async def callback(self, interaction: Interaction):
+                        await self.AddView(self.outer, self.options).setup(interaction)
+                
+                class EditBtn(nextcord.ui.Button):
+                    def __init__(self, outer, options):
+                        super().__init__(label = "Edit Option", emoji = "⚙️")
+                        self.outer = outer
+                        self.options: list[list[list[int], str, str]] = options
+                        
+                    async def callback(self, interaction: Interaction):
+                        # Get the options
+                        selectOptions = []
+                        for index, option in enumerate(self.options):
+                            selectOptions.append(nextcord.SelectOption(label = option[1], description = option[2], value = index))
+                        
+                        embed = nextcord.Embed(title = "Role Message Creation Wizard - Edit Option", description = "Choose an option to edit", color = nextcord.Color.green())
+                        await SelectView(embed = embed, options = selectOptions, returnCommand = self.selectViewCallback, continueButtonLabel = "Edit", preserveOrder = True).setup(interaction)
+                    
+                    async def selectViewCallback(self, interaction, selection):
+                        if selection == None:
+                            await self.outer.setup(interaction)
+                            return
+                            
+                        # Send them to the editing
+                        await self.outer.AddBtn.AddView(self.outer, self.options, index = int(selection)).setup(interaction)
+      
+                class RemoveBtn(nextcord.ui.Button):
+                    def __init__(self, outer, options):
+                        super().__init__(label = "Remove Option", disabled = (len(options) <= 1), emoji = "🚫")
+                        self.outer = outer
+                        self.options: list[list[list[int], str, str]] = options
+                        
+                    async def callback(self, interaction: Interaction):
+                        # Get the options
+                        selectOptions = []
+                        for index, option in enumerate(self.options):
+                            selectOptions.append(nextcord.SelectOption(label = option[1], description = option[2], value = index))
+                        
+                        embed = nextcord.Embed(title = "Edit Role Message - Remove Option", description = "Choose an option to remove", color = nextcord.Color.yellow())
+                        await SelectView(embed = embed, options = selectOptions, returnCommand = self.selectViewCallback, continueButtonLabel = "Remove", preserveOrder = True).setup(interaction)
+                    
+                    async def selectViewCallback(self, interaction, selection):
+                        if selection == None:
+                            await self.outer.setup(interaction)
+                            return
+                            
+                        self.outer.options.pop(int(selection))
+                        
+                        await self.outer.setup(interaction)
+  
+                class FinishBtn(nextcord.ui.Button):
+                    def __init__(self, outer):
+                        super().__init__(label = "Finish", style = nextcord.ButtonStyle.blurple, row = 1, emoji = "🏁")
+                        self.outer = outer
+                        
+                    class MultiOrSingleSelectView(nextcord.ui.View):
+                        def __init__(self, outer):
+                            super().__init__(timeout = None)
+                            self.outer = outer
+                            
+                            options = [nextcord.SelectOption(label = "Single", description = "Members can only select one option", value = "Single"),
+                                            nextcord.SelectOption(label = "Multiple", description = "Members can select multiple options.", value = "Multiple")]
+                            self.select = nextcord.ui.Select(options = options, placeholder = "Choose a Mode")
+                            self.add_item(self.select)
+                            
+                            self.createBtn = nextcord.ui.Button(label = "Create Role Select", style = nextcord.ButtonStyle.blurple)
+                            self.createBtn.callback = self.createBtnCallback
+                            self.add_item(self.createBtn)
+                            
+                        async def setup(self, interaction: Interaction):
+                            embed = nextcord.Embed(title = "Role Message Creation Wizard - Finish", description = "Finally, decide whether you want members to have the option to select multiple choices or just one.", color = nextcord.Color.green())
+                            await interaction.response.edit_message(embed = embed, view = self)
+                        
+                        async def createBtnCallback(self, interaction: Interaction):
+                            values = self.select.values
+                            if values == []:
+                                return
+                            
+                            value = values[0]
+                            
+                            if value == "Single":
+                                view = RoleMessageButton_Single()
+                            else:
+                                view = RoleMessageButton_Multiple()
+                            
+                            # Create Role Select
+                            
+                            roleMessageEmbed = self.outer.createEmbed(self.outer.title, self.outer.description, self.outer.color, self.outer.options)
+                    
+                            await self.outer.disableView(interaction)
+                            
+                            message = await interaction.channel.send(embed = roleMessageEmbed, view = view)
+                            
+                            # Catalog Message
+                            server = Server(interaction.guild.id)
+                            server.messages.add("Role Message", message.channel.id, message.id, interaction.user.id)
+                            server.messages.save()
+                        
+                    async def callback(self, interaction: Interaction):
+                        await self.MultiOrSingleSelectView(self.outer).setup(interaction)
+            
+                async def setup(self, interaction: Interaction):
+                    self.validateButtons()
+                    
+                    # Create two embeds depending on whether this is the first time
+                    if len(self.options) == 0:
+                        embed = nextcord.Embed(title = "Role Message Creation Wizard", description = "Excellent work! Your message is below. If you are satisfied with it, click on \"Next\".\n\nAlternatively, you can make edits to the text and color.", color = nextcord.Color.green())
+                    else:
+                        embed = nextcord.Embed(title = "Role Message Creation Wizard", description = "Excellent work! Your message is below. If you are satisfied with it, click on \"Finish\".\n\nAlternatively, you can make edits to the text, color, and options.", color = nextcord.Color.green())
+                    
+                    # Create a mockup of the embed
+                    roleMessageEmbed = self.createEmbed(self.title, self.description, self.color, self.options)
+                    
+                    await interaction.response.edit_message(embeds = [embed, roleMessageEmbed], view = self)
+                    
+                def validateButtons(self):
+                    """Be sure to update the view after running this"""
+                    if len(self.options) > 0:
+                        self.addBtn.__init__(self, self.options)
+                        if self.editBtn not in self.children:
+                            self.add_item(self.editBtn)
+                        if self.removeBtn not in self.children:
+                            self.add_item(self.removeBtn)
+                        if self.finishBtn not in self.children:
+                            self.add_item(self.finishBtn)
+                    
+                def createEmbed(self, title, description, color, options):
+                    embed = nextcord.Embed(title = title, description = description, color = color)
+                    for option in options:
+                        self.addField(embed, option)
+
+                    return embed
+                        
+                def addField(self, embed: nextcord.Embed, optionInfo):
+                    mentions = [f"<@&{role}>" for role in optionInfo[0]]
+                    if len(mentions) > 1:
+                        mentions[-1] = f"and {mentions[-1]}"
+                    roles = ", ".join(mentions)
+                        
+                    title = optionInfo[1]
+                    description = optionInfo[2]
+                    
+                    spacer = ("\n" if description != "" else "")
+                    
+                    embed.add_field(name = title, value = f"{description}{spacer}> Grants {roles}", inline = False)
+                
+                async def disableView(self, interaction: Interaction):
+                    for child in self.children:
+                        if isinstance(child, nextcord.ui.Button):
+                            child.disabled = True
+                            
+                    await interaction.response.edit_message(view = self, delete_after = 1.0)
+                                     
+            async def callback(self, interaction: Interaction):
+                await self.RoleSelectWizardView(self.titleInput.value, self.descriptionInput.value).setup(interaction)
+            
+        async def callback(self, interaction: Interaction):
+            await interaction.response.send_modal(self.Modal())
+      
+@create.subcommand(name = "role_message", description = "Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
+async def roleMessageCommand(interaction: Interaction):
+    if await hasRole(interaction):
+        await RoleMessageSetup().setup(interaction)
+
+#End of role messages functionality: ----------------------------------------------------------------------------------------------------------------------------------------
 
 
 #Start of join/leave messages functionality: ----------------------------------------------------------------------------------------------------------------------------------------------
@@ -9512,6 +10207,8 @@ class MessageCommandOptionsView(nextcord.ui.View):
                 await EditVote(self.message.id).setup(interaction)
             elif self.messageInfo.type == "Reaction Role":
                 await EditReactionRole(self.message.id).setup(interaction)
+            elif self.messageInfo.type == "Role Message":
+                await EditRoleMessage(self.message.id).setup(interaction)
 
     class BanButton(nextcord.ui.Button):
         def __init__(self, outer, interaction: Interaction, message: nextcord.Message):
@@ -10480,6 +11177,551 @@ class EditReactionRole(nextcord.ui.View):
         
         async def callback(self, interaction: Interaction):
             await self.warningView(self.outer, interaction.guild.id, self.messageID).setup(interaction)
+
+class EditRoleMessage(nextcord.ui.View):
+    def __init__(self, messageID: int):
+        super().__init__(timeout = None)
+        self.messageID = messageID
+        
+        self.title = None
+        self.description = None
+        self.color = None
+        self.options: list[list[list[int], str, str]] = []
+        
+    class EditTextButton(nextcord.ui.Button):
+        def __init__(self, outer):
+            super().__init__(label = "Edit Text", emoji = "✏️")
+            self.outer = outer;
+        
+        class EditTextModal(nextcord.ui.Modal):
+            def __init__(self, outer):
+                super().__init__(title = "Edit Text")
+                self.outer = outer;
+                
+                self.titleInput = nextcord.ui.TextInput(label = "Title", min_length = 1, max_length = 256, placeholder = "Title", default_value = outer.title)
+                self.add_item(self.titleInput)
+                
+                self.descriptionInput = nextcord.ui.TextInput(label = "Description", min_length = 1, max_length = 4000, placeholder = "Description", default_value = outer.description, style = nextcord.TextInputStyle.paragraph, required = False)
+                self.add_item(self.descriptionInput)
+                
+            async def callback(self, interaction: Interaction):
+                self.stop();
+                self.outer.title = self.titleInput.value
+                self.outer.description = self.descriptionInput.value
+                
+                await self.outer.setup(interaction)
+        
+        async def callback(self, interaction: Interaction):
+            await interaction.response.send_modal(self.EditTextModal(self.outer))
+        
+    class EditColorButton(nextcord.ui.Button):
+        def __init__(self, outer):
+            super().__init__(label = "Edit Color", emoji = "🎨")
+            self.outer = outer
+            
+        class EditColorView(nextcord.ui.View):
+            def __init__(self, outer):
+                super().__init__()
+                self.outer = outer;
+                
+                options = ["Red", "Green", "Blue", "Yellow", "White", "Blurple", "Greyple", "Teal", "Purple", "Gold", "Magenta", "Fuchsia"]
+                
+                originalColor = getStringFromDiscordColor(self.outer.color)        
+                selectOptions = []
+                for option in options:
+                    selectOptions.append(nextcord.SelectOption(label = option, value = option, default = (option == originalColor)))
+                
+                self.select = nextcord.ui.Select(placeholder = "Choose a color", options = selectOptions)
+                
+                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.gray)
+                self.backBtn.callback = self.backCallback
+
+                self.button = nextcord.ui.Button(label = "Update Color", style = nextcord.ButtonStyle.blurple)
+                self.button.callback = self.createCallback
+                
+                self.add_item(self.select)
+                self.add_item(self.backBtn)
+                self.add_item(self.button)
+                
+            async def setup(self, interaction: Interaction):
+                description = f"""Choose what color you would like the role message to be:
+                
+                **Colors Available**
+                Red, Green, Blue, Yellow, White
+                Blurple, Greyple, Teal, Purple
+                Gold, Magenta, Fuchsia"""
+                
+                
+                # On Mobile, extra spaces cause problems. We'll get rid of them here:
+                description = standardizeStrIndention(description)
+    
+                embed = nextcord.Embed(title = "Edit Role Message - Edit Color", description = description, color = nextcord.Color.yellow())
+                await interaction.response.edit_message(embed = embed, view = self)
+                    
+            async def createCallback(self, interaction: Interaction):
+                if self.select.values == []: return
+                self.selection = self.select.values[0]
+                self.stop()
+                
+                self.outer.color = getDiscordColorFromString(self.selection)
+                
+                await self.outer.setup(interaction)
+    
+            async def backCallback(self, interaction: Interaction):
+                await self.outer.setup(interaction)
+    
+        async def callback(self, interaction: Interaction):
+            await self.EditColorView(self.outer).setup(interaction)
+        
+    class AddBtn(nextcord.ui.Button):
+        def __init__(self, outer, options):
+            super().__init__(label = "Add Option", style = nextcord.ButtonStyle.gray, disabled = (len(options) >= 25), emoji = "🔨")
+                
+            self.outer = outer
+            self.options = options
+            
+        class AddView(nextcord.ui.View):
+            def __init__(self, outer, options, index = None):
+                super().__init__(timeout = None)
+                self.outer = outer
+                self.options = options
+                self.index = index
+                
+                if self.index == None:
+                    self.title = None
+                    self.description = None
+                    self.roles: list[int] = []
+                    self.editing = False
+                else:
+                    self.title = self.options[index][1]
+                    self.description = self.options[index][2]
+                    self.roles: list[int] = self.options[index][0]
+                    self.editing = True
+                    
+                # Make roles all ints
+                self.roles = [int(role) for role in self.roles]
+                
+                changeTextBtn = nextcord.ui.Button(label = "Change Text")
+                changeTextBtn.callback = self.changeTextBtnCallback
+                self.add_item(changeTextBtn)
+                
+                self.addRoleBtn = nextcord.ui.Button(label = "Add Role")
+                self.addRoleBtn.callback = self.addRoleBtnCallback
+                self.add_item(self.addRoleBtn)
+                
+                self.removeRoleBtn = nextcord.ui.Button(label = "Remove Role")
+                self.removeRoleBtn.callback = self.removeRoleBtnCallback
+                self.add_item(self.removeRoleBtn)
+                
+                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = (2 if len(self.outer.options) <= 1 else 1))
+                self.backBtn.callback = self.backBtnCallback
+                # Only add if this is not the first option
+                if len(self.outer.options) > 0:
+                    self.add_item(self.backBtn)
+                
+                self.finishBtn = nextcord.ui.Button(label = ("Finish" if not self.editing else "Save"), style = nextcord.ButtonStyle.blurple, row = 1)
+                self.finishBtn.callback = self.finishBtnCallback
+                self.add_item(self.finishBtn)
+                
+            async def validateData(self, interaction: Interaction):
+                """Make sure you refresh the view after running this"""
+                self.addableRoles = []
+                for role in interaction.guild.roles:
+                    if role.name == "@everyone": continue
+                    if role.id in self.roles: continue
+                    if canAssignRole(role):
+                        self.addableRoles.append(nextcord.SelectOption(label = role.name, value = role.id))
+                        
+                self.removableRoles = []
+                for role in self.roles:
+                    discordRole = interaction.guild.get_role(role)
+                    if discordRole:
+                        self.removableRoles.append(nextcord.SelectOption(label = discordRole.name, value = role))
+                    else:
+                        self.removableRoles.append(nextcord.SelectOption(label = "~ Deleted Role ~", value = role, emoji = "⚠️"))
+                    
+                # Validate buttons
+                self.addRoleBtn.disabled = len(self.addableRoles) == 0
+                self.removeRoleBtn.disabled = len(self.removableRoles) <= 1
+                
+            async def setup(self, interaction: Interaction):
+                # Validate Data
+                await self.validateData(interaction)
+                
+                if len(self.roles) == 0 and not self.editing:
+                    # Send the user past this view.
+                    await self.addRoleBtnCallback(interaction)
+                else:
+                    if not self.editing:
+                        embed = nextcord.Embed(title = "Edit Role Message - Add Option", description = "You have the option to add more roles or make changes to the text. Here is a mockup of what this option will look like:", color = nextcord.Color.yellow())
+                    else:
+                        embed = nextcord.Embed(title = "Edit Role Message - Edit Option", description = "You have the option to add more roles or make changes to the text. Here is a mockup of what this option will look like:", color = nextcord.Color.yellow())
+                    
+                    self.outer.addField(embed, [self.roles, self.title, self.description])
+                    
+                    await interaction.response.edit_message(embed = embed, view = self)
+                    
+            async def addRoleBtnCallback(self, interaction: Interaction):
+                # Update Information
+                await self.validateData(interaction)
+                if self.addRoleBtn.disabled:
+                    await self.setup(interaction)
+                    return
+                
+                # Have 2 embeds. One for the first visit, and another for a re-visit
+                if len(self.roles) == 0:
+                    embed = nextcord.Embed(title = "Role Message Creation Wizard - Add Option", description = "Please select a role. This choice will be added as one of the options.\n\n**Unable to find a role?**\nIf you are unable to find a role, please ensure that InfiniBot has the necessary permissions to assign roles, such as managing messages and having a higher rank.", color = nextcord.Color.green())
+                else:
+                    embed = nextcord.Embed(title = "Role Message Creation Wizard - Add Option - Add Role", description = "Select a role to be granted when the user chooses this option.\n\n**Unable to find a role?**\nIf you are unable to find a role, please ensure that InfiniBot has the necessary permissions to assign roles, such as managing messages and having a higher rank.", color = nextcord.Color.green())
+                await SelectView(embed = embed, options = self.addableRoles, returnCommand = self.addRoleBtnSelectViewCallback, placeholder = "Choose a Role", continueButtonLabel = "Use Role").setup(interaction)
+                
+            async def addRoleBtnSelectViewCallback(self, interaction: Interaction, value: str):
+                if value == None:
+                    # User canceled. Return them to us.
+                    # Unless they actually came from the original view. If so, let's send them back to that.
+                    if self.roles == []:
+                        await self.outer.setup(interaction)
+                        return
+                    else:
+                        await self.setup(interaction)
+                        return
+                    
+                if value.isdigit():
+                    self.roles.append(int(value))
+                
+                # Send them to the modal, or just back home
+                if self.title == None:
+                    await interaction.response.send_modal(self.OptionTitleAndDescriptionModal(self))
+                else:
+                    await self.setup(interaction)
+                
+            class OptionTitleAndDescriptionModal(nextcord.ui.Modal):
+                def __init__(self, outer):
+                    super().__init__(title = "Option Settings", timeout = None)
+                    self.outer = outer
+
+                    if self.outer.title == None:
+                        self.titleInput = nextcord.ui.TextInput(label = "Please provide a name for that option", max_length = 100)
+                    else:
+                        self.titleInput = nextcord.ui.TextInput(label = "Option Name", max_length = 100, default_value = self.outer.title)
+                    self.add_item(self.titleInput)
+                    
+                    if self.outer.description == None:
+                        self.descriptionInput = nextcord.ui.TextInput(label = "Add a description (optional)", max_length = 100, required = False)
+                    else:
+                        self.descriptionInput = nextcord.ui.TextInput(label = "Description (optional)", max_length = 100, required = False, default_value = self.outer.description)
+                    self.add_item(self.descriptionInput)
+                    
+                async def callback(self, interaction: Interaction):
+                    self.outer.title = self.titleInput.value
+                    self.outer.description = self.descriptionInput.value
+                    
+                    await self.outer.setup(interaction)
+                                    
+            async def changeTextBtnCallback(self, interaction: Interaction):
+                await interaction.response.send_modal(self.OptionTitleAndDescriptionModal(self))
+            
+            async def removeRoleBtnCallback(self, interaction: Interaction): 
+                # Update Information
+                await self.validateData(interaction)
+                if self.removeRoleBtn.disabled:
+                    await self.setup(interaction)
+                    return
+                
+                embed = nextcord.Embed(title = "Role Message Creation Wizard - Add Option - Remove Role", description = "Choose a role to be removed from this option.", color = nextcord.Color.green())
+                await SelectView(embed = embed, options = self.removableRoles, returnCommand = self.removeRoleBtnSelectViewCallback, placeholder = "Choose a Role", continueButtonLabel = "Remove Role").setup(interaction)
+                
+            async def removeRoleBtnSelectViewCallback(self, interaction: Interaction, value: str):
+                if value == None:
+                    await self.setup(interaction)
+                    return
+                    
+                if value.isdigit() and int(value) in self.roles:
+                    self.roles.remove(int(value))
+                
+                await self.setup(interaction)
+                
+            async def backBtnCallback(self, interaction: Interaction):
+                await self.outer.setup(interaction)
+                            
+            async def finishBtnCallback(self, interaction: Interaction):
+                if not self.editing:
+                    # Add data to self.outer.options in the form of list[list[int], str, str]
+                    self.outer.options.append([self.roles, self.title, self.description])
+                else:
+                    self.outer.options[self.index] = [self.roles, self.title, self.description]
+                
+                await self.outer.setup(interaction)
+                                
+        async def callback(self, interaction: Interaction):
+            await self.AddView(self.outer, self.options).setup(interaction)
+    
+    class EditBtn(nextcord.ui.Button):
+        def __init__(self, outer, options):
+            super().__init__(label = "Edit Option", emoji = "⚙️")
+            self.outer = outer
+            self.options: list[list[list[int], str, str]] = options
+            
+        async def callback(self, interaction: Interaction):
+            # Get the options
+            selectOptions = []
+            for index, option in enumerate(self.options):
+                selectOptions.append(nextcord.SelectOption(label = option[1], description = option[2], value = index))
+            
+            embed = nextcord.Embed(title = "Edit Role Message - Edit Option", description = "Choose an option to edit", color = nextcord.Color.yellow())
+            await SelectView(embed = embed, options = selectOptions, returnCommand = self.selectViewCallback, continueButtonLabel = "Edit", preserveOrder = True).setup(interaction)
+        
+        async def selectViewCallback(self, interaction, selection):
+            if selection == None:
+                await self.outer.setup(interaction)
+                return
+                
+            # Send them to the editing
+            await self.outer.AddBtn.AddView(self.outer, self.options, index = int(selection)).setup(interaction)
+     
+    class RemoveBtn(nextcord.ui.Button):
+        def __init__(self, outer, options):
+            super().__init__(label = "Remove Option", disabled = (len(options) <= 1), emoji = "🚫")
+            self.outer = outer
+            self.options: list[list[list[int], str, str]] = options
+            
+        async def callback(self, interaction: Interaction):
+            # Get the options
+            selectOptions = []
+            for index, option in enumerate(self.options):
+                selectOptions.append(nextcord.SelectOption(label = option[1], description = option[2], value = index))
+            
+            embed = nextcord.Embed(title = "Edit Role Message - Remove Option", description = "Choose an option to remove", color = nextcord.Color.yellow())
+            await SelectView(embed = embed, options = selectOptions, returnCommand = self.selectViewCallback, continueButtonLabel = "Remove", preserveOrder = True).setup(interaction)
+        
+        async def selectViewCallback(self, interaction, selection):
+            if selection == None:
+                await self.outer.setup(interaction)
+                return
+                
+            self.outer.options.pop(int(selection))
+            
+            await self.outer.setup(interaction)
+  
+    class EditPersistencyButton(nextcord.ui.Button):
+        def __init__(self, outer, messageInfo: Message):
+            if messageInfo.persistent:
+                text = "Deprioritize"
+                icon = "🔓"
+            else:
+                text = "Prioritize"
+                icon = "🔒"
+                
+            super().__init__(label = text, emoji = icon, row = 1)
+            self.outer = outer
+            self.messageID = messageInfo.message_id
+        
+        class warningView(nextcord.ui.View):
+            def __init__(self, outer, guildID: int, messageID: int):
+                super().__init__(timeout = None)
+                self.outer = outer
+                
+                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger) 
+                self.backBtn.callback = self.backBtnCallback
+                self.add_item(self.backBtn)
+                
+                self.continueBtn = self.continueButton(self.outer, guildID, messageID)
+                self.add_item(self.continueBtn)
+                
+            async def setup(self, interaction: Interaction):
+                embed = nextcord.Embed(title = "Edit Embed - Prioritize / Deprioritize", 
+                                       description = "InfiniBot, similar to all free software, has its limitations. Regrettably, we are unable to continuously cache every role message ever created in our systems. Consequently, each server is allocated a maximum of 10 active (cached) role messages. As a result, there may come a point when this role message can no longer be edited.\n\n**What is Prioritizing?**\nPrioritizing ensures that this particular role message remains active indefinitely, enabling it to be edited well into the future. However, this comes at the expense of one of the server's active role message slots (10). This feature is particularly useful for role messages such as server roles, verification roles, and similar content.", 
+                                       color = nextcord.Color.yellow())
+                
+                await interaction.response.edit_message(embed = embed, view = self)
+                
+            async def backBtnCallback(self, interaction: Interaction):
+                await self.outer.setup(interaction)
+        
+            class continueButton(nextcord.ui.Button):
+                def __init__(self, outer, guildID: int, messageID: int):
+                    self.server = Server(guildID)
+                    self.messageInfo = self.server.messages.get(messageID)
+                    
+                    if self.messageInfo.persistent:
+                        text = "Deprioritize"
+                    else:
+                        text = "Prioritize"
+                        
+                    super().__init__(label = text, style = nextcord.ButtonStyle.blurple)
+                    self.outer = outer
+                    
+                async def callback(self, interaction: Interaction):
+                    self.messageInfo.persistent = not self.messageInfo.persistent
+                    self.server.messages.save()
+                    
+                    await self.outer.setup(interaction)
+        
+        async def callback(self, interaction: Interaction):
+            await self.warningView(self.outer, interaction.guild.id, self.messageID).setup(interaction)
+       
+    class EditModeBtn(nextcord.ui.Button):
+        def __init__(self, outer):
+            super().__init__(label = "Change Mode", row = 1, emoji = "🎚️")
+            self.outer = outer
+            
+        class MultiOrSingleSelectView(nextcord.ui.View):
+            def __init__(self, outer):
+                super().__init__(timeout = None)
+                self.outer = outer
+                
+                options = [nextcord.SelectOption(label = "Single", description = "Members can only select one option", value = "Single", default = (self.outer.mode == "Single")),
+                            nextcord.SelectOption(label = "Multiple", description = "Members can select multiple options.", value = "Multiple", default = (self.outer.mode == "Multiple"))]
+                
+                self.select = nextcord.ui.Select(options = options, placeholder = "Choose a Mode")
+                self.add_item(self.select)
+                
+                self.createBtn = nextcord.ui.Button(label = "Change Mode", style = nextcord.ButtonStyle.blurple)
+                self.createBtn.callback = self.createBtnCallback
+                self.add_item(self.createBtn)
+                
+            async def setup(self, interaction: Interaction):
+                embed = nextcord.Embed(title = "Edit Role Message - Change Mode", description = "Decide whether you want members to have the option to select multiple choices or just one.", color = nextcord.Color.yellow())
+                await interaction.response.edit_message(embed = embed, view = self)
+            
+            async def createBtnCallback(self, interaction: Interaction):
+                values = self.select.values
+                if values == []:
+                    return
+                
+                value = values[0]
+                
+                self.outer.mode = value
+                
+                await self.outer.setup(interaction)
+            
+        async def callback(self, interaction: Interaction):
+            await self.MultiOrSingleSelectView(self.outer).setup(interaction)
+       
+    async def load(self, interaction: Interaction):
+        self.message = await interaction.channel.fetch_message(self.messageID)
+        self.server = Server(interaction.guild.id)
+        self.messageInfo = self.server.messages.get(self.messageID)
+        
+        if self.title == None and self.description == None and self.color == None and self.options == []:
+            self.title = self.message.embeds[0].title
+            self.description = self.message.embeds[0].description
+            self.color = self.message.embeds[0].color
+            
+            # Get options
+            self.options = []
+            for field in self.message.embeds[0].fields:
+                name = field.name
+                description = "\n".join(field.value.split("\n")[:-1])
+                roles = self.extract_ids(field.value.split("\n")[-1])
+                self.options.append([roles, name, description])
+                
+                
+            # Get Mode
+            self.mode = "Multiple"
+            for component in self.message.components:
+                if isinstance(component, nextcord.components.ActionRow):
+                    for item in component.children:
+                        if isinstance(item, nextcord.components.Button):
+                            if item.custom_id == "get_roles":
+                                self.mode = "Multiple"
+                                break
+                            elif item.custom_id == "get_role":
+                                self.mode = "Single"
+                                break
+            self.currentMode = self.mode
+            
+        self.clear_items()
+            
+        # Load buttons   
+        editTextBtn = self.EditTextButton(self)
+        self.add_item(editTextBtn)
+        
+        editColorBtn = self.EditColorButton(self)
+        self.add_item(editColorBtn)
+        
+        self.addBtn = self.AddBtn(self, self.options)
+        self.add_item(self.addBtn)
+        
+        self.editBtn = self.EditBtn(self, self.options)
+        self.add_item(self.editBtn)
+        
+        self.removeBtn = self.RemoveBtn(self, self.options)
+        self.add_item(self.removeBtn)
+        
+        editModeBtn = self.EditModeBtn(self)
+        self.add_item(editModeBtn)
+        
+        editPersistencyBtn = self.EditPersistencyButton(self, self.messageInfo)
+        self.add_item(editPersistencyBtn)
+        
+        self.confirmBtn = nextcord.ui.Button(label = "Confirm Edits", style = nextcord.ButtonStyle.blurple, row = 1)
+        self.confirmBtn.callback = self.confirmBtnCallback
+        self.add_item(self.confirmBtn)
+        
+    async def setup(self, interaction: Interaction):
+        await self.load(interaction)
+        
+        embed = nextcord.Embed(title = "Edit Role Message", description = "Edit your role message by making to the text, color, and options. Once finished, click on \"Confirm Edits\"", color = nextcord.Color.yellow())
+        
+        # Create a mockup of the embed
+        roleMessageEmbed = self.createEmbed(self.title, self.description, self.color, self.options)
+        
+        embeds = [embed, roleMessageEmbed]
+        
+        # Give warning about mode if needed
+        if self.mode != self.currentMode:
+            warningEmbed = nextcord.Embed(title = "Warning: Mode Not Saved", description = "Be sure to Confirm Edits to save your mode.", color = nextcord.Color.red())
+            embeds.append(warningEmbed)
+        
+        await interaction.response.edit_message(embeds = embeds, view = self)
+        
+    def createEmbed(self, title, description, color, options):
+        embed = nextcord.Embed(title = title, description = description, color = color)
+        for option in options:
+            self.addField(embed, option)
+
+        return embed
+            
+    def addField(self, embed: nextcord.Embed, optionInfo):
+        mentions = [f"<@&{role}>" for role in optionInfo[0]]
+        if len(mentions) > 1:
+            mentions[-1] = f"and {mentions[-1]}"
+        roles = ", ".join(mentions)
+            
+        title = optionInfo[1]
+        description = optionInfo[2]
+        
+        spacer = ("\n" if description != "" else "")
+        
+        embed.add_field(name = title, value = f"{description}{spacer}> Grants {roles}", inline = False)
+    
+    def extract_ids(self, input_string):
+        pattern = r"<@&(\d+)>"
+        matches = re.findall(pattern, input_string)
+        return matches
+    
+    async def disableView(self, interaction: Interaction):
+        for child in self.children:
+            if isinstance(child, nextcord.ui.Button):
+                child.disabled = True
+                
+        await interaction.response.edit_message(view = self, delete_after = 1.0)
+    
+    async def confirmBtnCallback(self, interaction: Interaction):
+        roleMessageEmbed = self.createEmbed(self.title, self.description, self.color, self.options)
+        
+        await self.disableView(interaction)
+        
+        if self.mode == "Single":
+            view = RoleMessageButton_Single()
+        else:
+            view = RoleMessageButton_Multiple()
+        
+        await self.message.edit(embed = roleMessageEmbed, view = view)
+                            
+    async def callback(self, interaction: Interaction):
+        await self.RoleSelectWizardView(self.titleInput.value, self.descriptionInput.value).setup(interaction)
 #Editing Messages END: ----------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -10666,21 +11908,9 @@ async def submitIdea(interaction: Interaction):
 #Help: --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @bot.slash_command(name = "help", description = "Help with the InfiniBot.")
 async def help(interaction: Interaction):
-    description = f"""For help with InfiniBot, use one of the following commands:
+    description = f"""For help with InfiniBot, use `/help` followed by what you need help with.
     
-    • /help profanity_moderation
-    • /help spam_moderation
-    • /help voting
-    • /help reaction_roles
-    • /help join_and_leave_messages
-    • /help birthdays
-    • /help logging
-    • /help leveling
-    • /help infinibot_mod
-    • /help join_to_create_vcs
-    • /help stats
-    • /help auto_bans
-    • /help other
+    • Discord's autocomplete feature can be useful.
     
     For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
     """
@@ -10836,6 +12066,8 @@ async def votingHelp(interaction: Interaction):
 async def reactionRolesHelp(interaction: Interaction):
     description = f"""Set up reaction roles to allow members to give themselves roles!
     
+    ★ Note: A new-and-improved version of reaction roles have been released. Type `/help role_messages` to learn more!
+    
     **How to use it**
         • Type `/create reaction_role` and select either "Letters" or "Numbers". Your choice will be the symbols for the reactions.
         • Now, run the command, and you should see a window pop up. Fill in the title and description.
@@ -10877,6 +12109,43 @@ async def reactionRolesHelp(interaction: Interaction):
     description = standardizeStrIndention(description)
     
     embed = nextcord.Embed(title = "How to set up reaction roles with InfiniBot!", description = description, color = nextcord.Color.greyple())
+    
+    await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView()) 
+
+@help.subcommand(name = "role_messages", description = "Help with creating role messages")
+async def roleMessagesHelp(interaction: Interaction):
+    description = f"""Set up role messages to allow members to assign themselves roles using a modern interface!
+
+    **How to use it**
+        • Type `/create role_message` and choose "Get Started". You will be prompted to include the title of the role message and an optional description.
+        • Next, you have the option to edit your text or change the color. Assuming you're happy with the current state of your role message, let's add some roles!
+        • Click "Next". Now we're creating an option. You will be prompted to choose a role. This role will be granted when the user selects this option.
+        • Then, you'll be prompted to choose the name and an optional description for that option.
+        • You'll be brought to a new screen. Here, you can change the text (name and description) or add/remove more roles for this option. A single option can grant multiple roles.
+        • When you're done, click "Finish". You'll be brought to a screen where you can edit every part of your role message. You will also be able to add, edit, or delete more options.
+        • Finally, click "Finish" one more time. You'll be prompted to choose whether you want this role message to allow users to select a single option or multiple options.
+        • Lastly, click "Create Role Message", and your role message will come to life!
+
+    **What does it do?**
+        • Members can now click the button below the role message. When they do so, they will be prompted to select available options.
+
+    **Members are reporting issues**
+        • If there is an error when doing this, members will be prompted, and they may report the issue to the server admin.
+        • To resolve this issue, try to double-check InfiniBot's permissions for the "Manage Roles" permission and ensure that InfiniBot has a higher role than any of the roles it assigns.
+        • If these steps don't fix the problem, submit a question/issue at {supportServerLink}.
+
+    **Edit Role Messages**
+        • To edit your role message, right-click on the message and go to `Apps → Options → Edit`. From here, you can edit the text, options, and mode of the role message.
+            → Tip: If you don't see the Edit option, check that the message is from InfiniBot, is a role message, and is still an active message.
+
+
+    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    """
+    
+    # On Mobile, extra spaces cause problems. We'll get rid of them here:
+    description = standardizeStrIndention(description)
+    
+    embed = nextcord.Embed(title = "How to set up role messages with InfiniBot!", description = description, color = nextcord.Color.greyple())
     
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView()) 
 
@@ -11476,6 +12745,7 @@ async def adminCommands(message: nextcord.Message):
             'votes': lambda value: setattr(main, 'global_kill_votes', value),
             'reaction_roles': lambda value: setattr(main, 'global_kill_reaction_roles', value),
             'embeds': lambda value: setattr(main, 'global_kill_embeds', value),
+            'role_messages': lambda value: setattr(main, 'global_kill_role_messages', value),
             'purging': lambda value: setattr(main, 'global_kill_purging', value),
             'motivational_statements': lambda value: setattr(main, 'global_kill_motivational_statements', value),
             'dashboard': lambda value: setattr(main, 'global_kill_dashboard', value),
