@@ -2305,8 +2305,8 @@ class ShowMoreButton(nextcord.ui.View):
     self.possibleEmbeds = [
         ["Possible Margin For Error", "Infinibot is relying on an educated guess regarding the deleter of this message. Thus, there *is* a margin for error (In testing, about 2%)."],
         ["Possible Margin For Error", "Because the message can not be retrieved, Infinibot is relying on an educated guess regarding the author and deleter of this message. Thus, there *is* a margin for error (In testing, about 6.5%)."],
-        ["Unable to find specifics", "Infinibot is unable to find any info regarding this message because of Discord's limitations.\n\nThe user probably deleted thier own message."],
-        ["Unable to find specifics", "Infinibot is unable to find the deleter because of Discord's limitations.\n\nThe user probably deleted thier own message."]
+        ["Unable to find specifics", "Infinibot is unable to find any info regarding this message because of Discord's limitations.\n\nThe user probably deleted their own message."],
+        ["Unable to find specifics", "Infinibot is unable to find the deleter because of Discord's limitations.\n\nThe user probably deleted their own message."]
     ]
   
   @nextcord.ui.button(label = 'Show More', style = nextcord.ButtonStyle.gray, custom_id = "show_more")
@@ -7342,13 +7342,13 @@ async def checkNickname(guild: nextcord.Guild, update: nextcord.Member):
         channel = await getChannel(guild)
         if channel == None: return
         strikes = await giveStrike(guild.id, member.id, channel, 1)
-        await channel.send(embed = nextcord.Embed(title = "Profanity Detected", description = f"{member} was flagged thier nickname of \"{nickname}\"\n\n{member} is now at {strikes} strike(s)", color = nextcord.Color.dark_red()))
+        await channel.send(embed = nextcord.Embed(title = "Profanity Detected", description = f"{member} was flagged for their nickname of \"{nickname}\".\n\n{member} is now at {strikes} strike(s)", color = nextcord.Color.dark_red()))
 
         if server.adminChannel == None:
             return
         else:
             view = IncorrectButton()
-            embed =  nextcord.Embed(title = "Profanity Detected", description = f"{member} was flagged thier nickname of \"{nickname}\"\n\n{member} is now at {strikes} strike(s)", color = nextcord.Color.dark_red())
+            embed =  nextcord.Embed(title = "Profanity Detected", description = f"{member} was flagged for their nickname of \"{nickname}\".\n\n{member} is now at {strikes} strike(s)", color = nextcord.Color.dark_red())
             embed.set_footer(text = f"Member ID: {str(member.id)}")
             await server.adminChannel.send(view = view, embed = embed)
 
@@ -7534,9 +7534,9 @@ async def setstrikescommand(interaction: Interaction, member: nextcord.Member, s
         server = Server(interaction.guild.id)
         if not await canModerate(interaction, server): return
         
-        thierStrike = server.getStrike(member.id)
+        theirStrike = server.getStrike(member.id)
         
-        if thierStrike != None:
+        if theirStrike != None:
             if int(strike) != 0: server.getStrike(member.id).strike = int(strike)
             else: server.deleteStrike(member.id)
         else:
@@ -7551,9 +7551,9 @@ async def mystrikes(interaction: Interaction):
     server = Server(interaction.guild.id)
     if not await canModerate(interaction, server): return
 
-    thierStrike = server.getStrike(interaction.user.id)
-    if thierStrike != None:
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {interaction.user}", description = f"You are at {str(thierStrike.strike)} strike(s)", color =  nextcord.Color.blue()))
+    theirStrike = server.getStrike(interaction.user.id)
+    if theirStrike != None:
+        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {interaction.user}", description = f"You are at {str(theirStrike.strike)} strike(s)", color =  nextcord.Color.blue()))
     else:
         await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {interaction.user}", description = f"You are at 0 strike(s)", color =  nextcord.Color.blue()))
 
@@ -7562,9 +7562,9 @@ async def viewstrikes(interaction: Interaction, member: nextcord.Member):
     server = Server(interaction.guild.id)
     if not await canModerate(interaction, server): return
 
-    thierStrike = server.getStrike(member.id)
-    if thierStrike != None:
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {member}", description = f"{member} is at {str(thierStrike.strike)} strike(s).\n\nAction done by {interaction.user}", color =  nextcord.Color.blue()))
+    theirStrike = server.getStrike(member.id)
+    if theirStrike != None:
+        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {member}", description = f"{member} is at {str(theirStrike.strike)} strike(s).\n\nAction done by {interaction.user}", color =  nextcord.Color.blue()))
     else:
         await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {member}", description = f"{member} is at 0 strikes.\n\nAction done by {interaction.user}", color =  nextcord.Color.blue()))
 
@@ -9147,7 +9147,7 @@ async def checkForBirthdays(nextTime, currentTime):
                     birthdayTime = datetime.datetime.strptime(memberSplit[1], f"%m/%d/%Y")
                     #uncomment for telemetry
                     #print("memberSplit:", memberSplit) print("Day Delta:", abs(birthdayTime.day - nextTime.day)) print("Month Delta:", abs(birthdayTime.month - nextTime.month))
-                    if birthdayTime.day == nextTime.day and birthdayTime.month == nextTime.month: #if it is thier birthday
+                    if birthdayTime.day == nextTime.day and birthdayTime.month == nextTime.month: #if it is their birthday
                         Server = None
                         for guild in bot.guilds:
                             if guild.id == int(serverSplit[0]):
@@ -9799,7 +9799,7 @@ def getScore(level: int):
     return(score) #levels are calculated by x^0.65
 
 def setScoreOfMember(server: Server, member_id, score):
-    if score != 0: #if we are not reseting thier score
+    if score != 0: #if we are not reseting their score
         memberLevel = server.levels.getMember(member_id)
         
         if memberLevel != None: memberLevel.score = score #if they already had a score
@@ -12195,9 +12195,9 @@ async def birthdaysHelp(interaction: Interaction):
     description = f"""Never forget a birthday again and let InfiniBot do all the work!
     
     **How to add a birthday**
-        • Go to `/dashboard → Birthdays → Add` and choose the member, click next, and then enter the date of thier birthday. This MUST be formatted as month, day, year (MM/DD/YYYY).
-        • If you know it, you can even include thier real name!
-        • Now, on thier birthday at 8:00 AM MDT, they will be wished a happy birthday on the server and via a dm!
+        • Go to `/dashboard → Birthdays → Add` and choose the member, click next, and then enter the date of their birthday. This MUST be formatted as month, day, year (MM/DD/YYYY).
+        • If you know it, you can even include their real name!
+        • Now, on their birthday at 8:00 AM MDT, they will be wished a happy birthday on the server and via a dm!
         
     **Editing and Deleting**
         • You can go to `/dashboard → Birthdays` and use both "Edit" and "Delete" incase you made a mistake, or don't want InfiniBot to celebrate their birthday anymore.
@@ -12217,7 +12217,7 @@ async def birthdaysHelp(interaction: Interaction):
 
 @help.subcommand(name = "logging", description = "Help with logging.")
 async def loggingHelp(interaction: Interaction):
-    description = f"""Ever find it annoying how members can edit or delete thier message and leave you with no proof? With logging enabled, you will never have to worry about this again.
+    description = f"""Ever find it annoying how members can edit or delete their message and leave you with no proof? With logging enabled, you will never have to worry about this again.
     
     **What is the Log Channel?**
         • Whenever a log is created, it has to go somewhere! Creating a private channel specifically for logs is highly encouraged. Go to `/dashboard → Logging → Log Channel` and choose a channel to automatically be used for logging.
@@ -12259,14 +12259,14 @@ async def levelingHelp(interaction: Interaction):
         • Create specific roles for once members reach a certain level. For example, you could create a member-plus role with the ability to add custom emojis to the server, and you could use that as a level reward. Here's how to set that up:
         • Go to `/dashboard → Leveling → Level Rewards → Create` and select the role you would like to assign. Then, choose a level. Now, once members reach that level, they can get that role, but if they loose that level, they will loose the role.
             → Tip: Don't choose too high of a level. Levels are calculated via the equation 0.1x^0.65, so each level will make the next harder and harder to get to.
-            → Warning: If you link a role to a level reward, anyone who does not meet that level will have that role automatically taken from them once thier level updates, so be careful.
+            → Warning: If you link a role to a level reward, anyone who does not meet that level will have that role automatically taken from them once their level updates, so be careful.
     
     **How are points given?**
         • Points are given via every character in a message. The longer the message, the more points. However, you can't spam a long message, as InfiniBot will check to make sure that the message is not spamed.
         • Levels are calculed by 0.1x^0.65, so it's exponential. In English, the more levels you have, the harder it is to get to the next one.
         
     **How do I loose points?**
-        • Every day at midnight MDT, every member will loose a certain amount of points from thier score. This is not thier levels, but thier points. Overtime, this can add up and it can take your levels, so be careful!
+        • Every day at midnight MDT, every member will loose a certain amount of points from their score. This is not their levels, but their points. Overtime, this can add up and it can take your levels, so be careful!
         • The amount of points lost per day can be changed via `/dashboard → Leveling → Points Lost Per Day`. The default is 2 per day.
         
     **Don't want it?**
@@ -12311,7 +12311,7 @@ async def otherHelp(interaction: Interaction):
         • A default roles are roles that will be given to anyone who joins the server. To set this up, go to `/dashboard → Default Roles` and choose up to 5 roles. Now, any time a member joins the server, they will be greeted with those roles.
        
     **Delete Invites**
-        • If you are managing a large server and don't want people advertising thier servers, you can enable this feature. Go to `/dashboard → Enable / Disable Features → Delete Invites` and select "Enable". InfiniBot will now delete any message that includes an invite.
+        • If you are managing a large server and don't want people advertising their servers, you can enable this feature. Go to `/dashboard → Enable / Disable Features → Delete Invites` and select "Enable". InfiniBot will now delete any message that includes an invite.
             → Note: If you have the permission "Administrator", you are immune to this.
         
     **Check InfiniBot's Permissions**
