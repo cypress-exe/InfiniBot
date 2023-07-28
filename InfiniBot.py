@@ -9494,24 +9494,33 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
             await sendErrorMessageToOwner(guild, "View Audit Log", guildPermission = True)
             return
         except IndexError:
-            return
+            entry = None
         except Exception as e:
             print("on_raw_message_delete:")
             print(e)
             return
         
         #log whether or not the audit log is fresh enough to be accurate (within 5 seconds)
-        freshAuditLog = (entry.created_at.month == datetime.datetime.utcnow().month and entry.created_at.day == datetime.datetime.utcnow().day and entry.created_at.hour == datetime.datetime.utcnow().hour and ((datetime.datetime.utcnow().minute - entry.created_at.minute) <= 5))
+        if entry:
+            freshAuditLog = (entry.created_at.month == datetime.datetime.utcnow().month and entry.created_at.day == datetime.datetime.utcnow().day and entry.created_at.hour == datetime.datetime.utcnow().hour and ((datetime.datetime.utcnow().minute - entry.created_at.minute) <= 5))
+        else:
+            freshAuditLog = False
         
-        #we prioritize the author of the message if we know it, but if we don't we use this
-        if not message: user = entry.target
-        else: user = message.author
-        #set the deleter (because we didn't know that before)
-        deleter = entry.user
+        if entry:
+            #we prioritize the author of the message if we know it, but if we don't we use this
+            if not message: user = entry.target
+            else: user = message.author
+            #set the deleter (because we didn't know that before)
+            deleter = entry.user
+        else:
+            # The user probably just deleted their own message. We'll go with that theory.
+            # We don't actually need any of this information to exist then
+            if not message: user = None
+            deleter = None
         
         #eliminate whether InfiniBot is the author / deleter (only do this if we're sure that the audit log is fresh)
-        if user.id == bot.application_id and freshAuditLog: return
-        if deleter.id == bot.application_id and freshAuditLog: return
+        if freshAuditLog and user.id == bot.application_id: return
+        if freshAuditLog and deleter.id == bot.application_id: return
             
         
         #send log information!!! -------------------------------------------------------------------------------------------------------------------------------------------
