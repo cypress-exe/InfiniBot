@@ -43,14 +43,13 @@ VERSION = 2.0
 
 
 # IDs
-guildIDS = [968872260557488158, 995459530202808332]
 developmentGuild = [968872260557488158, 995459530202808332]
 developerID = [836701982425219072]
-infinibotGuild = 1009127888483799110
-issueReportChannel = 1012433924011597875
-submissionChannel = 1009139174256935103
-updatesChannel = 1009132479036276826
-infinibotUpdatesRole = 1087605721060872262
+infiniBotGuild = None
+issueReportChannel = None
+submissionChannel = None
+updatesChannel = None
+infiniBotUpdatesRole = None
 
 # Links
 supportServerLink = 'https://discord.gg/mWgJJ8ZqwR'
@@ -97,10 +96,24 @@ intents.reactions = True
 bot = commands.Bot(intents = intents, allowed_mentions = nextcord.AllowedMentions(everyone = True), help_command=None)
 
 
+# LOAD IDS ==============================================================================================================================================================
+def load_ids():
+    global infiniBotGuild, issueReportChannel, submissionChannel, updatesChannel, infiniBotUpdatesRole
+    
+    ids_file = None
+    
+    with open("./CriticalFiles/IDS.json") as file:
+        ids_file = file.read()    
 
+    json_file = json.loads(ids_file)
+    
+    infiniBotGuild = json_file["InfiniBotGuild"]
+    issueReportChannel = json_file["IssueReportChannel"]
+    submissionChannel = json_file["SubmissionChannel"]
+    updatesChannel = json_file["UpdatesChannel"]
+    infiniBotUpdatesRole = json_file["InfiniBotUpdatesRole"]
 
-
-
+load_ids()
 
 
 
@@ -2565,36 +2578,6 @@ class EmbedColorView(nextcord.ui.View):
         await interaction.response.edit_message(view = self)
         self.stop()
         
-class JoinToCreateVCView(nextcord.ui.View):
-    def __init__(self, vcs: list[list[str, bool]]):
-        super().__init__()
-        
-        options = []
-        for vc in vcs:
-            options.append(nextcord.SelectOption(label = vc[0], default = vc[1]))
-            
-        self.selection = None
-        
-        if len(vcs) < 10: maxValues = len(vcs)
-        else: maxValues = 10
-        
-        self.select = nextcord.ui.Select(placeholder = "Select Up to 5 Voice Channels", options = options, max_values = maxValues, min_values = 0)
-        if maxValues == 0: self.select.disabled = True
-        
-        self.button = nextcord.ui.Button(label = "Confirm", style = nextcord.ButtonStyle.blurple)
-        self.button.callback = self.continueCallback
-        
-        self.add_item(self.select)
-        self.add_item(self.button)
-        
-        
-    async def continueCallback(self, interaction: Interaction):
-        self.selection = self.select.values
-        self.select.disabled = True
-        self.button.disabled = True
-        await interaction.response.edit_message(view = self)
-        self.stop()
-
 class ConfirmationView(nextcord.ui.View):
     def __init__(self, yesBtnText = "Yes", noBtnText = "No"):
         super().__init__(timeout = None)
@@ -2815,7 +2798,7 @@ class IssueReportModal(nextcord.ui.Modal):
     async def callback(self, interaction: Interaction): 
         server = None
         for guild in bot.guilds:
-            if guild.id == infinibotGuild: server = guild
+            if guild.id == infiniBotGuild: server = guild
         
         if server == None:
             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
@@ -2848,7 +2831,7 @@ class IdeaReportModal(nextcord.ui.Modal):
     async def callback(self, interaction: Interaction): 
         server = None
         for guild in bot.guilds:
-            if guild.id == infinibotGuild: server = guild
+            if guild.id == infiniBotGuild: server = guild
         
         if server == None:
             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
@@ -12474,9 +12457,9 @@ async def sendMessageToAllGuilds(interaction: Interaction):
         for guild in bot.guilds:
             try:
                 # Do some special stuff if it's the InfiniBot server
-                if guild.id == infinibotGuild:
+                if guild.id == infiniBotGuild:
                     channel = guild.get_channel(updatesChannel)
-                    role = guild.get_role(infinibotUpdatesRole)
+                    role = guild.get_role(infiniBotUpdatesRole)
                     await channel.send(content = role.mention, embed = embed, view = SupportAndInviteView())
                     print(f"Message sent to InfiniBot Server Updates Area")
                     
