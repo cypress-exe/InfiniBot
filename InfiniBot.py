@@ -309,6 +309,8 @@ class FileOperations:
               'role_messages': False,
               'purging': False,
               'motivational_statements': False,
+              'jokes': False,
+              'joke_submissions': False,
               'dashboard': False,
               'profile': False,
             },
@@ -1964,6 +1966,8 @@ class Main:
         self.global_kill_role_messages = self.rawPersistentData['global_kill']['role_messages']
         self.global_kill_purging = self.rawPersistentData['global_kill']['purging']
         self.global_kill_motivational_statements = self.rawPersistentData['global_kill']['motivational_statements']
+        self.global_kill_jokes = self.rawPersistentData['global_kill']['jokes']
+        self.global_kill_joke_submissions = self.rawPersistentData['global_kill']['joke_submissions']
         self.global_kill_dashboard = self.rawPersistentData['global_kill']['dashboard']
         self.global_kill_profile = self.rawPersistentData['global_kill']['profile']
     
@@ -1998,6 +2002,8 @@ class Main:
               'role_messages': self.global_kill_role_messages,
               'purging': self.global_kill_purging,
               'motivational_statements': self.global_kill_motivational_statements,
+              'jokes': self.global_kill_jokes,
+              'joke_submissions': self.global_kill_joke_submissions,              
               'dashboard': self.global_kill_dashboard,
               'profile': self.global_kill_profile,
             },
@@ -2267,6 +2273,36 @@ class Utils:
                     return None
                 
             return (not main.global_kill_motivational_statements)
+        
+        def Jokes(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if jokes are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_jokes)
+        
+        def JokeSubmissions(self, guild_id: str = None, server: Server = None, check = False):
+            """Returns if joke submissions are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+            if check and server == None:
+                if guild_id != None:
+                    server = Server(guild_id)
+                    if server == None:
+                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                        return None
+                else:
+                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
+                    return None
+                
+            return (not main.global_kill_joke_submissions)
 
         def Dashboard(self, guild_id: str = None, server: Server = None, check = False):
             """Returns if the dashboard is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
@@ -10145,6 +10181,11 @@ class JokeView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
+        if utils.enabled.JokeSubmissions(guild_id = 123546798): # the result of bad code
+            self.button = nextcord.ui.Button(label = "Submit a Joke", custom_id = "submit_a_joke")
+            self.button.callback = self.submit_a_joke_callback
+            self.add_item(self.button)
+        
     class SubmitAJokeModal(nextcord.ui.Modal):
         def __init__(self):
             super().__init__(title = "Submit a Joke", timeout = None)
@@ -10180,8 +10221,11 @@ class JokeView(nextcord.ui.View):
             # Inform the user that it was sent
             await interaction.response.send_message(embed = nextcord.Embed(title = "Submission Sent", description = "Your submission was sent! Join our support server, and we'll dm you regarding your submission's status.", color = nextcord.Color.green()), ephemeral = True, view = SupportView())
                    
-    @nextcord.ui.button(label = "Submit a Joke", custom_id = "submit_a_joke")
-    async def submit_a_joke(self, button: nextcord.ui.Button, interaction: Interaction):
+    async def submit_a_joke_callback(self, interaction: Interaction):
+        if not utils.enabled.JokeSubmissions(guild_id = interaction.guild.id):
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Joke Submissions Disabled", description = "Joke Submissions have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+            return
+        
         await interaction.response.send_modal(self.SubmitAJokeModal())
         
 class JokeVerificationView(nextcord.ui.View):
@@ -10256,6 +10300,9 @@ class JokeVerificationView(nextcord.ui.View):
                             await dm.send(embeds = [nextcord.Embed(title = "Joke Submission Denied", description = f"Your joke submission has been denied by {interaction.user}. The joke you submitted has been attached below.\n\nReason: {self.reason}\n\nIf you believe this to be a mistake, contact the moderator in the #support channel of the InfiniBot Support Server.", color = nextcord.Color.red()),
                                               nextcord.Embed(title = title, description = f"{description}\n\n{f'Answer: ||{answer}||' if answer else ''}", color = nextcord.Color.fuchsia())])
                         
+                        # Remove the message
+                        await interaction.response.edit_message(delete_after=0.0)
+                        
                 await interaction.response.send_message(embed = nextcord.Embed(title = "Confirm Deny", description = "Are you sure you want to deny this joke submission? This will not be reversable. Both your reason and your username will be sent to the submitter.", color = nextcord.Color.blue()), ephemeral = True, view = ConfirmView(self.message, reason))
                                             
         modal = Modal(interaction.message)
@@ -10325,10 +10372,17 @@ class JokeVerificationView(nextcord.ui.View):
                     await dm.send(embeds = [nextcord.Embed(title = "Joke Submission Verified", description = f"Your joke submission has been verified! The joke you submitted has been attached below.", color = nextcord.Color.green()),
                                         nextcord.Embed(title = title, description = f"{description}\n\n{f'Answer: ||{answer}||' if answer else ''}", color = nextcord.Color.fuchsia())])
                 
+                # Remove the message
+                await interaction.response.edit_message(delete_after=0.0)
+                
         await interaction.response.send_message(embed = nextcord.Embed(title = "Confirm Verify", description = "Are you sure you want to verify this joke submission? This will not be reversable.", color = nextcord.Color.blue()), ephemeral = True, view = ConfirmView(interaction.message))
 
 @bot.slash_command(name = "joke", description = "Get a joke")
 async def jokeCommand(interaction: Interaction):
+    if not utils.enabled.Jokes(guild_id = interaction.guild.id):
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Jokes Disabled", description = "Jokes have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+        return
+    
     all_jokes = fileOperations.getAllJokes()
     
     joke = ""
@@ -12978,6 +13032,8 @@ async def adminCommands(message: nextcord.Message):
             'role_messages': lambda value: setattr(main, 'global_kill_role_messages', value),
             'purging': lambda value: setattr(main, 'global_kill_purging', value),
             'motivational_statements': lambda value: setattr(main, 'global_kill_motivational_statements', value),
+            'jokes': lambda value: setattr(main, 'global_kill_jokes', value),
+            'joke_submissions': lambda value: setattr(main, 'global_kill_joke_submissions', value),
             'dashboard': lambda value: setattr(main, 'global_kill_dashboard', value),
             'profile': lambda value: setattr(main, 'global_kill_profile', value),
         }
