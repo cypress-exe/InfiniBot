@@ -12841,6 +12841,7 @@ async def adminCommands(message: nextcord.Message):
         description = """
         ### **Level 1**
         • `-stats`: display InfiniBot satistics
+        • `-ping`: display InfiniBot latency diagnosis
         
         ### **Level 2**
         • `-info`: display info about a server or owner of a server that uses InfiniBot
@@ -12874,6 +12875,14 @@ async def adminCommands(message: nextcord.Message):
         embed = nextcord.Embed(title = "Server Stats:", description = f"Server Count: {str(servercount)}\nTotal Members: {str(membercount)}\n\n*A watched pot never boils*", color = nextcord.Color.blue())
         await message.channel.send(embed = embed, view = TopGGVoteView())
         return
+        
+    if messageContent == "-ping" and message.author.id in levelOneAdmins:
+        start_time = time.time()
+        response_message = await message.channel.send(embed = nextcord.Embed(title = "InfiniBot Diagnosis Ping", description = "Pinging...", color = nextcord.Color.blue()))
+        end_time = time.time()
+
+        latency = (end_time - start_time) * 1000
+        await response_message.edit(embed = nextcord.Embed(title = "InfiniBot Diagnosis Ping", description = f"InfiniBot pinged with a high-priority diagnosis ping. \n\nLatency: {latency:.2f} ms.", color = nextcord.Color.blue()))
         
     # Level 2 ----------------------------------------------------------------------
         
