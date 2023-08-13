@@ -1711,7 +1711,7 @@ class Messages:
     '''Manages Messages Serverwide. Requires a server_id, and you can access/save any saved messages.'''
     def __init__(self, server_id):
         self.guild_id = server_id
-        self.MESSAGE_DATA = {
+        self.message_data = {
             "Vote": {
                 "list": [],
                 "max_active_messages": 10
@@ -1730,64 +1730,78 @@ class Messages:
             }
         }
         
+        self.default_message_data = copy.deepcopy(self.message_data)
         self._initialized = False
+        self.deleted = False
 
     def initialize(self):
         '''Initializes the Messages class by retrieving all active messages for this server.'''
         messages = self._getAllMessages()
         if messages is not None:
-            for _type, data in self.MESSAGE_DATA.items():
+            for _type, data in self.message_data.items():
                 data["list"] = messages.get(_type, [])
+                # This code will save the data from messages and add it to self.message_data
                 
         self._initialized = True;
 
     def _getAllMessages(self):
         '''Returns all the messages as a dictionary of message type and list of Message objects.'''
         allServers = fileOperations.getAllMessages()
-        messageTypes = list(self.MESSAGE_DATA.keys())
+        messageTypes = list(self.message_data.keys())
 
         # Find THIS server
         for server in allServers:
             if server.split("———")[0] == self.guild_id:
+                # Correct Server
                 if len(server.split("———")) == 1:
+                    # No Data
                     return None
 
                 package = {}
                 serverMessageTypesSorted = server.split("———")[1].split("$")
-                for messageType in serverMessageTypesSorted:
-                    messages = messageType.split("#")
+                for index, messageType in enumerate(serverMessageTypesSorted):
+                    # For each type of message, this loops once. You can get the type with messageTypes[index]
+                    maxMessages = self.maxOf(messageTypes[index])
+                    infinite = (maxMessages == None)
+                    
+                    messages = messageType.split("#") # messages stores all of the messages for the current type
                     for message in messages:
                         if message == "":
+                            # No Data
                             continue
 
                         parts = message.split("|")
                         path = parts[0].split("/")
-                        _type = messageTypes[serverMessageTypesSorted.index(messageType)]
-                        message_obj = Message(_type, int(path[0]), int(path[1]), int(parts[1]), True if parts[2] == "T" else False, parts[3:])
+                        _type = messageTypes[index]
+                        message_obj = Message(_type, int(path[0]), int(path[1]), int(parts[1]), True if infinite or parts[2] == "T" else False, parts[3:])
                         package.setdefault(_type, []).append(message_obj)
+                        # Set default will create a key with a value of [] if the key does not exist. It will then return that empty list so that we can append to it.
+                        # If it already does exist, then it returns the value that is already there. We then append to that list.
+                        # Our changes that we have appended are then saved automatically in the list
+                        
                 return package
 
-        # Add the message to the records if it doesn't exist
-        allServers = fileOperations.addServerToList(self.guild_id, allServers, None)
-        fileOperations.saveMessages(allServers)
+        # If the server does not exist, then we'll return None. If we later add something, THEN and only then will we save.
         return None
 
     def add(self, _type, channel_id, message_id, owner_id, persistent=False, parameters = []):
         '''Adds an active message to the server.
         Returns True if successful, False if the type is invalid.'''
+        
         if not self._initialized:
             self.initialize();
         
-        if _type not in self.MESSAGE_DATA:
+        if _type not in self.message_data:
+            # Type is invalid
             return False
 
-        parameters = [str(x) for x in parameters]
-        _list = self.MESSAGE_DATA[_type]["list"]
-        _list.insert(0, Message(_type, channel_id, message_id, owner_id, persistent, parameters))
+        parameters = [str(x) for x in parameters] # Ensure that parameters are strings.
+        _list: list = self.message_data[_type]["list"] # Get all the messages for our current type
+        _list.insert(0, Message(_type, channel_id, message_id, owner_id, persistent, parameters)) # Insert our message
 
-        max_active_messages = self.MESSAGE_DATA[_type]["max_active_messages"]
-
-        if len(_list) > max_active_messages:
+        # Delete a message if needed to maintain our maximum active messages count.
+        max_active_messages = self.message_data[_type]["max_active_messages"]
+        if max_active_messages != None and len(_list) > max_active_messages:
             # Remove some active messages
             num_persistent = sum(1 for message in _list if message.persistent)
             num_non_persistent = len(_list) - num_persistent
@@ -1809,6 +1823,7 @@ class Messages:
     def delete(self, message_id):
         '''Deletes a Message with a specific message_id
         Returns True if successful, False if message doesn't exist or error.'''
+        
         if not self._initialized:
             self.initialize();
             
@@ -1817,17 +1832,24 @@ class Messages:
         except ValueError:
             return False
         
-        for _type, data in self.MESSAGE_DATA.items():
+        for _type, data in self.message_data.items():
             _list: list[Message] = data["list"]
             for message in _list:
                 if message.message_id == message_id:
+                    # This is our message
                     _list.remove(message)
+                    
+                    # Also check if deletable
+                    self.checkIfDeletable()
                     return True
+                
+        
         return False
 
     def deleteAllFromChannel(self, channel_id):
         '''Deletes all Messages in a specific channel (requires channel_id)
         Returns True if successful, False if channel doesn't exist or error.'''
+        
         if not self._initialized:
             self.initialize();
             
@@ -1836,23 +1858,45 @@ class Messages:
         except ValueError:
             return False
         
-        for _type, data in self.MESSAGE_DATA.items():
+        removed_data = False
+        for _type, data in self.message_data.items():
             _list: list[Message] = data["list"]
             for message in _list:
                 if message.channel_id == channel_id:
+                    # This is our channel
                     _list.remove(message)
-                    return True
-        return True
+                    removed_data = True
+        
+        if removed_data:
+            # Check if deletable
+            self.checkIfDeletable()
+            return True
+    
+        return False
 
     def save(self):
-        '''Saves all changes made to this class.'''     
+        '''Saves all changes made to this class. Returns True if able to save, False if prohibited.'''     
+            
+        if self.deleted:
+            return False
+            
+        if self.checkIfDeletable():
+            return False
             
         serverData = []
-        for _type, data in self.MESSAGE_DATA.items():
-            _list: list[Message] = data["list"]
+        for _type, data in self.message_data.items():
+            # For each type of message, this loop will run once.
+            maxMessages = self.maxOf(_type)
+            infinite = (maxMessages == None)
+            
+            _list: list[Message] = data["list"] # Get the data for this type
             allEncodedMessages = []
             for message in _list:
-                persistent = "T" if message.persistent else "F"
+                if infinite:
+                    persistent = ""
+                else:
+                    persistent = ("T" if message.persistent else "F")
+                    
                 if message.parameters != []:
                     parameters = "|" + "|".join(message.parameters)
                 else: 
@@ -1869,6 +1913,8 @@ class Messages:
         fileOperations.saveMessages(finalData)
         
         self.initialize()
+        
+        return True
 
     def getAll(self, _type) -> list[Message]: 
         '''Returns the list of active messages of a specific type.
@@ -1876,10 +1922,11 @@ class Messages:
         if not self._initialized:
             self.initialize();
             
-        if _type not in self.MESSAGE_DATA:
+        if _type not in self.message_data:
+            # Type invalid
             return None;
         
-        return self.MESSAGE_DATA[_type]["list"]
+        return self.message_data[_type]["list"]
 
     def get(self, message_id):
         '''Returns a Message with a specific channel and message_id.
@@ -1892,7 +1939,7 @@ class Messages:
         except ValueError:
             return None;
         
-        for _type, data in self.MESSAGE_DATA.items():
+        for _type, data in self.message_data.items():
             _list: list[Message] = data["list"]
             for message in _list:
                 if message.message_id == message_id:
@@ -1900,12 +1947,21 @@ class Messages:
         return None;
 
     def countOf(self, _type) -> int:
-        '''Returns the total amount of a type of active message that are currently cached (not the max amount)'''
-        return len(self.getAll(_type))
+        '''Returns the total amount of a type of active message that are currently cached (not the max amount). Returns None if type is invalid.'''
+        all = self.getAll(_type)
+        if all == None:
+            return None
+        
+        return len(all)
 
-    def maxOf(self, _type) -> int:
-        '''Returns the max amount of a type of active message'''
-        return self.MESSAGE_DATA[_type]["max_active_messages"]
+    def maxOf(self, _type):
+        '''Returns the max amount of a type of active message. None if infinite or invalid type.'''
+        if _type not in self.message_data:
+            # Type is invalid
+            return None
+        
+        maxActiveMessages: int = self.message_data[_type]["max_active_messages"]
+        return maxActiveMessages
         
     async def checkAll(self):
         '''Checks all active messages to see if any don't exist anymore'''
@@ -1914,7 +1970,7 @@ class Messages:
             
         guild = await bot.fetch_guild(self.guild_id)
         
-        for _type, data in self.MESSAGE_DATA.items():
+        for _type, data in self.message_data.items():
             _list: list[Message] = data["list"]
             for message in _list:
                 try:
@@ -1931,6 +1987,17 @@ class Messages:
                     
                 # Delete Message
                 _list.remove(message)
+        
+        # Check if deletable
+        self.checkIfDeletable()
+      
+    def checkIfDeletable(self):
+        '''Checks if we need to be storing any Active Messages for the server. If not, data is deleted and returns True. Else returns False.'''
+        if self.message_data == self.default_message_data:
+            # The data is the same. Why store it?
+            self.deleteAllAndSave()
+            return True
+        return False
                     
     def deleteAllAndSave(self):
         '''Deletes any Active Messages files from server'''
@@ -1939,6 +2006,9 @@ class Messages:
         list = fileOperations.deleteServerFromList(self.guild_id, allMessages)
 
         fileOperations.saveMessages(list)
+        
+        # Edit our deleted status
+        self.deleted = True
 
 
 class Main:
@@ -2338,6 +2408,10 @@ utils = Utils()
 #Buttons and UI
 
 
+
+
+
+
 # CUSTOM VIEWS ==========================================================================================================================================================
 # Strikes "Mark Incorrect" Button
 class IncorrectButton(nextcord.ui.View):
@@ -2584,7 +2658,7 @@ class ReactionRoleView(nextcord.ui.View):
 
         options = []
         for role in roles:
-            options.append(nextcord.SelectOption(label = role.name))
+            options.append(nextcord.SelectOption(label = role.name, value = role.name))
             
         self.selection = None
         
@@ -2603,6 +2677,8 @@ class ReactionRoleView(nextcord.ui.View):
              
     async def createCallback(self, interaction: Interaction):
         self.selection = self.select.values
+        if self.selection == []: return
+        
         self.select.disabled = True
         self.button.disabled = True
         await interaction.response.edit_message(view = self)
@@ -2628,6 +2704,8 @@ class EmbedColorView(nextcord.ui.View):
              
     async def createCallback(self, interaction: Interaction):
         self.selection = self.select.values[0]
+        if self.selection == []: return
+        
         self.select.disabled = True
         self.button.disabled = True
         await interaction.response.edit_message(view = self)
@@ -5499,17 +5577,17 @@ class Dashboard(nextcord.ui.View):
                 super().__init__(timeout = None)
                 self.outer = outer
                 
-                self.voteBtn = self.OptionButton(self, "Vote")
-                self.add_item(self.voteBtn)
-                
-                self.reactionRoleBtn = self.OptionButton(self, "Reaction Role")
-                self.add_item(self.reactionRoleBtn)
-                
                 self.embedBtn = self.OptionButton(self, "Embed")
                 self.add_item(self.embedBtn)
                 
-                self.embedBtn = self.OptionButton(self, "Role Message")
-                self.add_item(self.embedBtn)
+                self.votesBtn = self.OptionButton(self, "Vote")
+                self.add_item(self.votesBtn)
+                
+                self.reactionRolesBtn = self.OptionButton(self, "Reaction Role")
+                self.add_item(self.reactionRolesBtn)
+                
+                self.roleMessagesBtn = self.OptionButton(self, "Role Message")
+                self.add_item(self.roleMessagesBtn)
                 
                 self.backBtn = nextcord.ui.Button(label = "Back", row = 1, style = nextcord.ButtonStyle.danger)
                 self.backBtn.callback = self.backBtnCallback
@@ -5522,18 +5600,31 @@ class Dashboard(nextcord.ui.View):
                     await disabledFeatureOverride(self, interaction)
                     return
                 
-                description = f"""InfiniBot caches every vote, reaction role, and embedded message posted on this server (using InfiniBot), enabling the ability to edit these messages. However, there is a maximum limit for each type of message. Please refer to the list below to manage your active messages.
+                description = f"""InfiniBot caches every vote, reaction role, and embedded message posted on this server (using InfiniBot), enabling the ability to edit these messages. However, there is a maximum limit for some messages (indicated below). Please refer to the list below to manage your active messages.
                 
-                Votes ({server.messages.countOf("Vote")}/10)
-                Reaction Roles ({server.messages.countOf("Reaction Role")}/10)
-                Embeds ({server.messages.countOf("Embed")}/20)
-                Role Messages ({server.messages.countOf("Role Message")}/10)"""
+                {self.activeMessageStats(server, "Embed")}
+                {self.activeMessageStats(server, "Vote")}
+                {self.activeMessageStats(server, "Reaction Role")}
+                {self.activeMessageStats(server, "Role Message")}"""
                 
                 # On Mobile, extra spaces cause problems. We'll get rid of them here:
                 description = standardizeStrIndention(description)
                 
                 embed = nextcord.Embed(title = "Dashboard - Active Messages", description = description, color = nextcord.Color.blue())
                 await interaction.response.edit_message(embed = embed, view = self)
+                
+            def activeMessageStats(self, server: Server, _type: str):
+                all = server.messages.countOf(_type)
+                if all == None:
+                    return "INVALID TYPE"
+                
+                max = server.messages.maxOf(_type)
+                if max == None:
+                    max = ""
+                else:
+                    max = f"/{max}"
+                
+                return f"{_type}s ({all}{max})"
                 
             class OptionButton(nextcord.ui.Button):
                 def __init__(self, outer, _type):
@@ -5545,7 +5636,8 @@ class Dashboard(nextcord.ui.View):
                     def __init__(self, outer, _type):
                         super().__init__(timeout = None)
                         self.outer = outer
-                        self._type = _type
+                        self._type: str = _type
+                        self._type_lower = self._type.lower()
                         
                         self.backBtn = nextcord.ui.Button(label = "Back")
                         self.backBtn.callback = self.backBtnCallback
@@ -5556,6 +5648,13 @@ class Dashboard(nextcord.ui.View):
                         self.add_item(self.refreshBtn)
                         
                     async def setup(self, interaction: Interaction):
+                        embed = nextcord.Embed(title = f"Dashboard - Active Messages - {self._type}s",
+                                               description = f"Please wait as we retrieve your active messages...",
+                                               color = nextcord.Color.blue())
+                        
+                        main_message = await interaction.response.edit_message(embed = embed, view = self)
+                        
+                        
                         server = Server(interaction.guild.id)
                         
                         messages = server.messages.getAll(self._type)
@@ -5585,26 +5684,31 @@ class Dashboard(nextcord.ui.View):
                             title = discordMessage.embeds[0].title
                             persistent = " 🔒" if message.persistent else ""
                             
-                            messagesFormatted.append(f"{index + 1}/{maxMessages}) [{title}]({message.getLink(interaction.guild.id)}){persistent}")
+                            maxMessagesStr = (f"/{maxMessages}" if maxMessages else "")
+                            messagesFormatted.append(f"{index + 1}{maxMessagesStr}) [{title}]({message.getLink(interaction.guild.id)}){persistent}")
                             
                         # Save if needed
                         if save: server.messages.save()
                             
                         if messagesFormatted == []:
-                            messagesFormatted.append(f"You don't have any active {self._type}s yet! Create one!")
+                            messagesFormatted.append(f"You don't have any active {self._type_lower}s yet! Create one!")
                         
                         messagesFormatted_String = '\n'.join(messagesFormatted)
                         
+                        persistentNotice = f"\n\nThe 🔒 symbol indicates that the message is persistent. To enable / disable persistency, go to the message, right click, go to `Apps → Edit → Prioritize / Deprioritize`"
+                        if maxMessages == None: persistentNotice = ""
+                        
                         embed = nextcord.Embed(title = f"Dashboard - Active Messages - {self._type}s",
-                                               description = f"Mange your active {self._type}s here. The 🔒 symbol indicates that the message is persistent. \n\nTo enable / disable persistency, go to the message, right click, go to `Apps → Edit → Prioritize / Deprioritize`\n\n**Active {self._type}s**\n{messagesFormatted_String}",
+                                               description = f"Manage your active {self._type_lower}s here.{persistentNotice}\n\n**Active {self._type}s**\n{messagesFormatted_String}",
                                                color = nextcord.Color.blue())
                         
-                        await interaction.response.edit_message(embed = embed, view = self)
+                        await interaction.followup.edit_message(main_message.id, embed = embed)
                         
                     async def backBtnCallback(self, interaction: Interaction):
                         await self.outer.setup(interaction)
                             
                     async def refreshBtnCallback(self, interaction: Interaction):
+                        # Reload and Recheck
                         await self.setup(interaction)
                     
                 async def callback(self, interaction: Interaction):
@@ -6331,6 +6435,9 @@ class Profile(nextcord.ui.View):
         async def callback(self, interaction: Interaction):
             await self.SettingsView(self.outer).setup(interaction)
     
+
+
+
 
 #Real Code (YAY) ------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -8361,7 +8468,9 @@ def reactionRoleOptionsFormatter(_type: str, roles: list[nextcord.Role], emojis:
             
     return reactionsFormatted, addedOptions_Emojis
 
-async def createReactionRole(interaction: Interaction, title: str, message: str, rolesStr: list[str], _type: str, mentionRoles: bool):  
+async def createReactionRole(interaction: Interaction, title: str, message: str, rolesStr: list[str], _type: str, mentionRoles: bool):
+    if not interaction.guild: return
+      
     # Decode roles and emojis
     if _type != "Custom":
         roles: list[nextcord.Role] = [role for roleName in rolesStr for role in interaction.guild.roles if role.name == roleName]
@@ -9586,7 +9695,11 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
         
         #message content
         if message: 
-            if message.content != "": embed.add_field(name = "Message", value = message.content)
+            if message.content != "": 
+                if len(message.content) <= 1024: 
+                    embed.add_field(name = "Message", value = message.content)
+                else:
+                    embed.add_field(name = "Message", value = "Message is too long! Discord won't display it.")
         else: 
             embed.add_field(name = "Message", value = "The message cannot be retrieved. This is due to the message being deleted too long after creation. This is a Discord limitation.", inline = False)
         
@@ -9606,12 +9719,6 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
             
         #the footer
         embed.set_footer(text = f"Message ID: {payload.message_id}\nCode: {code}")
-        
-        #double check that the embed is fine in terms of character size
-        if len(embed.fields) > 0:
-            for field in embed.fields:
-                if len(field.value) > 1024:
-                    field.value = "Message is too long!!! Discord won't display it."
 
         #actually send the embed
         view = ShowMoreButton()
@@ -10421,6 +10528,10 @@ class MessageCommandOptionsView(nextcord.ui.View):
         self.BanButton(self, interaction, message)
         
     async def setup(self, interaction: Interaction):
+        embed = nextcord.Embed(title = "Message Options", description = "Syncing Data. Please Wait...", color = nextcord.Color.blue())
+        message = await interaction.response.send_message(embed = embed, ephemeral = True)
+        full_message = await message.fetch()
+        
         if len(self.children) == 0:
             description = "Hmmm. You don't have any options for this message."
             color = nextcord.Color.red()
@@ -10430,7 +10541,7 @@ class MessageCommandOptionsView(nextcord.ui.View):
         
         embed = nextcord.Embed(title = "Message Options", description = description, color = color)
         
-        await interaction.response.send_message(embed = embed, view = self, ephemeral = True)
+        await interaction.followup.edit_message(full_message.id, embed = embed, view = self)
         
     async def disableAll(self, interaction: Interaction):
         for child in self.children:
@@ -10627,6 +10738,24 @@ async def messageCommandBanMember(interaction: Interaction, member: nextcord.Mem
 
 
 #Editing Messages: --------------------------------------------------------------------------------------------------------------------------------------------------------------------     
+def persistent_warning_description(_type: str, max: str, uses: list):
+    if not isinstance(_type, str):
+        raise ValueError("Type must be a string!")
+    if not (isinstance(max, str) or isinstance(max, int)):
+        raise ValueError("Max must be an int or a string!")
+    if not isinstance(uses, list) or uses == []:
+        raise ValueError("Uses must be a list with content!")
+    
+    _type = _type.lower()
+    max = str(max)
+    
+    # Add "and"
+    uses[-1] = f"and {uses[-1]}"
+    # Tie it together
+    uses_str = ", ".join(uses)
+    
+    return (f"InfiniBot, similar to all free software, has its limitations. Regrettably, we are unable to continuously cache every {_type} ever created in our systems. Consequently, each server is allocated a maximum of {max} active (cached) {_type}s. As a result, there may come a point when this {_type} can no longer be edited.\n\n**What is Prioritizing?**\nPrioritizing ensures that this particular {_type} remains active indefinitely, enabling it to be edited well into the future. However, this comes at the expense of one of the server's active {_type} slots ({max}). This feature is particularly useful for {_type}s such as {uses_str}.") 
+
 class EditEmbed(nextcord.ui.View):
     def __init__(self, messageID: int):
         super().__init__(timeout = None)
@@ -10774,8 +10903,12 @@ class EditEmbed(nextcord.ui.View):
                 self.add_item(self.continueBtn)
                 
             async def setup(self, interaction: Interaction):
+                messages = Messages(interaction.guild.id)
+                max = messages.maxOf("Embed")
+                
+                
                 embed = nextcord.Embed(title = "Edit Embed - Prioritize / Deprioritize", 
-                                       description = "InfiniBot, similar to all free software, has its limitations. Regrettably, we are unable to continuously cache every embed ever created in our systems. Consequently, each server is allocated a maximum of 20 active (cached) embeds. As a result, there may come a point when this embed can no longer be edited.\n\n**What is Prioritizing?**\nPrioritizing ensures that this particular embed remains active indefinitely, enabling it to be edited well into the future. However, this comes at the expense of one of the server's active embed slots (20). This feature is particularly useful for embeds such as rules, onboarding information, and similar content.", 
+                                       description = persistent_warning_description(_type = "embed", max = max, uses = ["rules", "onboarding information", "similar content"]), 
                                        color = nextcord.Color.yellow())
                 
                 await interaction.response.edit_message(embed = embed, view = self)
