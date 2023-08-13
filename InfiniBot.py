@@ -1714,11 +1714,11 @@ class Messages:
         self.message_data = {
             "Vote": {
                 "list": [],
-                "max_active_messages": 10
+                "max_active_messages": None
             },
             "Reaction Role": {
                 "list": [],
-                "max_active_messages": 10
+                "max_active_messages": None
             },
             "Embed": {
                 "list": [],
@@ -1726,7 +1726,7 @@ class Messages:
             },
             "Role Message": {
                 "list": [],
-                "max_active_messages": 10
+                "max_active_messages": None
             }
         }
         
@@ -10956,9 +10956,6 @@ class EditVote(nextcord.ui.View):
         closeVoteBtn = self.closeVote(self, self.message.id)
         self.add_item(closeVoteBtn)
         
-        editPersistencyBtn = self.editPersistencyButton(self, self.messageInfo)
-        self.add_item(editPersistencyBtn)
-        
     async def setup(self, interaction: Interaction):
         await self.loadButtons(interaction)
         
@@ -11105,63 +11102,6 @@ class EditVote(nextcord.ui.View):
         async def callback(self, interaction: Interaction):
             await self.closeVoteView(self.outer, self.messageID).setup(interaction)
         
-    class editPersistencyButton(nextcord.ui.Button):
-        def __init__(self, outer, messageInfo: Message):
-            if messageInfo.persistent:
-                text = "Deprioritize"
-                icon = "🔓"
-            else:
-                text = "Prioritize"
-                icon = "🔒"
-                
-            super().__init__(label = text, emoji = icon)
-            self.outer = outer
-            self.messageID = messageInfo.message_id
-        
-        class warningView(nextcord.ui.View):
-            def __init__(self, outer, guildID: int, messageID: int):
-                super().__init__(timeout = None)
-                self.outer = outer
-                
-                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger) 
-                self.backBtn.callback = self.backBtnCallback
-                self.add_item(self.backBtn)
-                
-                self.continueBtn = self.continueButton(self.outer, guildID, messageID)
-                self.add_item(self.continueBtn)
-                
-            async def setup(self, interaction: Interaction):
-                embed = nextcord.Embed(title = "Edit Vote - Prioritize / Deprioritize", 
-                                       description = "InfiniBot, similar to all free software, has its limitations. Regrettably, we are unable to continuously cache every vote ever created in our systems. Consequently, each server is allocated a maximum of 10 active (cached) votes. As a result, there may come a point when this vote can no longer be edited.\n\n**What is Prioritizing?**\nPrioritizing ensures that this particular vote remains active indefinitely, enabling it to be edited well into the future. However, this comes at the expense of one of the server's active vote slots (10). This feature is particularly useful for votes such as long-term poles and similar content.", 
-                                       color = nextcord.Color.yellow())
-                
-                await interaction.response.edit_message(embed = embed, view = self)
-                
-            async def backBtnCallback(self, interaction: Interaction):
-                await self.outer.setup(interaction)
-        
-            class continueButton(nextcord.ui.Button):
-                def __init__(self, outer, guildID: int, messageID: int):
-                    self.server = Server(guildID)
-                    self.messageInfo = self.server.messages.get(messageID)
-                    
-                    if self.messageInfo.persistent:
-                        text = "Deprioritize"
-                    else:
-                        text = "Prioritize"
-                        
-                    super().__init__(label = text, style = nextcord.ButtonStyle.blurple)
-                    self.outer = outer
-                    
-                async def callback(self, interaction: Interaction):
-                    self.messageInfo.persistent = not self.messageInfo.persistent
-                    self.server.messages.save()
-                    
-                    await self.outer.setup(interaction)
-        
-        async def callback(self, interaction: Interaction):
-            await self.warningView(self.outer, interaction.guild.id, self.messageID).setup(interaction)
-
 class EditReactionRole(nextcord.ui.View):
     def __init__(self, messageID: int):
         super().__init__(timeout = None)
@@ -11179,9 +11119,6 @@ class EditReactionRole(nextcord.ui.View):
         
         editOptionsBtn = self.editOptionsButton(self, self.messageInfo)
         self.add_item(editOptionsBtn)
-        
-        editPersistencyBtn = self.editPersistencyButton(self, self.messageInfo)
-        self.add_item(editPersistencyBtn)
         
     async def setup(self, interaction: Interaction):
         await self.loadButtons(interaction)
@@ -11531,63 +11468,6 @@ class EditReactionRole(nextcord.ui.View):
         async def callback(self, interaction: Interaction):
             await self.editOptionsView(self.outer, self.messageInfo).setup(interaction)
         
-    class editPersistencyButton(nextcord.ui.Button):
-        def __init__(self, outer, messageInfo: Message):
-            if messageInfo.persistent:
-                text = "Deprioritize"
-                icon = "🔓"
-            else:
-                text = "Prioritize"
-                icon = "🔒"
-                
-            super().__init__(label = text, emoji = icon)
-            self.outer = outer
-            self.messageID = messageInfo.message_id
-        
-        class warningView(nextcord.ui.View):
-            def __init__(self, outer, guildID: int, messageID: int):
-                super().__init__(timeout = None)
-                self.outer = outer
-                
-                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger) 
-                self.backBtn.callback = self.backBtnCallback
-                self.add_item(self.backBtn)
-                
-                self.continueBtn = self.continueButton(self.outer, guildID, messageID)
-                self.add_item(self.continueBtn)
-                
-            async def setup(self, interaction: Interaction):
-                embed = nextcord.Embed(title = "Edit Vote - Prioritize / Deprioritize", 
-                                       description = "InfiniBot, similar to all free software, has its limitations. Regrettably, we are unable to continuously cache every reaction role ever created in our systems. Consequently, each server is allocated a maximum of 10 active (cached) reaction roles. As a result, there may come a point when this reaction role can no longer be edited.\n\n**What is Prioritizing?**\nPrioritizing ensures that this particular reaction role remains active indefinitely, enabling it to be edited well into the future. However, this comes at the expense of one of the server's active reaction role slots (10). This feature is particularly useful for reaction roles for server roles, verification roles, and similar content.", 
-                                       color = nextcord.Color.yellow())
-                
-                await interaction.response.edit_message(embed = embed, view = self)
-                
-            async def backBtnCallback(self, interaction: Interaction):
-                await self.outer.setup(interaction)
-        
-            class continueButton(nextcord.ui.Button):
-                def __init__(self, outer, guildID: int, messageID: int):
-                    self.server = Server(guildID)
-                    self.messageInfo = self.server.messages.get(messageID)
-                    
-                    if self.messageInfo.persistent:
-                        text = "Deprioritize"
-                    else:
-                        text = "Prioritize"
-                        
-                    super().__init__(label = text, style = nextcord.ButtonStyle.blurple)
-                    self.outer = outer
-                    
-                async def callback(self, interaction: Interaction):
-                    self.messageInfo.persistent = not self.messageInfo.persistent
-                    self.server.messages.save()
-                    
-                    await self.outer.setup(interaction)
-        
-        async def callback(self, interaction: Interaction):
-            await self.warningView(self.outer, interaction.guild.id, self.messageID).setup(interaction)
-
 class EditRoleMessage(nextcord.ui.View):
     def __init__(self, messageID: int):
         super().__init__(timeout = None)
@@ -11912,64 +11792,7 @@ class EditRoleMessage(nextcord.ui.View):
             self.outer.options.pop(int(selection))
             
             await self.outer.setup(interaction)
-  
-    class EditPersistencyButton(nextcord.ui.Button):
-        def __init__(self, outer, messageInfo: Message):
-            if messageInfo.persistent:
-                text = "Deprioritize"
-                icon = "🔓"
-            else:
-                text = "Prioritize"
-                icon = "🔒"
-                
-            super().__init__(label = text, emoji = icon, row = 1)
-            self.outer = outer
-            self.messageID = messageInfo.message_id
         
-        class warningView(nextcord.ui.View):
-            def __init__(self, outer, guildID: int, messageID: int):
-                super().__init__(timeout = None)
-                self.outer = outer
-                
-                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger) 
-                self.backBtn.callback = self.backBtnCallback
-                self.add_item(self.backBtn)
-                
-                self.continueBtn = self.continueButton(self.outer, guildID, messageID)
-                self.add_item(self.continueBtn)
-                
-            async def setup(self, interaction: Interaction):
-                embed = nextcord.Embed(title = "Edit Embed - Prioritize / Deprioritize", 
-                                       description = "InfiniBot, similar to all free software, has its limitations. Regrettably, we are unable to continuously cache every role message ever created in our systems. Consequently, each server is allocated a maximum of 10 active (cached) role messages. As a result, there may come a point when this role message can no longer be edited.\n\n**What is Prioritizing?**\nPrioritizing ensures that this particular role message remains active indefinitely, enabling it to be edited well into the future. However, this comes at the expense of one of the server's active role message slots (10). This feature is particularly useful for role messages such as server roles, verification roles, and similar content.", 
-                                       color = nextcord.Color.yellow())
-                
-                await interaction.response.edit_message(embed = embed, view = self)
-                
-            async def backBtnCallback(self, interaction: Interaction):
-                await self.outer.setup(interaction)
-        
-            class continueButton(nextcord.ui.Button):
-                def __init__(self, outer, guildID: int, messageID: int):
-                    self.server = Server(guildID)
-                    self.messageInfo = self.server.messages.get(messageID)
-                    
-                    if self.messageInfo.persistent:
-                        text = "Deprioritize"
-                    else:
-                        text = "Prioritize"
-                        
-                    super().__init__(label = text, style = nextcord.ButtonStyle.blurple)
-                    self.outer = outer
-                    
-                async def callback(self, interaction: Interaction):
-                    self.messageInfo.persistent = not self.messageInfo.persistent
-                    self.server.messages.save()
-                    
-                    await self.outer.setup(interaction)
-        
-        async def callback(self, interaction: Interaction):
-            await self.warningView(self.outer, interaction.guild.id, self.messageID).setup(interaction)
-       
     class EditModeBtn(nextcord.ui.Button):
         def __init__(self, outer):
             super().__init__(label = "Change Mode", row = 1, emoji = "🎚️")
@@ -12068,9 +11891,6 @@ class EditRoleMessage(nextcord.ui.View):
         
         editModeBtn = self.EditModeBtn(self)
         self.add_item(editModeBtn)
-        
-        editPersistencyBtn = self.EditPersistencyButton(self, self.messageInfo)
-        self.add_item(editPersistencyBtn)
         
         self.confirmBtn = nextcord.ui.Button(label = "Confirm Edits", style = nextcord.ButtonStyle.blurple, row = 1)
         self.confirmBtn.callback = self.confirmBtnCallback
