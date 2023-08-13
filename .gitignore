@@ -3,3 +3,4 @@ CriticalFiles/*.*
 # REMOVE ON MERGE
 Website/website
 Website/website/src
+__pycache__
