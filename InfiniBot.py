@@ -9520,44 +9520,146 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent):
     #UI Log
     await trigger_edit_log(guild, beforeMessage, afterMessage, logChannel = logChannel)
  
-async def trigger_edit_log(guild: nextcord.Guild, beforeMessage: nextcord.Message, afterMessage: nextcord.Message, user: nextcord.Member = None, logChannel: nextcord.TextChannel = None):
-    if not user: user = afterMessage.author
+async def trigger_edit_log(guild: nextcord.Guild, originalMessage: nextcord.Message, editedMessage: nextcord.Message, user: nextcord.Member = None, logChannel: nextcord.TextChannel = None):
+    if not user: user = editedMessage.author
     if not logChannel:
         server = Server(guild.id)
         logChannel = server.logChannel
         if not logChannel or not server.loggingBool:
             return;
     
-    url = afterMessage.jump_url
+    url = editedMessage.jump_url
+    # Field name, Link name, content
+    content_tasks = []
+    # Added or Deleted, embed
+    embed_tasks = []
 
+    # Create an embed to edit
     Embed = nextcord.Embed(title = "Message Edited", description = f"Edited by: {user}", color = nextcord.Color.yellow(), timestamp = datetime.datetime.now())
     
-    # Format messages if they're embeds
-    if len(beforeMessage.embeds) != 0:
-        beforeMessage = f"**Title:** {beforeMessage.embeds[0].title}\n**Description:** {beforeMessage.embeds[0].description}"
-    else:
-        beforeMessage = beforeMessage.content
-    if len(afterMessage.embeds) != 0:
-        afterMessage = f"**Title:** {afterMessage.embeds[0].title}\n**Description:** {afterMessage.embeds[0].description}"
-    else:
-        afterMessage = afterMessage.system_content
+    # Check that the original message is still cached
+    if not originalMessage:
+        # The message is no longer retrievable
+        if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"):
+            # Configure the embed
+            Embed.add_field(name = "Contents Unretrievable", value = "The original message is unretrievable because the message was created too long ago.")
+            Embed.add_field(name = "More", value = f"[Go to Message]({url})", inline = False)
+            await logChannel.send(embed = Embed)
+        return
     
-    if beforeMessage != None:
-        originalMessage = beforeMessage
-        if len(originalMessage) > 1024:
-            originalMessage = "*Too long to display*"
+    
+    # Compare Contents
+    if originalMessage.content != editedMessage.content:
+        if len(originalMessage.content) <= 1024:
+            Embed.add_field(name = "Original Message", value = originalMessage.content)
+        elif len(originalMessage.content) > 2000:
+            Embed.add_field(name = "Original Message", value = "Message too long. Please wait...")
+            content_tasks.append(["Original Message", "View Original Message (Truncated)", originalMessage.content[:1999]])
+        else:
+            Embed.add_field(name = "Original Message", value = "Message too long. Please wait...")
+            content_tasks.append(["Original Message", "View Original Message", originalMessage.content])
             
-        Embed.add_field(name = "Original Message", value = originalMessage, inline = True)
-     
-    editedMessage = afterMessage
-    if len(editedMessage) > 1024:
-        editedMessage = "*Too long to display*"
-    Embed.add_field(name = "Edited Message", value = editedMessage, inline = True)
-    
-    Embed.add_field(name = "More", value = f"[Go to Message]({url})", inline = False)
+        if len(editedMessage.content) <= 1024:
+            Embed.add_field(name = "Edited Message", value = editedMessage.content)
+        elif len(editedMessage.content) > 2000:
+            Embed.add_field(name = "Edited Message", value = "Message too long. Please wait...")
+            content_tasks.append(["Edited Message", "View Edited Message (Truncated)", editedMessage.content[:1999]])
+        else:
+            Embed.add_field(name = "Edited Message", value = "Message too long. Please wait...")
+            content_tasks.append(["Edited Message", "View Edited Message", editedMessage.content])
+            
+            
+    # Compare embeds
+    if (len(originalMessage.embeds) > 0) or (len(editedMessage.embeds)) > 0:
+        deletedEmbeds = []
+        for originalEmbed in originalMessage.embeds:
+            counterpart_exists = False
+            for editedEmbed in editedMessage.embeds:
+                if originalEmbed == editedEmbed:
+                    counterpart_exists = True
+                    break
+                
+            if not counterpart_exists:
+                # They deleted or edited this embed
+                deletedEmbeds.append(originalEmbed)
+                
+        addedEmbeds = []
+        for editedEmbed in editedMessage.embeds:
+            counterpart_exists = False
+            for originalEmbed in originalMessage.embeds:
+                if editedEmbed == originalEmbed:
+                    counterpart_exists = True
+                    break
+                
+            if not counterpart_exists:
+                # They added or edited this embed
+                addedEmbeds.append(editedEmbed)
+                
+        if deletedEmbeds == [] and addedEmbeds == []:
+            # They didn't do anything to the embeds
+            pass
+        else:
+            # They DID do something to the embeds.
+            Embed.add_field(name = "Embed(s)", value = "One or more embeds were modified. Here's a list of modifications:\n\nPlease Wait...\n\nNote: Edited embeds will appear as them being deleted then added.", inline = False)
+            
+            # Loop through embeds
+            for embed in deletedEmbeds:
+                embed_tasks.append(["Deleted", embed])
+            
+            for embed in addedEmbeds:
+                embed_tasks.append(["Added", embed])
+                
+                
+                
 
-    if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"): 
-        await logChannel.send(embed = Embed)
+    message = None
+    if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"):
+        message = await logChannel.send(embed = Embed)
+    
+    if message: # We want to make sure that the message was even sent
+        if content_tasks == [] and embed_tasks == []: return
+        
+        completed_content_tasks = []
+        for task in content_tasks:
+            content_message = await logChannel.send(content = task[2], reference = message)
+            completed_content_tasks.append([task[0], task[1], content_message.jump_url])
+            
+        completed_embed_tasks = []
+        for task in embed_tasks:
+            embed_message = await logChannel.send(embed = task[1], reference = message)
+            completed_embed_tasks.append([task[0], task[1].title, embed_message.jump_url])
+            
+        # We've sent the other messages. Time to circle back and edit our old message to include the just sent links
+        fields = Embed.fields
+        
+        # Clear the old fields
+        Embed.clear_fields()
+        
+        # Update the fields and re-add them
+        completed_content_tasks_field_names = [task[0] for task in completed_content_tasks]
+        for field in fields:
+            if field.name in completed_content_tasks_field_names:
+                # This is where our content info will go (it could be an original message or an edited message)
+                index = completed_content_tasks_field_names.index(field.name)
+                Embed.add_field(name = completed_content_tasks[index][0], value = f"[{completed_content_tasks[index][1]}]({completed_content_tasks[index][2]})", inline = field.inline)
+                continue
+
+            if field.name == "Embed(s)":
+                # This is where our embed info will go
+                links = []
+                for task in completed_embed_tasks:
+                    links.append(f"• **{task[0]}** [{task[1]}]({task[2]})")
+                    
+                content = field.value
+                content = content.replace("Please Wait...", "\n".join(links))
+                Embed.add_field(name = field.name, value = content, inline = field.inline)
+                continue
+            
+            # The field was not a task, but we should still replace it
+            Embed.add_field(name = field.name, value = field.value, inline = field.inline)
+                
+        # Finally, update the old message to have the new embed
+        await message.edit(embed = Embed)
     
 async def file_computation(file: nextcord.Attachment):
     #disclaimer: I truthfully have no idea how this bit of the code works. I mean, I have *some* idea, but chatgpt wrote it, so...
