@@ -7143,6 +7143,11 @@ async def checkTextChannelPermissions(channel: nextcord.TextChannel, autoWarn: b
 
     return False
 
+def getName(member: nextcord.Member):
+    if member.discriminator != "0":
+        return str(member)
+    else:
+        return member.name
 
 
 #Check Permissions
@@ -9528,14 +9533,15 @@ async def trigger_edit_log(guild: nextcord.Guild, originalMessage: nextcord.Mess
         if not logChannel or not server.loggingBool:
             return;
     
-    url = editedMessage.jump_url
+    # Avatar
+    avatar_url = user.display_avatar.url
     # Field name, Link name, content
     content_tasks = []
     # Added or Deleted, embed
     embed_tasks = []
 
     # Create an embed to edit
-    Embed = nextcord.Embed(title = "Message Edited", description = f"Edited by: {user}", color = nextcord.Color.yellow(), timestamp = datetime.datetime.now())
+    Embed = nextcord.Embed(title = "Message Edited", description = editedMessage.channel.mention, color = nextcord.Color.yellow(), timestamp = datetime.datetime.now(), url = editedMessage.jump_url)
     
     # Check that the original message is still cached
     if not originalMessage:
@@ -9543,7 +9549,11 @@ async def trigger_edit_log(guild: nextcord.Guild, originalMessage: nextcord.Mess
         if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"):
             # Configure the embed
             Embed.add_field(name = "Contents Unretrievable", value = "The original message is unretrievable because the message was created too long ago.")
-            Embed.add_field(name = "More", value = f"[Go to Message]({url})", inline = False)
+            
+            # Add the extra stuff in the message
+            Embed.set_author(name = getName(user), icon_url = avatar_url)
+            
+            # Send the message
             await logChannel.send(embed = Embed)
         return
     
@@ -9609,13 +9619,16 @@ async def trigger_edit_log(guild: nextcord.Guild, originalMessage: nextcord.Mess
             for embed in addedEmbeds:
                 embed_tasks.append(["Added", embed])
                 
+    
+    # Add the extra stuff in the message
+    Embed.set_author(name = getName(user), icon_url = avatar_url)
                 
-                
-
+    # Send Message
     message = None
     if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"):
         message = await logChannel.send(embed = Embed)
     
+    # Do the other stuff after sending the message
     if message: # We want to make sure that the message was even sent
         if content_tasks == [] and embed_tasks == []: return
         
@@ -9780,8 +9793,12 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
         code = 1
         
         #embed description and code
-        if freshAuditLog: 
-            embed.description = f"{deleter} deleted {user}'s message from {channel.mention}"
+        if freshAuditLog:
+            if deleter.id != user.id:
+                embed.description = f"{deleter.mention} deleted {user.mention}'s message from {channel.mention}"
+            else:
+                embed.description = f"{deleter.mention} deleted their message from {channel.mention}"
+                
             if message:
                 code = 1
             else:
@@ -9791,7 +9808,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
                 embed.description = f"A message was deleted from {channel.mention}"
                 code = 3
             else:
-                embed.description = f"{message.author}'s message was deleted from {channel.mention}"
+                embed.description = f"{message.author.mention}'s message was deleted from {channel.mention}"
                 code = 4
                 
         
@@ -9817,7 +9834,10 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
         #attached Files
         if message and message.attachments != []:              
             embed.add_field(name = "Files", value = f"This message contained one or more files. (Attached Below)\n→ Please wait as InfiniBot processes these files and Discord uploads them", inline = False)
-            
+          
+        # The Profile
+        if deleter:
+            embed.set_author(name = getName(deleter), icon_url = deleter.display_avatar.url)  
             
         #the footer
         embed.set_footer(text = f"Message ID: {payload.message_id}\nCode: {code}")
