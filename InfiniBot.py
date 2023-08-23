@@ -6725,26 +6725,27 @@ async def runEveryMinute():
         #uncomment for telemetry
         #print("Current Time:", currentTime) # print("Next Time:", nextTime) print("Delta Time:", deltaTime)
         
-        if dbl_token != "NONE":
-            try:
-                await bot.topggpy.post_guild_count(shard_count = bot.shard_count)
-            except Exception as e:
-                if type(e) == topgg.Unauthorized:
-                    print("Unauthorized Token")
-                else:
-                    print(f"Failed to post server count\n{e.__class__.__name__}: {e}")
-                    
-                continue
-
         await asyncio.sleep(int(deltaTime))
         
         
-
+        # Post server count every hour
+        if nextTime.minute == 0:
+            if dbl_token != "NONE":
+                try:
+                    await bot.topggpy.post_guild_count(shard_count = bot.shard_count)
+                except Exception as e:
+                    if type(e) == topgg.Unauthorized:
+                        print("Unauthorized Token")
+                    else:
+                        print(f"Failed to post server count\n{e.__class__.__name__}: {e}")
+                        
+                    continue
 
         #actually check for birthdays
         if nextTime.hour == 8 and nextTime.minute == 0: #run at 8:00 AM every day
             await checkForBirthdays(nextTime, currentTime)
         
+        # Check for levels
         if nextTime.hour == 0 and nextTime.minute == 1: #run at midnight + 1 (because [0 hours 0 minutes] is never reached for some reason)
             print("Checking Levels --------------------")
             if not main.global_kill_leveling:
@@ -9386,6 +9387,7 @@ async def purge(interaction: Interaction, amount: str = SlashOption(description=
             return;
         
         if amount.lower() == "all":
+            # Purging all messages
             await interaction.response.defer()
             
             if not interaction.channel.permissions_for(interaction.guild.me).manage_channels:
@@ -9393,13 +9395,17 @@ async def purge(interaction: Interaction, amount: str = SlashOption(description=
                 return
             
             #create a channel, and move it to where it should
-            newChannel: nextcord.TextChannel = await interaction.channel.clone(reason = "Purging Channel")
-            await newChannel.edit(position = interaction.channel.position + 1, reason = "Purging Channel")
+            try:
+                newChannel: nextcord.TextChannel = await interaction.channel.clone(reason = "Purging Channel")
+                await newChannel.edit(position = interaction.channel.position + 1, reason = "Purging Channel")
+            except nextcord.errors.Forbidden:
+                await interaction.followup.send(embed = nextcord.Embed(title = "Unknown Error", description = "An unknown error occurred when purging the channel. Please double check InfiniBot's permissions and try again.\n\nNote: It is possible that InfiniBot cloned this channel. You may want to double check.", color = nextcord.Color.red()), ephemeral = True)
+                return
             
             server = Server(interaction.guild.id)
             #check for if the channel is connected to anything. And if so, replace it:
             
-            def getID(channel):
+            def getID(channel: nextcord.TextChannel):
                 if channel == None: return None
                 else: return channel.id
                  
@@ -9415,31 +9421,50 @@ async def purge(interaction: Interaction, amount: str = SlashOption(description=
             server.saveData()
             
             #delete old channel
-            await interaction.channel.delete(reason = "Purging Channel")
-            
+            try:
+                await interaction.channel.delete(reason = "Purging Channel")
+            except nextcord.errors.Forbidden:
+                await interaction.followup.send(embed = nextcord.Embed(title = "Unknown Error", description = "An unknown error occurred when purging the channel. Please double check InfiniBot's permissions and try again.\n\nNote: It is possible that InfiniBot cloned this channel. You may want to double check.", color = nextcord.Color.red()), ephemeral = True)
+                return
             
             await newChannel.send(embed = nextcord.Embed(title = "Purged Messages", description = f"{interaction.user} has instantly purged {newChannel.mention} of all messages", color =  nextcord.Color.orange()), view = InviteView())
-            return
-
-        try:
-            int(amount)
-        except TypeError:
-            interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "\"Amount\" needs to be a number", color =  nextcord.Color.red()), ephemeral = True)
-            return
-
-        await interaction.response.defer()
         
-        if not str(interaction.guild_id) in purging:
-            purging.append(str(interaction.guild_id))
+        else:
+            # Purging a specified amount of messages
+            try:
+                int(amount)
+            except TypeError:
+                interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "\"Amount\" needs to be a number", color =  nextcord.Color.red()), ephemeral = True)
+                return
 
-        deleted = await interaction.channel.purge(limit = int(amount) + 1)
+            await interaction.response.defer()
+            
+            if not str(interaction.guild_id) in purging:
+                purging.append(str(interaction.guild_id))
 
-        await asyncio.sleep(1)
+            try:
+                deleted = await interaction.channel.purge(limit = int(amount) + 1)
+            except nextcord.errors.NotFound:
+                # We reached the end of all the messages that we can purge.
+                pass
+            except Exception as e:
+                # Remove it from the purging list
+                if str(interaction.guild_id) in purging:
+                    purging.pop(purging.index(str(interaction.guild_id)))
+                    
+                # Throw error
+                await interaction.response.send_message(embed = nextcord.Embed(title = "Unknown Error", description = "An unknown error occurred when purging. Please double check InfiniBot's permissions and try again.", color = nextcord.Color.red()), ephemeral = True)
+                
+                # Log error
+                print(e)
+                return
 
-        if str(interaction.guild_id) in purging:
-            purging.pop(purging.index(str(interaction.guild_id)))
+            await asyncio.sleep(1)
 
-        await interaction.channel.send(embed = nextcord.Embed(title = "Purged Messages", description = f"{interaction.user} has purged {interaction.channel.mention} of {str(len(deleted) - 1)} messages", color =  nextcord.Color.orange()), view = InviteView())
+            if str(interaction.guild_id) in purging:
+                purging.pop(purging.index(str(interaction.guild_id)))
+
+            await interaction.channel.send(embed = nextcord.Embed(title = "Purged Messages", description = f"{interaction.user} has purged {interaction.channel.mention} of {str(len(deleted) - 1)} messages", color =  nextcord.Color.orange()), view = InviteView())
 #END of purge channels functionality: ----------------------------------------------------------------------------------------------------------------------------------------------------
 
 
