@@ -547,6 +547,17 @@ class FileOperations:
         else:
             return "———".join(list)
             
+    def clearEmptyLines(self, string: str):
+        '''Removes all unneeded empty lines from a string'''
+        # Split the string into a list
+        string_list = string.splitlines()
+        final_list = self.clearEmptyIndexes(string_list)
+        return "\n".join(final_list)
+
+    def clearEmptyIndexes(self, list: list[str]):
+        '''Removes all unneeded empty indexes from a list'''
+        return [item for item in list if (not item.isspace()) and (item != "") and (item != None)]
+
 
     def savePersistentData(self, data):
         '''Saves a string of PERSISTENT DATA'''
@@ -555,73 +566,73 @@ class FileOperations:
 
     def saveData(self, list):
         '''Saves a list (per server) of DATA'''
-        formatted = "\n".join(list)
+        formatted = "\n".join(self.clearEmptyIndexes(list))
         with open("./Files/Data.binary", "wb") as file:
             file.write(formatted.encode())
 
     def saveBirthdays(self, list):
         '''Saves a list (per server) of BIRTHDAYS'''
-        formatted = "\n".join(list)
+        formatted = "\n".join(self.clearEmptyIndexes(list))
         with open("./Files/Birthdays.binary", "wb") as file:
             file.write(formatted.encode())
 
     def saveProfaneWords(self, list):
         '''Saves a list (per server) of Profane WORDS'''
-        formatted = "\n".join(list)
+        formatted = "\n".join(self.clearEmptyIndexes(list))
         with open("./Files/ProfaneWords.binary", "wb") as file:
             file.write(formatted.encode())
 
     def saveStrikes(self, list):
         '''Saves a list (per server) of STRIKES'''
-        formatted = "\n".join(list)
+        formatted = "\n".join(self.clearEmptyIndexes(list))
         with open("./Files/Strikes.binary", "wb") as file:
             file.write(formatted.encode())
 
     def saveLevels(self, list):
         '''Saves a list (per server) of LEVELS'''
-        formatted = "\n".join(list)
+        formatted = "\n".join(self.clearEmptyIndexes(list))
         with open("./Files/Levels.binary", "wb") as file:
             file.write(formatted.encode())
             
     def saveLevelRewards(self, list):
         '''Saves a list (per server) of LEVEL REWARDS'''
-        formatted = "\n".join(list)
+        formatted = "\n".join(self.clearEmptyIndexes(list))
         with open("./Files/LevelRewards.binary", "wb") as file:
             file.write(formatted.encode())
 
     def saveVCs(self, list):
         '''Saves a list (per server) of VCs'''
-        formatted = "\n".join(list)
+        formatted = "\n".join(self.clearEmptyIndexes(list))
         with open("./Files/JoinToCreateVcs.binary", "wb") as file:
             file.write(formatted.encode())
             
     def saveMembers(self, list):
         '''Saves a list (per member) of MEMBERS'''
-        formatted = "\n".join(list)
+        formatted = "\n".join(self.clearEmptyIndexes(list))
         with open("./Files/Members.binary", "wb") as file:
             file.write(formatted.encode())
             
     def saveAutoBans(self, list):
         '''Saves a list (per server) of AUTO-BANS'''
-        formatted = "\n".join(list)
+        formatted = "\n".join(self.clearEmptyIndexes(list))
         with open("./Files/Bans.binary", "wb") as file:
             file.write(formatted.encode())
             
     def saveInvites(self, list):
         '''Saves a list (per server) of Invites'''
-        formatted = "\n".join(list)
+        formatted = "\n".join(self.clearEmptyIndexes(list))
         with open("./Files/Invites.binary", "wb") as file:
             file.write(formatted.encode())
 
     def saveMessages(self, list):
         '''Saves a formatted list (per server) of Messages'''
-        formatted = "\n".join(list)
+        formatted = "\n".join(self.clearEmptyIndexes(list))
         with open("./Files/Messages.binary", "wb") as file:
             file.write(formatted.encode())
             
     def saveJokes(self, list):
         '''Saves a list of Jokes'''
-        formatted = "\n".join(list)
+        formatted = "\n".join(self.clearEmptyIndexes(list))
         with open("./Files/Jokes.binary", "wb") as file:
             file.write(formatted.encode())
 
