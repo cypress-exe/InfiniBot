@@ -35,6 +35,27 @@ VERSION = 2.0
 
 
 
+# ----- TYPES ------------
+
+class _Missing:
+    def __eq__(self, other):
+        return self is other
+
+    def __hash__(self):
+        return id(self)
+
+    def __bool__(self):
+        return False
+
+    def __repr__(self):
+        return "..."
+
+MISSING = _Missing
+'''A constant value used for cases when there is no value.'''
+
+# ------------------------
+
+
 
 
 
@@ -2100,318 +2121,198 @@ class Utils:
         self.enabled = self.Enabled()
         
     class Enabled:
-        def ProfanityModeration(self, guild_id: str = None, server: Server = None, check = True):
-            """Returns if profanity moderation is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
+        def __checkArguments(self, guild_id: str, server: Server, guild: nextcord.Guild, check: bool, classname: str):
+            if (server == None) and (guild_id == None) and (guild == MISSING): 
+                # They forgot to give any arguments
+                print(f"Error: Utils.Enabled.{classname} got no arguments")
+                # Not a big deal, so keep going
+                
             if check and server == None:
+                if not guild == MISSING:
+                    # If they did provide a guild
+                    if guild:
+                        guild_id = guild.id
+                    else:
+                        # Unfortunately, the guild is no longer valid. The still did everything right though.
+                        return True  
+                        
                 if guild_id != None:
+                    # Try to get the server from the guild id
                     server = Server(guild_id)
                     if server == None: 
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
+                        print(f"Error: Utils.Enabled.{classname} got an invalid argument")
+                        return False
                 else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+                    print(f"Error: Utils.Enabled.{classname} got an invalid argument")
+                    return False
+                
+            return True
+        
+        def ProfanityModeration(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = True):
+            """Returns if profanity moderation is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (server.profanityBool and not main.global_kill_profanity_moderation)
         
-        def SpamModeration(self, guild_id: str = None, server: Server = None, check = True):
+        def SpamModeration(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = True):
             """Returns if spam moderation is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (server.spamBool and not main.global_kill_spam_moderation)
         
-        def Logging(self, guild_id: str = None, server: Server = None, check = True):
+        def Logging(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = True):
             """Returns if logging is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (server.loggingBool and not main.global_kill_logging)
         
-        def Leveling(self, guild_id: str = None, server: Server = None, check = True):
+        def Leveling(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = True):
             """Returns if leveling is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (server.levelingBool and not main.global_kill_leveling)
         
-        def LevelRewards(self, guild_id: str = None, server: Server = None, check = False):
+        def LevelRewards(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if level rewards is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_level_rewards)
         
-        def JoinLeaveMessages(self, guild_id: str = None, server: Server = None, check = False):
+        def JoinLeaveMessages(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if join and/or leave messages is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_join_leave_messages)
         
-        def Birthdays(self, guild_id: str = None, server: Server = None, check = False):
+        def Birthdays(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if birthdays is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_birthdays)
         
-        def DefaultRoles(self, guild_id: str = None, server: Server = None, check = False):
+        def DefaultRoles(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if default roles is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_default_roles)
         
-        def JoinToCreateVCs(self, guild_id: str = None, server: Server = None, check = False):
+        def JoinToCreateVCs(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if join to create VCs are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_join_to_create_vcs)
         
-        def AutoBans(self, guild_id: str = None, server: Server = None, check = False):
+        def AutoBans(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if auto bans are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_auto_bans)
         
-        def ActiveMessages(self, guild_id: str = None, server: Server = None, check = False):
+        def ActiveMessages(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if active messages are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_active_messages)
         
-        def Votes(self, guild_id: str = None, server: Server = None, check = False):
+        def Votes(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if votes are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_votes)
         
-        def ReactionRoles(self, guild_id: str = None, server: Server = None, check = False):
+        def ReactionRoles(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if reaction roles is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_reaction_roles)
         
-        def Embeds(self, guild_id: str = None, server: Server = None, check = False):
+        def Embeds(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if embeds are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_embeds)
 
-        def RoleMessages(self, guild_id: str = None, server: Server = None, check = False):
+        def RoleMessages(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if role messages are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_role_messages)
         
-        def Purging(self, guild_id: str = None, server: Server = None, check = False):
+        def Purging(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if purging is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_purging)
         
-        def MotivationalStatement(self, guild_id: str = None, server: Server = None, check = False):
+        def MotivationalStatement(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if motivational statements are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_motivational_statements)
         
-        def Jokes(self, guild_id: str = None, server: Server = None, check = False):
+        def Jokes(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if jokes are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_jokes)
         
-        def JokeSubmissions(self, guild_id: str = None, server: Server = None, check = False):
+        def JokeSubmissions(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if joke submissions are enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_joke_submissions)
 
-        def Dashboard(self, guild_id: str = None, server: Server = None, check = False):
+        def Dashboard(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if the dashboard is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_dashboard)
         
-        def Profile(self, guild_id: str = None, server: Server = None, check = False):
+        def Profile(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if the profile is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
-            if server == None and guild_id == None: print(f"Error: Utils.Enabled.{self.__class__.__name__} got no arguments")
-            if check and server == None:
-                if guild_id != None:
-                    server = Server(guild_id)
-                    if server == None:
-                        print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                        return None
-                else:
-                    print(f"Error: Utils.Enabled.{self.__class__.__name__} got an invalid argument")
-                    return None
+            if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
+                                         check = check, classname = sys._getframe().f_code.co_name):
+                return None
                 
             return (not main.global_kill_profile)
 
@@ -7160,6 +7061,25 @@ def getName(member: nextcord.Member):
         return str(member)
     else:
         return member.name
+
+def formatNewlinesForUser(string: str):
+    '''Formats a string so that "\\n" turns into an actual new line.'''
+    if not isinstance(string, str):
+        return string
+    
+    return string.replace("\\n", "\n")
+
+def formatNewlinesForComputer(string: str):
+    '''Formats a string so that actual new lines just turn into "\\n"'''
+    if not isinstance(string, str):
+        return string
+    
+    return string.replace("\n", "\\n")
+
+
+
+
+
 
 
 #Check Permissions
