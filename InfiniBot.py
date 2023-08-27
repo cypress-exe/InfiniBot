@@ -10424,6 +10424,15 @@ class JokeVerificationView(nextcord.ui.View):
                 super().__init__(title = "Reason to Deny", timeout = None)
                 self.message = message
                 
+                # Get the member ID 
+                self.member_id = None
+                for line in self.message.embeds[0].description.splitlines():
+                    if line.startswith("Member ID:"):
+                        id = line[len("Member ID: "):]
+                        if id.isdigit():
+                            self.member_id = int(id)
+                            break
+                
                 self.reason = nextcord.ui.TextInput(label = "Reason. This will be sent to the submitter.", placeholder = "Your joke submission was denied because ...", style = nextcord.TextInputStyle.paragraph)
                 self.add_item(self.reason)
                 
@@ -10453,15 +10462,6 @@ class JokeVerificationView(nextcord.ui.View):
                                 description = field.value
                             elif field.name == "Answer":
                                 answer = field.value
-                                
-                        # Get user id
-                        member_id = None
-                        for line in self.message.embeds[0].description.splitlines():
-                            if line.startswith("Member ID:"):
-                                id = line[len("Member ID: "):]
-                                if id.isdigit():
-                                    member_id = int(id)
-                                    break
                         
                         # Send Confirmation
                         embeds = self.message.embeds
@@ -10474,7 +10474,7 @@ class JokeVerificationView(nextcord.ui.View):
                             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                             return
                         
-                        member = support_server.get_member(member_id)
+                        member = support_server.get_member(self.member_id)
                         if not member:
                             return
                         
@@ -10487,84 +10487,149 @@ class JokeVerificationView(nextcord.ui.View):
                         
                         # Remove the message
                         await interaction.response.edit_message(delete_after=0.0)
-                        
-                await interaction.response.send_message(embed = nextcord.Embed(title = "Confirm Deny", description = "Are you sure you want to deny this joke submission? This will not be reversable. Both your reason and your username will be sent to the submitter.", color = nextcord.Color.blue()), ephemeral = True, view = ConfirmView(self.message, reason))
-                                            
-        modal = Modal(interaction.message)
-        await interaction.response.send_modal(modal)
-        
-    @nextcord.ui.button(label = "Verify", custom_id = "verify_joke")
-    async def verify(self, button: nextcord.ui.Button, interaction: Interaction):
-        class ConfirmView(nextcord.ui.View):
-            def __init__(self, message: nextcord.Message):
-                super().__init__(timeout = None)
-                self.message = message
-                    
-            @nextcord.ui.button(label = "Cancel")
-            async def cancel(self, button: nextcord.ui.Button, interaction: Interaction):
-                await interaction.response.edit_message(delete_after=0.0)
-                
-            @nextcord.ui.button(label = "Confirm")
-            async def confirm(self, button: nextcord.ui.Button, interaction: Interaction):
-                # Let's add it
-                title = None
-                description = None
-                answer = None
-                for field in self.message.embeds[0].fields:
-                    if field.name == "Title":
-                        title = field.value
-                    elif field.name == "Joke":
-                        description = field.value
-                    elif field.name == "Answer":
-                        answer = field.value
-                        
-                # Get user id
-                member_id = None
-                for line in self.message.embeds[0].description.splitlines():
-                    if line.startswith("Member ID:"):
-                        id = line[len("Member ID: "):]
-                        if id.isdigit():
-                            member_id = int(id)
-                            break 
-                
-                if answer: joke = "~".join([title, description, answer])
-                else: joke = "~".join([title, description])
-                
-                all_jokes = fileOperations.getAllJokes()
-                all_jokes.append(joke)
-                fileOperations.saveJokes(all_jokes)
-                
-                # Send Confirmation
-                embeds = self.message.embeds
-                embeds.append(nextcord.Embed(title = "Submission Verified", description = f"{interaction.user} verified this submission.", color = nextcord.Color.green()))
-                await self.message.edit(embeds = embeds, view = None)
-                
-                # Try to dm
+                   
+                # Get confirmation that we will be able to dm the user
                 try:
                     support_server = bot.get_guild(infiniBotGuild)
                 except nextcord.errors.Forbidden:
                     print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                     return
                 
-                member = support_server.get_member(member_id)
+                member = support_server.get_member(self.member_id)
                 if not member:
+                    moreInfo = "\n\nThis will **not** send the submitter a dm."
+                else:
+                    moreInfo = "\n\nBoth your reason and your username will be sent to the submitter via dm."
+                        
+                await interaction.response.send_message(embed = nextcord.Embed(title = "Confirm Deny", description = f"Are you sure you want to deny this joke submission? This will not be reversable.{moreInfo}", color = nextcord.Color.blue()), ephemeral = True, view = ConfirmView(self.message, reason))
+                                            
+        modal = Modal(interaction.message)
+        await interaction.response.send_modal(modal)
+        
+    @nextcord.ui.button(label = "Verify", custom_id = "verify_joke")
+    async def verify(self, button: nextcord.ui.Button, interaction: Interaction):
+        class Modal(nextcord.ui.Modal):
+            def __init__(self, message: nextcord.Message):
+                super().__init__(title = "Finalize Joke", timeout = None)
+                self.message = message
+                
+                # Get the message contents
+                joke_title = None
+                joke_description = None
+                joke_answer = None
+                for field in self.message.embeds[0].fields:
+                    if field.name == "Title":
+                        joke_title = field.value
+                    elif field.name == "Joke":
+                        joke_description = field.value
+                    elif field.name == "Answer":
+                        joke_answer = field.value
+                       
+                # Get the member ID 
+                self.member_id = None
+                for line in self.message.embeds[0].description.splitlines():
+                    if line.startswith("Member ID:"):
+                        id = line[len("Member ID: "):]
+                        if id.isdigit():
+                            self.member_id = int(id)
+                            break
+                        
+                
+                self.joke_title = nextcord.ui.TextInput(label = "Title", placeholder = "The Chicken and the Road", default_value = joke_title, max_length = 100)
+                self.add_item(self.joke_title)
+                
+                self.joke_description = nextcord.ui.TextInput(label = "Joke", placeholder = "Why did the chicken cross the road?", default_value = joke_description, style = nextcord.TextInputStyle.paragraph, max_length = 500)
+                self.add_item(self.joke_description)
+                
+                self.joke_answer = nextcord.ui.TextInput(label = "Answer", placeholder = "To get to the other side!", default_value = joke_answer, style = nextcord.TextInputStyle.paragraph, max_length = 500, required = False)
+                self.add_item(self.joke_answer)
+                
+            async def callback(self, interaction: Interaction):
+                title = self.joke_title.value
+                description = self.joke_description.value
+                answer = self.joke_answer.value
+                
+                # Fix new lines
+                description = formatNewlinesForComputer(description)
+                answer = formatNewlinesForComputer(answer)
+                
+                class ConfirmView(nextcord.ui.View):
+                    def __init__(self, message: nextcord.Message, joke_title: str, joke_description: str, joke_answer: str, member_id: int):
+                        super().__init__(timeout = None)
+                        self.message = message
+                        self.joke_title = joke_title
+                        self.joke_description = joke_description
+                        self.joke_answer = joke_answer
+                        self.member_id = member_id
+                            
+                    @nextcord.ui.button(label = "Cancel")
+                    async def cancel(self, button: nextcord.ui.Button, interaction: Interaction):
+                        await interaction.response.edit_message(delete_after=0.0)
+                        
+                    @nextcord.ui.button(label = "Confirm")
+                    async def confirm(self, button: nextcord.ui.Button, interaction: Interaction):
+                        # Let's add it                                          
+                        if self.joke_answer: joke = "~".join([self.joke_title, self.joke_description, self.joke_answer])
+                        else: joke = "~".join([self.joke_title, self.joke_description])
+                        
+                        all_jokes = fileOperations.getAllJokes()
+                        all_jokes.append(joke)
+                        fileOperations.saveJokes(all_jokes)
+                        
+                        # Send Confirmation
+                        joke_embed = self.message.embeds[0]
+                        joke_embed.clear_fields()
+                        joke_embed.add_field(name = "Title", value = self.joke_title)
+                        joke_embed.add_field(name = "Joke", value = formatNewlinesForUser(self.joke_description))
+                        joke_embed.add_field(name = "Answer", value = formatNewlinesForUser(self.joke_answer))
+                        embeds = [joke_embed]
+                        embeds.append(nextcord.Embed(title = "Submission Verified", description = f"{interaction.user} verified this submission.", color = nextcord.Color.green()))
+                        await self.message.edit(embeds = embeds, view = None)
+                        
+                        # Try to dm
+                        try:
+                            support_server = bot.get_guild(infiniBotGuild)
+                        except nextcord.errors.Forbidden:
+                            print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
+                            return
+                        
+                        member = support_server.get_member(self.member_id)
+                        if not member:
+                            return
+                        
+                        dm = await member.create_dm()
+                        
+                        memberSettings = Member(member.id)
+                        if memberSettings.dmsEnabledBool:
+                            await dm.send(embeds = [nextcord.Embed(title = "Joke Submission Verified", description = f"Your joke submission has been verified! The joke you submitted has been attached below.", color = nextcord.Color.green()),
+                                                nextcord.Embed(title = self.joke_title, description = f"{formatNewlinesForUser(self.joke_description)}\n\n{f'Answer: ||{formatNewlinesForUser(self.joke_answer)}||' if self.joke_answer else ''}", color = nextcord.Color.fuchsia())])
+                        
+                        # Remove the message
+                        await interaction.response.edit_message(delete_after=0.0)
+                
+                
+                # Get confirmation that we will be able to dm the user
+                try:
+                    support_server = bot.get_guild(infiniBotGuild)
+                except nextcord.errors.Forbidden:
+                    print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                     return
                 
-                dm = await member.create_dm()
+                member = support_server.get_member(self.member_id)
+                if not member:
+                    moreInfo = "\n\nThis will **not** send the submitter a dm."
+                else:
+                    moreInfo = "\n\nThis will send the submitter a dm."
                 
-                memberSettings = Member(member.id)
-                if memberSettings.dmsEnabledBool:
-                    await dm.send(embeds = [nextcord.Embed(title = "Joke Submission Verified", description = f"Your joke submission has been verified! The joke you submitted has been attached below.", color = nextcord.Color.green()),
-                                        nextcord.Embed(title = title, description = f"{description}\n\n{f'Answer: ||{answer}||' if answer else ''}", color = nextcord.Color.fuchsia())])
                 
-                # Remove the message
-                await interaction.response.edit_message(delete_after=0.0)
-                
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Confirm Verify", description = "Are you sure you want to verify this joke submission? This will not be reversable.", color = nextcord.Color.blue()), ephemeral = True, view = ConfirmView(interaction.message))
-
+                await interaction.response.send_message(embed = nextcord.Embed(title = "Confirm Verify", description = f"Are you sure you want to verify this joke submission (applying any changes you made)? This will not be reversable.{moreInfo}", color = nextcord.Color.blue()), ephemeral = True, view = ConfirmView(interaction.message, title, description, answer, self.member_id))            
+               
+        modal = Modal(interaction.message)
+        await interaction.response.send_modal(modal)
+        
 @bot.slash_command(name = "joke", description = "Get a joke")
 async def jokeCommand(interaction: Interaction):
-    if not utils.enabled.Jokes(guild_id = interaction.guild.id):
+    if not utils.enabled.Jokes(guild = interaction.guild):
         await interaction.response.send_message(embed = nextcord.Embed(title = "Jokes Disabled", description = "Jokes have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
         return
     
@@ -10585,7 +10650,7 @@ async def jokeCommand(interaction: Interaction):
     
     joke_parts = joke.split("~")
     
-    await interaction.response.send_message(embed = nextcord.Embed(title = joke_parts[0], description = f"{joke_parts[1]}\n\n{f'Answer: ||{joke_parts[2]}||' if len(joke_parts) == 3 else ''}", color = nextcord.Color.fuchsia()), view = JokeView())
+    await interaction.response.send_message(embed = nextcord.Embed(title = joke_parts[0], description = f"{formatNewlinesForUser(joke_parts[1])}\n\n{f'Answer: ||{formatNewlinesForUser(joke_parts[2])}||' if len(joke_parts) == 3 else ''}", color = nextcord.Color.fuchsia()), view = JokeView())
 # Jokes END: ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -10658,6 +10723,7 @@ class MessageCommandOptionsView(nextcord.ui.View):
             self.message = message
             
             # Check Message Compatibility
+            if not interaction.guild: return
             server = Server(interaction.guild.id);
             server.messages.initialize();
             self.messageInfo = server.messages.get(message.id);
@@ -10685,6 +10751,7 @@ class MessageCommandOptionsView(nextcord.ui.View):
             self.message = message
             
             # Check Message Compatibility
+            if not interaction.guild: return
             enabled = False
             if (interaction.user.guild_permissions.ban_members and interaction.guild.me.guild_permissions.ban_members
                 and interaction.user.id != self.message.author.id):
