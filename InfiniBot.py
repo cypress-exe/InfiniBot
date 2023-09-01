@@ -9373,6 +9373,8 @@ async def purge(interaction: Interaction, amount: str = SlashOption(description=
             if not str(interaction.guild_id) in purging:
                 purging.append(str(interaction.guild_id))
 
+            deleted = []
+
             try:
                 deleted = await interaction.channel.purge(limit = int(amount) + 1)
             except nextcord.errors.NotFound:
