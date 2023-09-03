@@ -6616,29 +6616,29 @@ if dbl_token != "NONE":
     import topgg
     bot.topggpy = topgg.DBLClient(bot, dbl_token)
 
+runEveryMinute_isRunning = False
 async def runEveryMinute():
+    global runEveryMinute_isRunning
+    
+    # Ensure only one instance
+    if runEveryMinute_isRunning:
+        return
+    
+    # Update the variable
+    runEveryMinute_isRunning = True
+    
+    # Run the code
     while True:
-        currentTime = datetime.datetime.now()
-        if currentTime.minute == 59: 
-            if currentTime.hour != 23: 
-                nextTime = f"{str(currentTime.day)}/{str(currentTime.month)}/{str(currentTime.year)} {str(currentTime.hour + 1)}:0:0"
-            else: 
-                nextTime = f"{str(currentTime.day + 1)}/{str(currentTime.month)}/{str(currentTime.year)} 0:0:0"
+        currentTimeRaw = datetime.datetime.now()
+        currentTime = datetime.datetime(year = currentTimeRaw.year, month = currentTimeRaw.month, day = currentTimeRaw.day, hour = currentTimeRaw.hour, minute = currentTimeRaw.minute, second = currentTimeRaw.second)
+        nextTime = currentTime.replace(second=0, microsecond=0) + datetime.timedelta(minutes=1)
+        deltaTime = int((nextTime - currentTime).total_seconds())
 
-        else: 
-            nextTime = f"{str(currentTime.day)}/{str(currentTime.month)}/{str(currentTime.year)} {str(currentTime.hour)}:{str(currentTime.minute + 1)}:0"
-
-        nextTime = datetime.datetime.strptime(nextTime, f'%d/%m/%Y %H:%M:%S')
-
-        deltaTime = nextTime - currentTime
-        deltaTime = deltaTime.seconds
-        if deltaTime == 0: deltaTime = 60
-
-        #uncomment for telemetry
-        #print("Current Time:", currentTime) # print("Next Time:", nextTime) print("Delta Time:", deltaTime)
+        # Uncomment for telemetry
+        #print("Current Time:", currentTime); print("Next Time:", nextTime); print("Delta Time:", deltaTime, "seconds"); print("====================================")
         
-        await asyncio.sleep(int(deltaTime))
-        
+        # Wait
+        await asyncio.sleep(deltaTime)
         
         # Post server count every hour
         if nextTime.minute == 0:
@@ -6653,44 +6653,13 @@ async def runEveryMinute():
                         
                     continue
 
-        #actually check for birthdays
-        if nextTime.hour == 8 and nextTime.minute == 0: #run at 8:00 AM every day
+        # Check for Birthays
+        if nextTime.hour == 8 and nextTime.minute == 0: # Run at 8:00 AM every day
             await checkForBirthdays(nextTime, currentTime)
         
         # Check for levels
-        if nextTime.hour == 0 and nextTime.minute == 1: #run at midnight + 1 (because [0 hours 0 minutes] is never reached for some reason)
-            print("Checking Levels --------------------")
-            if not main.global_kill_leveling:
-                allGuildIDs = [guild.id for guild in bot.guilds]
-                for guild in bot.guilds:
-                    try:
-                        if not guild.id in allGuildIDs: continue
-                        
-                        server = Server(guild.id)
-                        if server == None or server.guild == None: continue
-                        if server.levelingBool == False: continue
-                        if server.pointsLostPerDay == None: continue
-                        if server.pointsLostPerDay == 0: continue
-                        
-                        for level in server.levels.allMembers:
-                            try:
-                                level.score -= server.pointsLostPerDay
-                                if level.score <= 0:
-                                    server.levels.deleteMember(level.memberID)
-                            except Exception as err:
-                                print(f"ERROR When checking levels (member): {err}")
-                                continue
-                        
-                        server.saveLevels()
-                        
-                        for member in server.levels.allMembers:
-                            await checkForLevelsAndLevelRewards(server.guild, member.member)
-                        
-                        del server
-                        
-                    except Exception as err:
-                        print(f"ERROR When checking levels (server): {err}")
-                        continue
+        if nextTime.hour == 0 and nextTime.minute == 1: # Run at midnight + 1
+            await checkLevels()
     
 
 
@@ -10003,6 +9972,40 @@ async def on_voice_state_update(member: nextcord.Member, before: nextcord.VoiceS
 
 
 #Leveling: ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+async def checkLevels():
+    print("Checking Levels --------------------")
+    if not main.global_kill_leveling:
+        allGuildIDs = [guild.id for guild in bot.guilds]
+        for guild in bot.guilds:
+            try:
+                if not guild.id in allGuildIDs: continue
+                
+                server = Server(guild.id)
+                if server == None or server.guild == None: continue
+                if server.levelingBool == False: continue
+                if server.pointsLostPerDay == None: continue
+                if server.pointsLostPerDay == 0: continue
+                
+                for level in server.levels.allMembers:
+                    try:
+                        level.score -= server.pointsLostPerDay
+                        if level.score <= 0:
+                            server.levels.deleteMember(level.memberID)
+                    except Exception as err:
+                        print(f"ERROR When checking levels (member): {err}")
+                        continue
+                
+                server.saveLevels()
+                
+                for member in server.levels.allMembers:
+                    await checkForLevelsAndLevelRewards(server.guild, member.member)
+                
+                del server
+                
+            except Exception as err:
+                print(f"ERROR When checking levels (server): {err}")
+                continue
+
 def getLevel(score: int):
     score /= 10
     if score == 0: return 0
