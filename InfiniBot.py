@@ -10695,13 +10695,11 @@ class MessageCommandOptionsView(nextcord.ui.View):
         for child in self.children:
             if isinstance(child, nextcord.ui.Button):
                 child.disabled = True
-                
-        embed = nextcord.Embed(title = "Message Options", description = "This message has been deleted.", color = nextcord.Color.red())
         
         try:
-            self.thisMessage_id = await interaction.response.edit_message(embed = embed, view = self)
+            self.thisMessage_id = await interaction.response.edit_message(view = self, delete_after = 0.0)
         except:
-            await interaction.followup.edit_message(self.thisMessage_id.id, embed = embed, view = self)
+            await interaction.followup.edit_message(self.thisMessage_id.id, view = self, delete_after = 0.0)
         
     class DeleteDMButton(nextcord.ui.Button):
         def __init__(self, outer, interaction: Interaction, message: nextcord.Message):
@@ -10816,7 +10814,7 @@ class MessageCommandOptionsView(nextcord.ui.View):
 
 @bot.message_command(name = "Options", dm_permission = True)
 async def messageCommandOptions(interaction: Interaction, message: nextcord.Message):
-    _hasRole = (await hasRole(interaction, message) if interaction.guild else True)
+    _hasRole = (await hasRole(interaction, notify = False) if interaction.guild else True)
     await MessageCommandOptionsView(interaction, message, _hasRole).setup(interaction)
 
 
