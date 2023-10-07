@@ -2365,21 +2365,30 @@ class ShowMoreButton(nextcord.ui.View):
   
   @nextcord.ui.button(label = 'Show More', style = nextcord.ButtonStyle.gray, custom_id = "show_more")
   async def event(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
-    embed = interaction.message.embeds[0]
-    code = embed.footer.text.split(" ")[-1]
-    index = int(code) - 1
-    
-    embed = nextcord.Embed(title = "More Information", color = nextcord.Color.red())
-    embed.add_field(name = self.possibleEmbeds[index][0], value = self.possibleEmbeds[index][1])
-    
-    button.disabled = True
+    if button.label == "Show More":
+        # Show more
+        embed = interaction.message.embeds[0]
+        code = embed.footer.text.split(" ")[-1]
+        index = int(code) - 1
+        
+        embed = nextcord.Embed(title = "More Information", color = nextcord.Color.red())
+        embed.add_field(name = self.possibleEmbeds[index][0], value = self.possibleEmbeds[index][1])
+        
+        # Change the Name of the button
+        button.label = "Show Less"
 
-    allEmbeds = interaction.message.embeds
-    allEmbeds.append(embed)
+        allEmbeds = interaction.message.embeds
+        allEmbeds.append(embed)
+    else:
+        # Show less
+        embed = interaction.message.embeds[0]
+        
+        # Change the Name of the button
+        button.label = "Show More"
+        
+        allEmbeds = [embed]
 
     await interaction.response.edit_message(view=self, embeds = allEmbeds)
-    
-    self.stop()
   
 # Error "Why Administrator Privileges?" Button
 class ErrorWhyAdminPrivilegesButton(nextcord.ui.View):
@@ -9697,7 +9706,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
         else:
             freshAuditLog = False
         
-        if entry:
+        if entry and freshAuditLog:
             #we prioritize the author of the message if we know it, but if we don't we use this
             if not message: user = entry.target
             else: user = message.author
