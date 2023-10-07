@@ -2,6 +2,7 @@ import socket
 import time
 import subprocess
 import os
+import platform
 
 # Functions
 def is_connected():
@@ -26,8 +27,15 @@ while True:
 
 # Run the bot
 print("Starting up InfiniBot...")
-file = f"{os.getcwd()}\\InfiniBot.py"
+file = os.path.join(os.getcwd(), "InfiniBot.py")
 
-# Open a new command prompt window and run a command in it
-subprocess.Popen(['cmd.exe', '/c', 'start', 'cmd.exe', '/k', 'python', file])
-        
+if platform.system() == "Windows":
+    # Open a new command prompt window and run a command in it
+    subprocess.Popen(['cmd.exe', '/c', 'start', 'cmd.exe', '/k', 'python', file])
+elif platform.system() == "Linux":
+    # Open a new terminal window and run a command in it
+    subprocess.run(["gnome-terminal", "--command=python " + file])
+else:
+    # OS not supported
+    print("OS NOT SUPPORTED!!!")
+    quit()
