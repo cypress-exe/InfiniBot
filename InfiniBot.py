@@ -2371,14 +2371,14 @@ class ShowMoreButton(nextcord.ui.View):
         code = embed.footer.text.split(" ")[-1]
         index = int(code) - 1
         
-        embed = nextcord.Embed(title = "More Information", color = nextcord.Color.red())
-        embed.add_field(name = self.possibleEmbeds[index][0], value = self.possibleEmbeds[index][1])
+        info_embed = nextcord.Embed(title = "More Information", color = nextcord.Color.red())
+        info_embed.add_field(name = self.possibleEmbeds[index][0], value = self.possibleEmbeds[index][1])
         
         # Change the Name of the button
         button.label = "Show Less"
 
         allEmbeds = interaction.message.embeds
-        allEmbeds.append(embed)
+        allEmbeds.append(info_embed)
     else:
         # Show less
         embed = interaction.message.embeds[0]
@@ -2966,7 +2966,7 @@ class SelectView(nextcord.ui.View):
         self.options = options
         self.returnCommand = returnCommand
         
-        #Confirm objects
+        # Confirm objects
         if self.options == None or self.options == []:
             raise ValueError(f"'options' must be a 'list' with one or more 'nextcord.SelectOption' items.")       
         if type(self.options) != list:
@@ -2974,40 +2974,51 @@ class SelectView(nextcord.ui.View):
         for option in self.options:
             if type(option) != nextcord.SelectOption:
                 raise ValueError(f"'options' must only contain 'nextcord.SelectOption' items. Countained 1+ '{type(option)}'")
+            
+        # Remove Unknowns
+        if not self.embed.description: self.embed.description = ""
+        confirmed_options = []
+        for option in self.options:
+            if option == None: continue
+            if not isinstance(option, nextcord.SelectOption): continue
+            if option.label == None: continue
+            if option.value == None: continue
+            confirmed_options.append(option)
+        self.options = confirmed_options
         
-        #Alphabetize options
+        # Alphabetize options
         if not preserveOrder:
             self.options = sorted(self.options, key=lambda option: [option.value != "__NONE__", option.label.lower()])
         
         
-        #parse options into different pages
+        # Parse options into different pages
         self.selectOptions = [[]]
         xindex = 0
         yindex = 0
         for option in self.options:
             if yindex == 25:    # <--------------------------- Change the Threshold HERE!!!!
-                #create new page
+                # Create new page
                 self.selectOptions.append([])
                 xindex += 1
                 yindex = 0
-            #add to current page
+            # Add to current page
             self.selectOptions[xindex].append(option)
             yindex += 1
             
         del xindex, yindex
         
-        #add select menu
+        # Add select menu
         self.Select = nextcord.ui.Select(options = [nextcord.SelectOption(label = "PLACEHOLDER!!!")], placeholder=placeholder)
         self.add_item(self.Select)
         
-        #add buttons
+        # Add buttons
         self.backButton = nextcord.ui.Button(emoji = "◀️", style = nextcord.ButtonStyle.gray, row = 1, disabled = True)
         self.backButton.callback = self.back
         
         self.nextButton = nextcord.ui.Button(emoji = "▶️", style = nextcord.ButtonStyle.gray, row = 1)
         self.nextButton.callback = self.next
         
-        if len(self.selectOptions) > 1: #if we need pages
+        if len(self.selectOptions) > 1: # If we need pages
             self.add_item(self.backButton)
             self.add_item(self.nextButton)
         
@@ -3026,7 +3037,7 @@ class SelectView(nextcord.ui.View):
         if page >= len(self.selectOptions): raise IndexError("Page (int) was out of bounds of self.selectOptions (list[nextcord.SelectOption]).")
         
         embed = copy.copy(self.embed)
-        if len(self.selectOptions) > 1: #if we don't need pages, don't bother the user with pages.
+        if len(self.selectOptions) > 1: # If we don't need pages, don't bother the user with pages.
             embed.description += f"\n\n**Page {page + 1} of {len(self.selectOptions)}**\n{self.selectOptions[page][0].label} → {self.selectOptions[page][-1].label}"
         
         self.Select.options = self.selectOptions[page]
@@ -10698,7 +10709,7 @@ class MessageCommandOptionsView(nextcord.ui.View):
         
         embed = nextcord.Embed(title = "Message Options", description = description, color = color)
         
-        await interaction.followup.edit_message(full_message.id, embed = embed, view = self)
+        self.thisMessage_id = await interaction.followup.edit_message(full_message.id, embed = embed, view = self)
         
     async def disableAll(self, interaction: Interaction):
         for child in self.children:
@@ -10707,7 +10718,7 @@ class MessageCommandOptionsView(nextcord.ui.View):
         
         try:
             self.thisMessage_id = await interaction.response.edit_message(view = self, delete_after = 0.0)
-        except:
+        except nextcord.errors.InteractionResponded:
             await interaction.followup.edit_message(self.thisMessage_id.id, view = self, delete_after = 0.0)
         
     class DeleteDMButton(nextcord.ui.Button):
