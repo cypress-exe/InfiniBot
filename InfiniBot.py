@@ -7444,8 +7444,9 @@ async def canModerate(interaction: Interaction, server: Server):
 async def punnishProfanity(server: Server, message: nextcord.Message):
     global autoDeletedMessageTime
     
+    # Checks
     if not utils.enabled.ProfanityModeration(server = server): return
-    if message.channel.is_nsfw(): return
+    if message.channel.type != nextcord.ChannelType.stage_voice and message.channel.is_nsfw(): return
     if message.author == message.guild.owner: return
     
     msg = message.content.lower()
