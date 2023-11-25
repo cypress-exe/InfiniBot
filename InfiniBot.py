@@ -64,25 +64,25 @@ MISSING = _Missing
 
 
 # IDs
-developmentGuild = [968872260557488158, 995459530202808332]
-developerID = [836701982425219072]
-infiniBotGuild = None
-issueReportChannel = None
-submissionChannel = None
-updatesChannel = None
-infiniBotUpdatesRole = None
+dev_guilds = [968872260557488158, 995459530202808332]
+dev_id = [836701982425219072]
+infiniBot_guild = None
+issue_report_channel = None
+submission_channel = None
+updates_channel = None
+infiniBot_updates_role = None
 
 # Links
-supportServerLink = 'https://discord.gg/mWgJJ8ZqwR'
-topggLink = "https://top.gg/bot/991832387015159911"
-topggVoteLink = "https://top.gg/bot/991832387015159911/vote"
-topggReviewLink = "https://top.gg/bot/991832387015159911#reviews"
-inviteLink = "https://discord.com/oauth2/authorize?client_id=991832387015159911&permissions=1374809222364&scope=bot"
+support_server_link = 'https://discord.gg/mWgJJ8ZqwR'
+topgg_link = "https://top.gg/bot/991832387015159911"
+topgg_vote_link = "https://top.gg/bot/991832387015159911/vote"
+topgg_review_link = "https://top.gg/bot/991832387015159911#reviews"
+invite_link = "https://discord.com/oauth2/authorize?client_id=991832387015159911&permissions=1374809222364&scope=bot"
 
 # Global Variables
-autoDeletedMessageTime = None
-nicknameChanged = []
-requiredPermissions = """
+auto_deleted_message_time = None
+nickname_changed = []
+required_permissions = """
 \n**Text Channel Permissions**:
 • View Channels
 • Send Messages
@@ -119,7 +119,7 @@ bot = commands.Bot(intents = intents, allowed_mentions = nextcord.AllowedMention
 
 # LOAD IDS ==============================================================================================================================================================
 def load_ids():
-    global infiniBotGuild, issueReportChannel, submissionChannel, updatesChannel, infiniBotUpdatesRole
+    global infiniBot_guild, issue_report_channel, submission_channel, updates_channel, infiniBot_updates_role
     
     ids_file = None
     
@@ -128,11 +128,11 @@ def load_ids():
 
     json_file = json.loads(ids_file)
     
-    infiniBotGuild = json_file["InfiniBotGuild"]
-    issueReportChannel = json_file["IssueReportChannel"]
-    submissionChannel = json_file["SubmissionChannel"]
-    updatesChannel = json_file["UpdatesChannel"]
-    infiniBotUpdatesRole = json_file["InfiniBotUpdatesRole"]
+    infiniBot_guild = json_file["InfiniBotGuild"]
+    issue_report_channel = json_file["IssueReportChannel"]
+    submission_channel = json_file["SubmissionChannel"]
+    updates_channel = json_file["UpdatesChannel"]
+    infiniBot_updates_role = json_file["InfiniBotUpdatesRole"]
 
 load_ids()
 
@@ -268,20 +268,21 @@ class FileOperations:
         self.DATADEFAULT = {
             'version' : VERSION,
             'active': {
-                'profanityModeration': True,
-                'spamModeration': True,
-                'logging': True,
-                'leveling': True,
+                'profanityModeration': False,
+                'spamModeration': False,
+                'logging': False,
+                'leveling': False,
                 'deleteInvites': False,
                 'getUpdates': True
             },
             'channels': {
                 'admin': None,
                 'log': None,
-                'join': None,
-                'leave': None,
+                'join': False,
+                'leave': False,
                 'leveling': None,
-                'levelingExempt': []
+                'levelingExempt': [],
+                'birthdays': None
             },
             'moderation': {
                 'maxStrikes': 3,
@@ -471,20 +472,6 @@ class FileOperations:
                 file.write("".encode())
         
         return contents.split("\n")
-    
-    def getAllInvites(self):
-        '''Returns invites (str) (per server)'''
-        contents = ""
-        if os.path.exists("./Files/Invites.binary"):
-            with open("./Files/Invites.binary", "rb") as file:
-                contents = file.read().decode()
-            
-        else:
-            with open("./Files/Invites.binary", "wb") as file:
-                contents = ""
-                file.write("".encode())
-        
-        return contents.split("\n")
 
     def getAllMessages(self):
         '''Returns messages (raw list) (per server)'''
@@ -639,12 +626,6 @@ class FileOperations:
         with open("./Files/Bans.binary", "wb") as file:
             file.write(formatted.encode())
             
-    def saveInvites(self, list):
-        '''Saves a list (per server) of Invites'''
-        formatted = "\n".join(self.clearEmptyIndexes(list))
-        with open("./Files/Invites.binary", "wb") as file:
-            file.write(formatted.encode())
-
     def saveMessages(self, list):
         '''Saves a formatted list (per server) of Messages'''
         formatted = "\n".join(self.clearEmptyIndexes(list))
@@ -672,25 +653,55 @@ fileOperations = FileOperations()
 
 
 class Strike:
-    '''TYPE Strike → Moderation Strikes → contains the member (nextcord.Member), memberID (int), strike (int), and lastStrike (time → str)'''
+    """TYPE Strike → Moderation Strikes → contains the member (nextcord.Member), member_id (int), strike (int), and last_strike (time → str).
+    
+    For initalization, either include the package, or call `setup`."""
     def __init__(self, guild: nextcord.Guild, package: str):
-        self.data = package.split("|||")
-        self.member: nextcord.Member = guild.get_member(int(self.data[0]))
-        self.memberID: int = int(self.data[0])
-        self.strike: int = int(self.data[1])
-        self.lastStrike: str = (self.data[2])
+        if package:
+            self.data = package.split("|||")
+            self.guild = guild
+            self.member: nextcord.Member = self.guild.get_member(int(self.data[0]))
+            self.member_id: int = int(self.data[0])
+            self.strike: int = int(self.data[1])
+            self.last_strike: str = (self.data[2])
+        else:
+            self.data = None
+            self.guild = guild
+            self.member = None
+            self.member_id = None
+            self.strike = None
+            self.last_strike = None
+        
+    def setup(self, member_id: int, strike: int, last_strike = None):
+        self.member_id = int(member_id)
+        self.member: nextcord.Member = self.guild.get_member(self.member_id)
+        self.strike = int(strike)
+        self.last_strike = (last_strike if last_strike else datetime.date.today())
+    
+    def set_strike(self, new_strike):
+        self.strike = int(new_strike)
+        self.last_strike = datetime.date.today()
+        self.__format_strikes()
+        
+    def change_strike(self, quantity):
+        self.strike = int(self.strike + quantity)
+        self.last_strike = datetime.date.today()
+        self.__format_strikes()
+        
+    def __format_strikes(self):
+        if self.strike < 0: self.strike = 0.
 
 class Birthday:
-    '''TYPE Birthday → Birthdays → contains the member (nextcord.Member), memberID (int), date (time → str), and realName (str | None)'''
+    '''TYPE Birthday → Birthdays → contains the member (nextcord.Member), member_id (int), date (time → str), and real_name (str | None)'''
     def __init__(self, guild: nextcord.Guild, package: str):
         self.data = package.split("|||")
         self.member: nextcord.Member = guild.get_member(int(self.data[0]))
-        self.memberID = int(self.data[0])
+        self.member_id = int(self.data[0])
         self.date: str = self.data[1]
         if len(self.data) == 3:
-            self.realName = self.data[2]
+            self.real_name = self.data[2]
         else:
-            self.realName = None
+            self.real_name = None
 
 class JoinToCreateVC:
     '''TYPE JoinToCreateVc → Join-to-create-vcs → contains the id (int) and channel (nextcord.VoiceChannel | None)'''
@@ -704,42 +715,43 @@ class JoinToCreateVC:
             
         self.channel: nextcord.VoiceChannel = guild.get_channel(self.id)
         
+        self.active = True
+        '''Refers to whether or not InfiniBot has the correct permissions in the voice channel.'''
+        
         #check Permissions
         if not (self.channel.permissions_for(guild.me).view_channel and self.channel.permissions_for(guild.me).connect and self.channel.permissions_for(guild.me).manage_channels):
             self.active = False
-        else:
-            self.active = True
 
 class StatsMessage:
-    '''TYPE StatsMessage → Stats Message → contains the messageID(int | None), channelID(int | None), and link (str | None).'''
+    '''TYPE StatsMessage → Stats Message → contains the message_id(int | None), channel_id(int | None), and link (str | None).'''
     def __init__(self, guild: nextcord.Guild, package: typing.Union[str, None]):
         if package != None and package != None:
             self.data = package.split("/")
             self.guild = guild
-            self.channelID: int = int(self.data[0])
-            self.messageID: int = int(self.data[1])
-            self.link = f"https://discord.com/channels/{self.guild.id}/{self.channelID}/{self.messageID}"
+            self.channel_id: int = int(self.data[0])
+            self.message_id: int = int(self.data[1])
+            self.link = f"https://discord.com/channels/{self.guild.id}/{self.channel_id}/{self.message_id}"
             self.active = True
         else:
             self.guild = guild
-            self.channelID = None
-            self.messageID = None
+            self.channel_id = None
+            self.message_id = None
             self.link = None
             self.active = False
         
     async def checkMessage(self):
         '''Finds the message and determins whether it exists.'''
-        if self.channelID == None or self.messageID == None:
+        if self.channel_id == None or self.message_id == None:
             self.setValue(None)
             return False, None
         
         try:
-            channel: nextcord.TextChannel = await self.guild.fetch_channel(self.channelID)
+            channel: nextcord.TextChannel = await self.guild.fetch_channel(self.channel_id)
             if channel is None: 
                 self.setValue(None)
                 return False, None
             
-            message: nextcord.Message = await channel.fetch_message(self.messageID)
+            message: nextcord.Message = await channel.fetch_message(self.message_id)
             if message is None: 
                 self.setValue(None)
                 return False, None
@@ -751,48 +763,48 @@ class StatsMessage:
     def setValue(self, message: nextcord.Message):
         '''Updates all values to reflect the attribute message'''
         if message == None:
-            self.channelID = None
-            self.messageID = None
+            self.channel_id = None
+            self.message_id = None
             self.link = None
             self.active = False
             return
         
-        self.channelID: int = message.channel.id
-        self.messageID: int = message.id
-        self.link = f"https://discord.com/channels/{self.guild.id}/{self.channelID}/{self.messageID}"
+        self.channel_id: int = message.channel.id
+        self.message_id: int = message.id
+        self.link = f"https://discord.com/channels/{self.guild.id}/{self.channel_id}/{self.message_id}"
     
     def saveValue(self):
         '''Returns how this variable should be saved.'''
-        if self.channelID == None or self.messageID == None:
+        if self.channel_id == None or self.message_id == None:
             return None
         
-        return str(self.channelID) + "/" + str(self.messageID)
+        return str(self.channel_id) + "/" + str(self.message_id)
 
 class Level:
-    '''TYPE LEVEL → Leveling Level → contains the member (nextcord.Member), memberID (int), and score (int)'''
+    '''TYPE LEVEL → Leveling Level → contains the member (nextcord.Member), member_id (int), and score (int)'''
     def __init__(self, guild: nextcord.Guild, package: str):
         self.data = package.split("|||")
         self.member: nextcord.Member = guild.get_member(int(self.data[0]))
-        self.memberID = int(self.data[0])
+        self.member_id = int(self.data[0])
         self.score = int(self.data[1])
         
 class LevelReward:
-    '''TYPE Strike → Leveling Level Reward → contains the role (nextcord.Role), roleID (int), and level (int)'''
+    '''TYPE Strike → Leveling Level Reward → contains the role (nextcord.Role), role_id (int), and level (int)'''
     def __init__(self, guild: nextcord.Guild, package: str):
         self.data = package.split("|||")
         self.role: nextcord.Role = guild.get_role(int(self.data[0]))
-        self.roleID = int(self.data[0])
+        self.role_id = int(self.data[0])
         self.level = int(self.data[1])
 
 class AutoBan:
-    '''TYPE AUTO-BAN → Auto-Bans → contains the memberName (str) and memberID (int)'''
+    '''TYPE AUTO-BAN → Auto-Bans → contains the member_name (str) and member_id (int)'''
     def __init__(self, package: str):
         self.data = package.split("|||")
-        self.memberName: str = self.data[0]
-        self.memberID = int(self.data[1])
+        self.member_name: str = self.data[0]
+        self.member_id = int(self.data[1])
         
     def saveValue(self):
-        return f"{self.memberName}|||{self.memberID}"
+        return f"{self.member_name}|||{self.member_id}"
 
 
 class Levels:
@@ -801,98 +813,106 @@ class Levels:
         self.guild = guild
         self.guild_id = str(guild.id)
         
-        needToSave = False
-        self.allMembers: list[Level] = []
+        # Populate self.all_members
+        need_to_save = False
+        self.all_members: list[Level] = []
         for level in self.__getLevels():
-            levelClass = Level(self.guild, level)
-            if levelClass.member != None: self.allMembers.append(levelClass)
-            else: needToSave = True
+            level_class = Level(self.guild, level)
+            if level_class.member != None: self.all_members.append(level_class)
+            else: need_to_save = True
             
-        if needToSave: self.saveLevels()
+        if need_to_save: self.saveLevels()
         
         
-        #get rid of members with a level of 0
-        needToSave = False
+        # Get rid of members with a level of 0
+        need_to_save = False
         _allMembers = []
-        for member in self.allMembers:
+        for member in self.all_members:
             if member.score != 0: _allMembers.append(member) #if their score isn't 0, add them to the list
-            if member.score == 0: needToSave = True
+            if member.score == 0: need_to_save = True
                 
-        self.allMembers = _allMembers     
-        if needToSave: self.saveLevels()
+        self.all_members = _allMembers
+        if need_to_save: self.saveLevels()
         
-        
-        needToSave = False
-        self.levelRewards: list[LevelReward] = []
-        for levelReward in self.__getLevelRewards():
-            levelRewardClass = LevelReward(self.guild, levelReward)
-            if levelRewardClass.role != None: self.levelRewards.append(levelRewardClass)
-            else: needToSave = True
+        # Populate self.level_rewards
+        need_to_save = False
+        self.level_rewards: list[LevelReward] = []
+        for level_reward in self.__getLevelRewards():
+            levelRewardClass = LevelReward(self.guild, level_reward)
+            if levelRewardClass.role != None: self.level_rewards.append(levelRewardClass)
+            else: need_to_save = True
 
-        if needToSave: self.saveLevelRewards()
+        if need_to_save: self.saveLevelRewards()
  
     def __getLevels(self):
         '''Returns a list each member's level (type LEVEL). Will add server if needed. Members with a level of 0 will be ommitted.'''
-        allLevels = fileOperations.getAllLevels()
+        all_levels = fileOperations.getAllLevels()
 
-        for server in allLevels:
+        for server in all_levels:
             if server.split("———")[0] == self.guild_id:
                 return server.split("———")[1:]
 
-        newLevels = fileOperations.addServerToList(self.guild_id, allLevels, None)
+        newLevels = fileOperations.addServerToList(self.guild_id, all_levels, None)
         fileOperations.saveLevels(newLevels)
 
         return []
 
     def saveLevels(self):
         '''Saves any level changes made to this class.'''
-        levelsList = []
-        for level in self.allMembers:
-            levelsList.append(str(level.memberID) + "|||" + str(level.score))
+        # Remove all unneccessary members (score 0)
+        for member in list(self.all_members):
+            if member.score <= 0: 
+                self.all_members.remove(member)
+        
+        # Format
+        levels_list = []
+        for level in self.all_members:
+            levels_list.append(str(level.member_id) + "|||" + str(level.score))
 
-        levelsString = fileOperations.joinWithHyphens(levelsList)
-        allLevels = fileOperations.getAllLevels()
+        levels_string = fileOperations.joinWithHyphens(levels_list)
 
-        list = fileOperations.editServerInList(self.guild_id, allLevels, levelsString)
+        # Save
+        all_levels = fileOperations.getAllLevels()
+        all_levels = fileOperations.editServerInList(self.guild_id, all_levels, levels_string)
+        fileOperations.saveLevels(all_levels)
 
-        fileOperations.saveLevels(list)
-
-    def memberExists(self, memberID):
+    def memberExists(self, member_id):
         '''Returns a BOOL whether a member has a recorded level.'''
-        memberID = int(memberID)
-        for level in self.allMembers:
-            if level.memberID == memberID:
+        member_id = int(member_id)
+        for level in self.all_members:
+            if level.member_id == member_id:
                 return True
 
         return False
 
-    def addMember(self, memberID, score = 0):
+    def addMember(self, member_id, score = 0):
         '''Adds a member to leveling system with a default score of 0* (returns True). Supports when the member already exists (returns False).'''
-        memberID = int(memberID)
-        if self.memberExists(memberID): return False
+        member_id = int(member_id)
+        if self.memberExists(member_id): return False
 
-        self.allMembers.append(Level(self.guild, f"{str(memberID)}|||{str(score)}"))
+        self.all_members.append(Level(self.guild, f"{str(member_id)}|||{str(score)}"))
 
         return True
 
-    def getMember(self, memberID):
-        '''Retrieves a member's level. Returns type LEVEL or NONE'''
-        memberID = int(memberID)
-        if self.memberExists(memberID):
-            for level in self.allMembers:
-                if level.memberID == int(memberID):
+    def getMember(self, member_id):
+        '''Retrieves a member's level. Returns type LEVEL'''
+        member_id = int(member_id)
+        if self.memberExists(member_id):
+            for level in self.all_members:
+                if level.member_id == int(member_id):
                     return level
-
         else:
-            return None
+            # Create a temporary level for them to use.
+            self.addMember(member_id)
+            return self.getMember(member_id)
 
-    def deleteMember(self, memberID):
+    def deleteMember(self, member_id):
         '''Delets a member from leveling system (returns True). Supports when the member doesn't exist (returns False).'''
-        memberID = int(memberID)
-        if self.memberExists(memberID):
-            for level in self.allMembers:
-                if level.memberID == memberID:
-                    self.allMembers.pop(self.allMembers.index(level))
+        member_id = int(member_id)
+        if self.memberExists(member_id):
+            for level in self.all_members:
+                if level.member_id == member_id:
+                    self.all_members.pop(self.all_members.index(level))
                     return True
             
         return False
@@ -900,52 +920,52 @@ class Levels:
 
     def __getLevelRewards(self):
         '''Returns a list each level reward (type LEVELREWARD). Will add server if needed.'''
-        allLevelRewards = fileOperations.getAllLevelRewards()
+        all_level_rewards = fileOperations.getAllLevelRewards()
 
-        for server in allLevelRewards:
+        for server in all_level_rewards:
             if server.split("———")[0] == self.guild_id:
                 return server.split("———")[1:]
 
-        newLevelRewards = fileOperations.addServerToList(self.guild_id, allLevelRewards, None)
-        fileOperations.saveLevelRewards(newLevelRewards)
+        new_level_rewards = fileOperations.addServerToList(self.guild_id, all_level_rewards, None)
+        fileOperations.saveLevelRewards(new_level_rewards)
 
         return []
 
     def saveLevelRewards(self):
         '''Saves any level reward changes made to this class.'''
-        levelRewardsList = []
-        for levelReward in self.levelRewards:
-            levelRewardsList.append(str(levelReward.role.id) + "|||" + str(levelReward.level))
+        level_rewards_list = []
+        for level_reward in self.level_rewards:
+            level_rewards_list.append(str(level_reward.role.id) + "|||" + str(level_reward.level))
 
-        levelRewardsString = fileOperations.joinWithHyphens(levelRewardsList)
-        allLevelRewards = fileOperations.getAllLevelRewards()
+        level_reward_string = fileOperations.joinWithHyphens(level_rewards_list)
+        all_level_rewards = fileOperations.getAllLevelRewards()
 
-        list = fileOperations.editServerInList(self.guild_id, allLevelRewards, levelRewardsString)
+        list = fileOperations.editServerInList(self.guild_id, all_level_rewards, level_reward_string)
 
         fileOperations.saveLevelRewards(list)
 
-    def levelRewardExists(self, roleID):
+    def levelRewardExists(self, role_id):
         '''Returns a BOOL whether a role has an associated level reward.'''
-        for levelReward in self.levelRewards:
-            if levelReward.roleID == roleID:
+        for level_reward in self.level_rewards:
+            if level_reward.role_id == role_id:
                 return True
 
         return False
 
-    def addLevelReward(self, roleID, level):
+    def addLevelReward(self, role_id, level):
         '''Adds a level reward to leveling system (returns True). Supports when the level reward already exists (returns False).'''
-        if self.levelRewardExists(roleID): return False
+        if self.levelRewardExists(role_id): return False
 
-        self.levelRewards.append(LevelReward(self.guild, f"{str(roleID)}|||{str(level)}"))
+        self.level_rewards.append(LevelReward(self.guild, f"{str(role_id)}|||{str(level)}"))
 
         return True
 
     def getLevelReward(self, roleID):
         '''Retrieves a level reward. Returns type LEVELREWARD or NONE'''
         if self.levelRewardExists(roleID):
-            for levelReward in self.levelRewards:
-                if levelReward.roleID == int(roleID):
-                    return levelReward
+            for level_reward in self.level_rewards:
+                if level_reward.role_id == int(roleID):
+                    return level_reward
 
         else:
             return None
@@ -953,9 +973,9 @@ class Levels:
     def deleteLevelReward(self, roleID):
         '''Delets a level reward from leveling system (returns True). Supports when the level reward doesn't exist (returns False).'''
         if self.levelRewardExists(roleID):
-            for levelReward in self.levelRewards:
-                if levelReward.roleID == int(roleID):
-                    self.levelRewards.pop(self.levelRewards.index(levelReward))
+            for level_reward in self.level_rewards:
+                if level_reward.role_id == int(roleID):
+                    self.level_rewards.pop(self.level_rewards.index(level_reward))
                     break
             
             return True
@@ -974,20 +994,19 @@ class Server:
                 self.guild = guild
 
         if self.guild != None:
-            self.rawData = self.__getData()
-            self.ProfaneWords = self.__getProfaneWords()
+            self.raw_data = self.__getData()
+            self.profane_words = self.__getProfaneWords()
             self.__rawStrikes = self.__getStrikes()
             self.__rawBirthdays = self.__getBirthdays()
             self.__rawVCs = self.__getVCs()
             self.__rawBans = self.__getAutoBans()
-            #self.invite = self.__getInvite()
         
 
             #handle data
             
             def loadChannel(channel):
-                if channel == None:
-                    return None
+                if channel == None: return None
+                if channel == False: return False
                 return bot.get_channel(channel)
             
             def loadChannels(channels):
@@ -995,45 +1014,46 @@ class Server:
             
             def defaultRoles():
                 result = []
-                for roleID in self.rawData['defaultRoles']:
-                    role = self.guild.get_role(int(roleID))
+                for role_id in self.raw_data['defaultRoles']:
+                    role = self.guild.get_role(int(role_id))
                     if role != None: result.append(role)
                 
                 return result
             
             #KeyError
-            self.version = float(self.rawData['version'])
-            self.profanityBool = self.rawData['active']['profanityModeration']
-            self.spamBool = self.rawData['active']['spamModeration']
-            self.loggingBool = self.rawData['active']['logging']
-            self.levelingBool = self.rawData['active']['leveling']
-            self.deleteInvitesBool = self.rawData['active']['deleteInvites']
-            self.getUpdates = self.rawData['active']['getUpdates']
+            self.version = float(self.raw_data['version'])
+            self.profanity_moderation_enabled = self.raw_data['active']['profanityModeration']
+            self.spam_moderation_enabled = self.raw_data['active']['spamModeration']
+            self.logging_enabled = self.raw_data['active']['logging']
+            self.leveling_enabled = self.raw_data['active']['leveling']
+            self.delete_invites_enabled = self.raw_data['active']['deleteInvites']
+            self.get_updates_enabled = self.raw_data['active']['getUpdates']
             
-            self.adminChannel = loadChannel(self.rawData['channels']['admin'])
-            self.logChannel = loadChannel(self.rawData['channels']['log'])
-            self.joinChannel = loadChannel(self.rawData['channels']['join'])
-            self.leaveChannel = loadChannel(self.rawData['channels']['leave'])
-            self.levelingChannel = loadChannel(self.rawData['channels']['leveling'])
-            self.levelingExemptChannels = loadChannels(self.rawData['channels']['levelingExempt'])
+            self.admin_channel = loadChannel(self.raw_data['channels']['admin'])
+            self.log_channel = loadChannel(self.raw_data['channels']['log'])
+            self.join_channel = loadChannel(self.raw_data['channels']['join'])
+            self.leave_channel = loadChannel(self.raw_data['channels']['leave'])
+            self.leveling_channel = loadChannel(self.raw_data['channels']['leveling'])
+            self.leveling_exempt_channels = loadChannels(self.raw_data['channels']['levelingExempt'])
+            self.birthday_channel = loadChannel(self.raw_data['channels']['birthdays'])
             
-            self.maxStrikes = self.rawData['moderation']['maxStrikes']
-            self.profanityTimeoutTime = self.rawData['moderation']['profanityTimeoutTime']
-            self.strikeExpireTime = self.rawData['moderation']['strikeExpireTime']
-            self.spamTimeoutTime = self.rawData['moderation']['spamTimeoutTime']
-            self.messagesThreshold = self.rawData['moderation']['messagesThreshold']
+            self.max_strikes = self.raw_data['moderation']['maxStrikes']
+            self.profanity_timeout_time = self.raw_data['moderation']['profanityTimeoutTime']
+            self.strike_expire_time = self.raw_data['moderation']['strikeExpireTime']
+            self.spam_timeout_time = self.raw_data['moderation']['spamTimeoutTime']
+            self.messages_threshold = self.raw_data['moderation']['messagesThreshold']
             
-            self.joinMessage = self.rawData['eventMessages']['joinMessage']
-            self.leaveMessage = self.rawData['eventMessages']['leaveMessage']
+            self.join_message = self.raw_data['eventMessages']['joinMessage']
+            self.leave_message = self.raw_data['eventMessages']['leaveMessage']
             
-            self.pointsLostPerDay = self.rawData['leveling']['pointsLostPerDay']
-            self.levelingMessage = self.rawData['leveling']['levelingMessage']
+            self.points_lost_per_day = self.raw_data['leveling']['pointsLostPerDay']
+            self.leveling_message = self.raw_data['leveling']['levelingMessage']
             
-            self.allowLevelCardsBool = self.rawData['allowCards']['level']
-            self.allowJoinCardsBool = self.rawData['allowCards']['join']
+            self.allow_level_cards_bool = self.raw_data['allowCards']['level']
+            self.allow_join_cards_bool = self.raw_data['allowCards']['join']
             
-            self.defaultRoles = defaultRoles()
-            self.statsMessage = StatsMessage(self.guild, self.rawData['statsMessage'])
+            self.default_roles = defaultRoles()
+            self.stats_message = StatsMessage(self.guild, self.raw_data['statsMessage'])
 
             #handle strikes 
             self.strikes: list[Strike] = [Strike(self.guild, strike) for strike in self.__rawStrikes]
@@ -1050,8 +1070,8 @@ class Server:
             self.VCs: list[JoinToCreateVC] = [JoinToCreateVC(self.guild, vc) for vc in self.__rawVCs if self.guild.get_channel(int(vc)) != None]
             
             #handle bans
-            self.autoBans: list[AutoBan] = [AutoBan(ban) for ban in self.__rawBans]
-            self.autoBans = sorted(self.autoBans, key = lambda x: (x.memberName))
+            self.auto_bans: list[AutoBan] = [AutoBan(ban) for ban in self.__rawBans]
+            self.auto_bans = sorted(self.auto_bans, key = lambda x: (x.member_name))
         
         #handle messages
         self.messages = Messages(self.guild_id)
@@ -1064,7 +1084,7 @@ class Server:
     def setAdminChannelID(self, id):
         '''Sets the Admin Channel via an ID instead of a channel. Returns TRUE if successful, or FALSE if Forbidden.'''
         try:
-            self.adminChannel = bot.get_channel(int(id))
+            self.admin_channel = bot.get_channel(int(id))
             return True
         except nextcord.errors.Forbidden:
             return False
@@ -1072,45 +1092,57 @@ class Server:
     def setLogChannelID(self, id):
         '''Sets the Log Channel via an ID instead of a channel. Returns TRUE if successful, or FALSE if Forbidden.'''
         try:
-            self.logChannel = bot.get_channel(int(id))
+            self.log_channel = bot.get_channel(int(id))
             return True
         except nextcord.errors.Forbidden:
             return False
 
-    def setLevelingChannelID(self, id):
+    def setLevelingChannelID(self, id: (str | int)):
         '''Sets the Leveling Channel via an ID instead of a channel. Returns TRUE if successful, or FALSE if Forbidden.'''
-        if id != None:
+        if type(id) != bool and id != None:
             try:
-                self.levelingChannel = bot.get_channel(int(id))
+                self.leveling_channel = bot.get_channel(int(id))
                 return True
             except nextcord.errors.Forbidden:
                 return False
         else:
-            self.levelingChannel = None
+            self.leveling_channel = id
             return True
         
-    def setJoinChannelID(self, id):
+    def setJoinChannelID(self, id: (str | int)):
         '''Sets the Join Channel via an ID instead of a channel. Returns TRUE if successful, or FALSE if Forbidden.'''
-        if id != None:
+        if type(id) != bool and id != None:
             try:
-                self.joinChannel = bot.get_channel(int(id))
+                self.join_channel = bot.get_channel(int(id))
                 return True
             except nextcord.errors.Forbidden:
                 return False
         else:
-            self.joinChannel = None
+            self.join_channel = id
             return True
         
-    def setLeaveChannelID(self, id):
+    def setLeaveChannelID(self, id: (str | int)):
         '''Sets the Leave Channel via an ID instead of a channel. Returns TRUE if successful, or FALSE if Forbidden.'''
-        if id != None:
+        if type(id) != bool and id != None:
             try:
-                self.leaveChannel = bot.get_channel(int(id))
+                self.leave_channel = bot.get_channel(int(id))
                 return True
             except nextcord.errors.Forbidden:
                 return False
         else:
-            self.leaveChannel = None
+            self.leave_channel = id
+            return True
+        
+    def setBirthdayChannelID(self, id: (str | int)):
+        '''Sets the Birthday Channel via an ID instead of a channel. Returns TRUE if successful, or FALSE if Forbidden.'''
+        if type(id) != bool and id != None:
+            try:
+                self.birthday_channel = bot.get_channel(int(id))
+                return True
+            except nextcord.errors.Forbidden:
+                return False
+        else:
+            self.birthday_channel = id
             return True
 
 
@@ -1124,28 +1156,27 @@ class Server:
         self.deleteLevelRewardsAndSave()
         self.deleteVCsAndSave()
         self.deleteAutoBansAndSave()
-        self.deleteInviteAndSave()
         self.messages.deleteAllAndSave()
     
    
          
     def __getData(self):
         '''Returns list of data.'''
-        allData = fileOperations.getAllData()
+        all_data = fileOperations.getAllData()
         
         # Backwards-Compatibility Translations
         aliases = {
             "banInvites": "deleteInvites"
         }
         
-        for server in allData:
+        for server in all_data:
             if server.split("———")[0] == self.guild_id:
                 data: dict = json.loads(server.split("———")[1])        
                 
                 return standardizeDictProperties(fileOperations.DATADEFAULT, data, aliases = aliases)
 
-        newData = fileOperations.addServerToList(self.guild_id, allData, json.dumps(fileOperations.DATADEFAULT))
-        fileOperations.saveData(newData)
+        new_data = fileOperations.addServerToList(self.guild_id, all_data, json.dumps(fileOperations.DATADEFAULT))
+        fileOperations.saveData(new_data)
 
         return fileOperations.DATADEFAULT
 
@@ -1154,54 +1185,56 @@ class Server:
         
         def formatChannel(channel: nextcord.TextChannel):
             if channel == None: return None
+            if channel == False: return False
             return channel.id
         
         def formatChannelList(channels):
             return [formatChannel(channel) for channel in channels]
         
         def formatDefaultRoles():
-            return [role.id for role in self.defaultRoles]
+            return [role.id for role in self.default_roles]
             
         #be sure to change this in fileOperations.__init__() and server.__getData()
         dataRaw = {
             'version' : VERSION,
             'active': {
-                'profanityModeration': self.profanityBool,
-                'spamModeration': self.spamBool,
-                'logging': self.loggingBool,
-                'leveling': self.levelingBool,
-                'deleteInvites': self.deleteInvitesBool,
-                'getUpdates': self.getUpdates
+                'profanityModeration': self.profanity_moderation_enabled,
+                'spamModeration': self.spam_moderation_enabled,
+                'logging': self.logging_enabled,
+                'leveling': self.leveling_enabled,
+                'deleteInvites': self.delete_invites_enabled,
+                'getUpdates': self.get_updates_enabled
             },
             'channels': {
-                'admin': formatChannel(self.adminChannel),
-                'log': formatChannel(self.logChannel),
-                'join': formatChannel(self.joinChannel),
-                'leave': formatChannel(self.leaveChannel),
-                'leveling': formatChannel(self.levelingChannel),
-                'levelingExempt': formatChannelList(self.levelingExemptChannels)
+                'admin': formatChannel(self.admin_channel),
+                'log': formatChannel(self.log_channel),
+                'join': formatChannel(self.join_channel),
+                'leave': formatChannel(self.leave_channel),
+                'leveling': formatChannel(self.leveling_channel),
+                'levelingExempt': formatChannelList(self.leveling_exempt_channels),
+                'birthdays': formatChannel(self.birthday_channel)
             },
             'moderation': {
-                'maxStrikes': int(self.maxStrikes),
-                'profanityTimeoutTime': self.profanityTimeoutTime,
-                'strikeExpireTime': int(self.strikeExpireTime),
-                'spamTimeoutTime': self.spamTimeoutTime,
-                'messagesThreshold': int(self.messagesThreshold)
+                'maxStrikes': int(self.max_strikes),
+                'profanityTimeoutTime': self.profanity_timeout_time,
+                'strikeExpireTime': int(self.strike_expire_time),
+                'spamTimeoutTime': self.spam_timeout_time,
+                'messagesThreshold': int(self.messages_threshold)
             },
             'eventMessages': {
-                'joinMessage': self.joinMessage,
-                'leaveMessage': self.leaveMessage
+                'joinMessage': self.join_message,
+                'leaveMessage': self.leave_message
             },
             'leveling': {
-                'pointsLostPerDay': self.pointsLostPerDay,
-                'levelingMessage': self.levelingMessage
+                'pointsLostPerDay': self.points_lost_per_day,
+                'levelingMessage': self.leveling_message
             },
             'allowCards': {
-                'level': self.allowLevelCardsBool,
-                'join': self.allowJoinCardsBool
+                'level': self.allow_level_cards_bool,
+                'join': self.allow_join_cards_bool
             },
             'defaultRoles': formatDefaultRoles(),
-            'statsMessage': self.statsMessage.saveValue()
+            'statsMessage': self.stats_message.saveValue()
         }
         
         #formatting data
@@ -1213,9 +1246,9 @@ class Server:
 
     def deleteDataAndSave(self):
         '''Deletes any data files from server'''
-        allData = fileOperations.getAllData()
+        all_data = fileOperations.getAllData()
 
-        list = fileOperations.deleteServerFromList(self.guild_id, allData)
+        list = fileOperations.deleteServerFromList(self.guild_id, all_data)
 
         fileOperations.saveData(list) 
 
@@ -1224,57 +1257,57 @@ class Server:
 
     def __getProfaneWords(self):
         '''Returns list of Profane words.'''
-        allProfaneWords = fileOperations.getAllProfaneWords()
+        all_profane_words = fileOperations.getAllProfaneWords()
 
-        for server in allProfaneWords:
+        for server in all_profane_words:
             if server.split("———")[0] == self.guild_id:
                 return server.split("———")[1:]
             
             
         #if it doesn't exist yet...
-        newProfaneWords = fileOperations.addServerToList(self.guild_id, allProfaneWords, fileOperations.getDefaultProfaneWords())
-        fileOperations.saveProfaneWords(newProfaneWords)
+        new_profane_words = fileOperations.addServerToList(self.guild_id, all_profane_words, fileOperations.getDefaultProfaneWords())
+        fileOperations.saveProfaneWords(new_profane_words)
 
         _returnInfo = fileOperations.getDefaultProfaneWords().split("———")
         return _returnInfo
 
     def saveProfaneWords(self):
         '''Saves any changes to Profane Words made to this class'''
-        ProfaneWords = self.ProfaneWords
-        allProfaneWords = fileOperations.getAllProfaneWords()
+        profane_words = self.profane_words
+        all_profane_words = fileOperations.getAllProfaneWords()
 
-        list = fileOperations.editServerInList(self.guild_id, allProfaneWords, fileOperations.joinWithHyphens(ProfaneWords))
+        list = fileOperations.editServerInList(self.guild_id, all_profane_words, fileOperations.joinWithHyphens(profane_words))
 
         fileOperations.saveProfaneWords(list)
 
-    def ProfaneWordExists(self, word):
-        '''Returns bool if Profane word exists on this server.'''
-        for ProfaneWord in self.ProfaneWords:
-            if ProfaneWord == word:
+    def profaneWordExists(self, word):
+        '''Returns bool if profane word exists on this server.'''
+        for profane_word in self.profane_words:
+            if profane_word == word:
                 return True
         
         return False
 
     def addProfaneWord(self, word):
-        '''Adds a Profane word to this server (returns True). If it already existed, returns False.'''
-        if self.ProfaneWordExists(word): return False
+        '''Adds a profane word to this server (returns True). If it already existed, returns False.'''
+        if self.profaneWordExists(word): return False
         
-        self.ProfaneWords.append(word)
+        self.profane_words.append(word)
         return True
 
     def deleteProfaneWord(self, word):
-        '''Deletes a Profane word from server (returns True). If Profane word didn't exist on this server, returns False.'''
-        if self.ProfaneWordExists(word):
-           self.ProfaneWords.pop(self.ProfaneWords.index(word)) 
+        '''Deletes a profane word from server (returns True). If Profane word didn't exist on this server, returns False.'''
+        if self.profaneWordExists(word):
+           self.profane_words.pop(self.profane_words.index(word)) 
            return True
         else:
             return False
 
     def deleteProfaneWordsAndSave(self):
         '''Deletes any Profane Words files from server'''
-        allProfaneWords = fileOperations.getAllProfaneWords()
+        all_profane_words = fileOperations.getAllProfaneWords()
 
-        list = fileOperations.deleteServerFromList(self.guild_id, allProfaneWords)
+        list = fileOperations.deleteServerFromList(self.guild_id, all_profane_words)
 
         fileOperations.saveProfaneWords(list) 
 
@@ -1284,62 +1317,68 @@ class Server:
 
     def __getStrikes(self):
         '''Returns list of Strikes.'''
-        allStrikes = fileOperations.getAllStrikes()
+        all_strikes = fileOperations.getAllStrikes()
 
-        for server in allStrikes:
+        for server in all_strikes:
             if server.split("———")[0] == self.guild_id:
                 return server.split("———")[1:]
 
-        newStrikes = fileOperations.addServerToList(self.guild_id, allStrikes, None)
-        fileOperations.saveStrikes(newStrikes)
+        new_strikes = fileOperations.addServerToList(self.guild_id, all_strikes, None)
+        fileOperations.saveStrikes(new_strikes)
         return []
 
     def saveStrikes(self):
         '''Saves any changes to Strikes made to this class'''
-        strikesList = []
+        # Remove any any records where strike = 0 and save to new format.
+        strikes_list = []
         for strike in self.strikes:
-            strikesList.append(str(strike.memberID) + "|||" + str(strike.strike) + "|||" + str(strike.lastStrike))
+            if strike.strike == 0: continue
+            strikes_list.append(str(strike.member_id) + "|||" + str(strike.strike) + "|||" + str(strike.last_strike))
 
-        strikesString = fileOperations.joinWithHyphens(strikesList)
-        allBirthdays = fileOperations.getAllStrikes()
+        strikes_string = fileOperations.joinWithHyphens(strikes_list)
+        all_birthdays = fileOperations.getAllStrikes()
 
-        list = fileOperations.editServerInList(self.guild_id, allBirthdays, strikesString)
+        list = fileOperations.editServerInList(self.guild_id, all_birthdays, strikes_string)
 
         fileOperations.saveStrikes(list)
 
-    def strikeExists(self, memberID):
+    def strikeExists(self, member_id):
         '''Returns bool if member's strike exists on this server.'''
         for strike in self.strikes:
-            if strike.memberID == int(memberID):
+            if strike.member_id == int(member_id):
                 return True
 
         return False
 
-    def getStrike(self, memberID):
-        '''Returns type STRIKE or NONE of a member'''
-        if self.strikeExists(memberID):
+    def getStrike(self, member_id):
+        '''Returns type STRIKE of a member'''
+        if self.strikeExists(member_id):
             for strike in self.strikes:
                 try:
-                    if strike.memberID == int(memberID): return strike
+                    if strike.member_id == int(member_id): return strike
                 except Exception as e:
                     print("getStrike Exeption: " + str(e))
                     continue
 
         else:
-            return None
+            # Create a temporary strike for them to use.
+            self.addStrike(member_id, 0)
+            return self.getStrike(member_id)
 
-    def addStrike(self, memberID, memberStrike):
+    def addStrike(self, member_id, strike: int):
         '''Adds a member's strike to this server (returns True). If it already existed, returns False.'''
-        if self.strikeExists(memberID): return False
+        if self.strikeExists(member_id): return False
 
-        self.strikes.append(Strike(self.guild, f"{str(memberID)}|||{str(memberStrike)}|||{str(datetime.date.today())}"))
+        strike_object = Strike(self.guild, package = None)
+        strike_object.setup(member_id = member_id, strike = strike)
+        self.strikes.append(strike_object)
         return True
 
     def deleteStrike(self, memberID):
         '''Deletes a member's strike from server (returns True). If strike didn't exist for this member, returns False.'''
         if self.strikeExists(memberID):
             for strike in self.strikes:
-                if strike.memberID == int(memberID):
+                if strike.member_id == int(memberID):
                     self.strikes.pop(self.strikes.index(strike))
                     break
             return True
@@ -1349,9 +1388,9 @@ class Server:
 
     def deleteStrikesAndSave(self):
         '''Deletes any Strike files from server'''
-        allStrikes = fileOperations.getAllStrikes()
+        all_strikes = fileOperations.getAllStrikes()
 
-        list = fileOperations.deleteServerFromList(self.guild_id, allStrikes)
+        list = fileOperations.deleteServerFromList(self.guild_id, all_strikes)
 
         fileOperations.saveStrikes(list) 
 
@@ -1362,66 +1401,66 @@ class Server:
 
     def __getBirthdays(self):
         '''Returns list of Birthdays.'''
-        allBirthdays = fileOperations.getAllBirthdays()
+        all_birthdays = fileOperations.getAllBirthdays()
 
-        for server in allBirthdays:
+        for server in all_birthdays:
             if server.split("———")[0] == self.guild_id:
                 return server.split("———")[1:]
 
-        newBirthdays = fileOperations.addServerToList(self.guild_id, allBirthdays, None)
-        fileOperations.saveBirthdays(newBirthdays)
+        new_birthdays = fileOperations.addServerToList(self.guild_id, all_birthdays, None)
+        fileOperations.saveBirthdays(new_birthdays)
 
         return []
 
     def saveBirthdays(self):
         '''Saves any changes to Birthdays made to this class'''
-        birthdaysList = []
+        birthdays_list = []
         for birthday in self.birthdays:
-            if birthday.realName != None: 
-                birthdaysList.append(str(birthday.memberID) + "|||" + birthday.date + "|||" + birthday.realName)
-            else: birthdaysList.append(str(birthday.memberID) + "|||" + birthday.date)
+            if birthday.real_name != None: 
+                birthdays_list.append(str(birthday.member_id) + "|||" + birthday.date + "|||" + birthday.real_name)
+            else: birthdays_list.append(str(birthday.member_id) + "|||" + birthday.date)
 
-        birthdaysString = fileOperations.joinWithHyphens(birthdaysList)
-        allBirthdays = fileOperations.getAllBirthdays()
+        birthdays_string = fileOperations.joinWithHyphens(birthdays_list)
+        all_birthdays = fileOperations.getAllBirthdays()
 
-        list = fileOperations.editServerInList(self.guild_id, allBirthdays, birthdaysString)
+        list = fileOperations.editServerInList(self.guild_id, all_birthdays, birthdays_string)
 
         fileOperations.saveBirthdays(list)
 
-    def birthdayExists(self, memberID):
+    def birthdayExists(self, member_id):
         '''Returns bool if member's birthday exists on this server.'''
-        memberID = int(memberID)
+        member_id = int(member_id)
         for birthday in self.birthdays:
-            if birthday.memberID == memberID:
+            if birthday.member_id == member_id:
                 return True
 
         return False
 
-    def getBirthday(self, memberID):
+    def getBirthday(self, member_id):
         '''Returns type BIRTHDAY or NONE of a member'''
-        memberID = int(memberID)
-        if self.birthdayExists(memberID):
+        member_id = int(member_id)
+        if self.birthdayExists(member_id):
             for birthday in self.birthdays:
-                if birthday.memberID == int(memberID):
+                if birthday.member_id == int(member_id):
                     return birthday
 
         else:
             return None
 
-    def addBirthday(self, memberID, date, realName = None):
+    def addBirthday(self, member_id, date, real_name = None):
         '''Adds a member's birthday to this server (returns True). If it already existed, returns False.'''
-        if self.birthdayExists(memberID): return False
+        if self.birthdayExists(member_id): return False
 
-        if realName != None: self.birthdays.append(Birthday(self.guild, f"{str(memberID)}|||{date}|||{realName}"))
-        else: self.birthdays.append(Birthday(self.guild, f"{str(memberID)}|||{date}"))
+        if real_name != None: self.birthdays.append(Birthday(self.guild, f"{str(member_id)}|||{date}|||{real_name}"))
+        else: self.birthdays.append(Birthday(self.guild, f"{str(member_id)}|||{date}"))
 
         return True
 
-    def deleteBirthday(self, memberID):
+    def deleteBirthday(self, member_id):
         '''Deletes a member's birthday from server (returns True). If birthday didn't exist for this member, returns False.'''
-        if self.birthdayExists(memberID):
+        if self.birthdayExists(member_id):
             for birthday in self.birthdays:
-                if birthday.memberID == int(memberID):
+                if birthday.member_id == int(member_id):
                     self.birthdays.pop(self.birthdays.index(birthday))
                     break
             
@@ -1431,9 +1470,9 @@ class Server:
 
     def deleteBirthdaysAndSave(self):
         '''Deletes any Birthday files from server'''
-        allBirthdays = fileOperations.getAllBirthdays()
+        all_birthdays = fileOperations.getAllBirthdays()
 
-        list = fileOperations.deleteServerFromList(self.guild_id, allBirthdays)
+        list = fileOperations.deleteServerFromList(self.guild_id, all_birthdays)
 
         fileOperations.saveBirthdays(list) 
 
@@ -1445,9 +1484,9 @@ class Server:
         
     def deleteLevelsAndSave(self):
         '''Deletes any Level files from server'''
-        allLevels = fileOperations.getAllLevels()
+        all_levels = fileOperations.getAllLevels()
 
-        list = fileOperations.deleteServerFromList(self.guild_id, allLevels)
+        list = fileOperations.deleteServerFromList(self.guild_id, all_levels)
 
         fileOperations.saveLevels(list) 
 
@@ -1457,9 +1496,9 @@ class Server:
         
     def deleteLevelRewardsAndSave(self):
         '''Deletes any Level Reward files from server'''
-        allLevels = fileOperations.getAllLevelRewards()
+        all_levels = fileOperations.getAllLevelRewards()
 
-        list = fileOperations.deleteServerFromList(self.guild_id, allLevels)
+        list = fileOperations.deleteServerFromList(self.guild_id, all_levels)
 
         fileOperations.saveLevelRewards(list) 
 
@@ -1467,14 +1506,14 @@ class Server:
 
     def __getVCs(self):
         '''Returns list of VCs.'''
-        allVCs = fileOperations.getAllVCs()
+        all_VCs = fileOperations.getAllVCs()
 
-        for server in allVCs:
+        for server in all_VCs:
             if server.split("———")[0] == self.guild_id:
                 return server.split("———")[1:]
 
-        newVCs = fileOperations.addServerToList(self.guild_id, allVCs, None)
-        fileOperations.saveVCs(newVCs)
+        new_VCs = fileOperations.addServerToList(self.guild_id, all_VCs, None)
+        fileOperations.saveVCs(new_VCs)
 
         return []
 
@@ -1482,26 +1521,26 @@ class Server:
         '''Saves any VC changes made to this class.'''
         VCs = [vc.id for vc in self.VCs] #will save the ids now
         
-        allVCs = fileOperations.getAllVCs()
+        all_VCs = fileOperations.getAllVCs()
 
-        list = fileOperations.editServerInList(self.guild_id, allVCs, fileOperations.joinWithHyphens(VCs))
+        list = fileOperations.editServerInList(self.guild_id, all_VCs, fileOperations.joinWithHyphens(VCs))
 
         fileOperations.saveVCs(list)
 
-    def VCExists(self, VCID):
+    def VCExists(self, VC_ID):
         '''Returns bool if vc exists on this server as a join-to-create-vc.'''
-        VCID = int(VCID)
+        VC_ID = int(VC_ID)
         for Vc in self.VCs:
-            if Vc.id == VCID:
+            if Vc.id == VC_ID:
                 return True
         
         return False
 
     def deleteVCsAndSave(self):
         '''Deletes any VC files from server'''
-        allVCs = fileOperations.getAllVCs()
+        all_VCs = fileOperations.getAllVCs()
 
-        list = fileOperations.deleteServerFromList(self.guild_id, allVCs)
+        list = fileOperations.deleteServerFromList(self.guild_id, all_VCs)
 
         fileOperations.saveVCs(list) 
 
@@ -1509,37 +1548,37 @@ class Server:
 
     def __getAutoBans(self):
         '''Returns list of Auto-Bans.'''
-        allAutoBans = fileOperations.getAllAutoBans()
+        all_auto_bans = fileOperations.getAllAutoBans()
 
-        for server in allAutoBans:
+        for server in all_auto_bans:
             if server.split("———")[0] == self.guild_id:
                 return server.split("———")[1:]
 
-        newAutoBans = fileOperations.addServerToList(self.guild_id, allAutoBans, None)
-        fileOperations.saveAutoBans(newAutoBans)
+        new_auto_bans = fileOperations.addServerToList(self.guild_id, all_auto_bans, None)
+        fileOperations.saveAutoBans(new_auto_bans)
 
         return []
 
     def saveAutoBans(self):
         '''Saves any Auto-Ban changes made to this class.'''
-        autoBans = [ban.saveValue() for ban in self.autoBans]
+        auto_bans = [ban.saveValue() for ban in self.auto_bans]
         
-        allAutoBans = fileOperations.getAllAutoBans()
+        all_auto_bans = fileOperations.getAllAutoBans()
 
-        list = fileOperations.editServerInList(self.guild_id, allAutoBans, fileOperations.joinWithHyphens(autoBans))
+        list = fileOperations.editServerInList(self.guild_id, all_auto_bans, fileOperations.joinWithHyphens(auto_bans))
 
         fileOperations.saveAutoBans(list)
 
-    def autoBanExists(self, memberID):
+    def autoBanExists(self, member_id):
         '''Returns bool if memberID exists in this server as an auto-ban.'''
-        memberID = int(memberID)
-        for ban in self.autoBans:
-            if ban.memberID == memberID:
+        member_id = int(member_id)
+        for ban in self.auto_bans:
+            if ban.member_id == member_id:
                 return True
         
         return False
 
-    def addAutoBan(self, memberName, memberID, replace = False):
+    def addAutoBan(self, member_name, member_id, replace = False):
         """
         Adds an auto-ban to this server (returns True). If it already existed, returns False.
         
@@ -1549,33 +1588,33 @@ class Server:
             Whether to replace if it already exists (returns True)
         """
         
-        if self.autoBanExists(memberID):
+        if self.autoBanExists(member_id):
             if replace:
-                return self.replaceAutoBan(memberName, memberID)
+                return self.replaceAutoBan(member_name, member_id)
             else:
                 return False
         
-        self.autoBans.append(AutoBan(str(memberName) + "|||" + str(memberID)))
+        self.auto_bans.append(AutoBan(str(member_name) + "|||" + str(member_id)))
         return True
     
-    def replaceAutoBan(self, memberName, memberID):
+    def replaceAutoBan(self, member_name, member_id):
         '''Replaces an auto-ban in this server (returns True). If it didn't exist, returns False (doesn't add it).'''
-        if self.autoBanExists(memberID):
-            for autoBan in self.autoBans:
-                if autoBan.memberID == int(memberID):
-                    self.autoBans[self.autoBans.index(autoBan)] = AutoBan(str(memberName) + "|||" + str(memberID))
+        if self.autoBanExists(member_id):
+            for auto_ban in self.auto_bans:
+                if auto_ban.member_id == int(member_id):
+                    self.auto_bans[self.auto_bans.index(auto_ban)] = AutoBan(str(member_name) + "|||" + str(member_id))
                     return True
                 
             return False
         else:
             return False
 
-    def deleteAutoBan(self, memberID):
+    def deleteAutoBan(self, member_id):
         '''Deletes an auto-ban from server (returns True). If auto-ban didn't exist for this member, returns False.'''
-        if self.autoBanExists(memberID):
-            for autoBan in self.autoBans:
-                if autoBan.memberID == int(memberID):
-                    self.autoBans.remove(autoBan)
+        if self.autoBanExists(member_id):
+            for auto_ban in self.auto_bans:
+                if auto_ban.member_id == int(member_id):
+                    self.auto_bans.remove(auto_ban)
                     break
             
             return True
@@ -1584,44 +1623,12 @@ class Server:
 
     def deleteAutoBansAndSave(self):
         '''Deletes any Auto-Ban files from server'''
-        allBans = fileOperations.getAllAutoBans()
+        all_bans = fileOperations.getAllAutoBans()
 
-        list = fileOperations.deleteServerFromList(self.guild_id, allBans)
+        list = fileOperations.deleteServerFromList(self.guild_id, all_bans)
 
         fileOperations.saveAutoBans(list) 
 
-
-    def __getInvite(self):
-        '''Returns invite (str).'''
-        allInvites = fileOperations.getAllInvites()
-
-        for server in allInvites:
-            if server.split("———")[0] == self.guild_id:
-                data = "".join(server.split("———")[1:])
-                if data == "":
-                    return None
-                return data
-
-        newInvites = fileOperations.addServerToList(self.guild_id, allInvites, None)
-        fileOperations.saveInvites(newInvites)
-
-        return None
-
-    def saveInvite(self):
-        '''Saves the invite if changes were made to this class.'''       
-        allInvites = fileOperations.getAllInvites()
-
-        list = fileOperations.editServerInList(self.guild_id, allInvites, self.invite)
-
-        fileOperations.saveInvites(list)
-
-    def deleteInviteAndSave(self):
-        '''Deletes Invite files from server'''
-        allInvites = fileOperations.getAllInvites()
-
-        list = fileOperations.deleteServerFromList(self.guild_id, allInvites)
-
-        fileOperations.saveInvites(list) 
 
 class Card:
     '''TYPE CARD → Cards → contains the card title (str | None), description (str | None), and color (str | None)'''
@@ -1674,14 +1681,9 @@ class Member:
         nextcord.Color.green()
         
         #store information
-        self.dmsEnabledBool = member['dms'] #bool
-        self.levelCard = Card(member['levelCard'])
-        self.joinCard = Card(member['joinCard'])
-        
-        
-        #in case we are still referencing level anywhere, let's keep it in
-        self.level = 100 
-        """DEPRICATED!!! DO NOT USE!!!"""
+        self.dms_enabled = member['dms'] #bool
+        self.level_card = Card(member['levelCard'])
+        self.join_card = Card(member['joinCard'])
         
     def __getMember(self):
         '''Returns list of data for the member.'''
@@ -1703,9 +1705,9 @@ class Member:
         saveFile = dict(self.DEFAULTS)
         
         #set information
-        saveFile['dms'] = self.dmsEnabledBool
-        saveFile['levelCard'] = self.levelCard.saveValue()
-        saveFile['joinCard'] = self.joinCard.saveValue()
+        saveFile['dms'] = self.dms_enabled
+        saveFile['levelCard'] = self.level_card.saveValue()
+        saveFile['joinCard'] = self.join_card.saveValue()
         
         allMembers = fileOperations.getAllMembers()
         
@@ -2148,37 +2150,49 @@ class Utils:
                 
             return True
         
-        def ProfanityModeration(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = True):
+        def ProfanityModeration(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = True, ignore_server_settings = False):
             """Returns if profanity moderation is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
             if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
                                          check = check, classname = sys._getframe().f_code.co_name):
                 return None
                 
-            return (server.profanityBool and not main.global_kill_profanity_moderation)
+            if ignore_server_settings:
+                return (not main.global_kill_profanity_moderation)
+            else:
+                return (server.profanity_moderation_enabled and not main.global_kill_profanity_moderation)
         
-        def SpamModeration(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = True):
+        def SpamModeration(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = True, ignore_server_settings = False):
             """Returns if spam moderation is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
             if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
                                          check = check, classname = sys._getframe().f_code.co_name):
                 return None
-                
-            return (server.spamBool and not main.global_kill_spam_moderation)
+            
+            if ignore_server_settings:
+                return (not main.global_kill_spam_moderation)
+            else:
+                return (server.spam_moderation_enabled and not main.global_kill_spam_moderation)  
         
-        def Logging(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = True):
+        def Logging(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = True, ignore_server_settings = False):
             """Returns if logging is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
             if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
                                          check = check, classname = sys._getframe().f_code.co_name):
                 return None
                 
-            return (server.loggingBool and not main.global_kill_logging)
+            if ignore_server_settings:
+                return (not main.global_kill_logging)
+            else:
+                return (server.logging_enabled and not main.global_kill_logging)  
         
-        def Leveling(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = True):
+        def Leveling(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = True, ignore_server_settings = False):
             """Returns if leveling is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
             if not self.__checkArguments(guild_id = guild_id, server = server, guild = guild, 
                                          check = check, classname = sys._getframe().f_code.co_name):
                 return None
                 
-            return (server.levelingBool and not main.global_kill_leveling)
+            if ignore_server_settings:
+                return (not main.global_kill_leveling)
+            else:
+                return (server.leveling_enabled and not main.global_kill_leveling)  
         
         def LevelRewards(self, guild_id: str = None, server: Server = None, guild: nextcord.Guild = MISSING, check = False):
             """Returns if level rewards is enabled. Pass in a server id or a server. Returns None if arguments are invalid."""
@@ -2340,12 +2354,50 @@ class IncorrectButton(nextcord.ui.View):
     if member != None:
         button.label = "Marked as Incorrect"
         button.disabled = True
+        
+        # We either need to refund a strike, or revoke a timeout.
+        # If the user is at 0 strikes now, this tells us one of two things:
+        # They were timed out
+        # Or it's been so long that the strike has expired.
+        
+        server = Server(interaction.guild.id)
+        strike_data = server.getStrike(member.id)
+        if strike_data.strike != 0:
+            # We'll just refund a strike.
+            await giveStrike(guild.id, member.id, -1)
+            
+            embed.title += " - Marked As Incorrect"
+            embed.color = nextcord.Color.dark_green()
+            await interaction.response.edit_message(embed = embed, view=self)
+            return
+            
+        else:
+            # Uh, oh. We need to do some thinking...
+            # Has it been past the time that the timeout would have been?
+            current_time = datetime.datetime.now(datetime.timezone.utc)
+            message_time = interaction.message.created_at
+            timeout_time_seconds = humanfriendly.parse_timespan(server.profanity_timeout_time)
+            delta_seconds = (current_time - message_time).seconds
+            if delta_seconds <= timeout_time_seconds:
+                # We can revoke the timeout
+                await timeout(member = strike_data.member, time = "0s", reason = "Revoking Profanity Moderation Timeout")
+                
+                embed.title += " - Marked As Incorrect"
+                embed.color = nextcord.Color.dark_green()
+                await interaction.response.edit_message(embed = embed, view=self)
+                return
+            
+            else:
+                button.label = "No Available Actions"
+                await interaction.response.edit_message(view=self)
 
-        await interaction.response.edit_message(view=self)
+                await interaction.followup.send(embed = nextcord.Embed(title = "No Available Actions", description = f"No actions available. Previous punishments have expired.", color =  nextcord.Color.red()), ephemeral = True)
+                return
 
-        strike = await giveStrike(guild.id, member.id, None, -1)
+        
 
-        await interaction.followup.send(embed = nextcord.Embed(title = "Strike Refunded", description = f"{interaction.user} refunded a strike to {member}\n\n{member} is now at {strike} strike(s).", color =  nextcord.Color.green()))
+        
+        
     else:
         button.label = "Member no longer exists"
         button.disabled = True
@@ -2397,7 +2449,7 @@ class ErrorWhyAdminPrivilegesButton(nextcord.ui.View):
     
     @nextcord.ui.button(label = "Why Administrator Privileges?", style = nextcord.ButtonStyle.gray, custom_id = "why_administrator_privileges")
     async def event(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
-        generalMessage = f"\n\n**Why Administrator Privileges?**\nSome of InfiniBot's features work best when it is able to view every channel and have all its required permissions in every channel. An alternative to Administrator is to give InfiniBot the following permissions in every channel:{requiredPermissions}"
+        generalMessage = f"\n\n**Why Administrator Privileges?**\nSome of InfiniBot's features work best when it is able to view every channel and have all its required permissions in every channel. An alternative to Administrator is to give InfiniBot the following permissions in every channel:{required_permissions}"
         embed = interaction.message.embeds[0]
         embed.description += generalMessage
         
@@ -2668,77 +2720,77 @@ class SupportView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = supportServerLink)
+        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = support_server_link)
         self.add_item(supportServerBtn)
 
 class InviteView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        inviteBtn = nextcord.ui.Button(label = "Add to Your Server", style = nextcord.ButtonStyle.link, url = inviteLink)
+        inviteBtn = nextcord.ui.Button(label = "Add to Your Server", style = nextcord.ButtonStyle.link, url = invite_link)
         self.add_item(inviteBtn)
 
 class SupportAndInviteView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = supportServerLink)
+        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = support_server_link)
         self.add_item(supportServerBtn)
         
-        inviteBtn = nextcord.ui.Button(label = "Add To Your Server", style = nextcord.ButtonStyle.link, url = inviteLink)
+        inviteBtn = nextcord.ui.Button(label = "Add To Your Server", style = nextcord.ButtonStyle.link, url = invite_link)
         self.add_item(inviteBtn)
 
 class SupportInviteAndTopGGVoteView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = supportServerLink)
+        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = support_server_link)
         self.add_item(supportServerBtn)
         
-        inviteBtn = nextcord.ui.Button(label = "Invite", style = nextcord.ButtonStyle.link, url = inviteLink)
+        inviteBtn = nextcord.ui.Button(label = "Invite", style = nextcord.ButtonStyle.link, url = invite_link)
         self.add_item(inviteBtn)
         
-        topGGVoteBtn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = topggVoteLink)
+        topGGVoteBtn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = topgg_vote_link)
         self.add_item(topGGVoteBtn)
         
 class SupportInviteAndTopGGReviewView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = supportServerLink)
+        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = support_server_link)
         self.add_item(supportServerBtn)
         
-        inviteBtn = nextcord.ui.Button(label = "Invite", style = nextcord.ButtonStyle.link, url = inviteLink)
+        inviteBtn = nextcord.ui.Button(label = "Invite", style = nextcord.ButtonStyle.link, url = invite_link)
         self.add_item(inviteBtn)
         
-        topGGReviewBtn = nextcord.ui.Button(label = "Leave a Review", style = nextcord.ButtonStyle.link, url = topggReviewLink)
+        topGGReviewBtn = nextcord.ui.Button(label = "Leave a Review", style = nextcord.ButtonStyle.link, url = topgg_review_link)
         self.add_item(topGGReviewBtn)
 
 class TopGGVoteView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        topGGVoteBtn = nextcord.ui.Button(label = "Vote", style = nextcord.ButtonStyle.link, url = topggVoteLink)
+        topGGVoteBtn = nextcord.ui.Button(label = "Vote", style = nextcord.ButtonStyle.link, url = topgg_vote_link)
         self.add_item(topGGVoteBtn)
         
 class TopGGAll(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        topGG = nextcord.ui.Button(label = "Visit on Top.GG", style = nextcord.ButtonStyle.link, url = topggLink)
+        topGG = nextcord.ui.Button(label = "Visit on Top.GG", style = nextcord.ButtonStyle.link, url = topgg_link)
         self.add_item(topGG)
         
-        topGGVoteBtn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = topggVoteLink)
+        topGGVoteBtn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = topgg_vote_link)
         self.add_item(topGGVoteBtn)
         
-        topGGReviewBtn = nextcord.ui.Button(label = "Leave a Review", style = nextcord.ButtonStyle.link, url = topggReviewLink)
+        topGGReviewBtn = nextcord.ui.Button(label = "Leave a Review", style = nextcord.ButtonStyle.link, url = topgg_review_link)
         self.add_item(topGGReviewBtn)
 
 class SupportandPermissionsCheckView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = supportServerLink)
+        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = support_server_link)
         self.add_item(supportServerBtn)
 
         permissionsCheckBtn = nextcord.ui.Button(label = "Check Permissions", style = nextcord.ButtonStyle.gray)
@@ -2749,13 +2801,13 @@ class SupportInviteTopGGVoteAndPermissionsCheckView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = supportServerLink)
+        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = support_server_link)
         self.add_item(supportServerBtn)
         
-        inviteBtn = nextcord.ui.Button(label = "Invite", style = nextcord.ButtonStyle.link, url = inviteLink)
+        inviteBtn = nextcord.ui.Button(label = "Invite", style = nextcord.ButtonStyle.link, url = invite_link)
         self.add_item(inviteBtn)
         
-        topGGVoteBtn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = topggVoteLink)
+        topGGVoteBtn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = topgg_vote_link)
         self.add_item(topGGVoteBtn)
         
         permissionsCheckBtn = nextcord.ui.Button(label = "Check Permissions", style = nextcord.ButtonStyle.gray)
@@ -2852,7 +2904,7 @@ class IssueReportModal(nextcord.ui.Modal):
     async def callback(self, interaction: Interaction): 
         server = None
         for guild in bot.guilds:
-            if guild.id == infiniBotGuild: server = guild
+            if guild.id == infiniBot_guild: server = guild
         
         if server == None:
             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
@@ -2864,10 +2916,10 @@ class IssueReportModal(nextcord.ui.Modal):
         embed.add_field(name = "What Happened Before?", value = self.historyTextInput.value)
         if self.notesTextInput.value != "": embed.add_field(name = "Other notes:", value = self.notesTextInput.value)
         
-        channel = server.get_channel(issueReportChannel)
+        channel = server.get_channel(issue_report_channel)
         await channel.send(embed = embed)
         
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Issue Report Submitted", description = f"Join us at {supportServerLink} or contact at infinibotassistance@gmail.com. and see if your issue will be added to https://discord.com/channels/1009127888483799110/1009136603064713309", color = nextcord.Color.green()), ephemeral=True, view = SupportView())
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Issue Report Submitted", description = f"Join us at {support_server_link} or contact at infinibotassistance@gmail.com. and see if your issue will be added to https://discord.com/channels/1009127888483799110/1009136603064713309", color = nextcord.Color.green()), ephemeral=True, view = SupportView())
         
 class IdeaReportModal(nextcord.ui.Modal):        
     def __init__(self, member: nextcord.Member):
@@ -2885,7 +2937,7 @@ class IdeaReportModal(nextcord.ui.Modal):
     async def callback(self, interaction: Interaction): 
         server = None
         for guild in bot.guilds:
-            if guild.id == infiniBotGuild: server = guild
+            if guild.id == infiniBot_guild: server = guild
         
         if server == None:
             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
@@ -2897,10 +2949,10 @@ class IdeaReportModal(nextcord.ui.Modal):
         embed.add_field(name = "What Happened Before?", value = self.howItWouldWorkTextInput.value)
         if self.notesTextInput.value != "": embed.add_field(name = "Other notes:", value = self.notesTextInput.value)
         
-        channel = server.get_channel(submissionChannel)
+        channel = server.get_channel(submission_channel)
         await channel.send(embed = embed)
         
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Idea Submitted", description = f"Join us at {supportServerLink} or contact at infinibotassistance@gmail.com. and see if your idea will be a reality! You can view our road map here: https://discord.com/channels/1009127888483799110/1009134131835322448", color = nextcord.Color.green()), ephemeral=True, view = SupportView())
+        await interaction.response.send_message(embed = nextcord.Embed(title = "Idea Submitted", description = f"Join us at {support_server_link} or contact at infinibotassistance@gmail.com. and see if your idea will be a reality! You can view our road map here: https://discord.com/channels/1009127888483799110/1009134131835322448", color = nextcord.Color.green()), ephemeral=True, view = SupportView())
  
 class GeneralInputModal(nextcord.ui.Modal):
     def __init__(self, title, label, style = nextcord.TextInputStyle.short, max_length = 1024, required = True):
@@ -2988,7 +3040,8 @@ class SelectView(nextcord.ui.View):
         
         # Alphabetize options
         if not preserveOrder:
-            self.options = sorted(self.options, key=lambda option: [option.value != "__NONE__", option.label.lower()])
+            # For some reason, this is how we have to do it to sort and get all "__" values at the top.
+            self.options = sorted(self.options, key=lambda option: [not(isinstance(option.value, str) and option.value.startswith("__")), option.label.lower()])
         
         
         # Parse options into different pages
@@ -3119,10 +3172,10 @@ class Dashboard(nextcord.ui.View):
         self.moderationBtn = self.ModerationButton(self)
         self.add_item(self.moderationBtn)
         
-        self.loggingBtn = self.LoggingButton(self, interaction.guild.id)
+        self.loggingBtn = self.LoggingButton(self)
         self.add_item(self.loggingBtn)
         
-        self.levelingBtn = self.LevelingButton(self, interaction.guild.id)
+        self.levelingBtn = self.LevelingButton(self)
         self.add_item(self.levelingBtn)
         
         self.joinLeaveMessagesBtn = self.JoinLeaveMessagesButton(self)
@@ -3143,7 +3196,7 @@ class Dashboard(nextcord.ui.View):
         self.activeMessagesBtn = self.ActiveMessagesButton(self)
         self.add_item(self.activeMessagesBtn)
         
-        self.enableDisableBtn = self.EnableDisableButton(self)
+        self.enableDisableBtn = self.ExtraFeaturesButton(self)
         self.add_item(self.enableDisableBtn)
 
     async def setup(self, interaction: Interaction):
@@ -3171,14 +3224,14 @@ class Dashboard(nextcord.ui.View):
             self.outer = outer 
           
         class ModerationView(nextcord.ui.View):
-            def __init__(self, outer, guild_id):
+            def __init__(self, outer):
                 super().__init__(timeout = None)
                 self.outer = outer
                 
-                self.ProfaneModerationBtn = self.ProfaneModerationButton(self, guild_id)
+                self.ProfaneModerationBtn = self.ProfaneModerationButton(self)
                 self.add_item(self.ProfaneModerationBtn)
                 
-                self.spamModerationBtn = self.SpamModerationButton(self, guild_id)
+                self.spamModerationBtn = self.SpamModerationButton(self)
                 self.add_item(self.spamModerationBtn)
                 
                 self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1) 
@@ -3188,76 +3241,124 @@ class Dashboard(nextcord.ui.View):
             async def setup(self, interaction: Interaction):
                 for child in self.children: 
                     del child
-                    self.__init__(self.outer, interaction.guild_id)
+                    self.__init__(self.outer)
                 
-                embed = nextcord.Embed(title = "Dashboard - Moderation", description = "Choose a feature to setup / edit.", color = nextcord.Color.blue())
+                description = """
+                InfiniBot will help you moderate your server with built-in profanity and spam moderation.
+                
+                **Exemptions**
+                Members with the "Administrator" permission are exempt from moderation.
+                InfiniBot will not moderate age-restricted channels for profanity.
+                
+                Use the buttons below to configure profanity and spam moderation.
+                """
+                
+                description = standardizeStrIndention(description)
+                
+                embed = nextcord.Embed(title = "Dashboard - Moderation", description = description, color = nextcord.Color.blue())
                 await interaction.response.edit_message(embed = embed, view = self)
                 
             async def backBtnCallback(self, interaction: Interaction):
                 await self.outer.setup(interaction)
             
             class ProfaneModerationButton(nextcord.ui.Button):
-                def __init__(self, outer, guild_id):
-                    server = Server(guild_id)
-                    super().__init__(label = "Profanity", style = nextcord.ButtonStyle.gray, disabled = (not server.profanityBool))
-                    del server
+                def __init__(self, outer):
+                    super().__init__(label = "Profanity", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
                     
                 class ProfaneModerationView(nextcord.ui.View): #Moderation Window -----------------------------------------------------
-                    def __init__(self, outer):
+                    def __init__(self, outer, guild_id, onboarding_modifier = None, onboarding_embed = None):
                         super().__init__(timeout = None)
                         self.outer = outer
+                        self.onboarding_modifier = onboarding_modifier
+                        self.onboarding_embed = onboarding_embed
                         
                         self.wordsBtn = self.FilteredWordsButton(self)
                         self.add_item(self.wordsBtn)
                         
-                        self.manageMembersBtn = self.ManageMembersButton(self)
+                        server = Server(guild_id)
+                        self.manageMembersBtn = self.ManageMembersButton(self, server.max_strikes)
                         self.add_item(self.manageMembersBtn)
-                        
-                        self.timeoutDurationBtn = self.TimeoutDurationButton(self)
-                        self.add_item(self.timeoutDurationBtn)
-                        
-                        self.strikeExpireTimeBtn = self.StrikeExpireTimeButton(self)
-                        self.add_item(self.strikeExpireTimeBtn)
+                        del server
                         
                         self.maxStrikesBtn = self.MaxStrikesButton(self)
                         self.add_item(self.maxStrikesBtn)
                         
+                        self.strikeExpireTimeBtn = self.StrikeExpireTimeButton(self)
+                        self.add_item(self.strikeExpireTimeBtn)
+                        
+                        self.timeoutDurationBtn = self.TimeoutDurationButton(self)
+                        self.add_item(self.timeoutDurationBtn)
+                        
                         self.adminChannelBtn = self.AdminChannelButton(self)
                         self.add_item(self.adminChannelBtn)
                         
+                        self.disableBtn = self.EnableDisableButton(self)
+                        self.add_item(self.disableBtn)
                         
-                        self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 3) 
+                        self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 4) 
                         self.backBtn.callback = self.backBtnCallback
                         self.add_item(self.backBtn)
                                     
                     async def setup(self, interaction: Interaction):
-                        for child in self.children: 
-                            del child 
-                            self.__init__(self.outer)
-                        
+                        # Redirect to Activation Screen if needed
                         server = Server(interaction.guild.id)
+                        if not server.profanity_moderation_enabled: 
+                            await self.EnableDisableButton.EnableDisableView(self).setup(interaction)
+                            return
+                            
+                        if self.onboarding_modifier: self.onboarding_modifier(self)
                         
+                        # Clean up
+                        if not self.onboarding_modifier:
+                            for child in self.children: 
+                                del child 
+                                self.__init__(self.outer, interaction.guild.id)
+                        
+                        # Update Manage Members button
+                        self.manageMembersBtn.__init__(self, max_strikes = server.max_strikes)
+                        
+                        # Global Kill
                         if not utils.enabled.ProfanityModeration(server = server):
                             await disabledFeatureOverride(self, interaction)
                             return
                         
-                        if server.strikeExpireTime != None: strikeExpireTime =  str(server.strikeExpireTime) + " days"
-                        else: strikeExpireTime = "Disabled"
-                        if server.adminChannel: adminChannelName = server.adminChannel.mention
+                        if server.admin_channel == None:
+                            await self.adminChannelBtn.callback(interaction, skipped = True)
+                            return
+                        
+                        # Info
+                        if server.max_strikes != 0:
+                            if server.strike_expire_time != None: strikeExpireTime =  str(server.strike_expire_time) + " days"
+                            else: strikeExpireTime = "Disabled"         
+                        else: strikeExpireTime = "N/A"
+                        if server.admin_channel: adminChannelName = server.admin_channel.mention
                         else: adminChannelName = "None"
                         
-                        #warnings
-                        if server.adminChannel == None: 
-                            warning = "**WARNING!!! THE ADMIN CHANNEL IS NOT SET! MODERATION WILL NOT WORK AS EXPECTED!!!**"
-                            self.adminChannelBtn.style = nextcord.ButtonStyle.blurple
-                        else: 
-                            warning = ""
-                            self.adminChannelBtn.style = nextcord.ButtonStyle.gray
+                        description = f"""
+                        InfiniBot aids in combating profanity in your server. Customize the options below to suit your server's requirements.
                         
-                        embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity", description = f"{warning}\n\n**Settings**\nTimeout Duration: {server.profanityTimeoutTime}\nStrike Expire Time: {strikeExpireTime}\nMaximum Strikes: {server.maxStrikes}\nAdmin Channel: {adminChannelName}\n\n**Choose a feature to setup / edit.**", color = nextcord.Color.blue())
-                        try: await interaction.response.edit_message(embed = embed, view = self)
-                        except: await interaction.edit_original_message(embed = embed, view = self)
+                        **Settings**
+                        Maximum Strikes: {server.max_strikes}
+                        Strike Expire Time: {strikeExpireTime}
+                        Timeout Duration: {server.profanity_timeout_time}
+                        Admin Channel: {adminChannelName}
+                        
+                        **Understanding Strikes:**
+                        Rather than an immediate timeout, members can receive strikes for profanity. Once the "Maximum Strikes" is reached, a timeout is triggered. Adjust "Strike Expiration Time" or disable by setting "Maximum Strikes" to 0.
+                        
+                        For more information, use: {profanityModerationHelp.get_mention()}
+                        """
+                        description = standardizeStrIndention(description)
+                        
+                        
+                        embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity", description = description, color = nextcord.Color.blue())
+                        
+                        if self.onboarding_embed: embeds = [self.onboarding_embed, embed]
+                        else: embeds = [embed]
+                        
+                        try: await interaction.response.edit_message(embeds = embeds, view = self)
+                        except: await interaction.edit_original_message(embeds = embeds, view = self)
                         
                     async def backBtnCallback(self, interaction: Interaction):
                         await self.outer.setup(interaction)
@@ -3286,7 +3387,7 @@ class Dashboard(nextcord.ui.View):
                                 server = Server(interaction.guild.id)
                                 
                                 self.embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity - Filtered Words", description = "Moderation Word Settings\n\nThe following words are filtered by InfiniBot", color = nextcord.Color.blue())
-                                ProfaneWords = server.ProfaneWords
+                                ProfaneWords = server.profane_words
                                 if ProfaneWords == []: ProfaneWords.append("You don't have any filtered words set. Add some!")
                                 else: ProfaneWords = sorted(ProfaneWords)
                                 
@@ -3314,13 +3415,29 @@ class Dashboard(nextcord.ui.View):
                                         self.add_item(self.input)
                                         
                                     async def callback(self, interaction: Interaction):
-                                        response = addWord(self.input.value, interaction.guild.id)
-                                        if response == True:
+                                        response = self.addWord(self.input.value, interaction.guild.id)
+                                        if response == None:
                                             self.response = self.input.value
                                             self.stop()
                                         else:
                                             await interaction.response.send_message(embed = response, ephemeral=True)
                                             self.stop()
+                                      
+                                    def addWord(word: str, guild_id):
+                                        server = Server(guild_id)
+                                        
+                                        if word.lower() in [x.lower() for x in server.profane_words]:
+                                            return nextcord.Embed(title = "Word Already Exists", description = f"The word \"{word}\" already exists in the database.", color = nextcord.Color.red())
+
+                                        if "———" in word:
+                                            return nextcord.Embed(title = "Word Cannot Contain Unique Case", description = f"Your word cannot contain \"———\" as it is reserved for other uses", color = nextcord.Color.red())
+
+                                        #add word
+                                        server.profane_words.append(word.lower())
+
+                                        server.saveProfaneWords()
+
+                                        return None
                                         
                                 async def callback(self, interaction: Interaction):
                                     modal = self.getWordModal(self)
@@ -3336,7 +3453,7 @@ class Dashboard(nextcord.ui.View):
                                         
                                 async def callback(self, interaction: Interaction):
                                     server = Server(interaction.guild.id)
-                                    ProfaneWords = [nextcord.SelectOption(label = x) for x in server.ProfaneWords]
+                                    ProfaneWords = [nextcord.SelectOption(label = x) for x in server.profane_words]
                                     
                                     embed: nextcord.Embed = copy.copy(self.outer.embed)
                                     embed.description = "Remove Moderated Words"
@@ -3344,17 +3461,22 @@ class Dashboard(nextcord.ui.View):
                                     await SelectView(embed, ProfaneWords, self.selectionCallback, continueButtonLabel = "Delete").setup(interaction)
                                     
                                 async def selectionCallback(self, interaction: Interaction, selection):
-                                    if selection != None: deleteWord(selection, interaction.guild.id)
+                                    if selection != None: self.deleteWord(selection, interaction.guild.id)
                                     await self.outer.setup(interaction)
+                                    
+                                def deleteWord(word: str, guild_id):
+                                    server = Server(guild_id) 
+                                    server.profane_words.pop(server.profane_words.index(word))
+                                    server.saveProfaneWords()
                                 
                         async def callback(self, interaction: Interaction): #Filtered Words Button Callback ————————————————————————————————————————————————————————————
                             view = self.FilteredWordsView(self.outer)
                             await view.setup(interaction)
                             
                     class ManageMembersButton(nextcord.ui.Button):
-                        def __init__(self, outer):
-                            super().__init__(label = "Manage Members", style = nextcord.ButtonStyle.gray)
-                            self.outer = outer                 
+                        def __init__(self, outer, max_strikes = 1):
+                            super().__init__(label = "Manage Members", style = nextcord.ButtonStyle.gray, disabled = (max_strikes == 0))
+                            self.outer = outer
                             
                         class ManageMembersView(nextcord.ui.View):#Strikes Window -----------------------------------------------------
                             def __init__(self, outer):
@@ -3401,8 +3523,8 @@ class Dashboard(nextcord.ui.View):
                                     if member.nick != None: Member = f"{member} ({member.nick})"
                                     else: Member = f"{member}"
                                     
-                                    if type(strike) == Strike: data.append([strike.strike, Member, member.id])
-                                    else: data.append([0, Member, member.id])
+                                    data.append([strike.strike, Member, member.id])
+                                    
                                     
                                 for data in sorted(data, key = lambda x: (x[0], x[1]), reverse = True):
                                     yield [f"{data[0]} - {data[1]}", data[2]]
@@ -3423,7 +3545,7 @@ class Dashboard(nextcord.ui.View):
                                         
                                         server = Server(guild.id)
                                         
-                                        strikeSelectOptions: list[nextcord.SelectOption] = [nextcord.SelectOption(label = str(number)) for number in range(0, int(server.maxStrikes) + 1)]
+                                        strikeSelectOptions: list[nextcord.SelectOption] = [nextcord.SelectOption(label = str(number)) for number in range(0, int(server.max_strikes) + 1)]
                                         strikeSelectOptions.reverse()
                                         self.strikeSelect = nextcord.ui.Select(options = strikeSelectOptions, placeholder = "Choose a Strike")
                                         self.add_item(self.strikeSelect)
@@ -3461,15 +3583,7 @@ class Dashboard(nextcord.ui.View):
                                             
                                             server = Server(interaction.guild.id)
                                             discordMember = server.getStrike(member)
-                                            if strike > 0:
-                                                if discordMember != None: discordMember.strike = strike
-                                                else: server.addStrike(member, strike)
-                                                server.saveStrikes()
-                                            else:
-                                                if discordMember != None: 
-                                                    server.deleteStrike(member)
-                                                    server.saveStrikes()
-                                                    
+                                            discordMember.strike = strike
                                             await self.outer.setup(interaction)
                                                             
                                 async def callback(self, interaction: Interaction):# Edit Strikes Callback and First Step ————————————————————————————————————————————————————————————
@@ -3525,10 +3639,73 @@ class Dashboard(nextcord.ui.View):
                         async def callback(self, interaction: Interaction): # Strikes Callback ————————————————————————————————————————————————————————————
                             view = self.ManageMembersView(self.outer)
                             await view.setup(interaction)
-                
+
+                    class MaxStrikesButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Maximum Strikes", style = nextcord.ButtonStyle.gray, row  = 1)
+                            self.outer = outer
+                            
+                        class MaxStrikesModal(nextcord.ui.Modal): #Max Strikes Modal -----------------------------------------------------
+                            def __init__(self, outer, guild_id):
+                                super().__init__(title = "Maximum Strikes")
+                                self.outer = outer
+                                server = Server(guild_id)
+                                
+                                self.input = nextcord.ui.TextInput(label = "Maximum Strikes (Must be a number)", default_value = server.max_strikes, placeholder = "This Field is Required", max_length=2)
+                                self.add_item(self.input)
+                                
+                            async def callback(self, interaction: Interaction):
+                                try:
+                                    if int(self.input.value) > 25: raise Exception
+                                except:
+                                    await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The Maximum Strikes needs to be a positive number below 26.", color = nextcord.Color.red()), ephemeral=True)
+                                    return
+                                
+                                server = Server(interaction.guild.id)
+                                server.max_strikes = int(self.input.value)
+                                server.saveData()
+                                await self.outer.setup(interaction)
+                                
+                        async def callback(self, interaction: Interaction):
+                            await interaction.response.send_modal(self.MaxStrikesModal(self.outer, interaction.guild.id))
+                                       
+                    class StrikeExpireTimeButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Strike Expire Time", style = nextcord.ButtonStyle.gray, row  = 1)
+                            self.outer = outer
+                            
+                        class StrikeExpireTimeModal(nextcord.ui.Modal): #Strike Expire Time Modal -----------------------------------------------------
+                            def __init__(self, outer, guild_id):
+                                super().__init__(title = "Strike Expire Time")
+                                self.outer = outer
+                                server = Server(guild_id)
+                                
+                                self.input = nextcord.ui.TextInput(label = "Strike Expire Time (Days) (Must be a number)", default_value = server.strike_expire_time, placeholder = "Disable this feature", max_length=2, required = False)
+                                self.add_item(self.input)
+                                
+                            async def callback(self, interaction: Interaction):
+                                if self.input.value != None:
+                                    try:
+                                        int(self.input.value)
+                                    except:
+                                        await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The Strike Expire Time needs to be a number.", color = nextcord.Color.red()), ephemeral=True)
+                                        return
+                                
+                                    server = Server(interaction.guild.id)
+                                    server.strike_expire_time = int(self.input.value)
+                                else:
+                                    server = Server(interaction.guild.id)
+                                    server.strike_expire_time = None
+                                    
+                                server.saveData()
+                                await self.outer.setup(interaction)
+                                
+                        async def callback(self, interaction: Interaction):
+                            await interaction.response.send_modal(self.StrikeExpireTimeModal(self.outer, interaction.guild.id))
+                                   
                     class TimeoutDurationButton(nextcord.ui.Button):
                         def __init__(self, outer):
-                            super().__init__(label = "Timeout Duration", style = nextcord.ButtonStyle.gray, row = 1)
+                            super().__init__(label = "Timeout Duration", style = nextcord.ButtonStyle.gray, row = 2)
                             self.outer = outer
                             
                         class TimeoutDurationModal(nextcord.ui.Modal): #Timeout Duration Modal -----------------------------------------------------
@@ -3537,7 +3714,7 @@ class Dashboard(nextcord.ui.View):
                                 self.outer = outer
                                 server = Server(guild_id)
                                 
-                                self.input = nextcord.ui.TextInput(label = "Timeout Duration (Format: 5s, 10m, 1h, 2d)", default_value = server.profanityTimeoutTime, placeholder = "This Field is Required", max_length=10)
+                                self.input = nextcord.ui.TextInput(label = "Timeout Duration (Format: 5s, 10m, 1h, 2d)", default_value = server.profanity_timeout_time, placeholder = "This Field is Required", max_length=10)
                                 self.add_item(self.input)
                                 
                             async def callback(self, interaction: Interaction):
@@ -3552,82 +3729,20 @@ class Dashboard(nextcord.ui.View):
                                     return
                                 
                                 server = Server(interaction.guild.id)
-                                server.profanityTimeoutTime = self.input.value
+                                server.profanity_timeout_time = self.input.value
                                 server.saveData()
                                 await self.outer.setup(interaction)
                                 
                         async def callback(self, interaction: Interaction):
                             await interaction.response.send_modal(self.TimeoutDurationModal(self.outer, interaction.guild.id))
                             
-                    class StrikeExpireTimeButton(nextcord.ui.Button):
-                        def __init__(self, outer):
-                            super().__init__(label = "Strike Expire Time", style = nextcord.ButtonStyle.gray, row  = 1)
-                            self.outer = outer
-                            
-                        class StrikeExpireTimeModal(nextcord.ui.Modal): #Strike Expire Time Modal -----------------------------------------------------
-                            def __init__(self, outer, guild_id):
-                                super().__init__(title = "Strike Expire Time")
-                                self.outer = outer
-                                server = Server(guild_id)
-                                
-                                self.input = nextcord.ui.TextInput(label = "Strike Expire Time (Days) (Must be a number)", default_value = server.strikeExpireTime, placeholder = "Disable this feature", max_length=2, required = False)
-                                self.add_item(self.input)
-                                
-                            async def callback(self, interaction: Interaction):
-                                if self.input.value != None:
-                                    try:
-                                        int(self.input.value)
-                                    except:
-                                        await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The Strike Expire Time needs to be a number.", color = nextcord.Color.red()), ephemeral=True)
-                                        return
-                                
-                                    server = Server(interaction.guild.id)
-                                    server.strikeExpireTime = int(self.input.value)
-                                else:
-                                    server = Server(interaction.guild.id)
-                                    server.strikeExpireTime = None
-                                    
-                                server.saveData()
-                                await self.outer.setup(interaction)
-                                
-                        async def callback(self, interaction: Interaction):
-                            await interaction.response.send_modal(self.StrikeExpireTimeModal(self.outer, interaction.guild.id))
-                            
-                    class MaxStrikesButton(nextcord.ui.Button):
-                        def __init__(self, outer):
-                            super().__init__(label = "Maximum Strikes", style = nextcord.ButtonStyle.gray, row  = 2)
-                            self.outer = outer
-                            
-                        class MaxStrikesModal(nextcord.ui.Modal): #Max Strikes Modal -----------------------------------------------------
-                            def __init__(self, outer, guild_id):
-                                super().__init__(title = "Maximum Strikes")
-                                self.outer = outer
-                                server = Server(guild_id)
-                                
-                                self.input = nextcord.ui.TextInput(label = "Maximum Strikes (Must be a number)", default_value = server.maxStrikes, placeholder = "This Field is Required", max_length=2)
-                                self.add_item(self.input)
-                                
-                            async def callback(self, interaction: Interaction):
-                                try:
-                                    if int(self.input.value) > 25: raise Exception
-                                except:
-                                    await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The Maximum Strikes needs to be a positive number below 26.", color = nextcord.Color.red()), ephemeral=True)
-                                    return
-                                
-                                server = Server(interaction.guild.id)
-                                server.maxStrikes = int(self.input.value)
-                                server.saveData()
-                                await self.outer.setup(interaction)
-                                
-                        async def callback(self, interaction: Interaction):
-                            await interaction.response.send_modal(self.MaxStrikesModal(self.outer, interaction.guild.id))
-                            
                     class AdminChannelButton(nextcord.ui.Button):
                         def __init__(self, outer):
                             super().__init__(label = "Admin Channel", style = nextcord.ButtonStyle.gray, row  = 2)
                             self.outer = outer
                                                 
-                        async def callback(self, interaction: Interaction):
+                        async def callback(self, interaction: Interaction, skipped = False):
+                            self.skipped = skipped
                             server = Server(interaction.guild.id)
                                 
                             selectOptions = []
@@ -3636,15 +3751,23 @@ class Dashboard(nextcord.ui.View):
                                 else: categoryName = None
                                 #check permissions
                                 if await checkTextChannelPermissions(channel, False):
-                                    selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.adminChannel != None and server.adminChannel.id == channel.id)))
+                                    selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.admin_channel != None and server.admin_channel.id == channel.id)))
                             
-                            embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity - Admin Channel", description = "Select a channel to send strike info to.\n\n**MAKE SURE THIS CHANNEL IS ONLY ACCESSABLE BY ADMINS**\nThis channel will allow members to mark strikes as incorrect. Thus, it should only be accessible by admins.\n\n**Don't See Your Channel?**\nCheck to make sure that InfiniBot has the permissions to view and send messages in your channel.", color = nextcord.Color.blue())
-                            await SelectView(embed, selectOptions, self.SelectViewCallback, continueButtonLabel = "Confirm").setup(interaction)
+                            if self.skipped: title = "Dashboard - Moderation - Profanity"
+                            else: title = "Dashboard - Moderation - Profanity - Admin Channel"
+                            embed = nextcord.Embed(title = title, 
+                                                   description = "Choose a channel for moderation info.\n\n**Ensure Admin-Only Access**\nThis channel lets members report incorrect strikes, so limit access to admins.\n\n**Can't Find Your Channel?**\nEnsure InfiniBot has permissions to view and send messages in all your channels.", 
+                                                   color = nextcord.Color.blue())
+                            await SelectView(embed, selectOptions, self.SelectViewCallback, continueButtonLabel = "Confirm", cancelButtonLabel = ("Back" if self.skipped else "Cancel")).setup(interaction)
                             
                         async def SelectViewCallback(self, interaction: Interaction, selection):
-                            if selection == None: 
-                                await self.outer.setup(interaction)
-                                return
+                            if selection == None:
+                                if not self.skipped:
+                                    await self.outer.setup(interaction)
+                                    return
+                                else:
+                                    await self.outer.outer.setup(interaction)
+                                    return
                                 
                             server = Server(interaction.guild.id)
                             if server.setAdminChannelID(selection):
@@ -3652,23 +3775,89 @@ class Dashboard(nextcord.ui.View):
                                 await self.outer.setup(interaction)
                                 
                             #send a message to the new admin channel
-                            await server.adminChannel.send(embed = nextcord.Embed(title = "Admin Channel Set", description = f"Strikes will now be logged in this channel.\n**IMPORTANT: MAKE SURE THAT THIS CHANNEL IS ONLY ACCESSABLE BY ADMINS!**\nThis channel will allow members to mark strikes as incorrect. Thus, you only want admins to see it.\n\nAction done by {interaction.user}", color =  nextcord.Color.green()), view = SupportAndInviteView())
+                            embed = nextcord.Embed(title = "Admin Channel Set", description = f"Strikes will now be logged in this channel.\n\n**Ensure Admin-Only Access**\nThis channel lets members report incorrect strikes, so limit access to admins.", color =  nextcord.Color.green())
+                            embed.set_footer(text = f"Action done by {interaction.user}")
+                            await server.admin_channel.send(embed = embed, view = SupportAndInviteView())
+                              
+                    class EnableDisableButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Disable Profanity Moderation", row = 3)
+                            self.outer = outer
+                            
+                        class EnableDisableView(nextcord.ui.View):
+                            def __init__(self, outer):
+                                super().__init__(timeout = None)
+                                self.outer = outer
+                                
+                                self.backBtn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
+                                self.backBtn.callback = self.backBtnCallback
+                                self.add_item(self.backBtn)
+                                
+                                self.actionBtn = nextcord.ui.Button(label = "ACTION", style = nextcord.ButtonStyle.green)
+                                self.actionBtn.callback = self.actionBtnCallback
+                                self.add_item(self.actionBtn)
+                                
+                                
+                            async def setup(self, interaction: Interaction, server = None):
+                                if not server: server = Server(interaction.guild.id)
+                                
+                                # Determine whether or not we are active or not.
+                                if server.profanity_moderation_enabled:
+                                    # We *are* active. Give info for deactivation
+                                    embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity - Disable", 
+                                                           description = "Are you sure you want to disable profanity moderation? You can re-enable this feature at any time.",
+                                                           color = nextcord.Color.blue())
+                                    self.actionBtn.label = "Disable"
+                                    
+                                else:
+                                    # We are *not* active. Give info for activation
+                                    embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity",
+                                                           description = "Profanity moderation is currently disabled. Do you want to enable it?",
+                                                           color = nextcord.Color.blue())
+                                    self.actionBtn.label = "Enable"
+                                    
+                                await interaction.response.edit_message(embed = embed, view = self)
+                                
+                            async def backBtnCallback(self, interaction: Interaction, server = None):
+                                if not server: server = Server(interaction.guild.id)
+                                
+                                # Return either to profanity moderation or moderation.
+                                if server.profanity_moderation_enabled:
+                                    # Profanity Moderation is enabled. Put us in here.
+                                    await self.outer.setup(interaction)
+                                    
+                                else:
+                                    # Profanity Moderation is disabled. Put us in the level above (moderation)
+                                    await self.outer.outer.setup(interaction)
+                                
+                            async def actionBtnCallback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                server.profanity_moderation_enabled = (not server.profanity_moderation_enabled)
+                                
+                                server.saveData()
+                                
+                                # Return them.
+                                await self.backBtnCallback(interaction, server = server)
+                            
+                        async def callback(self, interaction: Interaction):
+                            await self.EnableDisableView(self.outer).setup(interaction)
                                      
                 async def callback(self, interaction: Interaction):
-                    view = self.ProfaneModerationView(self.outer)
+                    view = self.ProfaneModerationView(self.outer, interaction.guild.id)
                     await view.setup(interaction)
              
             class SpamModerationButton(nextcord.ui.Button):
-                def __init__(self, outer, guild_id):
-                    server = Server(guild_id)
-                    super().__init__(label = "Spam", style = nextcord.ButtonStyle.gray, disabled = (not server.spamBool))
-                    del server
+                def __init__(self, outer):
+                    super().__init__(label = "Spam", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
                     
                 class SpamModerationView(nextcord.ui.View):
-                    def __init__(self, outer):
+                    def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
                         super().__init__(timeout = None)
                         self.outer = outer
+                        self.onboarding_modifier = onboarding_modifier
+                        self.onboarding_embed = onboarding_embed
                         
                         self.timeoutDurationBtn = self.TimeoutDurationButton(self)
                         self.add_item(self.timeoutDurationBtn)
@@ -3676,20 +3865,47 @@ class Dashboard(nextcord.ui.View):
                         self.messageThresholdBtn = self.MessagesThresholdButton(self)
                         self.add_item(self.messageThresholdBtn)
                         
-                        self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1) 
+                        self.disableBtn = self.EnableDisableButton(self)
+                        self.add_item(self.disableBtn)
+                        
+                        self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 2) 
                         self.backBtn.callback = self.backBtnCallback
                         self.add_item(self.backBtn)
                         
                     async def setup(self, interaction: Interaction):
+                        # Redirect to Activation Screen if needed
+                        server = Server(interaction.guild.id)
+                        if not server.spam_moderation_enabled: 
+                            await self.EnableDisableButton.EnableDisableView(self).setup(interaction)
+                            return
+                        
+                        if self.onboarding_modifier: self.onboarding_modifier(self)
+                        
                         server = Server(interaction.guild.id)
                         
                         if not utils.enabled.SpamModeration(server = server):
                             await disabledFeatureOverride(self, interaction)
                             return
                         
-                        embed = nextcord.Embed(title = "Dashboard - Moderation - Spam", description = f"This feature will not work for anyone with Administrator priveleges or a higher role than InfiniBot.\n\nTimeout Duration: {server.spamTimeoutTime}\nMessages Threshold: {server.messagesThreshold} messages\n\nChoose a feature to setup / edit.", color = nextcord.Color.blue())
                         
-                        await interaction.response.edit_message(embed = embed, view = self)
+                        description = f"""
+                        InfiniBot contributes to the battle against spam in your server. Customize the options below to tailor them to your server's needs.
+                        
+                        **Settings**
+                        Timeout Duration: {server.spam_timeout_time}
+                        Messages Threshold: {server.messages_threshold} messages
+                        
+                        For more information, use: {spamModerationHelp.get_mention()}"""
+                        description = standardizeStrIndention(description)
+                        
+                        embed = nextcord.Embed(title = "Dashboard - Moderation - Spam", 
+                                               description = description, 
+                                               color = nextcord.Color.blue())
+                        
+                        if self.onboarding_embed: embeds = [self.onboarding_embed, embed]
+                        else: embeds = [embed]
+                        
+                        await interaction.response.edit_message(embeds = embeds, view = self)
                     
                     async def backBtnCallback(self, interaction: Interaction):
                         await self.outer.setup(interaction)
@@ -3705,7 +3921,7 @@ class Dashboard(nextcord.ui.View):
                                 self.outer = outer
                                 server = Server(guild_id)
                                 
-                                self.input = nextcord.ui.TextInput(label = "Timeout Duration (Format: 5s, 10m, 1h, 2d)", default_value = server.spamTimeoutTime, placeholder = "This Field is Required", max_length=10)
+                                self.input = nextcord.ui.TextInput(label = "Timeout Duration (Format: 5s, 10m, 1h, 2d)", default_value = server.spam_timeout_time, placeholder = "This Field is Required", max_length=10)
                                 self.add_item(self.input)
                                 
                             async def callback(self, interaction: Interaction):
@@ -3720,7 +3936,7 @@ class Dashboard(nextcord.ui.View):
                                     return
                                 
                                 server = Server(interaction.guild.id)
-                                server.spamTimeoutTime = self.input.value
+                                server.spam_timeout_time = self.input.value
                                 server.saveData()
                                 await self.outer.setup(interaction)
                                 
@@ -3738,7 +3954,7 @@ class Dashboard(nextcord.ui.View):
                                 self.outer = outer
                                 server = Server(guild_id)
                                 
-                                self.input = nextcord.ui.TextInput(label = "Message Threshold (# of messages)", default_value = server.messagesThreshold, placeholder = "This Field is Required", max_length=2)
+                                self.input = nextcord.ui.TextInput(label = "Message Threshold (# of messages)", default_value = server.messages_threshold, placeholder = "This Field is Required", max_length=2)
                                 self.add_item(self.input)
                                 
                             async def callback(self, interaction: Interaction):
@@ -3752,65 +3968,153 @@ class Dashboard(nextcord.ui.View):
                                     return
                                 
                                 server = Server(interaction.guild.id)
-                                server.messagesThreshold = int(self.input.value)
+                                server.messages_threshold = int(self.input.value)
                                 server.saveData()
                                 await self.outer.setup(interaction)
                                 
                         async def callback(self, interaction: Interaction):
                             await interaction.response.send_modal(self.MessagesThresholdModal(self.outer, interaction.guild.id))
-                                                                      
+
+                    class EnableDisableButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Disable Spam Moderation", row = 1)
+                            self.outer = outer
+                            
+                        class EnableDisableView(nextcord.ui.View):
+                            def __init__(self, outer):
+                                super().__init__(timeout = None)
+                                self.outer = outer
+                                
+                                self.backBtn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
+                                self.backBtn.callback = self.backBtnCallback
+                                self.add_item(self.backBtn)
+                                
+                                self.actionBtn = nextcord.ui.Button(label = "ACTION", style = nextcord.ButtonStyle.green)
+                                self.actionBtn.callback = self.actionBtnCallback
+                                self.add_item(self.actionBtn)
+                                
+                                
+                            async def setup(self, interaction: Interaction, server = None):
+                                if not server: server = Server(interaction.guild.id)
+                                
+                                # Determine whether or not we are active or not.
+                                if server.spam_moderation_enabled:
+                                    # We *are* active. Give info for deactivation
+                                    embed = nextcord.Embed(title = "Dashboard - Moderation - Spam - Disable", 
+                                                           description = "Are you sure you want to disable spam moderation? You can re-enable this feature at any time.",
+                                                           color = nextcord.Color.blue())
+                                    self.actionBtn.label = "Disable"
+                                    
+                                else:
+                                    # We are *not* active. Give info for activation
+                                    embed = nextcord.Embed(title = "Dashboard - Moderation - Spam",
+                                                           description = "Spam moderation is currently disabled. Do you want to enable it?",
+                                                           color = nextcord.Color.blue())
+                                    self.actionBtn.label = "Enable"
+                                    
+                                await interaction.response.edit_message(embed = embed, view = self)
+                                
+                            async def backBtnCallback(self, interaction: Interaction, server = None):
+                                if not server: server = Server(interaction.guild.id)
+                                
+                                # Return either to spam moderation or moderation.
+                                if server.spam_moderation_enabled:
+                                    # Enabled. Put us in here.
+                                    await self.outer.setup(interaction)
+                                    
+                                else:
+                                    # Disabled. Put us in the level above
+                                    await self.outer.outer.setup(interaction)
+                                
+                            async def actionBtnCallback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                server.spam_moderation_enabled = (not server.spam_moderation_enabled)
+                                
+                                server.saveData()
+                                
+                                # Return them.
+                                await self.backBtnCallback(interaction, server = server)
+                            
+                        async def callback(self, interaction: Interaction):
+                            await self.EnableDisableView(self.outer).setup(interaction)
+                                                                     
                 async def callback(self, interaction: Interaction):
                     view = self.SpamModerationView(self.outer)
                     await view.setup(interaction)
                                                                 
-        async def callback(self, interaction: Interaction): #Moderation Button Callback ————————————————————————————————————————————————————————————
-            view = self.ModerationView(self.outer, interaction.guild.id)
+        async def callback(self, interaction: Interaction):
+            view = self.ModerationView(self.outer)
             await view.setup(interaction)
             
     class LoggingButton(nextcord.ui.Button):
-        def __init__(self, outer, guild_id):
-            server = Server(guild_id)
-            
-            super().__init__(label = "Logging", style = nextcord.ButtonStyle.gray, disabled = (not server.loggingBool))
-            del server
+        def __init__(self, outer):
+            super().__init__(label = "Logging", style = nextcord.ButtonStyle.gray)
             self.outer = outer
             
         class LoggingView(nextcord.ui.View): #Logging Window -----------------------------------------------------
-            def __init__(self, outer):
+            def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
                 super().__init__(timeout = None)
                 self.outer = outer
-                
-                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger)
-                self.backBtn.callback = self.backBtnCallback
-                self.add_item(self.backBtn)
+                self.onboarding_modifier = onboarding_modifier
+                self.onboarding_embed = onboarding_embed
                 
                 self.logChannelBtn = self.LogChannelButton(self)
                 self.add_item(self.logChannelBtn)
                 
+                self.disableBtn = self.EnableDisableButton(self)
+                self.add_item(self.disableBtn)
+                
+                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
+                self.backBtn.callback = self.backBtnCallback
+                self.add_item(self.backBtn)
+                
             async def setup(self, interaction: Interaction):
-                for child in self.children: 
-                    del child 
-                    self.__init__(self.outer)
+                # Redirect to Activation Screen if needed
+                server = Server(interaction.guild.id)
+                if not server.logging_enabled: 
+                    await self.EnableDisableButton.EnableDisableView(self).setup(interaction)
+                    return
+                
+                if self.onboarding_modifier: self.onboarding_modifier(self)
+                
+                # Clean up
+                if not self.onboarding_modifier:
+                    for child in self.children: 
+                        del child 
+                        self.__init__(self.outer)
                 
                 server = Server(interaction.guild.id)
                 
+                # Global Kill
                 if not utils.enabled.Logging(server = server):
                     await disabledFeatureOverride(self, interaction)
                     return
                 
-                if server.logChannel != None: logChannelName = server.logChannel.mention
-                else: logChannelName = "None"
+                if server.log_channel == None:
+                    await self.logChannelBtn.callback(interaction, skipped = True)
+                    return
                 
-                #warnings
-                if server.logChannel == None: 
-                    warning = "**WARNING!!! THE LOG CHANNEL IS NOT SET! LOGGING WILL NOT WORK AS EXPECTED!!!**"
-                    self.logChannelBtn.style = nextcord.ButtonStyle.blurple
-                else: 
-                    warning = ""
-                    self.logChannelBtn.style = nextcord.ButtonStyle.gray
-    
-                embed = nextcord.Embed(title = "Dashboard - Logging", description = f"{warning}\n\n**Settings**\nLog Channel: {logChannelName}\n\n**Set / Edit the Log Channel below:**", color = nextcord.Color.blue())
-                await interaction.response.edit_message(embed = embed, view = self)
+                if server.log_channel != None: log_channel_name = server.log_channel.mention
+                else: log_channel_name = "None"
+
+                description = f"""
+                InfiniBot enhances server management with comprehensive logging. View deleted and edited messages, and administrative changes.
+                
+                **Settings**
+                Log Channel: {log_channel_name}
+                
+                For more information, use: {loggingHelp.get_mention()}"""
+                description = standardizeStrIndention(description)
+                
+                embed = nextcord.Embed(title = "Dashboard - Logging", 
+                                       description = description, 
+                                       color = nextcord.Color.blue())
+                
+                if self.onboarding_embed: embeds = [self.onboarding_embed, embed]
+                else: embeds = [embed]
+                
+                await interaction.response.edit_message(embeds = embeds, view = self)
                 
             async def backBtnCallback(self, interaction: Interaction):
                 await self.outer.setup(interaction)
@@ -3819,22 +4123,38 @@ class Dashboard(nextcord.ui.View):
                 def __init__(self, outer):
                     super().__init__(label = "Log Channel", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
+                    self.skipped = False
            
-                async def callback(self, interaction: Interaction):
+                async def callback(self, interaction: Interaction, skipped = False):
+                    self.skipped = skipped
+                    
                     server = Server(interaction.guild.id)
                         
                     selectOptions = []
                     for channel in interaction.guild.text_channels:
                         if channel.category != None: categoryName = channel.category.name
                         else: categoryName = None
-                        selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.logChannel != None and server.logChannel.id == channel.id)))
+                        selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.log_channel != None and server.log_channel.id == channel.id)))
                     
-                    embed = nextcord.Embed(title = "Dashboard - Logging - Log Channel", description = "Select a channel to which to send logs\n\nNote: It is highly recommended that you set the notifications settings for this channel to \"nothing\".", color = nextcord.Color.blue())
-                    await SelectView(embed, selectOptions, self.SelectViewCallback, continueButtonLabel = "Confirm").setup(interaction)
+                    description = """
+                    Choose a channel for logs.
+
+                    Tip: Set notification settings for this channel to "Nothing". InfiniBot will constantly be logging in this channel."""
+                    description = standardizeStrIndention(description)
+                    
+                    embed = nextcord.Embed(title = ("Dashboard - Logging" if self.skipped else "Dashboard - Logging - Log Channel"), 
+                                           description = description, color = nextcord.Color.blue())
+                    
+                    await SelectView(embed, 
+                                     selectOptions, 
+                                     self.SelectViewCallback, 
+                                     continueButtonLabel = "Confirm", 
+                                     cancelButtonLabel = ("Back" if self.skipped else "Cancel")).setup(interaction)
                     
                 async def SelectViewCallback(self, interaction: Interaction, selection):
                     if selection == None:
-                        await self.outer.setup(interaction)
+                        if self.skipped: await self.outer.outer.setup(interaction)
+                        else: await self.outer.setup(interaction)
                         return
                     
                     server = Server(interaction.guild.id)
@@ -3842,23 +4162,87 @@ class Dashboard(nextcord.ui.View):
                         server.saveData()
                     await self.outer.setup(interaction)
                     
-                    await server.logChannel.send(embed = nextcord.Embed(title = "Log Channel Set", description = f"This channel will now be used for logging.\n\nNote: It is highly recommended that you set the notifications settings for this channel to \"nothing\".\n\nAction done by {interaction.user}", color =  nextcord.Color.green()), view = SupportAndInviteView())
+                    embed = nextcord.Embed(title = "Log Channel Set", description = f"This channel will now be used for logging.\n\nTip: Set notification settings for this channel to \"Nothing\". InfiniBot will constantly be logging in this channel.", color =  nextcord.Color.green())
+                    embed.set_footer(text = f"Action done by {interaction.user}")
+                    await server.log_channel.send(embed = embed, view = SupportAndInviteView())
             
+            class EnableDisableButton(nextcord.ui.Button):
+                def __init__(self, outer):
+                    super().__init__(label = "Disable Logging")
+                    self.outer = outer
+                    
+                class EnableDisableView(nextcord.ui.View):
+                    def __init__(self, outer):
+                        super().__init__(timeout = None)
+                        self.outer = outer
+                        
+                        self.backBtn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
+                        self.backBtn.callback = self.backBtnCallback
+                        self.add_item(self.backBtn)
+                        
+                        self.actionBtn = nextcord.ui.Button(label = "ACTION", style = nextcord.ButtonStyle.green)
+                        self.actionBtn.callback = self.actionBtnCallback
+                        self.add_item(self.actionBtn)
+                                           
+                    async def setup(self, interaction: Interaction, server = None):
+                        if not server: server = Server(interaction.guild.id)
+                        
+                        # Determine whether or not we are active or not.
+                        if server.logging_enabled:
+                            # We *are* active. Give info for deactivation
+                            embed = nextcord.Embed(title = "Dashboard - Logging - Disable", 
+                                                    description = "Are you sure you want to disable logging? You can re-enable this feature at any time.",
+                                                    color = nextcord.Color.blue())
+                            self.actionBtn.label = "Disable"
+                            
+                        else:
+                            # We are *not* active. Give info for activation
+                            embed = nextcord.Embed(title = "Dashboard - Logging",
+                                                    description = "Logging is currently disabled. Do you want to enable it?",
+                                                    color = nextcord.Color.blue())
+                            self.actionBtn.label = "Enable"
+                            
+                        await interaction.response.edit_message(embed = embed, view = self)
+                        
+                    async def backBtnCallback(self, interaction: Interaction, server = None):
+                        if not server: server = Server(interaction.guild.id)
+                        
+                        # Return either to logging or dashboard
+                        if server.logging_enabled:
+                            # Enabled. Put us in here.
+                            await self.outer.setup(interaction)
+                            
+                        else:
+                            # Disabled. Put us in the level above (dashboard)
+                            await self.outer.outer.setup(interaction)
+                        
+                    async def actionBtnCallback(self, interaction: Interaction):
+                        server = Server(interaction.guild.id)
+                        
+                        server.logging_enabled = (not server.logging_enabled)
+                        
+                        server.saveData()
+                        
+                        # Return them.
+                        await self.backBtnCallback(interaction, server = server)
+                    
+                async def callback(self, interaction: Interaction):
+                    await self.EnableDisableView(self.outer).setup(interaction)
+                        
         async def callback(self, interaction: Interaction):
             await self.LoggingView(self.outer).setup(interaction)
 
     class LevelingButton(nextcord.ui.Button):
-        def __init__(self, outer, guild_id):
-            server = Server(guild_id)
-            
-            super().__init__(label = "Leveling", style = nextcord.ButtonStyle.gray, disabled = (not server.levelingBool))
-            del server
+        def __init__(self, outer):
+            super().__init__(label = "Leveling", style = nextcord.ButtonStyle.gray)
             self.outer = outer
             
         class LevelingView(nextcord.ui.View):
-            def __init__(self, outer):
+            def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
                 super().__init__(timeout = None)
                 self.outer = outer
+                self.onboarding_modifier = onboarding_modifier
+                self.onboarding_embed = onboarding_embed
                 
                 self.manageMembersBtn = self.ManageMembersButton(self)
                 self.add_item(self.manageMembersBtn)
@@ -3881,14 +4265,27 @@ class Dashboard(nextcord.ui.View):
                 self.levelCardsBtn = self.LevelCardsButton(self)
                 self.add_item(self.levelCardsBtn)
                 
+                self.disableBtn = self.EnableDisableButton(self)
+                self.add_item(self.disableBtn)
+                
                 self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 4)
                 self.backBtn.callback = self.backBtnCallback
                 self.add_item(self.backBtn)
                 
             async def setup(self, interaction: Interaction):
-                for child in self.children: 
-                    del child 
-                    self.__init__(self.outer)
+                # Redirect to Activation Screen if needed
+                server = Server(interaction.guild.id)
+                if not server.leveling_enabled: 
+                    await self.EnableDisableButton.EnableDisableView(self).setup(interaction)
+                    return
+                
+                if self.onboarding_modifier: self.onboarding_modifier(self)
+                        
+                # Clean up
+                if not self.onboarding_modifier:
+                    for child in self.children: 
+                        del child 
+                        self.__init__(self.outer)
                 
                 server = Server(interaction.guild.id)
                 
@@ -3896,20 +4293,47 @@ class Dashboard(nextcord.ui.View):
                     await disabledFeatureOverride(self, interaction)
                     return
                 
-                if server.levelingChannel != None: levelingChannelName = server.levelingChannel.mention
+                if server.leveling_channel == False: levelingChannelName = "No Notifications"
+                elif server.leveling_channel != None: levelingChannelName = server.leveling_channel.mention
                 else: levelingChannelName = "System Messages Channel"
                 
-                if server.pointsLostPerDay != None: pointsLostPerDay = server.pointsLostPerDay
+                if server.points_lost_per_day != None: pointsLostPerDay = server.points_lost_per_day
                 else: pointsLostPerDay = "DISABLED"
                 
-                if server.levelingMessage != None: levelingMessage = server.levelingMessage
-                else: levelingMessage = "DISABLED"
+                if server.leveling_channel == False: levelingMessage = "N/A"
+                elif server.leveling_message != None: levelingMessage = f"```{server.leveling_message}```"
+                else: levelingMessage = "DISABLED" # This is in theory depricated
                 
-                if server.allowLevelCardsBool: allowLevelCards = "Yes"
+                if server.allow_level_cards_bool: allowLevelCards = "Yes"
                 else: allowLevelCards = "No"
                 
-                embed = nextcord.Embed(title = "Dashboard - Leveling", description = f"**Settings:**\nLeveling Channel: {levelingChannelName}\nPoints Lost Per Day: {pointsLostPerDay}\nAllow Level-Up Cards: {allowLevelCards}\nLevel Up Message:```{levelingMessage}```\n\n**Choose a feature to setup / edit**", color = nextcord.Color.blue())
-                await interaction.response.edit_message(embed = embed, view = self)
+                description = f"""
+                InfiniBot enhances server engagement through leveling. Tailor the options below to align with your server's preferences.
+                
+                **Settings:**
+                Notifications Channel: {levelingChannelName}
+                Points Lost Per Day: {pointsLostPerDay}
+                Allow Level-Up Cards: {allowLevelCards}
+                Level Up Message: {levelingMessage}
+                
+                **What are Level-Up Cards?**
+                When enabled, members can craft personalized level-up cards displayed after each level-up message.
+                
+                For more information, use: {levelingHelp.get_mention()}
+                """
+                description = standardizeStrIndention(description)
+                
+                embed = nextcord.Embed(title = "Dashboard - Leveling", 
+                                       description = description, 
+                                       color = nextcord.Color.blue())
+                
+                if self.onboarding_embed: embeds = [self.onboarding_embed, embed]
+                else: embeds = [embed]
+                
+                # Update buttons
+                self.levelingMessageBtn.disabled = (server.leveling_channel == False)
+                
+                await interaction.response.edit_message(embeds = embeds, view = self)
              
             async def backBtnCallback(self, interaction: Interaction):
                 await self.outer.setup(interaction)
@@ -3942,23 +4366,19 @@ class Dashboard(nextcord.ui.View):
                         
                         for member in interaction.guild.members: 
                             if member.bot: continue
-                            Member = server.levels.getMember(member.id)
                             
-                            if Member != None:
-                                self.rankedMembers.append([member, Member.score])
-                            else:
-                                self.rankedMembers.append([member, 0])
+                            Member = server.levels.getMember(member.id)
+                            self.rankedMembers.append([member, Member.score])
                         
                         
-                        #sort
+                        # Sort
                         self.rankedMembers = sorted(self.rankedMembers, key=lambda x: (-x[1], x[0].name))
 
 
                         self.embed = nextcord.Embed(title = "Dashboard - Leveling - Manage Members", color = nextcord.Color.blue())
                         
                         rank, lastScore = 1, 0
-                        for member in self.rankedMembers: 
-                            index = self.rankedMembers.index(member)
+                        for index, member in enumerate(self.rankedMembers): 
                             if index < 20:
                                 level = getLevel(member[1])
                                 if member[0].nick != None: memberName = f"{member[0]} ({member[0].nick})"
@@ -3988,38 +4408,38 @@ class Dashboard(nextcord.ui.View):
                             def __init__(self, outer, memberID, defaultLevel):
                                 super().__init__(title = "Choose Level")
                                 self.outer = outer
-                                self.memberID = memberID
+                                self.member_id = memberID
 
                                 self.input = nextcord.ui.TextInput(label = "Choose a level. Must be a number", default_value=str(defaultLevel))
                                 self.add_item(self.input)
                                 
                             async def callback(self, interaction: Interaction):
-                                member = self.memberID
+                                # Check
+                                if (not self.input.value.isdigit()) or int(self.input.value) < 0:
+                                    embed = nextcord.Embed(title = "Invalid Level", description = "The level needs to be a positive number.", color = nextcord.Color.red())
+                                    await interaction.response.send_message(embed = embed, ephemeral = True)
+                                    return
+                                
+                                member_id = self.member_id
                                 level = int(self.input.value)
                                 
-                                if member == None: return
+                                if member_id == None: return
                                 
                                 server = Server(interaction.guild.id)
-                                discordMember = server.levels.getMember(member)
-                                if level > 0:
-                                    if discordMember != None: discordMember.score = getScore(level)
-                                    else: server.levels.addMember(member, score = getScore(level))
-                                    server.saveLevels()
-                                else:
-                                    if discordMember != None: 
-                                        server.levels.deleteMember(member)
-                                        server.saveLevels()
-                                        
+                                member_info = server.levels.getMember(member_id)
+                                member_info.score = getScore(level)
+                                server.saveLevels()
+
                                 await self.outer.setup(interaction)
                                 
-                                #get the member
-                                Member = None
+                                # Get the member
+                                discord_member = None
                                 for _member in interaction.guild.members:
-                                    if _member.id == int(member):
-                                        Member = _member
+                                    if _member.id == int(member_id):
+                                        discord_member = _member
                                 
                                 #check their level rewards
-                                await checkForLevelsAndLevelRewards(interaction.guild, Member, silent = True)  
+                                await checkForLevelsAndLevelRewards(interaction.guild, discord_member, silent = True)  
                                                        
                         async def callback(self, interaction: Interaction):# Edit Levels Callback ————————————————————————————————————————————————————————————
                             memberSelectOptions:list[nextcord.SelectOption] = []
@@ -4075,7 +4495,7 @@ class Dashboard(nextcord.ui.View):
                                 
                             async def yesBtnCommand(self, interaction: Interaction):
                                 server = Server(interaction.guild.id)
-                                server.levels.allMembers = []
+                                server.levels.all_members = []
                                 server.saveLevels()
                                 await self.outer.setup(interaction)
                             
@@ -4116,10 +4536,12 @@ class Dashboard(nextcord.ui.View):
                             await disabledFeatureOverride(self, interaction)
                             return
                         
-                        self.embed = nextcord.Embed(title = "Dashboard - Leveling - Level Rewards", color = nextcord.Color.blue())
+                        self.embed = nextcord.Embed(title = "Dashboard - Leveling - Level Rewards", 
+                                                    description = "Unlock roles as you progress through levels on the server.",
+                                                    color = nextcord.Color.blue())
                         
                         levelRewards = []
-                        for levelReward in server.levels.levelRewards: 
+                        for levelReward in server.levels.level_rewards: 
                             if levelReward.role != None: #code should be obsolete. This is a security precaution
                                 levelRewards.append(f"{levelReward.role.mention} - Level {levelReward.level}")
                                 
@@ -4139,7 +4561,7 @@ class Dashboard(nextcord.ui.View):
                                                
                         async def callback(self, interaction: Interaction):
                             server = Server(interaction.guild.id)
-                            allLevelRewardRoles = [levelReward.role for levelReward in server.levels.levelRewards]
+                            allLevelRewardRoles = [levelReward.role for levelReward in server.levels.level_rewards]
                             
                             selectOptions = []
                             for role in interaction.guild.roles:
@@ -4151,7 +4573,10 @@ class Dashboard(nextcord.ui.View):
                                 await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Roles", description = "You've run out of roles to use! To fix this, either promote InfiniBot to the highest role, give InfiniBot Administrator, or add more roles to the server!", color = nextcord.Color.red()), ephemeral=True)             
                                         
                             else:
-                                await SelectView(self.outer.embed, selectOptions, self.selectViewCallback, continueButtonLabel = "Next", placeholder = "Choose").setup(interaction)            
+                                embed = nextcord.Embed(title = "Dashboard - Leveling - Level Rewards - Add",
+                                                       description = "Select a role to be rewarded.\n\n**Note**\nThe selected role will be revoked from members below the specified level requirement (to be set later).",
+                                                       color = nextcord.Color.blue())
+                                await SelectView(embed, selectOptions, self.selectViewCallback, continueButtonLabel = "Next", placeholder = "Choose").setup(interaction)            
                             
                         async def selectViewCallback(self, interaction: Interaction, selection):
                             if selection == None: 
@@ -4181,7 +4606,7 @@ class Dashboard(nextcord.ui.View):
                                 
                                 discordRole = interaction.guild.get_role(int(role))
                                 
-                                await interaction.followup.send(embed = nextcord.Embed(title = "Level Reward Created", description = f"{discordRole.mention} is now assigned to level {str(level)}.\nNote: This will mean that this role will be revoked to anyone who is below level {str(level)}.", color = nextcord.Color.green()), ephemeral=True)                  
+                                await interaction.followup.send(embed = nextcord.Embed(title = "Level Reward Created", description = f"{discordRole.mention} is now assigned to level {str(level)}.\n\n**Note**\nThis will mean that this role will be revoked to anyone who is below level {str(level)}.", color = nextcord.Color.green()), ephemeral=True)                  
 
                                 #update the level rewards for everyone
                                 for member in interaction.guild.members:
@@ -4206,7 +4631,7 @@ class Dashboard(nextcord.ui.View):
                                 
                             async def setup(self, interaction: Interaction):
                                 server = Server(interaction.guild.id)
-                                allLevelRewardRoles = [levelReward.role for levelReward in server.levels.levelRewards]
+                                allLevelRewardRoles = [levelReward.role for levelReward in server.levels.level_rewards]
                                 
                                 selectOptions = [nextcord.SelectOption(label = role.name, description = role.id, value = role.id) for role in allLevelRewardRoles]
                                 
@@ -4223,14 +4648,17 @@ class Dashboard(nextcord.ui.View):
                                                           
                         async def callback(self, interaction: Interaction):# Delete Level Reward Callback ————————————————————————————————————————————————————————————
                             server = Server(interaction.guild.id)
-                            allLevelRewardRoles = [levelReward.role for levelReward in server.levels.levelRewards]
+                            allLevelRewardRoles = [levelReward.role for levelReward in server.levels.level_rewards]
                             
                             selectOptions = [nextcord.SelectOption(label = role.name, description = role.id, value = role.id) for role in allLevelRewardRoles]
                             
                             if selectOptions == []:
                                 await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Roles", description = "You don't have any level rewards set up!", color = nextcord.Color.red()), ephemeral=True)                     
                             else:
-                                await SelectView(self.outer.embed, selectOptions, self.selectViewCallback, continueButtonLabel = "Delete", placeholder = "Choose").setup(interaction)
+                                embed = nextcord.Embed(title = "Dashboard - Leveling - Level Rewards - Delete",
+                                                       description = "Select a level reward to delete. This does not delete the role.",
+                                                       color = nextcord.Color.blue())
+                                await SelectView(embed, selectOptions, self.selectViewCallback, continueButtonLabel = "Delete", placeholder = "Choose").setup(interaction)
                    
                         async def selectViewCallback(self, interaction: Interaction, selection):
                             if selection == None:
@@ -4270,7 +4698,7 @@ class Dashboard(nextcord.ui.View):
                                 
                             async def yesBtnCommand(self, interaction: Interaction):
                                 server = Server(interaction.guild.id)
-                                server.levels.levelRewards = []
+                                server.levels.level_rewards = []
                                 server.saveLevelRewards()
                                 await self.outer.setup(interaction)
                                 
@@ -4296,16 +4724,13 @@ class Dashboard(nextcord.ui.View):
                         
                         server = Server(guild.id)
                         
-                        self.levelingMessageTextInput = nextcord.ui.TextInput(label = "Message ([level] = Level, BLANK = Disabled)", style = nextcord.TextInputStyle.paragraph, max_length=1024, default_value = server.levelingMessage, placeholder = "DISABLED", required = False)
+                        self.levelingMessageTextInput = nextcord.ui.TextInput(label = "Message ([level] = Level)", style = nextcord.TextInputStyle.paragraph, max_length=1024, default_value = server.leveling_message, placeholder = "Congrats! You reached level [level")
                         self.add_item(self.levelingMessageTextInput)
                         
                     async def callback(self, interaction: Interaction):
                         server = Server(interaction.guild.id)
                         
-                        if self.levelingMessageTextInput.value != "":
-                            server.levelingMessage = self.levelingMessageTextInput.value
-                        else:
-                            server.levelingMessage = None
+                        server.leveling_message = self.levelingMessageTextInput.value
                             
                         server.saveData()
                         
@@ -4316,18 +4741,21 @@ class Dashboard(nextcord.ui.View):
                     
             class LevelingChannelButton(nextcord.ui.Button):
                 def __init__(self, outer):
-                    super().__init__(label = "Leveling Channel", style = nextcord.ButtonStyle.gray, row = 1)
+                    super().__init__(label = "Notifications Channel", style = nextcord.ButtonStyle.gray, row = 1)
                     self.outer = outer
             
                 async def callback(self, interaction: Interaction):
                     server = Server(interaction.guild.id)
-                    selectOptions = [nextcord.SelectOption(label = "System Messages Channel", value = "__NONE__", description = "Display in system messages channel", default = (server.levelingChannel == None))]
+                    selectOptions = [
+                        nextcord.SelectOption(label = "No Notifications", value = "__DISABLED__", description = "Do not notify about level updates.", default = (server.leveling_channel == False)),
+                        nextcord.SelectOption(label = "System Messages Channel", value = "__NONE__", description = "Display in system messages channel", default = (server.leveling_channel == None))
+                        ]
                     for channel in interaction.guild.text_channels:
                         if channel.category != None: categoryName = channel.category.name
                         else: categoryName = None
-                        selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.levelingChannel != None and server.levelingChannel.id == channel.id)))
+                        selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.leveling_channel != None and server.leveling_channel != False and server.leveling_channel.id == channel.id)))
                         
-                    embed = nextcord.Embed(title = "Dashboard - Leveling - Leveling Channel", description = "Select a channel to show level upgrades.", color = nextcord.Color.blue())
+                    embed = nextcord.Embed(title = "Dashboard - Leveling - Notifications Channel", description = "Select a channel to notify about level updates.", color = nextcord.Color.blue())
                     await SelectView(embed, selectOptions, self.selectViewCallback).setup(interaction)
 
                 async def selectViewCallback(self, interaction: Interaction, selection):
@@ -4336,12 +4764,13 @@ class Dashboard(nextcord.ui.View):
                         return
                     
                     if selection == "__NONE__": value = None
+                    elif selection == "__DISABLED__": value = False
                     else: value = selection
                     
                     server = Server(interaction.guild.id)
                     if server.setLevelingChannelID(value):
                         server.saveData()
-                        await self.outer.setup(interaction)    
+                        await self.outer.setup(interaction)
 
             class PointsLostPerDayButton(nextcord.ui.Button):
                 def __init__(self, outer):
@@ -4355,7 +4784,7 @@ class Dashboard(nextcord.ui.View):
                         
                         server = Server(guild.id)
                         
-                        self.pointsLostPerDayTextInput = nextcord.ui.TextInput(label = "Points (must be a number, blank = DISABLED)", style = nextcord.TextInputStyle.short, max_length=3, default_value = server.pointsLostPerDay, required = False)
+                        self.pointsLostPerDayTextInput = nextcord.ui.TextInput(label = "Points (must be a number, blank = DISABLED)", style = nextcord.TextInputStyle.short, max_length=3, default_value = server.points_lost_per_day, required = False)
                         self.add_item(self.pointsLostPerDayTextInput)
                         
                     async def callback(self, interaction: Interaction):
@@ -4366,14 +4795,14 @@ class Dashboard(nextcord.ui.View):
                             if not value.isnumeric() or int(value) < 0:
                                 await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "\"Points\" must be a number and cannot be negative.", color = nextcord.Color.red()), ephemeral = True)
                                 return
-                            server.pointsLostPerDay = int(value)
+                            server.points_lost_per_day = int(value)
                             server.saveData()
                         
                             await self.outer.setup(interaction)
                             await interaction.followup.send(embed = nextcord.Embed(title = "Points Lost Per Day Set", description = f"Every day at midnight, everyone will loose {value} points.", color = nextcord.Color.green()), ephemeral = True)
                         
                         else:
-                            server.pointsLostPerDay = None
+                            server.points_lost_per_day = None
                             server.saveData()
                         
                             await self.outer.setup(interaction)
@@ -4406,7 +4835,7 @@ class Dashboard(nextcord.ui.View):
                         server = Server(interaction.guild.id)
                         
                         
-                        channels = "\n".join([f"• {channel.mention}" for channel in server.levelingExemptChannels])
+                        channels = "\n".join([f"• {channel.mention}" for channel in server.leveling_exempt_channels])
                         
                         if channels == "":
                             channels = "You don't have any exempt channels yet. Add one!"
@@ -4427,18 +4856,19 @@ class Dashboard(nextcord.ui.View):
                     class AddButton(nextcord.ui.Button):
                         def __init__(self, outer, interaction: Interaction):
                             server = Server(interaction.guild.id)
-                            disabled = (len(server.levelingExemptChannels) == 20)
+                            disabled = (len(server.leveling_exempt_channels) == 20)
                             super().__init__(label = "Add Channel", style = nextcord.ButtonStyle.gray, disabled = disabled)
                             self.outer = outer
                                                     
                         async def callback(self, interaction: Interaction):
                             options = []
                             server = Server(interaction.guild.id)
-                            alreadyAddedIds = [channel.id for channel in server.levelingExemptChannels]
+                            already_added_ids = [channel.id for channel in server.leveling_exempt_channels]
                             for channel in interaction.guild.channels:
                                 if type(channel) != nextcord.TextChannel and type(channel) != nextcord.VoiceChannel: continue
-                                if channel.id in alreadyAddedIds: continue
-                                options.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = channel.id))
+                                if channel.id in already_added_ids: continue
+                                channel_category = (channel.category.name if channel.category else None)
+                                options.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = channel_category))
                             
                             if len(options) == 0:
                                 await interaction.response.send_message(embed = nextcord.Embed(title = "No More Channels", description = "You've ran out of channels to exempt. Create more channels, or give InfiniBot higher permissions to see more channels!", color = nextcord.Color.red()), ephemeral = True)
@@ -4451,7 +4881,7 @@ class Dashboard(nextcord.ui.View):
                         async def selectCallback(self, interaction: Interaction, choice):
                             if choice != None:
                                 server = Server(interaction.guild.id)
-                                server.levelingExemptChannels.append(interaction.guild.get_channel(int(choice)))
+                                server.leveling_exempt_channels.append(interaction.guild.get_channel(int(choice)))
                                 server.saveData()
                                 
                             await self.outer.reload(interaction)
@@ -4459,26 +4889,27 @@ class Dashboard(nextcord.ui.View):
                     class DeleteButton(nextcord.ui.Button):
                         def __init__(self, outer, interaction: Interaction):
                             server = Server(interaction.guild.id)
-                            disabled = (len(server.levelingExemptChannels) == 0)
+                            disabled = (len(server.leveling_exempt_channels) == 0)
                             super().__init__(label = "Delete Channel", style = nextcord.ButtonStyle.gray, disabled = disabled)
                             self.outer = outer
                                                     
                         async def callback(self, interaction: Interaction):
                             options = []
                             server = Server(interaction.guild.id)
-                            for channel in server.levelingExemptChannels:
-                                options.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = channel.id))
+                            for channel in server.leveling_exempt_channels:
+                                channel_category = (channel.category.name if channel.category else None)
+                                options.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = channel_category))
                             
-                            embed = nextcord.Embed(title = "Dashboard - Leveling - Exempt Channels - Delete", description = "Choose a Channel to Remove from Exempt Channels")
+                            embed = nextcord.Embed(title = "Dashboard - Leveling - Exempt Channels - Delete", description = "Choose a Channel to Remove from Exempt Channels", color = nextcord.Color.blue())
                             selectView = SelectView(embed, options, self.selectCallback, placeholder = "Choose a Channel", continueButtonLabel = "Delete Channel")
                             await selectView.setup(interaction)
                
                         async def selectCallback(self, interaction: Interaction, choice):
                             if choice != None:
                                 server = Server(interaction.guild.id)
-                                for channel in server.levelingExemptChannels:
+                                for channel in server.leveling_exempt_channels:
                                     if channel.id == int(choice):
-                                        server.levelingExemptChannels.remove(channel) #usually, you would never do this in a loop. However, because we are only doing it once, this still works.
+                                        server.leveling_exempt_channels.remove(channel) #usually, you would never do this in a loop. However, because we are only doing it once, this still works.
                                         pass
 
                                 server.saveData()
@@ -4500,7 +4931,7 @@ class Dashboard(nextcord.ui.View):
                         
                         server = Server(interaction.guild.id)
                         
-                        if server.allowLevelCardsBool: buttonLabel = "Disable"
+                        if server.allow_level_cards_bool: buttonLabel = "Disable"
                         else: buttonLabel = "Enable"
                         
                         del server #we don't need it anymore
@@ -4518,10 +4949,10 @@ class Dashboard(nextcord.ui.View):
                     async def setup(self, interaction: Interaction):
                         server = Server(interaction.guild.id)
                         
-                        if server.allowLevelCardsBool: levelCards = "on"
+                        if server.allow_level_cards_bool: levelCards = "on"
                         else: levelCards = "off"
                 
-                        embed = nextcord.Embed(title = "Dashboard - Leveling - Level-Up Cards", description = f"Currently, level-up cards are turned {levelCards}.\n\n**What are level-up cards?**\nIf enabled, members can personalize their own level-up card which will be displayed after each level-up message.", color = nextcord.Color.blue())
+                        embed = nextcord.Embed(title = "Dashboard - Leveling - Level-Up Cards", description = f"Currently, level-up cards are turned {levelCards}.\n\n**What are level-up cards?**\nWhen enabled, members can craft personalized level-up cards displayed after each level-up message.", color = nextcord.Color.blue())
                         await interaction.response.edit_message(embed = embed, view = self)
                         
                     async def backBtnCallback(self, interaction: Interaction):
@@ -4530,7 +4961,7 @@ class Dashboard(nextcord.ui.View):
                     async def mainBtnCallback(self, interaction: Interaction):
                         server = Server(interaction.guild.id)
                         
-                        server.allowLevelCardsBool = not server.allowLevelCardsBool
+                        server.allow_level_cards_bool = not server.allow_level_cards_bool
                         
                         server.saveData()
                         
@@ -4539,6 +4970,70 @@ class Dashboard(nextcord.ui.View):
                 async def callback(self, interaction: Interaction):
                     await self.LevelCardsView(self.outer, interaction).setup(interaction)
                  
+            class EnableDisableButton(nextcord.ui.Button):
+                def __init__(self, outer):
+                    super().__init__(label = "Disable Leveling", row = 3)
+                    self.outer = outer
+                    
+                class EnableDisableView(nextcord.ui.View):
+                    def __init__(self, outer):
+                        super().__init__(timeout = None)
+                        self.outer = outer
+                        
+                        self.backBtn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
+                        self.backBtn.callback = self.backBtnCallback
+                        self.add_item(self.backBtn)
+                        
+                        self.actionBtn = nextcord.ui.Button(label = "ACTION", style = nextcord.ButtonStyle.green)
+                        self.actionBtn.callback = self.actionBtnCallback
+                        self.add_item(self.actionBtn)
+                        
+                        
+                    async def setup(self, interaction: Interaction, server = None):
+                        if not server: server = Server(interaction.guild.id)
+                        
+                        # Determine whether or not we are active or not.
+                        if server.leveling_enabled:
+                            # We *are* active. Give info for deactivation
+                            embed = nextcord.Embed(title = "Dashboard - Leveling - Disable", 
+                                                    description = "Are you sure you want to disable leveling? You can re-enable this feature at any time.",
+                                                    color = nextcord.Color.blue())
+                            self.actionBtn.label = "Disable"
+                            
+                        else:
+                            # We are *not* active. Give info for activation
+                            embed = nextcord.Embed(title = "Dashboard - Leveling",
+                                                    description = "Leveling is currently disabled. Do you want to enable it?",
+                                                    color = nextcord.Color.blue())
+                            self.actionBtn.label = "Enable"
+                            
+                        await interaction.response.edit_message(embed = embed, view = self)
+                        
+                    async def backBtnCallback(self, interaction: Interaction, server = None):
+                        if not server: server = Server(interaction.guild.id)
+                        
+                        # Return either to leveling or dashboard
+                        if server.leveling_enabled:
+                            # Enabled. Put us in here.
+                            await self.outer.setup(interaction)
+                            
+                        else:
+                            # Disabled. Put us in the level above (dashboard)
+                            await self.outer.outer.setup(interaction)
+                        
+                    async def actionBtnCallback(self, interaction: Interaction):
+                        server = Server(interaction.guild.id)
+                        
+                        server.leveling_enabled = (not server.leveling_enabled)
+                        
+                        server.saveData()
+                        
+                        # Return them.
+                        await self.backBtnCallback(interaction, server = server)
+                    
+                async def callback(self, interaction: Interaction):
+                    await self.EnableDisableView(self.outer).setup(interaction)
+                               
         async def callback(self, interaction: Interaction):
             await self.LevelingView(self.outer).setup(interaction)
 
@@ -4548,9 +5043,11 @@ class Dashboard(nextcord.ui.View):
             self.outer = outer
             
         class JoinLeaveMessagesView(nextcord.ui.View):
-            def __init__(self, outer):
+            def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
                 super().__init__(timeout = None)
                 self.outer = outer
+                self.onboarding_modifier = onboarding_modifier
+                self.onboarding_embed = onboarding_embed
                 
                 self.joinMessageBtn = self.JoinMessageButton(self)
                 self.add_item(self.joinMessageBtn)
@@ -4572,33 +5069,48 @@ class Dashboard(nextcord.ui.View):
                 self.add_item(self.backBtn)
                 
             async def setup(self, interaction: Interaction):
-                for child in self.children: 
-                    del child 
-                    self.__init__(self.outer)
+                if self.onboarding_modifier: self.onboarding_modifier(self)
+                
+                # Clean up
+                if not self.onboarding_modifier:
+                    for child in self.children: 
+                        del child 
+                        self.__init__(self.outer)
 
                 server = Server(interaction.guild.id)
                 
+                # Global Kill
                 if not utils.enabled.JoinLeaveMessages(server = server):
                     await disabledFeatureOverride(self, interaction)
                     return
                 
-                if server.joinMessage != None: joinMessage = server.joinMessage
-                else: joinMessage = "DISABLED"
+                if server.join_message != None and server.join_channel != False: join_message = f"```{server.join_message}```"
+                else: join_message = "N/A"
                 
-                if server.leaveMessage != None: leaveMessage = server.leaveMessage
-                else: leaveMessage = "DISABLED"
+                if server.leave_message != None and server.leave_channel != False: leave_message = f"```{server.leave_message}```"
+                else: leave_message = "N/A"
                 
-                if server.allowJoinCardsBool: joinCardsEnabled = "Yes"
-                else: joinCardsEnabled = "No"
+                if server.allow_join_cards_bool: join_cards_enabled = "Yes"
+                else: join_cards_enabled = "No"
                 
-                if server.joinChannel != None: joinChannel = server.joinChannel.mention
-                else: joinChannel = "System Messages Channel"
+                if server.join_channel == None: join_channel = "System Messages Channel"
+                elif server.join_channel == False: join_channel = "DISABLED"
+                else: join_channel = server.join_channel.mention
                 
-                if server.leaveChannel != None: leaveChannel = server.leaveChannel.mention
-                else: leaveChannel = "System Messages Channel"
+                if server.leave_channel == None: leave_channel = "System Messages Channel"
+                elif server.leave_channel == False: leave_channel = "DISABLED"
+                else: leave_channel = server.leave_channel.mention
                 
-                embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages", description = f"**Settings:**\nJoin Messages Channel: {joinChannel}\nLeave Messages Channel: {leaveChannel}\n\nJoin Cards Enabled: {joinCardsEnabled}\n\nJoin Message:```{joinMessage}```Leave Message:```{leaveMessage}```\n\n**Choose a feature to setup / edit**", color = nextcord.Color.blue())
-                await interaction.response.edit_message(embed = embed, view = self)
+                embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages", description = f"Set up custom messages for member joins and leaves.\n\n**Settings:**\nJoin Messages Channel: {join_channel}\nLeave Messages Channel: {leave_channel}\n\nJoin Cards Enabled: {join_cards_enabled}\n\nJoin Message: {join_message}\nLeave Message: {leave_message}\n\nFor more information, use: {levelingHelp.get_mention()}", color = nextcord.Color.blue())
+                
+                if self.onboarding_embed: embeds = [self.onboarding_embed, embed]
+                else: embeds = [embed]
+                
+                # Update Buttons
+                self.joinMessageBtn.disabled = (server.join_channel == False)
+                self.leaveMessageBtn.disabled = (server.leave_channel == False)
+                
+                await interaction.response.edit_message(embeds = embeds, view = self)
              
             async def backBtnCallback(self, interaction: Interaction):
                 await self.outer.setup(interaction)
@@ -4614,18 +5126,14 @@ class Dashboard(nextcord.ui.View):
                         self.outer = outer
                         
                         server = Server(guild.id)
-                        if server.joinMessage != None: joinMessage = server.joinMessage
+                        if server.join_message != None: joinMessage = server.join_message
                         else: joinMessage = ""
-                        self.joinMessageTextInput = nextcord.ui.TextInput(label = "Message ([member] = member, blank = DISABLED)", style = nextcord.TextInputStyle.paragraph, max_length=1024, default_value = joinMessage, placeholder = "DISABLED", required = False)
+                        self.joinMessageTextInput = nextcord.ui.TextInput(label = "Message ([member] = member)", style = nextcord.TextInputStyle.paragraph, max_length=1024, default_value = joinMessage, placeholder = "Hello There, [member]!")
                         self.add_item(self.joinMessageTextInput)
                         
                     async def callback(self, interaction: Interaction):
                         server = Server(interaction.guild.id)
-                        
-                        
-                        if self.joinMessageTextInput.value != "": server.joinMessage = self.joinMessageTextInput.value
-                        else: server.joinMessage = None
-                        
+                        server.join_message = self.joinMessageTextInput.value  
                         server.saveData()
                         
                         await self.outer.setup(interaction)                     
@@ -4641,11 +5149,12 @@ class Dashboard(nextcord.ui.View):
                 async def callback(self, interaction: Interaction):
                     server = Server(interaction.guild.id)
                         
-                    selectOptions = [nextcord.SelectOption(label = "System Messages Channel", value = "__NONE__", description = "Display in system messages channel", default = (server.joinChannel == None))]
+                    selectOptions = [nextcord.SelectOption(label = "No Join Messages", value = "__DISABLED__", description = "Don't show welcome messages", default = (server.join_channel == False)),
+                        nextcord.SelectOption(label = "System Messages Channel", value = "__NONE__", description = "Display in system messages channel", default = (server.join_channel == None))]
                     for channel in interaction.guild.text_channels:
                         if channel.category != None: categoryName = channel.category.name
                         else: categoryName = None
-                        selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.joinChannel != None and server.joinChannel.id == channel.id)))
+                        selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.join_channel != None and server.join_channel != False and server.join_channel.id == channel.id)))
                     
                     embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Messages Channel", description = "Select a channel to send join messages", color = nextcord.Color.blue())
                     await SelectView(embed, selectOptions, self.SelectViewReturn, continueButtonLabel = "Confirm").setup(interaction)
@@ -4656,6 +5165,7 @@ class Dashboard(nextcord.ui.View):
                         return
                     
                     if selection == "__NONE__": value = None
+                    elif selection == "__DISABLED__": value = False
                     else: value = selection
                     
                     server = Server(interaction.guild.id)
@@ -4674,17 +5184,14 @@ class Dashboard(nextcord.ui.View):
                         self.outer = outer
                         
                         server = Server(guild.id)
-                        if server.leaveMessage != None: leaveMessage = server.leaveMessage
+                        if server.leave_message != None: leaveMessage = server.leave_message
                         else: leaveMessage = ""
-                        self.leaveMessageTextInput = nextcord.ui.TextInput(label = "Message ([member] = member, blank = DISABLED)", style = nextcord.TextInputStyle.paragraph, max_length=1024, default_value = leaveMessage, placeholder = "DISABLED", required = False)
+                        self.leaveMessageTextInput = nextcord.ui.TextInput(label = "Message ([member] = member)", style = nextcord.TextInputStyle.paragraph, max_length=1024, default_value = leaveMessage, placeholder = "[member] left. They will be remembered.")
                         self.add_item(self.leaveMessageTextInput)
                         
                     async def callback(self, interaction: Interaction):
-                        server = Server(interaction.guild.id)
-                        
-                        if self.leaveMessageTextInput.value != "": server.leaveMessage = self.leaveMessageTextInput.value
-                        else: server.leaveMessage = None
-                        
+                        server = Server(interaction.guild.id)        
+                        server.leave_message = self.leaveMessageTextInput.value
                         server.saveData()
                         
                         await self.outer.setup(interaction)                       
@@ -4700,11 +5207,12 @@ class Dashboard(nextcord.ui.View):
                 async def callback(self, interaction: Interaction):
                     server = Server(interaction.guild.id)
                         
-                    selectOptions = [nextcord.SelectOption(label = "System Messages Channel", value = "__NONE__", description = "Display in system messages channel", default = (server.leaveChannel == None))]
+                    selectOptions = [nextcord.SelectOption(label = "No Leave Messages", value = "__DISABLED__", description = "Don't show welcome messages", default = (server.leave_channel == False)),
+                        nextcord.SelectOption(label = "System Messages Channel", value = "__NONE__", description = "Display in system messages channel", default = (server.leave_channel == None))]
                     for channel in interaction.guild.text_channels:
                         if channel.category != None: categoryName = channel.category.name
                         else: categoryName = None
-                        selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.leaveChannel != None and server.leaveChannel.id == channel.id)))
+                        selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.leave_channel != None and server.leave_channel != False and server.leave_channel.id == channel.id)))
                     
                     embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Leave Messages Channel", description = "Select a channel to send leave messages", color = nextcord.Color.blue())
                     await SelectView(embed, selectOptions, self.SelectViewReturn, continueButtonLabel = "Confirm").setup(interaction)
@@ -4715,6 +5223,7 @@ class Dashboard(nextcord.ui.View):
                         return
                     
                     if selection == "__NONE__": value = None
+                    elif selection == "__DISABLED__": value = False
                     else: value = selection
                     
                     server = Server(interaction.guild.id)
@@ -4734,7 +5243,7 @@ class Dashboard(nextcord.ui.View):
                         
                         server = Server(interaction.guild.id)
                         
-                        if server.allowJoinCardsBool: buttonLabel = "Disable"
+                        if server.allow_join_cards_bool: buttonLabel = "Disable"
                         else: buttonLabel = "Enable"
                         
                         del server #we don't need it anymore
@@ -4752,7 +5261,7 @@ class Dashboard(nextcord.ui.View):
                     async def setup(self, interaction: Interaction):
                         server = Server(interaction.guild.id)
                         
-                        if server.allowJoinCardsBool: joinCards = "on"
+                        if server.allow_join_cards_bool: joinCards = "on"
                         else: joinCards = "off"
                 
                         embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Cards", description = f"Currently, join cards are turned {joinCards}.\n\n**What are join cards?**\nIf enabled, members can personalize their own join card which will be displayed after each join message.", color = nextcord.Color.blue())
@@ -4764,7 +5273,7 @@ class Dashboard(nextcord.ui.View):
                     async def mainBtnCallback(self, interaction: Interaction):
                         server = Server(interaction.guild.id)
                         
-                        server.allowJoinCardsBool = not server.allowJoinCardsBool
+                        server.allow_join_cards_bool = not server.allow_join_cards_bool
                         
                         server.saveData()
                         
@@ -4782,9 +5291,11 @@ class Dashboard(nextcord.ui.View):
             self.outer = outer 
             
         class BirthdaysView(nextcord.ui.View): #Birthdays Window -----------------------------------------------------
-            def __init__(self, outer):
+            def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
                 super().__init__(timeout = None)
                 self.outer = outer
+                self.onboarding_modifier = onboarding_modifier
+                self.onboarding_embed = onboarding_embed
                 
                 self.addBirthdayBtn = self.AddBirthdayButton(self)
                 self.add_item(self.addBirthdayBtn)
@@ -4798,14 +5309,21 @@ class Dashboard(nextcord.ui.View):
                 self.deleteAllBirthdayBtn = self.DeleteAllBirthdaysButton(self)
                 self.add_item(self.deleteAllBirthdayBtn)
                 
-                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 3) 
+                self.birthdaysChannelBtn = self.BirthdaysChannelButton(self)
+                self.add_item(self.birthdaysChannelBtn)
+                
+                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 2) 
                 self.backBtn.callback = self.backBtnCallback
                 self.add_item(self.backBtn)
                              
             async def setup(self, interaction: Interaction):
-                for child in self.children: 
-                    del child 
-                    self.__init__(self.outer)
+                if self.onboarding_modifier: self.onboarding_modifier(self)
+                        
+                # Clean up
+                if not self.onboarding_modifier:
+                    for child in self.children: 
+                        del child 
+                        self.__init__(self.outer)
                 
                 server = Server(interaction.guild.id)
                 
@@ -4821,18 +5339,38 @@ class Dashboard(nextcord.ui.View):
                             server.saveBirthdays()
                             continue
                         
-                        if bday.realName != None: birthdays.append(f"{bday.member.mention} ({str(bday.realName)}) - {bday.date}")
+                        if bday.real_name != None: birthdays.append(f"{bday.member.mention} ({str(bday.real_name)}) - {bday.date}")
                         else: birthdays.append(f"{bday.member.mention} - {bday.date}")
                             
                     except Exception as err:
                         print("Birthdays View Error:", err)
                         
-                if len(birthdays) == 0: birthdaysStr = "You don't have any birthdays. Create one!"
-                else: birthdaysStr = "\n".join(birthdays)
+                if len(birthdays) == 0: birthdays_str = "You don't have any birthdays. Create one!"
+                else: birthdays_str = "\n".join(birthdays)
+                
+                if server.birthday_channel == None: birthday_channel = "System Messages Channel"
+                else: birthday_channel = server.birthday_channel.mention
 
-                self.embed = nextcord.Embed(title = "Dashboard - Birthdays", description = f"**Birthdays**\n{birthdaysStr}\n\n**Use the buttons below to add/edit/delete.**", color = nextcord.Color.blue())
-                try: await interaction.response.edit_message(embed = self.embed, view = self)
-                except: await interaction.edit_original_message(embed = self.embed, view = self)
+                description = f"""
+                Celebrate birthdays with InfiniBot's personalized messages.
+                
+                **Settings**
+                Notifications Channel: {birthday_channel}
+                
+                **Birthdays**
+                {birthdays_str}
+                
+                For more information, use: {birthdaysHelp.get_mention()}
+                """
+                description = standardizeStrIndention(description)
+                
+                self.embed = nextcord.Embed(title = "Dashboard - Birthdays", description = description, color = nextcord.Color.blue())
+                
+                if self.onboarding_embed: embeds = [self.onboarding_embed, self.embed]
+                else: embeds = [self.embed]
+                
+                try: await interaction.response.edit_message(embeds = embeds, view = self)
+                except: await interaction.edit_original_message(embeds = embeds, view = self)
                 
             async def backBtnCallback(self, interaction: Interaction):
                 await self.outer.setup(interaction)               
@@ -4885,7 +5423,7 @@ class Dashboard(nextcord.ui.View):
                         
                         server = Server(interaction.guild.id)
                         if self.realNameInput.value == "": server.addBirthday(self.memberID, self.dateInput.value)
-                        else: server.addBirthday(self.memberID, self.dateInput.value, realName = self.realNameInput.value)
+                        else: server.addBirthday(self.memberID, self.dateInput.value, real_name = self.realNameInput.value)
                         server.saveBirthdays()
                         
                         
@@ -4929,7 +5467,7 @@ class Dashboard(nextcord.ui.View):
                         self.dateInput = nextcord.ui.TextInput(label = "Date (MM/DD/YYYY)", style = nextcord.TextInputStyle.short, max_length = 10, placeholder = "MM/DD/YYYY", default_value = birthday.date)
                         self.add_item(self.dateInput)
                         
-                        self.realNameInput = nextcord.ui.TextInput(label = "Real Name (Optional)", style = nextcord.TextInputStyle.short, max_length=50, required = False, default_value = birthday.realName)
+                        self.realNameInput = nextcord.ui.TextInput(label = "Real Name (Optional)", style = nextcord.TextInputStyle.short, max_length=50, required = False, default_value = birthday.real_name)
                         self.add_item(self.realNameInput)
                         
                     async def callback(self, interaction: Interaction):
@@ -4943,7 +5481,7 @@ class Dashboard(nextcord.ui.View):
                         birthday = server.getBirthday(self.memberID)
                         birthday.date = self.dateInput.value
                         
-                        if self.realNameInput.value != "": birthday.realName = self.realNameInput.value
+                        if self.realNameInput.value != "": birthday.real_name = self.realNameInput.value
                         server.saveBirthdays()
                         
                         
@@ -5012,6 +5550,36 @@ class Dashboard(nextcord.ui.View):
                     
                 async def callback(self, interaction: Interaction):
                     await self.DeleteAllStrikesView(self.outer).setup(interaction)           
+     
+            class BirthdaysChannelButton(nextcord.ui.Button):
+                def __init__(self, outer):
+                    super().__init__(label = "Notification Channel", style = nextcord.ButtonStyle.gray, row = 1)
+                    self.outer = outer
+                                     
+                async def callback(self, interaction: Interaction):
+                    server = Server(interaction.guild.id)
+                        
+                    selectOptions = [nextcord.SelectOption(label = "System Messages Channel", value = "__NONE__", description = "Display in system messages channel", default = (server.birthday_channel == None))]
+                    for channel in interaction.guild.text_channels:
+                        if channel.category != None: categoryName = channel.category.name
+                        else: categoryName = None
+                        selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.birthday_channel != None and server.birthday_channel.id == channel.id)))
+                    
+                    embed = nextcord.Embed(title = "Dashboard - Birthdays - Notification Channel", description = "Select a channel to send birthday messages.", color = nextcord.Color.blue())
+                    await SelectView(embed, selectOptions, self.SelectViewReturn, continueButtonLabel = "Confirm").setup(interaction)
+                      
+                async def SelectViewReturn(self, interaction: Interaction, selection):
+                    if selection == None:
+                        await self.outer.setup(interaction)
+                        return
+                    
+                    if selection == "__NONE__": value = None
+                    else: value = selection
+                    
+                    server = Server(interaction.guild.id)
+                    if server.setBirthdayChannelID(value):
+                        server.saveData()
+                        await self.outer.setup(interaction)
            
         async def callback(self, interaction: Interaction):
             view = self.BirthdaysView(self.outer)
@@ -5023,19 +5591,23 @@ class Dashboard(nextcord.ui.View):
             self.outer = outer
     
         class DefaultRolesView(nextcord.ui.View):
-            def __init__(self, outer):
+            def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
                 super().__init__(timeout=None)
                 self.outer = outer
+                self.onboarding_modifier = onboarding_modifier
+                self.onboarding_embed = onboarding_embed
                 
                 self.cancelBtn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
                 self.cancelBtn.callback = self.cancelBtnCallback
 
-                self.confirmBtn = self.NextButton(self.outer, self)
+                self.updateBtn = self.UpdateButton(self.outer, self)
                 
-            async def setup(self, interaction: Interaction):
-                for child in self.children: 
-                    del child 
-                    self.__init__(self.outer)
+            async def setup(self, interaction: Interaction):                   
+                # Clean up
+                if not self.onboarding_modifier:
+                    for child in self.children: 
+                        del child 
+                        self.__init__(self.outer)
                 
                 embed = nextcord.Embed(title = "Dashboard - Default Roles", description = "Select the roles you would that InfiniBot will assign to any new members upon join.", color = nextcord.Color.blue())
                 
@@ -5054,17 +5626,27 @@ class Dashboard(nextcord.ui.View):
                         embed.description += "\n\nNote: Only the first 25 roles of your server can be set as default roles."
                         break
                         
-                    selectOptions.append(nextcord.SelectOption(label = role.name, description = role.id, value = role.id, default = (role in server.defaultRoles)))
+                    selectOptions.append(nextcord.SelectOption(label = role.name, description = role.id, value = role.id, default = (role in server.default_roles)))
                 
                 if len(selectOptions) <= 5: maxOptions = len(selectOptions)
                 else: maxOptions = 5
+                
+                if self.onboarding_embed: embeds = [self.onboarding_embed, embed]
+                else: embeds = [embed]
                 
                 if selectOptions != []:
                     self.roleSelect = nextcord.ui.Select(options = selectOptions, placeholder = "Choose", max_values = maxOptions, min_values = 0)
                     self.add_item(self.roleSelect)
                     self.add_item(self.cancelBtn)
-                    self.add_item(self.confirmBtn)
-                    await interaction.response.edit_message(embed = embed, view = self)
+                    self.add_item(self.updateBtn)
+                    
+                    if self.onboarding_modifier: 
+                        self.onboarding_modifier(self)
+                        self.updateBtn.style = nextcord.ButtonStyle.gray
+                        self.updateBtn.label = "Save"
+                        self.updateBtn.go_back_to_dashboard = False
+                    
+                    await interaction.response.edit_message(embeds = embeds, view = self)
                     
                 else:
                     await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Roles", description = "You've run out of roles to use! To fix this, either promote InfiniBot to the highest role, give InfiniBot Administrator, or add more roles to the server!", color = nextcord.Color.red()), ephemeral=True)             
@@ -5072,11 +5654,12 @@ class Dashboard(nextcord.ui.View):
             async def cancelBtnCallback(self, interaction: Interaction):
                 await self.outer.setup(interaction)
                 
-            class NextButton(nextcord.ui.Button):
+            class UpdateButton(nextcord.ui.Button):
                 def __init__(self, outer, parent):
                     super().__init__(label = "Update", style = nextcord.ButtonStyle.blurple)
                     self.outer = outer     
-                    self.parent = parent                 
+                    self.parent = parent
+                    self.go_back_to_dashboard = True                 
                         
                 async def callback(self, interaction: Interaction):
                     server = Server(interaction.guild.id)
@@ -5087,10 +5670,10 @@ class Dashboard(nextcord.ui.View):
                         except: return
                     
                     
-                    server.defaultRoles = defaultRoles
+                    server.default_roles = defaultRoles
                     server.saveData()
                     
-                    await self.outer.setup(interaction)
+                    if self.go_back_to_dashboard: await self.outer.setup(interaction)
             
         async def callback(self, interaction: Interaction):
             await self.DefaultRolesView(self.outer).setup(interaction)    
@@ -5101,9 +5684,11 @@ class Dashboard(nextcord.ui.View):
             self.outer = outer
                     
         class JoinToCreateVCsView(nextcord.ui.View):
-            def __init__(self, outer):
+            def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
                 super().__init__(timeout=None)
                 self.outer = outer
+                self.onboarding_modifier = onboarding_modifier
+                self.onboarding_embed = onboarding_embed
                 
                 #create buttons
                 self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger)
@@ -5123,14 +5708,19 @@ class Dashboard(nextcord.ui.View):
                 else:
                     description = "**Join-To-Create VCs**\nYou don't have any join-to-create VCs. Click Configure to make one!"
                     
-                return nextcord.Embed(title = "Dashboard - Join-To-Create-VCs", description = f"You may select up to five voice channels that will have this feature.\n\n**What is it?**\nWhen a user joins one of these Voice Channels, they will be moved to a custom voice channel created just for them. When everyone leaves, the channel will be removed.\n\n{description}", color = nextcord.Color.blue())
+                return nextcord.Embed(title = "Dashboard - Join-To-Create-VCs", description = f"You may select up to five voice channels that will have this feature.\n\n**What is it?**\nWhen a user joins one of these Voice Channels, they will be moved to a custom voice channel created just for them. When everyone leaves, the channel will be removed.\n\n{description}\n\nFor more information, use: {joinToCreateVoiceChannelsHelp.get_mention()}", color = nextcord.Color.blue())
         
             async def setup(self, interaction: Interaction):
+                if self.onboarding_modifier: self.onboarding_modifier(self)
+                
                 if not utils.enabled.JoinToCreateVCs(guild_id = interaction.guild.id):
                     await disabledFeatureOverride(self, interaction)
                     return
                 
-                await interaction.response.edit_message(embed = self.getMessageEmbed(interaction.guild), view = self)
+                if self.onboarding_embed: embeds = [self.onboarding_embed, self.getMessageEmbed(interaction.guild)]
+                else: embeds = [self.getMessageEmbed(interaction.guild)]
+                
+                await interaction.response.edit_message(embeds = embeds, view = self)
                     
             async def backBtnCallback(self, interaction: Interaction):
                 await self.outer.setup(interaction)
@@ -5150,7 +5740,8 @@ class Dashboard(nextcord.ui.View):
                         Make sure InfiniBot has the following permissions in your channel:
                         • View Channel
                         • Manage Channel
-                        • Connect"""
+                        • Connect
+                        • Move Members"""
                         dontSeeYourChannelMessage = standardizeStrIndention(dontSeeYourChannelMessage)
                         self.embed.description += dontSeeYourChannelMessage
                         
@@ -5325,8 +5916,8 @@ class Dashboard(nextcord.ui.View):
                         return
                     
                     autoBans = []
-                    for autoBan in server.autoBans:
-                        autoBans.append(f"• {autoBan.memberName}  (ID: {autoBan.memberID})")
+                    for autoBan in server.auto_bans:
+                        autoBans.append(f"• {autoBan.member_name}  (ID: {autoBan.member_id})")
                         
                     if len(autoBans) > 0:
                         autoBansStr = "\n".join(autoBans)
@@ -5350,7 +5941,9 @@ class Dashboard(nextcord.ui.View):
                     
                     
                     **Current Auto-Bans**
-                    {autoBansStr}"""
+                    {autoBansStr}
+                    
+                    For more information, use: {autoBansHelp.get_mention()}"""
                     
                     # On Mobile, extra spaces cause problems. We'll get rid of them here:
                     description = standardizeStrIndention(description)
@@ -5481,9 +6074,9 @@ class Dashboard(nextcord.ui.View):
                     server = Server(interaction.guild.id)
                     
                     autoBans = []
-                    for autoBan in server.autoBans:
-                        label = (f"{autoBan.memberName}")
-                        autoBans.append(nextcord.SelectOption(label = label, description = f"ID: {autoBan.memberID}", value = autoBan.memberID))
+                    for autoBan in server.auto_bans:
+                        label = (f"{autoBan.member_name}")
+                        autoBans.append(nextcord.SelectOption(label = label, description = f"ID: {autoBan.member_id}", value = autoBan.member_id))
                     
                     embed = nextcord.Embed(title = "Dashboard - Auto-Bans - Revoke", description = "To revoke an auto-ban, select the member, and click \"Revoke Auto-Ban\". They will then be able to join this server without being auto-banned.", color = nextcord.Color.blue())
                     await SelectView(embed = embed, options = autoBans, returnCommand = self.selectViewCallback, placeholder = "Select a Member", continueButtonLabel = "Revoke Auto-Ban").setup(interaction)
@@ -5652,37 +6245,25 @@ class Dashboard(nextcord.ui.View):
         async def callback(self, interaction: Interaction):
             await self.ActiveMessagesView(self.outer).setup(interaction)
         
-    class EnableDisableButton(nextcord.ui.Button):
+    class ExtraFeaturesButton(nextcord.ui.Button):
         def __init__(self, outer):
-            super().__init__(label = "Enable / Disable Features", style = nextcord.ButtonStyle.gray, row = 2)
+            super().__init__(label = "Extra Features", style = nextcord.ButtonStyle.gray, row = 2)
             self.outer = outer
             
-        class EnableDisableView(nextcord.ui.View):
+        class ExtraFeaturesButton(nextcord.ui.View):
             def __init__(self, outer, guildID):
                 super().__init__(timeout = None)
                 self.outer = outer
                 self.server = Server(guildID)
-                
-                self.profanityBtn = self.EnableDisableButton(self, "Profanity Moderation", self.server)
-                self.add_item(self.profanityBtn)
-                
-                self.spamBtn = self.EnableDisableButton(self, "Spam Moderation", self.server)
-                self.add_item(self.spamBtn)
-                
-                self.loggingBtn = self.EnableDisableButton(self, "Logging", self.server, row = 1)
-                self.add_item(self.loggingBtn)
-                
-                self.levelingBtn = self.EnableDisableButton(self, "Leveling", self.server, row = 1)
-                self.add_item(self.levelingBtn)
-                
-                self.autoDeleteInvitesBtn = self.EnableDisableButton(self, "Delete Invites", self.server, row = 1)
+
+                self.autoDeleteInvitesBtn = self.EnableDisableButton(self, "Delete Invites", self.server)
                 self.add_item(self.autoDeleteInvitesBtn)
                 
-                self.getUpdatesBtn = self.EnableDisableButton(self, "Update Messages", self.server, row = 2)
+                self.getUpdatesBtn = self.EnableDisableButton(self, "Update Messages", self.server)
                 self.add_item(self.getUpdatesBtn)
                 
                 
-                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 3)
+                self.backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
                 self.backBtn.callback = self.backBtnCallback
                 self.add_item(self.backBtn)
                 
@@ -5693,20 +6274,18 @@ class Dashboard(nextcord.ui.View):
                 
                 self.server = Server(interaction.guild.id)
                 
-                settingsValue = f"""
-                {self.boolToString(self.server.profanityBool)} - Profanity Moderation
-                {self.boolToString(self.server.spamBool)} - Spam Moderation
-                {self.boolToString(self.server.loggingBool)} - Logging
-                {self.boolToString(self.server.levelingBool)} - Leveling
-                {self.boolToString(self.server.deleteInvitesBool)} - Delete Invites
-                {self.boolToString(self.server.getUpdates)} - Update Messages
+                settings_value = f"""
+                **{self.boolToString(self.server.delete_invites_enabled)} - Delete Invites**
+                InfiniBot can automatically delete discord invites posted by members. (Does not affect Administrators)
+                
+                **{self.boolToString(self.server.get_updates_enabled)} - Update Messages**
+                Get notified about brand-new updates to InfiniBot.
                 """
                 
                 # On Mobile, extra spaces cause problems. We'll get rid of them here:
-                settingsValue = standardizeStrIndention(settingsValue)
+                settings_value = standardizeStrIndention(settings_value)
                 
-                embed = nextcord.Embed(title = "Dashboard - Enable / Disable Panel", description = f"Choose a feature to enable / disable", color = nextcord.Color.blue())
-                embed.add_field(name = "Settings", value = settingsValue, inline = True)
+                embed = nextcord.Embed(title = "Dashboard - Extra Features", description = f"Choose a feature to enable / disable\n{settings_value}", color = nextcord.Color.blue())
                 await interaction.response.edit_message(embed = embed, view = self)
              
             async def backBtnCallback(self, interaction: Interaction):
@@ -5760,24 +6339,12 @@ class Dashboard(nextcord.ui.View):
                         await self.outer.setup(interaction)
                         
                     def findVariable(self, name, change: bool):
-                        if name == "Profanity Moderation": 
-                            if change: self.server.profanityBool = not self.server.profanityBool
-                            return self.server.profanityBool
-                        if name == "Spam Moderation": 
-                            if change: self.server.spamBool = not self.server.spamBool
-                            return self.server.spamBool
-                        if name == "Logging": 
-                            if change: self.server.loggingBool = not self.server.loggingBool
-                            return self.server.loggingBool
-                        if name == "Leveling": 
-                            if change: self.server.levelingBool = not self.server.levelingBool
-                            return self.server.levelingBool
                         if name == "Delete Invites": 
-                            if change: self.server.deleteInvitesBool = not self.server.deleteInvitesBool
-                            return self.server.deleteInvitesBool
+                            if change: self.server.delete_invites_enabled = not self.server.delete_invites_enabled
+                            return self.server.delete_invites_enabled
                         if name == "Update Messages":
-                            if change: self.server.getUpdates = not self.server.getUpdates
-                            return self.server.getUpdates
+                            if change: self.server.get_updates_enabled = not self.server.get_updates_enabled
+                            return self.server.get_updates_enabled
                         
                     
                         print("ERROR: Button Name does not correspond with possible values in ChooseView.findVariable")
@@ -5787,7 +6354,7 @@ class Dashboard(nextcord.ui.View):
                     await self.ChooseView(self.outer, self.title, self.server).setup(interaction)
                        
         async def callback(self, interaction: Interaction):
-            await self.EnableDisableView(self.outer, interaction.guild.id).setup(interaction)       
+            await self.ExtraFeaturesButton(self.outer, interaction.guild.id).setup(interaction)       
 
 
 class Profile(nextcord.ui.View):
@@ -5833,14 +6400,14 @@ class Profile(nextcord.ui.View):
                 
                 member = Member(interaction.user.id)
                 
-                if member.levelCard.enabled:
+                if member.level_card.enabled:
                     changeTextBtn = self.ChangeTextButton(self)
                     self.add_item(changeTextBtn)
                     
                     changeColorBtn = self.ChangeColorButton(self)
                     self.add_item(changeColorBtn)
                     
-                enableDisableBtn = self.EnableDisableButton(self, member.levelCard.enabled)
+                enableDisableBtn = self.EnableDisableButton(self, member.level_card.enabled)
                 self.add_item(enableDisableBtn)
                 
                 
@@ -5863,11 +6430,11 @@ class Profile(nextcord.ui.View):
                 member = Member(interaction.user.id)
                 
                 
-                embed = nextcord.Embed(title = "Profile - Level-Up Card", description = (enabledDescription if member.levelCard.enabled else disabledDescription), color = nextcord.Color.blurple())
+                embed = nextcord.Embed(title = "Profile - Level-Up Card", description = (enabledDescription if member.level_card.enabled else disabledDescription), color = nextcord.Color.blurple())
                 
                 #get the card
-                if member.levelCard.enabled:
-                    card = member.levelCard.embed()
+                if member.level_card.enabled:
+                    card = member.level_card.embed()
                     embeds = [embed, card]
                 else:
                     embeds = [embed]
@@ -5894,8 +6461,8 @@ class Profile(nextcord.ui.View):
                         self.outer = outer
                         
                         member = Member(interaction.user.id)
-                        title = member.levelCard.title
-                        description = member.levelCard.description
+                        title = member.level_card.title
+                        description = member.level_card.description
                         del member #we don't need it anymore
                         
                         self.titleTextInput = nextcord.ui.TextInput(label = "Title", style = nextcord.TextInputStyle.short, max_length = 256, default_value = title, placeholder = "Yum... Levels.")
@@ -5909,8 +6476,8 @@ class Profile(nextcord.ui.View):
                         description = self.descriptionTextInput.value
                         
                         member = Member(interaction.user.id)
-                        member.levelCard.title = title
-                        member.levelCard.description = description
+                        member.level_card.title = title
+                        member.level_card.description = description
                         
                         member.save()
                         del member
@@ -5973,7 +6540,7 @@ class Profile(nextcord.ui.View):
                             return
                         
                         member = Member(interaction.user.id)
-                        member.levelCard.color = self.select.values[0]
+                        member.level_card.color = self.select.values[0]
                         member.save()
                         del member #we don't need it anymore
                         
@@ -6015,7 +6582,7 @@ class Profile(nextcord.ui.View):
                             
                         async def callback(self, interaction: Interaction):
                             member = Member(interaction.user.id)
-                            member.levelCard.enabled = not member.levelCard.enabled
+                            member.level_card.enabled = not member.level_card.enabled
                             member.save()
                             
                             await self.outer.reload(interaction)
@@ -6038,14 +6605,14 @@ class Profile(nextcord.ui.View):
                 
                 member = Member(interaction.user.id)
                 
-                if member.joinCard.enabled:
+                if member.join_card.enabled:
                     changeTextBtn = self.ChangeTextButton(self)
                     self.add_item(changeTextBtn)
                     
                     changeColorBtn = self.ChangeColorButton(self)
                     self.add_item(changeColorBtn)
                     
-                enableDisableBtn = self.EnableDisableButton(self, member.joinCard.enabled)
+                enableDisableBtn = self.EnableDisableButton(self, member.join_card.enabled)
                 self.add_item(enableDisableBtn)
                 
                 
@@ -6068,11 +6635,11 @@ class Profile(nextcord.ui.View):
                 member = Member(interaction.user.id)
                 
                 
-                embed = nextcord.Embed(title = "Profile - Join Card", description = (enabledDescription if member.joinCard.enabled else disabledDescription), color = nextcord.Color.blurple())
+                embed = nextcord.Embed(title = "Profile - Join Card", description = (enabledDescription if member.join_card.enabled else disabledDescription), color = nextcord.Color.blurple())
                 
                 #get the card
-                if member.joinCard.enabled:
-                    card = member.joinCard.embed()
+                if member.join_card.enabled:
+                    card = member.join_card.embed()
                     embeds = [embed, card]
                 else:
                     embeds = [embed]
@@ -6099,8 +6666,8 @@ class Profile(nextcord.ui.View):
                         self.outer = outer
                         
                         member = Member(interaction.user.id)
-                        title = member.joinCard.title
-                        description = member.joinCard.description
+                        title = member.join_card.title
+                        description = member.join_card.description
                         del member #we don't need it anymore
                         
                         self.titleTextInput = nextcord.ui.TextInput(label = "Title", style = nextcord.TextInputStyle.short, max_length = 256, default_value = title, placeholder = "About Me")
@@ -6114,8 +6681,8 @@ class Profile(nextcord.ui.View):
                         description = self.descriptionTextInput.value
                         
                         member = Member(interaction.user.id)
-                        member.joinCard.title = title
-                        member.joinCard.description = description
+                        member.join_card.title = title
+                        member.join_card.description = description
                         
                         member.save()
                         del member
@@ -6178,7 +6745,7 @@ class Profile(nextcord.ui.View):
                             return
                         
                         member = Member(interaction.user.id)
-                        member.joinCard.color = self.select.values[0]
+                        member.join_card.color = self.select.values[0]
                         member.save()
                         del member #we don't need it anymore
                         
@@ -6220,7 +6787,7 @@ class Profile(nextcord.ui.View):
                             
                         async def callback(self, interaction: Interaction):
                             member = Member(interaction.user.id)
-                            member.joinCard.enabled = not member.joinCard.enabled
+                            member.join_card.enabled = not member.join_card.enabled
                             member.save()
                             
                             await self.outer.reload(interaction)
@@ -6261,7 +6828,7 @@ class Profile(nextcord.ui.View):
                 
                 description = f"""Configure InfiniBot to fit your needs.
                 
-                {icon(member.dmsEnabledBool)} Direct Messages Enabled"""
+                {icon(member.dms_enabled)} Direct Messages Enabled"""
                 
                 # On Mobile, extra spaces cause problems. We'll get rid of them here:
                 description = standardizeStrIndention(description)
@@ -6288,7 +6855,7 @@ class Profile(nextcord.ui.View):
                         
                         
                         member = Member(interaction.user.id)
-                        if member.dmsEnabledBool: label = "Disable"
+                        if member.dms_enabled: label = "Disable"
                         else: label = "Enable"
                         
                         button = nextcord.ui.Button(label = label, style = nextcord.ButtonStyle.green)
@@ -6298,7 +6865,7 @@ class Profile(nextcord.ui.View):
                     async def setup(self, interaction: Interaction):
                         member = Member(interaction.user.id)
                         
-                        if member.dmsEnabledBool: description = "To disable Direct Messages from InfiniBot, click the button \"Disable\"\n\nBy doing this, you will no longer recieve permission errors, birthday updates, or strike notices."
+                        if member.dms_enabled: description = "To disable Direct Messages from InfiniBot, click the button \"Disable\"\n\nBy doing this, you will no longer recieve permission errors, birthday updates, or strike notices."
                         else: description = "To enable Direct Messages from InfiniBot, click the button \"Enable\"\n\nBy doing this, you will now recieve permission errors, birthday updates, and strike notices."
                         
                         embed = nextcord.Embed(title = "Profile - Settings - Direct Messages", description = description, color = nextcord.Color.blurple())
@@ -6309,7 +6876,7 @@ class Profile(nextcord.ui.View):
                     
                     async def callback(self, interaction: Interaction):
                         member = Member(interaction.user.id)
-                        member.dmsEnabledBool = not member.dmsEnabledBool
+                        member.dms_enabled = not member.dms_enabled
                         
                         member.save()
                         
@@ -6368,10 +6935,334 @@ class Profile(nextcord.ui.View):
             await self.SettingsView(self.outer).setup(interaction)
     
 
+class Onboarding(nextcord.ui.View):
+    def __init__(self):
+        super().__init__(timeout = None)
+        
+        self.dropdown_options = [
+            ["Profanity Moderation", "Automatically moderate your server for profanity."],
+            ["Spam Moderation", "Help keep spam to a minimum."],
+            ["Leveling", "Encourage activity as members compete for levels."],
+            ["Message and Action Logging", "Track deleted and edited messages, and server modifications."],
+            ["Join / Leave Messages", "Welcome / bid farewell with customized messages."],
+            ["Birthdays", "Celebrate birthdays with personalized messages."],
+            ["Default Roles", "Automatically assign roles to new members."],
+            ["Join-To-Create VCs", "Allow members to create custom voice channels."]
+        ]
+        
+        formatted_options = [nextcord.SelectOption(label = option[0], description = option[1]) for option in self.dropdown_options]
+        self.dropdown = nextcord.ui.Select(placeholder = "Select Features", min_values = 0, max_values = len(formatted_options), options = formatted_options)
+        self.add_item(self.dropdown)
+        
+        self.cancelBtn = self.cancelButton(self)
+        self.add_item(self.cancelBtn)
+        
+        self.nextBtn = self.nextButton(self)
+        self.add_item(self.nextBtn)
+        
+    async def setup(self, interaction: Interaction):
+        for child in self.children: del child
+        self.__init__()
+        
+        embed = nextcord.Embed(title = "Welcome to InfiniBot!", 
+                               description = "Hello there!\n\nThank you for giving InfiniBot a try! Let's kick off your journey. Below, you'll find a convenient drop-down menu showcasing a variety of features that InfiniBot can set up for your server. \n\nTake your time to choose the ones that best suit your preferences. Once you've made your selections, simply click the \"Next\" button to proceed. Happy customizing!",
+                               color = nextcord.Color.fuchsia())
+        
+        try: await interaction.response.edit_message(embed = embed, view = self)
+        except: await interaction.response.send_message(embed = embed, view = self, ephemeral=True)
+    
+    class cancelButton(nextcord.ui.Button):
+        def __init__(self, outer):
+            super().__init__(label = "Cancel", style = nextcord.ButtonStyle.danger, row = 1)
+            self.outer = outer
+            
+        class cancelView(nextcord.ui.View):
+            def __init__(self, outer):
+                super().__init__(timeout = None)
+                self.outer = outer
+                
+                self.gobackBtn = nextcord.ui.Button(label = "Go Back")
+                self.gobackBtn.callback = self.gobackBtn_callback
+                self.add_item(self.gobackBtn)
+                
+            async def setup(self, interaction: Interaction):
+                embed = nextcord.Embed(title = "Canceling Onboarding Process", description = "To get back to this onboarding process, type `/onboarding`.", color = nextcord.Color.red())
+                await interaction.response.edit_message(embed = embed, view = self)
+                
+            async def gobackBtn_callback(self, interaction: Interaction):
+                # Put us back to where we were at the start.
+                self.outer.__init__()
+                await self.outer.setup(interaction)
+            
+        async def callback(self, interaction: Interaction):          
+            await self.cancelView(self.outer).setup(interaction)
+    
+    # This button gives a screen talking about the onboarding setup proccess. Then it jumps to the onboarding walkthrough class.
+    class nextButton(nextcord.ui.Button):
+        def __init__(self, outer):
+            super().__init__(label = "Next", style = nextcord.ButtonStyle.blurple)
+            self.outer = outer
+            
+        class onboardingInfoView(nextcord.ui.View):
+            def __init__(self, outer, order: list):
+                super().__init__(timeout = None)
+                self.outer = outer
+                self.order = order
+                
+                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger)
+                self.back_btn.callback = self.backBtnCallback
+                self.add_item(self.back_btn)
+                
+                self.start_btn = nextcord.ui.Button(label = "Start", style = nextcord.ButtonStyle.blurple)
+                self.start_btn.callback = self.startBtnCallback
+                self.add_item(self.start_btn)              
+                
+            async def setup(self, interaction: Interaction):
+                description = """
+                Next, configure each selected feature.
 
+                You'll be directed to the dashboard for step-by-step instructions on setup. 
 
+                Click "Next" after configuring each feature."""
+                description = standardizeStrIndention(description)
+                
+                embed = nextcord.Embed(title = "Onboarding Setup",
+                                       description = description,
+                                       color = nextcord.Color.fuchsia())
+                
+                await interaction.response.edit_message(embed = embed, view = self)
+                
+            async def backBtnCallback(self, interaction: Interaction):
+                await self.outer.setup(interaction)
+                
+            async def startBtnCallback(self, interaction: Interaction):
+                await self.outer.onboardingWalkthrough(self.order, self.setup).start(interaction)
+            
+        async def callback(self, interaction: Interaction):
+            selected_options = self.outer.dropdown.values
+        
+            if selected_options == []: return
+            
+            # Re-order the options
+            ordered_list = []
+            for option in [option[0] for option in self.outer.dropdown_options]:
+                if option in selected_options:
+                    ordered_list.append(option)
+            
+            await self.onboardingInfoView(self.outer, ordered_list).setup(interaction)
+           
+    class onboardingWalkthrough:
+        def __init__(self, order: list, previous):
+            self.order = order
+            self.previous = previous
+            
+            self.current = order[0]
+            self.objective = None
+            self.next_objective = None
+            self.onboarding_embed = None
+            self.last_objective_bool = False
+            
+        async def start(self, interaction: Interaction):
+            self.update_objectives()
+            
+            if self.current == "Profanity Moderation":
+                await self.profanity_moderation(interaction)
+                return
+            
+            if self.current == "Spam Moderation":
+                await self.spam_moderation(interaction)
+                return
+            
+            if self.current == "Leveling":
+                await self.leveling(interaction)
+                return
+            
+            if self.current == "Message and Action Logging":
+                await self.logging(interaction)
+                return
+            
+            if self.current == "Join / Leave Messages":
+                await self.joinLeaveMessages(interaction)
+                return
+            
+            if self.current == "Birthdays":
+                await self.birthdays(interaction)
+                return
+            
+            if self.current == "Default Roles":
+                await self.defaultRoles(interaction)
+                return
+        
+            if self.current == "Join-To-Create VCs":
+                await self.joinToCreateVCs(interaction)
+                return
+            
+        async def previous_item(self, interaction: Interaction):
+            index = self.order.index(self.current)
+            
+            # Check if we are able to
+            if index == 0:
+                await self.previous(interaction)
+            else:
+                self.current = self.order[index - 1]
+                await self.start(interaction)
+            
+        async def next_item(self, interaction: Interaction):
+            index = self.order.index(self.current)
+            
+            # Check if we are able to
+            if index == (len(self.order) - 1):
+                await self.finished(interaction)
+            else:
+                self.current = self.order[index + 1]
+                await self.start(interaction)
+                
+        def update_objectives(self):
+            index = self.order.index(self.current)
+            
+            self.objective = f"configure {self.current}"
+            
+            if index == (len(self.order) - 1):
+                self.next_objective = "Finish"
+                self.last_objective_bool = True
+            else:
+                self.next_objective = f"Setup {self.order[index + 1]}"
+                self.last_objective_bool = False
+                
+            self.onboarding_embed = nextcord.Embed(title = f"Click \"Next\" to {self.next_objective}",
+                                   description = f"Alternatively, {self.objective}.",
+                                   color = nextcord.Color.fuchsia())
+                              
+        async def finished(self, interaction: Interaction):
+            await self.finishedView(self).setup(interaction)
+        
+        def remap_view_buttons(self, view: nextcord.ui.View):
+            # Remove back (and next) button(s)
+            # Also remove disable buttons (if they're there)
+            for child in list(view.children):
+                if isinstance(child, nextcord.ui.Button):
+                    if child.label == "Back" or child.label == "Cancel":
+                        view.remove_item(child)
+                    if child.label == "Next" or child.label == "Finish":
+                        view.remove_item(child)
+                    if "Disable" in child.label:
+                        view.remove_item(child)
+                        
+            # Add new buttons
+            backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 4)
+            backBtn.callback = self.previous_item
+            view.add_item(backBtn)
+            
+            nextBtn = nextcord.ui.Button(label = ("Finish" if self.last_objective_bool else "Next"), style = nextcord.ButtonStyle.green, row = 4)
+            nextBtn.callback = self.next_item
+            view.add_item(nextBtn)
+            
+            return view
+   
+        # Some dashboard features may want to go all the way back. This function is for that
+        async def setup(self, interaction: Interaction):
+            await self.previous_item(interaction)
+            return
+        
+        
+        async def profanity_moderation(self, interaction: Interaction):
+            # Enable the feature
+            server = Server(interaction.guild.id)
+            server.profanity_moderation_enabled = True
+            server.saveData()
+            del server
+            
+            view = Dashboard.ModerationButton.ModerationView.ProfaneModerationButton.ProfaneModerationView(outer = self, guild_id = interaction.guild.id, onboarding_modifier = self.remap_view_buttons, onboarding_embed = self.onboarding_embed)
+            await view.setup(interaction)
+            
+        async def spam_moderation(self, interaction: Interaction):
+            # Enable the feature
+            server = Server(interaction.guild.id)
+            server.spam_moderation_enabled = True
+            server.saveData()
+            del server
+        
+            view = Dashboard.ModerationButton.ModerationView.SpamModerationButton.SpamModerationView(outer = self, onboarding_modifier = self.remap_view_buttons, onboarding_embed = self.onboarding_embed)
+            await view.setup(interaction)
+            
+        async def leveling(self, interaction: Interaction):
+            # Enable the feature
+            server = Server(interaction.guild.id)
+            server.leveling_enabled = True
+            server.saveData()
+            del server
+        
+            view = Dashboard.LevelingButton.LevelingView(outer = self, onboarding_modifier = self.remap_view_buttons, onboarding_embed = self.onboarding_embed)
+            await view.setup(interaction)
+            
+        async def logging(self, interaction: Interaction):
+            # Enable the feature
+            server = Server(interaction.guild.id)
+            server.logging_enabled = True
+            server.saveData()
+            del server
+        
+            view = Dashboard.LoggingButton.LoggingView(outer = self, onboarding_modifier = self.remap_view_buttons, onboarding_embed = self.onboarding_embed)
+            await view.setup(interaction)
+            
+        async def joinLeaveMessages(self, interaction: Interaction):
+            # Enable the feature
+            server = Server(interaction.guild.id)
+            if server.join_channel == False: server.join_channel = None
+            if server.leave_channel == False: server.leave_channel = None
+            server.saveData()
+            del server
+            
+            view = Dashboard.JoinLeaveMessagesButton.JoinLeaveMessagesView(outer = self, onboarding_modifier = self.remap_view_buttons, onboarding_embed = self.onboarding_embed)
+            await view.setup(interaction)
+            
+        async def birthdays(self, interaction: Interaction):
+            view = Dashboard.BirthdaysButton.BirthdaysView(outer = self, onboarding_modifier = self.remap_view_buttons, onboarding_embed = self.onboarding_embed)
+            await view.setup(interaction)
+            
+        async def defaultRoles(self, interaction: Interaction):
+            view = Dashboard.DefaultRolesButton.DefaultRolesView(outer = self, onboarding_modifier = self.remap_view_buttons, onboarding_embed = self.onboarding_embed)
+            await view.setup(interaction)
+
+        async def joinToCreateVCs(self, interaction: Interaction):
+            view = Dashboard.JoinToCreateVCsButton.JoinToCreateVCsView(outer = self, onboarding_modifier = self.remap_view_buttons, onboarding_embed = self.onboarding_embed)
+            await view.setup(interaction)
+
+        class finishedView(nextcord.ui.View):
+            def __init__(self, outer):
+                super().__init__(timeout = None)
+                self.outer = outer
+                
+                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger)
+                self.back_btn.callback = self.backBtnCallback
+                self.add_item(self.back_btn)
+                
+                supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = support_server_link)
+                self.add_item(supportServerBtn)
+                
+            async def setup(self, interaction: Interaction):
+                description = """
+                Congratulations! InfiniBot is now set up for your server.
+
+                For additional features, type `/dashboard` to explore all InfiniBot offers. If you need to change anything you've done today, this is your place to go.
+
+                Questions? Join our support server for assistance.
+
+                Thanks for using InfiniBot!
+                """
+                
+                embed = nextcord.Embed(title = "Onboarding - Completed",
+                                       description = standardizeStrIndention(description), color = nextcord.Color.fuchsia())
+                await interaction.response.edit_message(embed = embed, view = self)
+                
+            async def backBtnCallback(self, interaction: Interaction):
+                await self.outer.start(interaction)
 
 #Real Code (YAY) ------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
 
 
     
@@ -6380,11 +7271,11 @@ class Profile(nextcord.ui.View):
 async def opt_into_dms(interaction: Interaction):
     member = Member(interaction.user.id)
     
-    if member.dmsEnabledBool == True: 
+    if member.dms_enabled == True: 
         await interaction.response.send_message(embed = nextcord.Embed(title = "Already opted into DMs", description = "You are already opted into dms.", color = nextcord.Color.blue()), ephemeral = True)
         return
     
-    member.dmsEnabledBool = True
+    member.dms_enabled = True
     member.save()
     
     embed = nextcord.Embed(title = "Opted Into DMs", description = f"You opted into DMs from InfiniBot. You will now recieve permission errors, birthday updates, or strike notices.", color = nextcord.Color.green())
@@ -6397,11 +7288,11 @@ async def opt_into_dms(interaction: Interaction):
 async def opt_out_of_dms(interaction: Interaction):
     member = Member(interaction.user.id)
     
-    if member.dmsEnabledBool == False: 
+    if member.dms_enabled == False: 
         await interaction.response.send_message(embed = nextcord.Embed(title = "Already opted out of DMs", description = "You are already opted out of dms.", color = nextcord.Color.blue()), ephemeral = True)
         return
     
-    member.dmsEnabledBool = False
+    member.dms_enabled = False
     member.save()
     
     embed = nextcord.Embed(title = "Opted Out of DMs", description = f"You opted out of DMs from InfiniBot. You will no longer recieve permission errors, birthday updates, or strike notices. To re-opt-into this feature, use {opt_into_dms.get_mention()}", color = nextcord.Color.green())
@@ -6505,9 +7396,9 @@ async def on_guild_join(guild: nextcord.Guild):
     2) Make sure that the Infinibot role is the highest role. If this requirement is not met, some features may not function as expected.
         → Alternatively, give InfiniBot Administrator  
     
-    You're all set up! Type {dashboard.get_mention()} to get started or {help.get_mention()} for help.
+    You're all set up! Type {onboarding.get_mention()} to get started.
     
-    For any help or suggestions, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    For any help or suggestions, join us at {support_server_link} or contact at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
@@ -6601,13 +7492,13 @@ async def on_message(message: nextcord.Message):
     # Profanity
     Profane = False
     if utils.enabled.ProfanityModeration(server = server):
-        Profane = await punnishProfanity(server, message)
+        Profane = await checkProfanity(server, message)
        
 
     # Other Things
     if not Profane:
         # Check Invites
-        if server.deleteInvitesBool and not message.author.guild_permissions.administrator:
+        if server.delete_invites_enabled and not message.author.guild_permissions.administrator:
             if "discord.gg/" in message.content.lower(): await message.delete()
         # Check spam
         if utils.enabled.SpamModeration(server = server) and not message.author.guild_permissions.administrator:
@@ -6675,7 +7566,7 @@ async def runEveryMinute():
 
         # Check for Birthays
         if nextTime.hour == 8 and nextTime.minute == 0: # Run at 8:00 AM every day
-            await checkForBirthdays(nextTime, currentTime)
+            await checkForBirthdays()
         
         # Check for levels
         if nextTime.hour == 0 and nextTime.minute == 1: # Run at midnight + 1
@@ -6689,7 +7580,7 @@ async def runEveryMinute():
 
 
 # GENERAL FUNCTIONS ==========================================================================================================================================================================
-async def sendErrorMessageToOwner(guild: nextcord.Guild, permission, message = None, administrator = True, channel = None, guildPermission = False):
+async def sendErrorMessageToOwner(guild: nextcord.Guild, permission, message = None, administrator = True, channel = None, guild_permission = False):
     """|coro|
     
     Sends an error message to the owner of the server via dm
@@ -6710,7 +7601,7 @@ async def sendErrorMessageToOwner(guild: nextcord.Guild, permission, message = N
         Whether to include info about giving InfiniBot adminstrator. Defaults to True.
     channel: `str`
         The channel where the permission is needed. Defaults to None (meaning the message says "one or more channels").
-    guildPermission: `bool`
+    guild_permission: `bool`
         Whether the permission is a guild permission. If so, channel (↑) is overwritten. Defaults to False.
 
     Returns
@@ -6723,15 +7614,15 @@ async def sendErrorMessageToOwner(guild: nextcord.Guild, permission, message = N
     member = guild.owner
     
     if member == None: return
-    memberSettings = Member(member.id)
-    if not memberSettings.dmsEnabledBool: return
+    member_settings = Member(member.id)
+    if not member_settings.dms_enabled: return
     
     if channel != None:
         channels = channel
     else:
         channels = "one or more channels"
         
-    if guildPermission:
+    if guild_permission:
         inChannels = ""
     else:
         inChannels = f" in {channels}"
@@ -6740,12 +7631,13 @@ async def sendErrorMessageToOwner(guild: nextcord.Guild, permission, message = N
     
     if message == None:
         if permission != None: 
-            embed = nextcord.Embed(title = f"Missing Permissions in in \"{guild.name}\" Server", description = f"InfiniBot is missing the **{permission}** permission{inChannels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red())
+            embed = nextcord.Embed(title = f"Missing Permissions in in \"{guild.name}\" Server", description = f"InfiniBot is missing the **{permission}** permission{inChannels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.", color = nextcord.Color.red())
         else:
-            embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"InfiniBot is missing a permission{inChannels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red())
+            embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"InfiniBot is missing a permission{inChannels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.", color = nextcord.Color.red())
     else:
-        embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"{message}\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red())
+        embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"{message}", color = nextcord.Color.red())
 
+    embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
     embed.timestamp = datetime.datetime.now()
 
     try:
@@ -7193,7 +8085,7 @@ async def on_guild_role_update(before: nextcord.Role, after: nextcord.Role):
 
 
 
-# Dashboard and Profile
+# Dashboard, Profile, and Onboarding
 @bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", dm_permission=False)
 async def dashboard(interaction: Interaction):
     if await hasRole(interaction):
@@ -7205,13 +8097,32 @@ async def profile(interaction: Interaction):
     view = Profile()
     await view.setup(interaction)
 
-
+@bot.slash_command(name = "onboarding", description = "Configure InfiniBot for the first time (Requires InfiniBot Mod)")
+async def onboarding(interaction: Interaction):
+    if await hasRole(interaction):
+        view = Onboarding()
+        await view.setup(interaction)
 
 
 
 
 
 #Moderation Bot Functionality --------------------------------------------------------------------------------------------------------------
+# General
+async def canModerate(interaction: Interaction, server: Server):
+    """Runs a check whether moderation is active. NOT SILENT!"""
+    if utils.enabled.ProfanityModeration(server = server):
+        return True
+    else:
+        if not main.global_kill_profanity_moderation:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Moderation Tools Disabled", description = "Moderation has been turned off. Type \"/enable moderation\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
+            return False
+        else:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Moderation Tools Disabled", description = "Moderation has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+            return False
+
+
+# Profanity Moderation -------------------------------
 async def timeout(member: nextcord.Member, time: str, reason: str = None):
     """|coro|
     
@@ -7237,268 +8148,300 @@ async def timeout(member: nextcord.Member, time: str, reason: str = None):
     """    
     try:
         time = humanfriendly.parse_timespan(time)
-        await member.edit(timeout=nextcord.utils.utcnow()+datetime.timedelta(seconds=time), reason = reason)
+        if time == 0.0: 
+            await member.edit(timeout=None, reason = reason)
+        else:
+            await member.edit(timeout=nextcord.utils.utcnow()+datetime.timedelta(seconds=time), reason = reason)
+        
         return True
     except Exception as error:
         return error
 
-async def giveStrike(guild_id, userID, channel: nextcord.TextChannel, factor: int):
-    server = Server(guild_id)
-
-    userStrike = server.getStrike(userID)
+# Add or remove strikes, grant timeouts
+async def giveStrike(guild_id, userID, amount: int, server = None, strike_data = None):
+    """|coro|
     
-    if factor == 1: #handle adding a strike
-        if userStrike == None: #they are at strike 0
-            server.addStrike(userID, 1)
-            server.saveStrikes()
-            return 1
+    Handle giving or taking a strike to/from a member.
+    
+    Note: This will grant timeouts.
+
+    ------
+    Parameters
+    ------
+    guild_id : `int`
+        The guild id that you are in.
+    userID : `int`
+        The id of the user to give/take a strike to/from.
+    amount : `int`
+        Positive or negative number of strikes to give/take.
         
-        elif userStrike.strike < int(server.maxStrikes):
-            userStrike.strike = userStrike.strike + 1
-            userStrike.lastStrike = datetime.date.today()
-            server.saveStrikes()
-            return userStrike.strike
+    Returns
+    ------
+    `int`
+        The user's strikes now.
+    """
+    # Get the current user's strikes
+    server = Server(guild_id)
+    strike_data = server.getStrike(userID)
+    
+    # Add or Remove the strike
+    if amount != 0:
+        strike_data.change_strike(amount)
+        server.saveStrikes()
         
-        else:
-            #user needs to be timed out...          
-            if not channel.permissions_for(channel.guild.me).moderate_members:
-                await sendErrorMessageToOwner(channel.guild, "Timeout Members", guildPermission = True)
-                return
+    # Check if they should be timed out
+    if (strike_data.strike >= server.max_strikes) and (strike_data.strike != 0) and (amount > 0):
+        # They are beyond the strike limit
+        # And they are above 0
+        # And we were adding strikes (as opposed to removing them)
+        # YES. PUNNISH THEM!
+        
+        # Check Permissions        
+        if not server.guild.me.guild_permissions.moderate_members:
+            await sendErrorMessageToOwner(server.guild, "Timeout Members", guild_permission = True)
+            return strike_data.strike
+        
+        # Time them out.
+        reason = (f"Profanity Moderation: User exceeded strike limit of {server.max_strikes}." if (server.max_strikes != 0) else "Profanity Moderation")
+        response = await timeout(strike_data.member, server.profanity_timeout_time, reason = reason)
             
-            response = await timeout(userStrike.member, server.profanityTimeoutTime, reason = f"Profanity Moderation: User exceeded strike limit of {server.maxStrikes}.")
-                
-            if response == True: 
-                if channel != None: 
-                    await channel.send(embed = nextcord.Embed(title = "Timeout Given", description = f"{userStrike.member} is now timed out for {server.profanityTimeoutTime}", color = nextcord.Color.dark_red()))
-                    server.deleteStrike(userStrike.memberID)
-                    server.saveStrikes()
-                    return 0
-                else:
-                    return userStrike.strike
-
-            else: 
-                if isinstance(response, nextcord.errors.Forbidden):
-                    await channel.send(embed = nextcord.Embed(title = "Timeout Error", description = f"Failed to timeout {userStrike.member} for {server.profanityTimeoutTime}. \n\nError: Member is of a higher rank than InfiniBot", color = nextcord.Color.red()))
-                else:
-                    await channel.send(embed = nextcord.Embed(title = "Timeout Error", description = f"Failed to timeout {userStrike.member} for {server.profanityTimeoutTime}. \n\nError: {response}", color = nextcord.Color.red()))
-                return userStrike.strike
+        if response == True:
+            # The user was successfully timed out. Let's remove that strike now.
+            strike_data.set_strike(0)
+            server.saveStrikes()
         
-    else:
-        if userStrike != None:
-            if userStrike.strike == 1:
-                server.deleteStrike(userID)
-                server.saveStrikes()
-                return 0
-            else:
-                userStrike.strike -= 1
-                userStrike.lastStrike = datetime.date.today()
-                server.saveStrikes()
-                return userStrike.strike
-                
         else:
-            return 0
+            if isinstance(response, nextcord.errors.Forbidden):
+                await server.admin_channel.send(embed = nextcord.Embed(title = "Timeout Error", description = f"Failed to timeout {strike_data.member} for {server.profanity_timeout_time}. \n\nError: Member is of a higher rank than InfiniBot", color = nextcord.Color.red()))
+            else:
+                await server.admin_channel.send(embed = nextcord.Embed(title = "Timeout Error", description = f"Failed to timeout {strike_data.member} for {server.profanity_timeout_time}. \n\nError: {response}", color = nextcord.Color.red()))
+        
 
+    return strike_data.strike
+
+# Check a server for strike expirations and rectify them
 async def checkForExpiration(server: Server):
     '''Check All Strikes in the Server for Expiration'''
     if not utils.enabled.ProfanityModeration(server = server): return
-    if server.strikeExpireTime == None or server.strikeExpireTime == 0: return
+    if server.strike_expire_time == None or server.strike_expire_time == 0: return
+    if server.max_strikes == 0: return
     
     for strike in server.strikes:
         try:
-            referenceDate = datetime.datetime.strptime(strike.lastStrike, f"%Y-%m-%d")
+            referenceDate = datetime.datetime.strptime(strike.last_strike, f"%Y-%m-%d")
             currentDate = datetime.datetime.today()
             
             dayDelta = (currentDate - referenceDate).days
 
-            if int(dayDelta) >= int(server.strikeExpireTime):
-                compensate = int(math.floor(int(dayDelta) / int(server.strikeExpireTime)))
-
-                for x in range(0, compensate):
-                    await giveStrike(server.guild_id, strike.memberID, None, -1) #remove a strike
+            if int(dayDelta) >= int(server.strike_expire_time):
+                compensate = int(math.floor(int(dayDelta) / int(server.strike_expire_time)))
+                await giveStrike(server.guild_id, strike.member_id, 0 - compensate)
+                
         except Exception as err:
             print("Error when checking for expiration: " + str(err))
 
-def checkProfanity(messageSplit: list[str], database: list[str]):
-    messageSplit = [x.lower() for x in messageSplit]
+# Check edge-cases for profanity given a string and database of words
+def isProfanity(message_split: list[str], database: list[str]):
+    message_split = [x.lower() for x in message_split]
     database = [x.lower() for x in database]
 
-    for word in messageSplit:
+    for word in message_split:
         if word == "he'll": continue
         word = ''.join(filter(str.isalnum, word))
-        for dbWord in database:
-            if word == dbWord: return word
-            if word == dbWord + "s": return word
-            if word == dbWord + "er": return word
-            if word == dbWord + "ers": return word
-            if word == dbWord + "ing": return word
-            if word == dbWord + "ed": return word
-            if word == dbWord + "y": return word
-            if word == dbWord + "or": return word
-            if word == dbWord + "ness": return word
-            if word == dbWord + "tion": return word
-            if word == dbWord + "sion": return word
-            if word == dbWord + "ship": return word
-            if word == dbWord + "ment": return word
-            if word == "mother" + dbWord: return word
-            if word == "mother" + dbWord + "er": return word
-            if word == "mother" + dbWord + "ers": return word
-            if word == dbWord: return word
+        for db_word in database:
+            if word == db_word: return word
+            if word == db_word + "s": return word
+            if word == db_word + "er": return word
+            if word == db_word + "ers": return word
+            if word == db_word + "ing": return word
+            if word == db_word + "ed": return word
+            if word == db_word + "y": return word
+            if word == db_word + "or": return word
+            if word == db_word + "ness": return word
+            if word == db_word + "tion": return word
+            if word == db_word + "sion": return word
+            if word == db_word + "ship": return word
+            if word == db_word + "ment": return word
+            if word == "mother" + db_word: return word
+            if word == "mother" + db_word + "er": return word
+            if word == "mother" + db_word + "ers": return word
+            if word == db_word: return word
             
     return None
 
-def removeSymbols(string):
-    return re.sub(r'\W+', '', string)
-
-def checkRepeatedWordsPercentage(text, threshold=0.7):
-    words = re.findall(r'\w+', text.lower())  # Convert text to lowercase and extract words
-    counts = defaultdict(lambda: 0)  # Dictionary to store word counts
-    
-    # Remove symbols from the words
-    words = [removeSymbols(word) for word in words]
-
-    # Iterate over the words and count their occurrences
-    lastWords = []
-    for word in words:
-        if word not in lastWords:
-            counts[word] += 0.5
-        else:
-            counts[word] += 1
-        lastWords.insert(0, word)
-        if len(lastWords) >= 5:
-            lastWords.pop(3)
-        
-    # Calculate the total number of words and the number of repeated words
-    totalWords = len(words)
-    if totalWords == 0: return False
-    repeatedWords = sum(count for count in counts.values() if count > 0.5)
-
-    # Calculate the percentage of repeated words
-    repeatedPercentage = repeatedWords / totalWords
-
-    # Check if the percentage exceeds the threshold
-    return repeatedPercentage >= threshold
-
-def compareAttachments(attachments1: List[nextcord.Attachment], attachments2: List[nextcord.Attachment]):
-        # quick optimizations
-        if not attachments1 or not attachments2:
-            return False
-        if attachments1 == attachments2:
-            return True
-
-        for attachment1 in attachments1:
-            for attachment2 in attachments2:
-                if (
-                    attachment1.url == attachment2.url
-                    or (
-                        attachment1.filename == attachment2.filename
-                        and attachment1.width == attachment2.width
-                        and attachment1.height == attachment2.height
-                        and attachment1.size == attachment2.size
-                    )
-                ):
-                    return True
-        return False
-
-async def checkNickname(guild: nextcord.Guild, update: nextcord.Member):
+# Confirm that a nickname is not in violation of profanity
+async def checkNickname(guild: nextcord.Guild, before: nextcord.Member, after: nextcord.Member):
     """Check to ensure that the edited nickname is in compliance with moderation"""
     
-    member = guild.get_member(update.id)
-    nickname = update.nick
+    member = after
+    nickname = after.nick
+    
+    if member.guild_permissions.administrator: return
     
     server = Server(guild.id)
     
     if not utils.enabled.ProfanityModeration(server = server): return
 
     nicknameSplit = nickname.split(" ")
-    result = checkProfanity(nicknameSplit, server.ProfaneWords)
+    result = isProfanity(nicknameSplit, server.profane_words)
     if result != None:
-        channel = await getChannel(guild)
-        if channel == None: return
-        strikes = await giveStrike(guild.id, member.id, channel, 1)
-        await channel.send(embed = nextcord.Embed(title = "Profanity Detected", description = f"{member} was flagged for their nickname of \"{nickname}\".\n\n{member} is now at {strikes} strike(s)", color = nextcord.Color.dark_red()))
+        # They are in violation. Let's try to change their nickname back
+        try:
+            await member.edit(nick = before.nick)
+        except nextcord.errors.Forbidden:
+            await sendErrorMessageToOwner(guild = guild, permission = "Manage Nicknames", guild_permission = True, )
+        
+        # Give them a strike (or timeout)
+        strikes = await giveStrike(guild.id, member.id, 1)
+        
+        # DM them
+        if strikes == 0: strikes_info = f"\n\nYou were timed out for {server.profanity_timeout_time}"
+        else: strikes_info = f"\n\nYou are now at strike {strikes} / {server.max_strikes}"
+        
+        embed = nextcord.Embed(title = "Profanity Detected", description = f"You were flagged for your nickname.\n\n**Server**: {guild.name}\n**Nickname:** {nickname}{strikes_info}", color = nextcord.Color.dark_red())
+        embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
+        await member.send(embed = embed)
 
-        if server.adminChannel == None:
+        # Send a message to the admin channel
+        if server.admin_channel == None:
             return
         else:
             view = IncorrectButton()
-            embed =  nextcord.Embed(title = "Profanity Detected", description = f"{member} was flagged for their nickname of \"{nickname}\".\n\n{member} is now at {strikes} strike(s)", color = nextcord.Color.dark_red())
+            if strikes == 0: strikes_info = f"\n\n{member.mention} was timed out for {server.profanity_timeout_time} and is now at strike {strikes}."
+            else: strikes_info = f"\n\n{member.mention} is now at strike {strikes} / {server.max_strikes}"
+            embed =  nextcord.Embed(title = "Profanity Detected", description = f"{member.mention} was flagged for their nickname of \"{nickname}\".{strikes_info}", color = nextcord.Color.dark_red())
             embed.set_footer(text = f"Member ID: {str(member.id)}")
-            await server.adminChannel.send(view = view, embed = embed)
+            await server.admin_channel.send(view = view, embed = embed)
 
-            await view.wait()
-
-            await giveStrike(guild.id, member.id, None, -1)
-            
-async def canModerate(interaction: Interaction, server: Server):
-    """Runs a check whether moderation is active. NOT SILENT!"""
-    if utils.enabled.ProfanityModeration(server = server):
-        return True
-    else:
-        if not main.global_kill_profanity_moderation:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Moderation Tools Disabled", description = "Moderation has been turned off. Type \"/enable moderation\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
-            return False
-        else:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Moderation Tools Disabled", description = "Moderation has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
-            return False
-
-async def punnishProfanity(server: Server, message: nextcord.Message):
-    global autoDeletedMessageTime
+# RAN FOR EVERY MESSAGE. Ties profanity moderation together
+async def checkProfanity(server: Server, message: nextcord.Message):
+    global auto_deleted_message_time
     
     # Checks
     if not utils.enabled.ProfanityModeration(server = server): return
     if message.channel.type != nextcord.ChannelType.stage_voice and message.channel.is_nsfw(): return
-    if message.author == message.guild.owner: return
+    if message.author.guild_permissions.administrator: return
     
+    # Message Content
     msg = message.content.lower()
-    messageSplit = msg.split(" ")
+    message_split = msg.split(" ")
 
+    # Ignore if the message is nothing, or if it is actually just a slash command
     if len(msg) == 0 or msg[0] == "/":
         await bot.process_commands(message)
         return
     
-    result = checkProfanity(messageSplit, server.ProfaneWords)
+    # Check for profanity -------------------------------------------------------------------
+    result = isProfanity(message_split, server.profane_words)
     if result != None:
         #if they are in violation and need to be punnished...
-        strikes = await giveStrike(message.guild.id, message.author.id, message.channel, 1)
+        # Give them a strike (and perhaps a timeout)
+        strikes = await giveStrike(message.guild.id, message.author.id, 1)
         
-        #dm them (if they want)
+        # DM them (if they want)
         memberSettings = Member(message.author.id)
-        if memberSettings.dmsEnabledBool:
+        if memberSettings.dms_enabled:
             try:
                 dm = await message.author.create_dm()
+                
+                # Check if they were timed out, or if it's just a strike
                 if strikes == 0:
-                    embed = nextcord.Embed(title = "Profanity Log", description = f"You were flagged for saying \"{result}\" in \"{message.content}\" in \"{message.guild.name}\". You are now timed out for {server.profanityTimeoutTime}.\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
+                    # They were timed out. Tell them.
+                    embed = nextcord.Embed(title = "Profanity Log", description = f"You were flagged for profanity.\n\n**Server:** {message.guild.name}\n**Word:** {result}\n**Message:** {message.content}\n\nYou were timed out for {server.profanity_timeout_time}.", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
+                    embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
                     await dm.send(embed = embed)
+                    
                 else:
-                    embed = nextcord.Embed(title = "Profanity Log", description = f"You were flagged for saying \"{result}\" in \"{message.content}\" in \"{message.guild.name}\". You are now at strike {strikes}.\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
+                    # It was just a strike. Tell them.
+                    embed = nextcord.Embed(title = "Profanity Log", description = f"You were flagged for profanity.\n\n**Server:** {message.guild.name}\n**Word:** {result}\n**Message:** {message.content}\n\nYou are now at strike {strikes} / {server.max_strikes}.", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
+                    embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
                     await dm.send(embed = embed)
+                    
             except:
                 pass #the user has dms turned off. It's not a big deal, they just don't get notified.
         
-        #Send message in channel where bad word was sent.
+        # Send message in channel where bad word was sent.
         if await checkTextChannelPermissions(message.channel, True):
-            embed = nextcord.Embed(title = "Profanity Detected", description = f"{message.author.mention} was flagged for saying a Profane word. The message was automatically deleted.\n\n{message.author.mention} is now at {strikes} strike(s)\n\nContact a server admin for more info.", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
-            await message.channel.send(embed = embed, view = InviteView())
+            embed = nextcord.Embed(title = "Profanity Detected", description = f"{message.author.mention} was flagged for profanity. The message was automatically deleted.\n\nContact a server admin for more info.", color = nextcord.Color.dark_red())
+            await message.channel.send(embed = embed, view = InviteView(), delete_after = 10.0)
         
-        #Send message to admin channel (if enabled)
-        if server.adminChannel != None:
-            if server.adminChannel and await checkTextChannelPermissions(server.adminChannel, True, customChannelName = f"Admin Channel (#{server.adminChannel.name})"):
+        # Send message to admin channel (if enabled)
+        if server.admin_channel != None:
+            if server.admin_channel and await checkTextChannelPermissions(server.admin_channel, True, customChannelName = f"Admin Channel (#{server.admin_channel.name})"):
                 view = IncorrectButton()
 
-                embed = nextcord.Embed(title = "Profanity Detected", description = f"{message.author} was flagged for saying \"{result}\" in \"{message.content}\".\n\nThis message was automatically deleted.\n\n{message.author} is now at {strikes} strike(s)", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
+                timeout_message = (f" was timed out for {server.profanity_timeout_time} and" if (strikes == 0 and server.max_strikes != 0) else "")
+                strikes_message = (f"{message.author.mention}{timeout_message} is now at strike {strikes} / {server.max_strikes}." if server.max_strikes != 0 else "")
+                
+                embed = nextcord.Embed(title = "Profanity Detected", description = f"{message.author.mention} was flagged for profanity.\n\n**Word:** {result}\n**Message:** {message.content}\n\**Channel**: {message.channel.mention}n\nThis message was automatically deleted.\n\n{strikes_message}", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
                 embed.set_footer(text = f"Member ID: {str(message.author.id)}")
                 
-                await server.adminChannel.send(view = view, embed = embed)
+                await server.admin_channel.send(view = view, embed = embed)
 
             
-        #delete the message
-        autoDeletedMessageTime = datetime.datetime.utcnow()
+        # Delete the message
+        auto_deleted_message_time = datetime.datetime.utcnow()
         
         try:
             await message.delete()
         except nextcord.errors.Forbidden:
-            await sendErrorMessageToOwner(message.guild, "Manage Messages")
+            await sendErrorMessageToOwner(message.guild, "Manage Messages", channel = message.channel.name)
 
+
+# Spam Moderation -------------------------------
+# Checks for repeated words given a string
+def checkRepeatedWordsPercentage(text, threshold=0.7):
+    words = re.findall(r'\w+', text.lower())  # Convert text to lowercase and extract words
+    counts = defaultdict(lambda: 0)  # Dictionary to store word counts
+    
+    # Remove symbols from the words
+    words = [re.sub(r'\W+', '', word) for word in words]
+
+    # Iterate over the words and count their occurrences
+    last_words = []
+    for word in words:
+        if word not in last_words:
+            counts[word] += 0.5
+        else:
+            counts[word] += 1
+        last_words.insert(0, word)
+        if len(last_words) >= 5:
+            last_words.pop(3)
+        
+    # Calculate the total number of words and the number of repeated words
+    total_words = len(words)
+    if total_words == 0: return False
+    repeated_words = sum(count for count in counts.values() if count > 0.5)
+
+    # Calculate the percentage of repeated words
+    repeated_percentage = repeated_words / total_words
+
+    # Check if the percentage exceeds the threshold
+    return repeated_percentage >= threshold
+
+# Compares attatchments given two attachments
+def compareAttachments(attachments_1: List[nextcord.Attachment], attachments_2: List[nextcord.Attachment]):
+        # quick optimizations
+        if not attachments_1 or not attachments_2:
+            return False
+        if attachments_1 == attachments_2:
+            return True
+
+        for attachment_1 in attachments_1:
+            for attachment_2 in attachments_2:
+                if (
+                    attachment_1.url == attachment_2.url
+                    or (
+                        attachment_1.filename == attachment_2.filename
+                        and attachment_1.width == attachment_2.width
+                        and attachment_1.height == attachment_2.height
+                        and attachment_1.size == attachment_2.size
+                    )
+                ):
+                    return True
+        return False
+
+# RAN FOR EVERY MESSAGE. Ties spam moderation together
 async def checkSpam(message: nextcord.Message, server: Server):
     MAX_MESSAGES_TO_CHECK = 11    # The MAXIMUM messages InfiniBot will try to check for spam
     MESSAGE_CHARS_TO_CHECK_REPETITION = 140    # A message requires these many characters before it is checked for repetition
@@ -7506,14 +8449,17 @@ async def checkSpam(message: nextcord.Message, server: Server):
     # If Spam is Enabled
     if not utils.enabled.SpamModeration(server = server): return
     
+    # Checks
+    if message.author.guild_permissions.administrator: return
+    
     # Check if we can view the audit log
     if not message.guild.me.guild_permissions.view_audit_log:
         await sendErrorMessageToOwner(message.guild, "View Audit Log", channel=message.channel.name)
         return
 
     # Configure limit (the most messages that we're willing to check)
-    if server.messagesThreshold < MAX_MESSAGES_TO_CHECK:
-        limit = server.messagesThreshold + 1 # Add one because of the existing message
+    if server.messages_threshold < MAX_MESSAGES_TO_CHECK:
+        limit = server.messages_threshold + 1 # Add one because of the existing message
     else:
         limit = MAX_MESSAGES_TO_CHECK
         
@@ -7532,7 +8478,7 @@ async def checkSpam(message: nextcord.Message, server: Server):
         
         # Check message content and attachments
         if _message.content == message.content or compareAttachments(_message.attachments, message.attachments):
-            timeNow = datetime.datetime.utcnow() - datetime.timedelta(seconds = 2 * server.messagesThreshold) # ======= Time Threshold =========
+            timeNow = datetime.datetime.utcnow() - datetime.timedelta(seconds = 2 * server.messages_threshold) # ======= Time Threshold =========
             timeNow = timeNow.replace(tzinfo=datetime.timezone.utc)  # Make timeNow offset-aware
             
             # If the message is within the time threshold window, add that message.
@@ -7544,110 +8490,49 @@ async def checkSpam(message: nextcord.Message, server: Server):
 
 
     # Punnish the member (if needed)
-    if len(duplicateMessages) >= server.messagesThreshold:
+    if len(duplicateMessages) >= server.messages_threshold:
         try:
             # Time them out
-            await timeout(message.author, server.spamTimeoutTime, reason=f"Spam Moderation: User exceeded spam message limit of {server.messagesThreshold}.")
+            await timeout(message.author, server.spam_timeout_time, reason=f"Spam Moderation: User exceeded spam message limit of {server.messages_threshold}.")
             
             # Send them a message (if they want it)
-            if Member(message.author.id).dmsEnabledBool:
+            if Member(message.author.id).dms_enabled:
                 dm = await message.author.create_dm()
                 await dm.send(
                     embed=nextcord.Embed(
                         title="Spam Timeout",
-                        description=f"You were flagged for spamming in \"{message.guild.name}\". You have been timed out for {server.spamTimeoutTime}.\n\nPlease contact the admins if you think this is a mistake.",
+                        description=f"You were flagged for spamming in \"{message.guild.name}\". You have been timed out for {server.spam_timeout_time}.\n\nPlease contact the admins if you think this is a mistake.",
                         color=nextcord.Color.red(),
                     )
                 )
         except nextcord.errors.Forbidden:
-            await sendErrorMessageToOwner(message.guild, "Timeout Members", guildPermission=True)
+            await sendErrorMessageToOwner(message.guild, "Timeout Members", guild_permission=True)
 
-# At refatoring time, remove these and integrate with dashboard
-def addWord(word: str, guild_id):
-    server = Server(guild_id)
-    
-    if word.lower() in [x.lower() for x in server.ProfaneWords]:
-        return nextcord.Embed(title = "Word Already Exists", description = f"The word \"{word}\" already exists in the database.", color = nextcord.Color.red())
 
-    if "———" in word:
-        return nextcord.Embed(title = "Word Cannot Contain Unique Case", description = f"Your word cannot contain \"———\" as it is reserved for other uses", color = nextcord.Color.red())
-
-    #add word
-    server.ProfaneWords.append(word.lower())
-
-    server.saveProfaneWords()
-
-    return True
-def deleteWord(word: str, guild_id):
-    server = Server(guild_id) 
-    server.ProfaneWords.pop(server.ProfaneWords.index(word))
-    server.saveProfaneWords()
-
-@set.subcommand(name = "strikes", description = "Set any user's strikes (requires Infinibot Mod)")
-async def setstrikescommand(interaction: Interaction, member: nextcord.Member, strike: str = SlashOption(description = "\"+1\" adds a strike, \"-1\" subtracts a strike. Or, input a number to overide strike count.")):
-    if await hasRole(interaction):
-        try:
-            int(strike)
-        except TypeError:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "Strikes must be a number", color = nextcord.Color.red()), ephemeral = True)
-            return
-
-        if strike == "-1":
-            for x in range(0, int(strike[1:])):
-                await giveStrike(interaction.guild_id, member.id, None, -1)
-                await interaction.response.send_message(embed = nextcord.Embed(title = "Strikes Modified", description = f"{interaction.user} decreased {member}'s strikes by {strike}.", color = nextcord.Color.green()))
-                return
-
-        if strike == "+1":
-            for x in range(0, int(strike[1:])):
-                await giveStrike(interaction.guild_id, member.id, None, 1)
-                await interaction.response.send_message(embed = nextcord.Embed(title = "Strikes Modified", description = f"{interaction.user} increased {member}'s strikes by {strike}.", color = nextcord.Color.green()))
-                return
-            
-            
-        server = Server(interaction.guild.id)
-        if not await canModerate(interaction, server): return
-        
-        theirStrike = server.getStrike(member.id)
-        
-        if theirStrike != None:
-            if int(strike) != 0: server.getStrike(member.id).strike = int(strike)
-            else: server.deleteStrike(member.id)
-        else:
-            server.addStrike(member.id, strike)
-        
-        server.saveStrikes()
-
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Strikes Modified", description = f"{interaction.user} changed {member}'s strikes to {strike}.", color = nextcord.Color.green()))
-
-@bot.slash_command(name = "my_strikes", description = "Get your strikes", dm_permission=False)
+# Commands -------------------------------
+@bot.slash_command(name = "my_strikes", description = "View your strikes", dm_permission=False)
 async def mystrikes(interaction: Interaction):
     server = Server(interaction.guild.id)
     if not await canModerate(interaction, server): return
 
     theirStrike = server.getStrike(interaction.user.id)
-    if theirStrike != None:
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {interaction.user}", description = f"You are at {str(theirStrike.strike)} strike(s)", color =  nextcord.Color.blue()))
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {interaction.user}", description = f"You are at 0 strike(s)", color =  nextcord.Color.blue()))
+    await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {interaction.user}", description = f"You are at {str(theirStrike.strike)} strike(s)", color =  nextcord.Color.blue()))
 
-@bot.slash_command(name = "view_strikes", description = "View another member's strikes", dm_permission=False)
+@bot.slash_command(name = "view_strikes", description = "View another member's strikes. (Requires Infinibot Mod)", dm_permission=False)
 async def viewstrikes(interaction: Interaction, member: nextcord.Member):
-    server = Server(interaction.guild.id)
-    if not await canModerate(interaction, server): return
+    if await hasRole(interaction):
+        server = Server(interaction.guild.id)
+        if not await canModerate(interaction, server): return
 
-    theirStrike = server.getStrike(member.id)
-    if theirStrike != None:
+        theirStrike = server.getStrike(member.id)
         await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {member}", description = f"{member} is at {str(theirStrike.strike)} strike(s).\n\nAction done by {interaction.user}", color =  nextcord.Color.blue()))
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {member}", description = f"{member} is at 0 strikes.\n\nAction done by {interaction.user}", color =  nextcord.Color.blue()))
 
-@set.subcommand(name = "admin_channel", description = "Use this channel to log strikes. Channel should only be viewable by admins. (requires Infinibot Mod)")
+@set.subcommand(name = "admin_channel", description = "Use this channel to log strikes. Channel should only be viewable by admins. (Requires Infinibot Mod)")
 async def setAdminChannel(interaction: Interaction):
    if await hasRole(interaction) and await checkIfTextChannel(interaction):
         server = Server(interaction.guild.id)
 
-        server.adminChannel = interaction.channel
+        server.admin_channel = interaction.channel
         server.saveData()
 
 
@@ -8497,7 +9382,7 @@ async def on_raw_reaction_add(payload: nextcord.RawReactionActionEvent):
             if len(message.embeds[0].fields) >= 1 and message.embeds[0].fields[0].name.lower().startswith("react"): # This message IS a reaction role
                 # Can we manage roles? If not, there's not point to any of this
                 if not message.channel.permissions_for(guild.me).manage_roles:
-                    await sendErrorMessageToOwner(guild, "Manage Roles", guildPermission = True)
+                    await sendErrorMessageToOwner(guild, "Manage Roles", guild_permission = True)
                     return
                 
                 # Get all options
@@ -8535,6 +9420,10 @@ async def on_raw_reaction_add(payload: nextcord.RawReactionActionEvent):
                                 pass
                             return
 #END of reaction bot functionality: ------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
 
 
 #Start of role messages functionality: ----------------------------------------------------------------------------------------------------------------------------------------
@@ -9036,8 +9925,11 @@ class RoleMessageSetup(nextcord.ui.View):
 async def roleMessageCommand(interaction: Interaction):
     if await hasRole(interaction):
         await RoleMessageSetup().setup(interaction)
-
 #End of role messages functionality: ----------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
 
 
 #Start of join/leave messages functionality: ----------------------------------------------------------------------------------------------------------------------------------------------
@@ -9076,10 +9968,10 @@ async def on_member_join(member: nextcord.Member):
     server.levels.addMember(member.id)
 
     #welcome them -----------------------------------------------------------------
-    joinMessage: str = server.joinMessage
-    if utils.enabled.JoinLeaveMessages(server = server) and joinMessage != None: #if we don't have a join message, what's the point?
-        if server.joinChannel != None: #set the join channel (if none, then it is the system channel)
-            channel = server.joinChannel
+    joinMessage: str = server.join_message
+    if utils.enabled.JoinLeaveMessages(server = server) and joinMessage != None and server.join_channel != False: #if we don't have a join message, what's the point?
+        if server.join_channel != None: #set the join channel (if none, then it is the system channel)
+            channel = server.join_channel
         else:
             if member.guild.system_channel != None:
                 channel = member.guild.system_channel
@@ -9098,10 +9990,10 @@ async def on_member_join(member: nextcord.Member):
             embeds = [embed]
             
             #card (if necessary)
-            if server.allowJoinCardsBool:
+            if server.allow_join_cards_bool:
                 memberData = Member(member.id)
-                if memberData.joinCard.enabled:
-                    card = memberData.joinCard.embed()
+                if memberData.join_card.enabled:
+                    card = memberData.join_card.embed()
                     embeds.append(card)
             
             
@@ -9109,18 +10001,18 @@ async def on_member_join(member: nextcord.Member):
     
     #give them roles --------------------------------------------------------------
     if utils.enabled.DefaultRoles(server = server):
-        for role in server.defaultRoles:
+        for role in server.default_roles:
             await member.add_roles(role)
         
     #update stats --------------------------------------------------------------------
-    if server.statsMessage.active:
+    if server.stats_message.active:
         async def exceptionFunction():
             await sendErrorMessageToOwner(member.guild, None, message = "InfiniBot cannot access the Server Statistics message anymore to edit it. The message has been deactivated. Use /setup_stats to activate another.", administrator = False)
-            server.statsMessage.setValue(None)
+            server.stats_message.setValue(None)
             server.saveData()
             
         try:
-            bool, message = await server.statsMessage.checkMessage()
+            bool, message = await server.stats_message.checkMessage()
             if message != None:
                 await message.edit(embed = getStatsMessage(message.guild))
             else:
@@ -9160,10 +10052,10 @@ async def on_member_remove(member: nextcord.Member):
             
             
     #say farewell to them: --------------------------------------------------------------------------------
-    leaveMessage: str = server.leaveMessage
-    if utils.enabled.JoinLeaveMessages(server = server) and leaveMessage != None: #if we don't have a leave message, what's the point?
-        if server.leaveChannel != None: #set the leave channel (if none, then it is the system channel)
-            channel = server.leaveChannel
+    leaveMessage: str = server.leave_message
+    if utils.enabled.JoinLeaveMessages(server = server) and leaveMessage != None and server.leave_channel != False: #if we don't have a leave message, what's the point?
+        if server.leave_channel != None: #set the leave channel (if none, then it is the system channel)
+            channel = server.leave_channel
         else:
             if member.guild.system_channel != None:
                 channel = member.guild.system_channel
@@ -9184,14 +10076,14 @@ async def on_member_remove(member: nextcord.Member):
             
             
     #update stats: ---------------------------------------------------------------------------------------------
-    if server.statsMessage.active:
+    if server.stats_message.active:
         async def exceptionFunction():
             await sendErrorMessageToOwner(member.guild, None, message = "InfiniBot cannot access the Server Statistics message anymore to edit it. The message has been deactivated. Use /setup_stats to activate another.", administrator = False)
-            server.statsMessage.setValue(None)
+            server.stats_message.setValue(None)
             server.saveData()
             
         try:
-            bool, message = await server.statsMessage.checkMessage()
+            bool, message = await server.stats_message.checkMessage()
             if message != None:
                 await message.edit(embed = getStatsMessage(message.guild))
             else:
@@ -9209,56 +10101,46 @@ async def on_member_remove(member: nextcord.Member):
 
 
 #Start of birthday messages functionality: ---------------------------------------------------------------------------------------------------------------------------------------------
-async def checkForBirthdays(nextTime, currentTime):
+async def checkForBirthdays():
     print("checking birthdays -----------------------------------------------")
+    current_time = datetime.datetime.now()
+    
     #check for birthdays
     if main.global_kill_birthdays: return
-    birthdays_allServers = fileOperations.getAllBirthdays()
-    for server in birthdays_allServers:
-        try:
-            serverSplit = server.split("———")
-            for member in serverSplit[1:]:
-                try:
-                    memberSplit = member.split("|||")
-                    birthdayTime = datetime.datetime.strptime(memberSplit[1], f"%m/%d/%Y")
-                    #uncomment for telemetry
-                    #print("memberSplit:", memberSplit) print("Day Delta:", abs(birthdayTime.day - nextTime.day)) print("Month Delta:", abs(birthdayTime.month - nextTime.month))
-                    if birthdayTime.day == nextTime.day and birthdayTime.month == nextTime.month: #if it is their birthday
-                        Server = None
-                        for guild in bot.guilds:
-                            if guild.id == int(serverSplit[0]):
-                                Server = guild
-
-                        if Server == None: break
-
-                        _member = await bot.fetch_user(memberSplit[0])
-                        #uncomment for telemetry
-                        #print("bot guilds:", bot.guilds) print("Server Data:", Server) print("Server Members:", Server.members) print("_member:", _member)
-                        if _member == None: continue
-
-                        year = currentTime.year - birthdayTime.year
-
-
-                        dm = await _member.create_dm()
-                        
-                        memberSettings = Member(_member.id)
-                        
-                        
-                        channel = await getChannel(Server)
-                        if channel == None: break
-                        if len(memberSplit) == 2:
-                            await channel.send(embed = nextcord.Embed(title = f"Happy Birthday {_member.name}!", description = f"{_member.mention} just turned {year}! Congratulations!", color =  nextcord.Color.gold()))
-                            if memberSettings.dmsEnabledBool: await dm.send(embed = nextcord.Embed(title = f"Happy Birthday {_member.name}!", description = f"You just turned {year}! Congratulations!\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color =  nextcord.Color.gold()))
-                        else:
-                            await channel.send(embed = nextcord.Embed(title = f"Happy Birthday {memberSplit[2]}!", description = f"{_member.mention} just turned {year}! Congratulations!", color =  nextcord.Color.gold()))
-                            if memberSettings.dmsEnabledBool: await dm.send(embed = nextcord.Embed(title = f"Happy Birthday {memberSplit[2]}!", description = f"You just turned {year}! Congratulations!\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color =  nextcord.Color.gold()))
-                except Exception as err:
-                    print("Checking Birthdays Member Exception: " + str(err))
-                    continue
+    
+    # Loop through guilds
+    for guild in bot.guilds:
+        server = Server(guild.id)
+        
+        if server == None: continue
+        if server.guild == None: continue
+        
+        # Loop through birthdays in each guild
+        for birthday in server.birthdays:
+            # Decode birthday time
+            birthday_time = datetime.datetime.strptime(birthday.date, f"%m/%d/%Y")
+                    
+            if birthday_time.day == current_time.day and birthday_time.month == current_time.month: #if it is their birthday
+                # If the member is none for some reason, just skip
+                if birthday.member == None: continue
                 
-        except Exception as err:
-            print("Checking Birthdays Server Exception: " + str(err))
-            continue
+                # Calculate their age
+                age = current_time.year - birthday_time.year
+                
+                # Embeds
+                name = (birthday.real_name if birthday.real_name else birthday.member.name)
+                
+                server_embed = nextcord.Embed(title = f"Happy Birthday {name}!", description = f"{birthday.member.mention} just turned {age}! Congratulations!", color =  nextcord.Color.gold())
+                dm_embed = nextcord.Embed(title = f"Happy Birthday {name}!", description = f"You just turned {age}! Congratulations!", color =  nextcord.Color.gold())
+                dm_embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
+                
+                # Send to server
+                birthday_channel = server.birthday_channel
+                if birthday_channel: await birthday_channel.send(embed = server_embed)
+                
+                # DM
+                memberSettings = Member(birthday.member_id)
+                if memberSettings.dms_enabled: await birthday.member.send(embed = dm_embed)
 
 @view.subcommand(name = "birthdays", description = "View all of the saved birthdays")
 async def view_birthdays(interaction: Interaction):
@@ -9273,7 +10155,7 @@ async def view_birthdays(interaction: Interaction):
                 server.saveBirthdays()
                 continue
             
-            if birthday.realName != None: birthdays.append(f"{birthday.member.mention} ({str(birthday.realName)}) - {birthday.date}")
+            if birthday.real_name != None: birthdays.append(f"{birthday.member.mention} ({str(birthday.real_name)}) - {birthday.date}")
             else: birthdays.append(f"{birthday.member.mention} - {birthday.date}")
                 
         except Exception as err:
@@ -9330,14 +10212,14 @@ async def purge(interaction: Interaction, amount: str = SlashOption(description=
                 if channel == None: return None
                 else: return channel.id
                  
-            if interaction.channel.id == getID(server.adminChannel): server.adminChannel = newChannel
-            if interaction.channel.id == getID(server.logChannel): server.logChannel = newChannel
-            if interaction.channel.id == getID(server.levelingChannel): server.levelingChannel = newChannel
-            if interaction.channel.id == getID(server.joinChannel): server.joinChannel = newChannel
-            if interaction.channel.id == getID(server.leaveChannel): server.leaveChannel = newChannel
-            if interaction.channel.id in [getID(channel) for channel in server.levelingExemptChannels]:
-                server.levelingExemptChannels.remove(interaction.channel)
-                server.levelingExemptChannels.append(newChannel)
+            if interaction.channel.id == getID(server.admin_channel): server.admin_channel = newChannel
+            if interaction.channel.id == getID(server.log_channel): server.log_channel = newChannel
+            if interaction.channel.id == getID(server.leveling_channel): server.leveling_channel = newChannel
+            if interaction.channel.id == getID(server.join_channel): server.join_channel = newChannel
+            if interaction.channel.id == getID(server.leave_channel): server.leave_channel = newChannel
+            if interaction.channel.id in [getID(channel) for channel in server.leveling_exempt_channels]:
+                server.leveling_exempt_channels.remove(interaction.channel)
+                server.leveling_exempt_channels.append(newChannel)
             
             server.saveData()
             
@@ -9402,17 +10284,17 @@ def shouldLog(guild_id):
     if not utils.enabled.Logging(server = server):
         return False, None
 
-    if server.logChannel == None:
+    if server.log_channel == None:
         return False, None
     else:
-        return True, server.logChannel
+        return True, server.log_channel
 
-@set.subcommand(name = "log_channel", description = "Use this channel for logging. Channel should only be viewable by admins. (requires Infinibot Mod)")
+@set.subcommand(name = "log_channel", description = "Use this channel for logging. Channel should only be viewable by admins. (Requires Infinibot Mod)")
 async def setLogChannel(interaction: Interaction):
    if await hasRole(interaction) and await checkIfTextChannel(interaction):
         server = Server(interaction.guild.id)
 
-        server.logChannel = interaction.channel
+        server.log_channel = interaction.channel
         server.saveData()
 
 
@@ -9461,7 +10343,7 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent):
     if afterMessage == None: return
     
     #punish profanity (if any)
-    await punnishProfanity(Server(guild.id), afterMessage)
+    await checkProfanity(Server(guild.id), afterMessage)
     
     #test for false-positives
     if not ShouldLog: return
@@ -9477,8 +10359,8 @@ async def trigger_edit_log(guild: nextcord.Guild, originalMessage: nextcord.Mess
     if not user: user = editedMessage.author
     if not logChannel:
         server = Server(guild.id)
-        logChannel = server.logChannel
-        if not logChannel or not server.loggingBool:
+        logChannel = server.log_channel
+        if not logChannel or not server.logging_enabled:
             return;
     
     # Avatar
@@ -9658,12 +10540,12 @@ async def files_computation(deleted_message: nextcord.Message, log_channel: next
  
 @bot.event
 async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
-    global autoDeletedMessageTime, purging
+    global auto_deleted_message_time, purging
 
     time.sleep(1) #we need this time delay for some other features
 
-    if autoDeletedMessageTime != None: #see if this is InfiniBot's doing
-        if ((datetime.datetime.utcnow() - autoDeletedMessageTime).seconds <= 5):
+    if auto_deleted_message_time != None: #see if this is InfiniBot's doing
+        if ((datetime.datetime.utcnow() - auto_deleted_message_time).seconds <= 5):
             return
     
     #find the message (CSI Time!)
@@ -9703,7 +10585,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
         try:
             entry = list(await guild.audit_logs(limit=1, action=nextcord.AuditLogAction.message_delete).flatten())[0]
         except nextcord.errors.Forbidden:
-            await sendErrorMessageToOwner(guild, "View Audit Log", guildPermission = True)
+            await sendErrorMessageToOwner(guild, "View Audit Log", guild_permission = True)
             return
         except IndexError:
             entry = None
@@ -9805,9 +10687,9 @@ async def on_guild_channel_delete(channel: nextcord.abc.GuildChannel):
 
 @bot.event
 async def on_member_update(before: nextcord.Member, after: nextcord.Member):
-    global nicknameChanged
+    global nickname_changed
     
-    if before.nick != after.nick and not after.guild.id in nicknameChanged:
+    if before.nick != after.nick and not after.guild.id in nickname_changed:
         ShouldLog, logChannel = shouldLog(after.guild.id)
         if ShouldLog:
 
@@ -9826,7 +10708,7 @@ async def on_member_update(before: nextcord.Member, after: nextcord.Member):
                 await logChannel.send(embed = embed)
             
             
-        if after.nick != None: await checkNickname(after.guild, after)
+        if after.nick != None: await checkNickname(after.guild, before, after)
 
     if before.roles != after.roles:
         ShouldLog, logChannel = shouldLog(after.guild.id)
@@ -9907,7 +10789,7 @@ async def memberRemove(guild: nextcord.Guild, member: nextcord.Member):
     if guild.me == None: return
     
     if not guild.me.guild_permissions.view_audit_log:
-        await sendErrorMessageToOwner(guild, "View Audit Log", guildPermission = True)
+        await sendErrorMessageToOwner(guild, "View Audit Log", guild_permission = True)
         return
     
     auditLogEntries = await guild.audit_logs(limit=1).flatten()
@@ -9960,7 +10842,7 @@ async def on_voice_state_update(member: nextcord.Member, before: nextcord.VoiceS
             try:
                 vc = await after.channel.category.create_voice_channel(name = f"{member.name} Vc")
             except nextcord.errors.Forbidden:
-                await sendErrorMessageToOwner(member.guild, "Manage Channels", guildPermission = True)
+                await sendErrorMessageToOwner(member.guild, "Manage Channels", guild_permission = True)
                 return
             try:
                 await member.move_to(vc)
@@ -9982,9 +10864,9 @@ async def on_voice_state_update(member: nextcord.Member, before: nextcord.VoiceS
                     await before.channel.delete()
             except nextcord.errors.Forbidden:
                 if before.channel.permissions_for(member.guild.me).manage_channels == False:
-                    await sendErrorMessageToOwner(member.guild, "Manage Channels", guildPermission = True)
+                    await sendErrorMessageToOwner(member.guild, "Manage Channels", guild_permission = True)
                 if before.channel.permissions_for(member.guild.me).connect == False:
-                    await sendErrorMessageToOwner(member.guild, "Connect", guildPermission = True)
+                    await sendErrorMessageToOwner(member.guild, "Connect", guild_permission = True)
                 return
 #Join-to-create vc END: --------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -9996,29 +10878,31 @@ async def on_voice_state_update(member: nextcord.Member, before: nextcord.VoiceS
 async def checkLevels():
     print("Checking Levels --------------------")
     if not main.global_kill_leveling:
-        allGuildIDs = [guild.id for guild in bot.guilds]
+        all_guild_IDs = [guild.id for guild in bot.guilds]
         for guild in bot.guilds:
             try:
-                if not guild.id in allGuildIDs: continue
+                if not guild.id in all_guild_IDs: continue
                 
                 server = Server(guild.id)
-                if server == None or server.guild == None: continue
-                if server.levelingBool == False: continue
-                if server.pointsLostPerDay == None: continue
-                if server.pointsLostPerDay == 0: continue
                 
-                for level in server.levels.allMembers:
+                # Checks
+                if server == None or server.guild == None: continue
+                if server.leveling_enabled == False: continue
+                if server.points_lost_per_day == None: continue
+                if server.points_lost_per_day == 0: continue
+                
+                # Go through each member and edit
+                for level in server.levels.all_members:
                     try:
-                        level.score -= server.pointsLostPerDay
-                        if level.score <= 0:
-                            server.levels.deleteMember(level.memberID)
+                        # Remove the points
+                        level.score -= server.points_lost_per_day
                     except Exception as err:
                         print(f"ERROR When checking levels (member): {err}")
                         continue
                 
                 server.saveLevels()
                 
-                for member in server.levels.allMembers:
+                for member in server.levels.all_members:
                     await checkForLevelsAndLevelRewards(server.guild, member.member)
                 
                 del server
@@ -10050,14 +10934,8 @@ def getScore(level: int):
     return(score) #levels are calculated by x^0.65
 
 def setScoreOfMember(server: Server, member_id, score):
-    if score != 0: #if we are not reseting their score
-        memberLevel = server.levels.getMember(member_id)
-        
-        if memberLevel != None: memberLevel.score = score #if they already had a score
-        else: server.levels.addMember(member_id, score = score) #else, create one
-    else:
-        server.levels.deleteMember(member_id)
-            
+    memberLevel = server.levels.getMember(member_id)
+    memberLevel.score = score        
     server.saveLevels()
 
 async def canLevel(interaction: Interaction, server: Server):
@@ -10083,7 +10961,7 @@ async def giveLevels(message: nextcord.Message):
     channel = message.channel
     
     server = Server(message.guild.id)
-    if message.channel.id in [channel.id for channel in server.levelingExemptChannels]: return
+    if message.channel.id in [channel.id for channel in server.leveling_exempt_channels]: return
     
     lastFiveMessages = channel.history(limit = 6) #it is 6 because this includes the message just sent.
     
@@ -10100,26 +10978,21 @@ async def giveLevels(message: nextcord.Message):
         count += 1
 
     words = message.content.split(" ")
-    totalPoints = 0
+    total_points = 0
     for word in words:
-        for _ in word: totalPoints += 1
+        for _ in word: total_points += 1
         
-    totalPoints /= 10
-    roundedPoints = round(totalPoints)
+    total_points /= 10
+    roundedPoints = round(total_points)
     
     if roundedPoints > MAX_POINTS_PER_MESSAGE:
         roundedPoints = MAX_POINTS_PER_MESSAGE
     
-    memberLevel = server.levels.getMember(member.id)
-    if memberLevel != None:
-        originalLevel = getLevel(memberLevel.score)
-        memberLevel.score += roundedPoints
-    else:
-        originalLevel = 0
-        server.levels.addMember(member.id, roundedPoints)
-        memberLevel = server.levels.getMember(member.id)
+    member_level = server.levels.getMember(member.id)
+    originalLevel = getLevel(member_level.score)
+    member_level.score += roundedPoints
         
-    nowLevel = getLevel(memberLevel.score)
+    nowLevel = getLevel(member_level.score)
     server.saveLevels()
     
     if originalLevel != nowLevel:
@@ -10128,80 +11001,78 @@ async def giveLevels(message: nextcord.Message):
 async def checkForLevelsAndLevelRewards(guild: nextcord.Guild, member: nextcord.Member, levelup_announce: bool = False, silent = False):
     """Handles the distribution of levels and level rewards"""
     server = Server(guild.id)
-    memberLevel = server.levels.getMember(member.id)
-    if memberLevel != None:
-        score = memberLevel.score
-        level = getLevel(score)
-    else:
-        score = 0
-        level = 0
+    member_level = server.levels.getMember(member.id)
+    score = member_level.score
+    level = getLevel(score)
     
     
-    memberOptions = Member(member.id)
+    member_options = Member(member.id)
     
     
     #level-up messages
-    if levelup_announce and (not silent) and (server.levelingMessage != None):
-        message = server.levelingMessage.replace("[level]", str(level))
-        embed = nextcord.Embed(title = f"Congratulations, {member}!", description = message, color = nextcord.Color.from_rgb(235, 235, 235))
+    if levelup_announce and (not silent) and (server.leveling_message != None) and (server.leveling_channel != False):
+        message = server.leveling_message.replace("[level]", str(level))
+        embed = nextcord.Embed(title = f"Congratulations, {member.display_name}!", description = message, color = nextcord.Color.from_rgb(235, 235, 235)) #white-ish
         embeds = [embed]
         
         #get the card (if needed)
-        if server.allowLevelCardsBool:
+        if server.allow_level_cards_bool:
             memberData = Member(member.id)
-            if memberData.levelCard.enabled:
-                card = memberData.levelCard.embed()
+            if memberData.level_card.enabled:
+                card = memberData.level_card.embed()
                 card.description = card.description.replace("[level]", str(level))
                 embeds.append(card)
         
         
-        if server.levelingChannel != None:
-            await server.levelingChannel.send(embeds = embeds) #white-ish
+        if server.leveling_channel != None:
+            await server.leveling_channel.send(embeds = embeds) 
         else:
             channel = await getChannel(guild)
-            if channel != None: await channel.send(embeds = embeds) #white-ish
+            if channel != None: await channel.send(embeds = embeds)
     
-    #level-reward messages
-    for levelReward in server.levels.levelRewards:
-        if levelReward.level <= level:
-            #we need to give them this role.
-            if not levelReward.role in member.roles:
+    # Level-Reward messages
+    for level_reward in server.levels.level_rewards:
+        if level_reward.level <= level:
+            # We need to give them this role.
+            if not level_reward.role in member.roles:
                 try:
-                    await member.add_roles(levelReward.role)
+                    await member.add_roles(level_reward.role)
                 except nextcord.errors.Forbidden:
-                    await sendErrorMessageToOwner(guild, "Manage Roles", guildPermission = True)
+                    await sendErrorMessageToOwner(guild, "Manage Roles", guild_permission = True)
                     return
                 
-                try:    
-                    if server.levelingChannel != None and (not silent): await server.levelingChannel.send(embed = nextcord.Embed(title = f"Role Granted to {member}", description = f"{member.mention} has been granted the role of {levelReward.role.mention} as a result of reaching level {str(levelReward.level)}!", color = nextcord.Color.purple()))
-                    else: 
-                        channel = await getChannel(guild)
-                        if channel != None and (not silent): await channel.send(embed = nextcord.Embed(title = f"Role Granted to {member}", description = f"{member.mention} has been granted the role of {levelReward.role.mention} as a result of reaching level {str(levelReward.level)}!", color = nextcord.Color.purple()))
-                    
-                    if memberOptions.dmsEnabledBool and (not silent): await member.send(embed = nextcord.Embed(title = f"Congratulations! You reached level {str(levelReward.level)} in \"{guild.name}\"!", description = f"As a result, you were granted the role of \"{levelReward.role.name}\". Keep your levels up, or else you will loose it!\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.purple()))
-                except nextcord.errors.Forbidden:
-                    await sendErrorMessageToOwner(guild, "Send Messages")
-                    return
+                # Send a notifications
+                if not silent:
+                    # DM Them
+                    if member_options.dms_enabled:
+                        embed = nextcord.Embed(title = f"Congratulations! You leveled up in {guild.name}!", description = f"As a result, you were granted {level_reward.role.name}. Keep your levels up, or else you will loose it!", color = nextcord.Color.purple())
+                        embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
+                        try:
+                            await member.send(embed = embed)
+                        except nextcord.errors.Forbidden:
+                            # DMs are disabled
+                            pass
                 
         else:
-            #we need to take the role
-            if levelReward.role in member.roles:
+            # We need to take the role
+            if level_reward.role in member.roles:
                 try:
-                    await member.remove_roles(levelReward.role)
+                    await member.remove_roles(level_reward.role)
                 except nextcord.errors.Forbidden:
-                    await sendErrorMessageToOwner(guild, "Manage Roles", guildPermission = True)
+                    await sendErrorMessageToOwner(guild, "Manage Roles", guild_permission = True)
                     return
                 
-                try:
-                    if server.levelingChannel != None and (not silent): await server.levelingChannel.send(embed = nextcord.Embed(title = f"Role Revoked from {member}", description = f"{member.mention} has been revoked the role of {levelReward.role.mention} as a result of loosing level {str(levelReward.level)}", color = nextcord.Color.dark_purple()))
-                    else:
-                        channel = await getChannel(guild) 
-                        if channel != None and (not silent): channel.send(embed = nextcord.Embed(title = f"Role Revoked from {member}", description = f"{member.mention} has been revoked the role of {levelReward.role.mention} as a result of loosing level {str(levelReward.level)}", color = nextcord.Color.dark_purple()))
-                    
-                    if memberOptions.dmsEnabledBool and (not silent): await member.send(embed = nextcord.Embed(title = f"Oh, no! You lost a level and are now at level {str(levelReward.level)} in \"{guild.name}\"!", description = f"As a result, the role of \"{levelReward.role.name}\" has been revoked. Bring your levels back up, and win back your role!\n\nTo opt out of dm notifications, use {opt_out_of_dms.get_mention()}", color = nextcord.Color.dark_purple()))
-                except nextcord.errors.Forbidden:
-                    await sendErrorMessageToOwner(guild, "Send Messages")
-                    return
+                # Send a notifications
+                if not silent:
+                    # DM Them
+                    if member_options.dms_enabled:
+                        embed = nextcord.Embed(title = f"Oh, no! You lost a level in {guild.name}!", description = f"As a result, {level_reward.role.name} has been revoked. Bring your levels back up, and win back your role!", color = nextcord.Color.purple())
+                        embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
+                        try:
+                            await member.send(embed = embed)
+                        except nextcord.errors.Forbidden:
+                            # DMs are disabled
+                            pass
   
 
 @bot.slash_command(name = "leaderboard", description = "Get your level and the level of everyone on the server.", dm_permission=False)
@@ -10270,17 +11141,6 @@ async def myLevel(interaction: Interaction):
     
     await interaction.response.send_message(embed = nextcord.Embed(title = "Your level", description = f"{interaction.user.mention} is at level {str(level)} (score: {str(score)})", color = nextcord.Color.blue()), view = InviteView())
 
-@view.subcommand("levels", description = "Know how many points you need to reach any level")
-async def levelsView(interaction: Interaction, level: int):
-    response = ""
-    if level >= 0:
-        response = f"To get to level {str(level)}, you need a score of at least {str(getScore(level))}."
-        
-        await interaction.response.send_message(embed = nextcord.Embed(title = f"Level {str(level)}", description = response, color = nextcord.Color.blue()))
-        
-    else:
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "\"Level\" cannot be negative", color = nextcord.Color.red()), ephemeral=True)
-
 @set.subcommand(name = "level", description = "Set levels for any individual (Requires Infinibot Mod)")
 async def setLevel(interaction: Interaction, member: nextcord.Member, level: int):
     if await hasRole(interaction):
@@ -10300,27 +11160,6 @@ async def setLevel(interaction: Interaction, member: nextcord.Member, level: int
         await interaction.response.send_message(embed = nextcord.Embed(title = "Levels Changed", description = f"{interaction.user} changed {member}'s level to {str(level)} (score: {str(score)})", color = nextcord.Color.green()))
         
         if getLevel(beforeScore) != level: await checkForLevelsAndLevelRewards(interaction.guild, member)
-
-@set.subcommand(name = "score", description = "Set a score for any individual (Requires Infinibot Mod)")
-async def setScore(interaction: Interaction, member: nextcord.Member, score: int):
-    if await hasRole(interaction):
-        if score < 0:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "\"Score\" needs to be positive.", color = nextcord.Color.red()), ephemeral=True)
-            return
-        
-        server = Server(interaction.guild.id)
-        Member = server.levels.getMember(member.id)
-        if Member != None: beforeScore = Member.score
-        else: beforeScore = 0
-        
-        setScoreOfMember(server, member.id, score)
-        
-        level = getLevel(score)
-        
-        await interaction.response.send_message(embed = nextcord.Embed(title = "Levels Changed", description = f"{interaction.user} changed {member}'s score to {str(score)} (level: {str(level)})", color = nextcord.Color.green()))
-        
-        if getLevel(beforeScore) != level: await checkForLevelsAndLevelRewards(interaction.guild, member)
-
 #Leveling END: ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
@@ -10338,10 +11177,10 @@ async def setupStats(interaction: Interaction):
     global statsInvalidMessage
     if await hasRole(interaction):
         server = Server(interaction.guild.id)
-        exists, message = await server.statsMessage.checkMessage()
+        exists, message = await server.stats_message.checkMessage()
         if exists:
             #they already have a stats message. We should double check that they want to continue.
-            embed = nextcord.Embed(title = "Statistics Message Already Exists", description = f"Each server can only have one statistics message.\n\nCurrently, there is already a [statistics message]({server.statsMessage.link}). Would you like to replace it?", color = nextcord.Color.blue())
+            embed = nextcord.Embed(title = "Statistics Message Already Exists", description = f"Each server can only have one statistics message.\n\nCurrently, there is already a [statistics message]({server.stats_message.link}). Would you like to replace it?", color = nextcord.Color.blue())
 
             view = ConfirmationView()
             await interaction.response.send_message(embed = embed, view = view, ephemeral = True)
@@ -10366,7 +11205,7 @@ async def setupStats(interaction: Interaction):
             
             message = await interaction.channel.send(embed = statsMessage)
             
-            server.statsMessage.setValue(message)
+            server.stats_message.setValue(message)
             server.saveData()
             
         
@@ -10380,7 +11219,7 @@ async def setupStats(interaction: Interaction):
             
             message = await interaction.channel.send(embed = statsMessage)
             
-            server.statsMessage.setValue(message)
+            server.stats_message.setValue(message)
             server.saveData()
             
             await interaction.response.send_message(embed = nextcord.Embed(title = "How it works: Server Statistics", description = "This message will update every time someone joins / leaves the server. There can only be one of these, so if you run this command again, this one will become inactive.", color = nextcord.Color.blue()), ephemeral = True)
@@ -10414,7 +11253,7 @@ class JokeView(nextcord.ui.View):
             # Try to post a message to the submission channel on the InfiniBot Support Server
             server = None
             for guild in bot.guilds:
-                if guild.id == infiniBotGuild: server = guild
+                if guild.id == infiniBot_guild: server = guild
             
             if server == None:
                 print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
@@ -10426,7 +11265,7 @@ class JokeView(nextcord.ui.View):
             embed.add_field(name = "Joke", value = self.joke_description.value)
             if self.joke_answer.value: embed.add_field(name = "Answer", value = self.joke_answer.value)
             
-            channel = server.get_channel(submissionChannel)
+            channel = server.get_channel(submission_channel)
             await channel.send(embed = embed, view = JokeVerificationView())
             
             # Inform the user that it was sent
@@ -10495,7 +11334,7 @@ class JokeVerificationView(nextcord.ui.View):
                         await self.message.edit(embeds = embeds, view = None)
                         
                         # Try to dm
-                        support_server = bot.get_guild(infiniBotGuild)
+                        support_server = bot.get_guild(infiniBot_guild)
                         if not support_server:
                             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                             return
@@ -10507,7 +11346,7 @@ class JokeVerificationView(nextcord.ui.View):
                         dm = await member.create_dm()
                         
                         memberSettings = Member(member.id)
-                        if memberSettings.dmsEnabledBool:
+                        if memberSettings.dms_enabled:
                             await dm.send(embeds = [nextcord.Embed(title = "Joke Submission Denied", description = f"Your joke submission has been denied by {interaction.user}. The joke you submitted has been attached below.\n\nReason: {self.reason}\n\nIf you believe this to be a mistake, contact the moderator in the #support channel of the InfiniBot Support Server.", color = nextcord.Color.red()),
                                               nextcord.Embed(title = title, description = f"{description}\n\n{f'Answer: ||{answer}||' if answer else ''}", color = nextcord.Color.fuchsia())])
                         
@@ -10516,7 +11355,7 @@ class JokeVerificationView(nextcord.ui.View):
                    
                 # Get confirmation that we will be able to dm the user
                 try:
-                    support_server = bot.get_guild(infiniBotGuild)
+                    support_server = bot.get_guild(infiniBot_guild)
                 except nextcord.errors.Forbidden:
                     print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                     return
@@ -10614,7 +11453,7 @@ class JokeVerificationView(nextcord.ui.View):
                         
                         # Try to dm
                         try:
-                            support_server = bot.get_guild(infiniBotGuild)
+                            support_server = bot.get_guild(infiniBot_guild)
                         except nextcord.errors.Forbidden:
                             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                             return
@@ -10626,7 +11465,7 @@ class JokeVerificationView(nextcord.ui.View):
                         dm = await member.create_dm()
                         
                         memberSettings = Member(member.id)
-                        if memberSettings.dmsEnabledBool:
+                        if memberSettings.dms_enabled:
                             await dm.send(embeds = [nextcord.Embed(title = "Joke Submission Verified", description = f"Your joke submission has been verified! The joke you submitted has been attached below.", color = nextcord.Color.green()),
                                                 nextcord.Embed(title = self.joke_title, description = f"{formatNewlinesForUser(self.joke_description)}\n\n{f'Answer: ||{formatNewlinesForUser(self.joke_answer)}||' if self.joke_answer else ''}", color = nextcord.Color.fuchsia())])
                         
@@ -10636,7 +11475,7 @@ class JokeVerificationView(nextcord.ui.View):
                 
                 # Get confirmation that we will be able to dm the user
                 try:
-                    support_server = bot.get_guild(infiniBotGuild)
+                    support_server = bot.get_guild(infiniBot_guild)
                 except nextcord.errors.Forbidden:
                     print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                     return
@@ -12158,7 +12997,7 @@ async def motivationalStatement(interaction: Interaction):
 
 @bot.slash_command(name = "change_nick", description = "Change the nickname of any user. (Requires a higher role, and manage nicknames permission)", dm_permission=False)
 async def change_nick(interaction: Interaction, member: nextcord.Member, nickname: str = SlashOption(description = "List a nickname. \"CLEAR\" will clear an existing nickname.")):
-    global nicknameChanged
+    global nickname_changed
     
     if not interaction.user.guild_permissions.manage_nicknames:
         await interaction.response.send_message(embed = nextcord.Embed(title = "Permission Error", description = "You do not have the \"manage nicknames\" permission which is required to use this command.", color =  nextcord.Color.red()), ephemeral=True)
@@ -12170,8 +13009,8 @@ async def change_nick(interaction: Interaction, member: nextcord.Member, nicknam
         await interaction.response.send_message(embed = nextcord.Embed(title = "Permission Error", description = "InfiniBot needs the Manage Nicknames permission for this action.", color =  nextcord.Color.red()), ephemeral=True)
         return
     
-    if not interaction.guild_id in nicknameChanged:
-        nicknameChanged.append(interaction.guild_id)
+    if not interaction.guild_id in nickname_changed:
+        nickname_changed.append(interaction.guild_id)
     
     beforeNick = member.nick
     
@@ -12202,8 +13041,8 @@ async def change_nick(interaction: Interaction, member: nextcord.Member, nicknam
 
 
     await asyncio.sleep(1)
-    if interaction.guild.id in nicknameChanged:
-        nicknameChanged.pop(nicknameChanged.index(interaction.guild.id))
+    if interaction.guild.id in nickname_changed:
+        nickname_changed.pop(nickname_changed.index(interaction.guild.id))
 
 @set.subcommand(name = "default_role", description = "Set a default role that will be given to anyone who joins the server. (Requires Infinibot Mod)")
 async def defaultRole(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Leave blank to disable this feature.", required=False)):
@@ -12220,8 +13059,8 @@ async def defaultRole(interaction: Interaction, role: nextcord.Role = SlashOptio
                 return
         
         server = Server(interaction.guild.id)
-        if role != None: server.defaultRoles = role
-        else: server.defaultRoles = []
+        if role != None: server.default_roles = role
+        else: server.default_roles = []
         server.saveData()
         
         if role != None: await interaction.response.send_message(embed = nextcord.Embed(title = "Default Role Set", description = f"Any member who joins this server will get the role {role.mention}.\nAction done by {interaction.user}", color = nextcord.Color.green()))
@@ -12318,7 +13157,7 @@ async def help(interaction: Interaction):
     
     • Discord's autocomplete feature can be useful.
     
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    For more help, join us at {support_server_link} or contact at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
@@ -12329,64 +13168,68 @@ async def help(interaction: Interaction):
 
 @help.subcommand(name = "moderation_profanity", description = "Help with the Admin Channel, Strikes, Infinibot Mod, Flagged/Profane Words, and more.")
 async def profanityModerationHelp(interaction: Interaction):
-    description = f"""Out of the box, profanity moderation is *mostly* set up. The only thing left to do is to set up the \"Admin Channel\". To do this, go to `/dashboard → Moderation → Profanity → Admin Channel` and select a secure channel that only admins can see.
-    
-    **What is the Admin Channel?**
-        • Whenever a member says a flagged word, their message will be automatically deleted, and they will recieve a strike. All strikes will be reported to the Admin Channel where admins can look over the strike and decide whether it was legitimate.
-        • In this channel, you can mark any strikes as incorrect, and the member who recieved the strike will have it refunded. In addition, you will be able to see the original message that was automatically deleted.
-            → Note: Make sure the channel has application commands enabled and InfiniBot has access to it!
-        
-    **What happens when you get a strike?**
-        • One strike on its own is not dangerous. However, they can build up. Once you reach the server's __maximum strikes__ (to find, go to `/dashboard → Moderation → Profanity`), you will be timed out for the server's __timeout duration__ (to find, go to `/dashboard → Moderation → Profanity`).
-        • Once you serve your timeout, you will be back at 0 strikes.
-    
-        • In some servers, another way to clear strikes is by waiting. Once the \"strike expire time\" has passed (to find, go to `/dashboard → Moderation → Profanity`), you will be refunded one strike.
-    
-    **It says I need Infinibot Mod?**
-        • Some features are locked down so that only admins can use them. If you are an admin, go ahead and assign yourself the role Infinibot Mod (which should have been automatically created by InfiniBot). Once you have this role, you will have full access to InfiniBot and its features.
-    
-    **How do I add/delete a flagged/Profane word?**
-        • Go to `/dashboard → Moderation → Profanity → Filtered Words`. In here, you can add, delete, and view all the words InfiniBot will filter.
-            → Note: InfiniBot will also listen for variations of these words.
-        
-    **Don't want it?**
-        • Don't think profanity moderation is what your server needs? That's fine! You can turn it off by going to `/dashboard → Enable/Disable Features → Profanity Moderation`, and selecting "Disable"
-    
-    **Extra Commands**
-        • `/view_strikes` allows you to see another member's strikes. (This works without Infinibot Mod)
-        • `/my_strikes` allows you to see your own strikes. (This works without Infinibot Mod)
-        • `/dashboard → Moderation → Profanity` allows you to configure specific features in Profanity Moderation.
-        • `/dashboard → Moderation → Profanity → Manage Members` allows you to view and configure strikes.
-    
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    description = f"""
+    Out of the box, profanity moderation is mostly set up. To complete the setup, visit `/dashboard → Moderation → Profanity` and enable the feature.
+
+    **Admin Channel Overview:**
+    - When a member uses flagged words, their message is automatically deleted, and they receive a strike.
+    - All strikes are reported to the Admin Channel, where admins can review and decide on their legitimacy.
+        - Note: Ensure InfiniBot can view the channel and send messages.
+
+    **Strike Handling:**
+    - Admins can mark strikes as incorrect in the Admin Channel, refunding them to the member.
+    - Admins can also view the original message that was automatically deleted.
+
+    **Understanding Strikes:**
+    - A single strike is not dangerous, but they can accumulate.
+    - Upon reaching the server's maximum strikes (configured at `/dashboard → Moderation → Profanity`), a timed-out duration is applied.
+    - After serving the timeout, the member resets to 0 strikes.
+
+    **Strike Expire Time:**
+    - In some servers, strikes can be cleared by waiting for the "strike expire time" (configured at `/dashboard → Moderation → Profanity`), which refunds one strike.
+
+    **Managing Filtered Words:**
+    - Add, delete, and view filtered words at `/dashboard → Moderation → Profanity → Filtered Words`.
+        - Note: InfiniBot also detects variations of these words.
+
+    **Disabling Profanity Moderation:**
+    - If profanity moderation isn't suitable for your server, turn it off at `/dashboard → Moderation → Profanity → Disable Profanity Moderation`.
+
+    **Extra Commands:**
+    - `/view_strikes`: View another member's strikes. (Works without Infinibot Mod)
+    - `/my_strikes`: View your own strikes. (Works without Infinibot Mod)
+    - `/dashboard → Moderation → Profanity`: Configure specific features in Profanity Moderation.
+    - `/dashboard → Moderation → Profanity → Manage Members`: View and configure strikes.
+
+    For additional assistance, join us at {support_server_link} or contact us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "How profanity moderation works with InfiniBot", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Fine-Tune Profanity Moderation for Your Server", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView())
     
 @help.subcommand(name = "moderation_spam", description = "Help with spam moderation")
 async def spamModerationHelp(interaction: Interaction):
-    description = f"""Out of the box, spam moderation is all set up! However, you can configure it for your needs!
-    
-    **Settings**
-        • You can adjust certain features to better fit your server. Here's how:
-            → Go to `/dashboard → Moderation → Spam`
-            → You can configure the timeout duration of the penalty when a member spams too much (Click on Timeout Duration)
-            → You can also configure the messages threshold (the number of messages until the member recieves a timeout). (Click on Messages Threshold)
-    
-    **Don't want it?**
-        • Don't think you need spam moderation? That's fine! You can turn it off by going to `/dashboard → Enable/Disable Features → Spam Moderation`, and selecting "Disable"
-    
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    description = f"""Out of the box, spam moderation is pre-configured for your convenience. To activate it, head to `/dashboard → Moderation → Spam`.
+
+    **Settings Customization:**
+    Tailor spam moderation to suit your server's needs by adjusting specific features:
+    - Navigate to `/dashboard → Moderation → Spam`.
+    - Configure the timeout duration for the penalty when a member exceeds the spam threshold (Click on Timeout Duration).
+    - Adjust the messages threshold (the number of messages triggering a timeout) to better align with your server's dynamics (Click on Messages Threshold).
+
+    **Disabling Spam Moderation:**
+    - If spam moderation isn't required, you can easily disable it at `/dashboard → Moderation → Spam → Disable Spam Moderation`.
+
+    For additional assistance, join us at {support_server_link} or contact us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "How spam moderation works with InfiniBot", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Streamline Your Server with Spam Moderation", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView())
     
 #@help.subcommand(name = "music", description = "Help with playing music")
@@ -12418,7 +13261,7 @@ async def musicHelp(interaction: Interaction):
         • `/loop` will let you loop your favorite song and not have to type the command for it over and over.
        
     
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    For more help, join us at {support_server_link} or contact at infinibotassistance@gmail.com.
     """
 
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
@@ -12430,408 +13273,379 @@ async def musicHelp(interaction: Interaction):
 
 @help.subcommand(name = "voting", description = "Help with creating votes")
 async def votingHelp(interaction: Interaction):
-    description = f"""Voting has always been hard in Discord. InfiniBot makes it less painful.
-    
-    **How to use it**
-        • Type `/create vote` and select either "Letters" or "Numbers". Your choice will be the symbols for the votes.
-        • Now, run the command, and you should see a window pop up. Fill in the title, description, and the options.
-            → Tip: Remember that the options must be formatted with a comma and a space in between (ex: ", ").
-        • Finally, click Submit.
-    
-    **What did it do?**
-        • If all went well, it should have created a couple of reactions that others can react to.
-        • If these reactions did NOT appear, check InfiniBot's permissions and make sure that it can add reactions (check the channel permissions too!)
-        
-    **What do the letters mean?**
-        • If you chose "Letters" when creating the vote, each option will be the first letter of every choice (if the letter was already used, it will default to "A", then "B", etc.)
-    
-    **Custom Votes**
-        • Custom votes are a little trickier, but you can customize the reactions. Here's how to do it.
-        • Type `/create custom_vote` and in the options format it like this: "Emoji = Option, Emoji = Option, Emoji = Option, etc"
-             → example: "😄 = Yes, 😢 = No"
-        • From there, run the command, and choose the Title and Description.
-        
-    **Edit Votes**
-        • To edit your vote, right click on the message, and go to `Apps → Options → Edit → Edit Text`. Here you can edit the text of your vote
-            → Tip: If you don't see the Edit option, check that the message is from InfiniBot, is a vote, and that it is still an active message.
-        
-    **Close Votes**
-        • To close your vote, right click on the message, and go to `Apps → Options → Edit → Close Vote`. This will disable your vote and finalize the results.
-            → Tip: If you don't see the Edit option, check that the message is from InfiniBot, is a vote, and that it is still an active message.
-        
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    description = f"""Voting in Discord made easy with InfiniBot.
+
+    **Creating a Vote:**
+    - Type `/create vote` and choose either "Letters" or "Numbers" as symbols for the votes.
+    - Run the command, and a window will appear. Fill in the title, description, and options.
+        - Tip: Ensure options are formatted with a comma and a space in between (e.g., ", ").
+    - Click Submit.
+
+    **Vote Reactions:**
+    - If successful, reactions will be created for others to participate.
+    - If reactions don't appear, check InfiniBot's permissions and ensure it can add reactions (also check channel permissions).
+
+    **Letter Representation:**
+    - If "Letters" was chosen, each option will be represented by the first letter of the choice. If the letter is already used, it defaults to "A," then "B," and so on.
+
+    **Custom Votes:**
+    - For custom votes, type `/create custom_vote` and format options like "Emoji = Option, Emoji = Option, Emoji = Option, etc."
+    - Example: "😄 = Yes, 😢 = No"
+    - Run the command, and choose the Title and Description.
+
+    **Editing Votes:**
+    - To edit a vote, right-click on the message, go to `Apps → Options → Edit → Edit Text`. Here, you can modify the vote text.
+        - Tip: If the Edit option isn't visible, check that the message is from InfiniBot, is a vote, and is still an active message.
+
+    **Closing Votes:**
+    - To close a vote, right-click on the message, go to `Apps → Options → Edit → Close Vote`. This disables the vote and finalizes the results.
+        - Tip: If the Edit option isn't visible, check that the message is from InfiniBot, is a vote, and is still an active message.
+
+    For additional assistance, join us at {support_server_link} or contact us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "How to use InfiniBot to help you create votes!", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Simplify Voting with InfiniBot", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView())
 
 @help.subcommand(name = "reaction_roles", description = "Help with creating reaction roles")
 async def reactionRolesHelp(interaction: Interaction):
-    description = f"""Set up reaction roles to allow members to give themselves roles!
-    
-    ★ Note: A new-and-improved version of reaction roles have been released. Type `/help role_messages` to learn more!
-    
-    **How to use it**
-        • Type `/create reaction_role` and select either "Letters" or "Numbers". Your choice will be the symbols for the reactions.
-        • Now, run the command, and you should see a window pop up. Fill in the title and description.
-        • Click Submit, and you should see a new message with a dropdown box. Go ahead and select all the roles you would like the reaction role to give.
-        • Finally, click Create, and you should see your reaction role come to life!
-    
-    **What did it do?**
-        • If all went well, it should have created a couple of reactions that others can react to.
-        • If these reactions did NOT appear, check InfiniBot's permissions and make sure that it can add reactions (check the channel permissions too!)
-        
-    **What do the letters mean?**
-        • If you chose "Letters" when creating the reaction role, each option will be the first letter of every choice (if the letter was already used, it will default to "A", then "B", etc.)
-        
-    **Whenever I react to one, my reaction is taken away. Why?**
-        • If you react to one of the reactions, you should be given the corresponding role. Then, your reaction will be removed via the bot. If you would like to get rid of this role, just react to that same letter again, and that role will be removed from you.
-    
-    **I didn't get the role. Why?**
-        • If you reacted for the role but did not recieve the role, there could be a couple of reasons:
-            1) The role you are wanting is equal to or higher than InfiniBot's highest role, so it cannot grant this role to you.
-            2) InfiniBot does not have permission to manage roles. Go ahead and give InfiniBot this permission and see if things work for you.
-        • If these don't fix the problem, submit a question / issue at {supportServerLink}.
-        
-    **Custom Reaction Roles**
-        • Custom reaction roles are a little trickier, but you can customize the reactions. Here's how to do it.
-        • Type `/create custom_reaction_role` and in the options format it like this: "Emoji = @role, Emoji = @role, Emoji = @role, etc"
-            → example: "👍 = @Member, 🥸 = @Gamer"
-        • From there, run the command, and choose the Title and Description.
-            → Note: The role select menu will not show seeing how you already selected the roles when you declared the emojis.
-            
-    **Edit Reaction Roles**
-        • To edit your reaction role, right click, and go to `Apps → Options → Edit`. From here, you can edit the text and options of the reaction role.
-            → Tip: If you don't see the Edit option, check that the message is from InfiniBot, is a reaction role, and that it is still an active message.
-        
-    
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    description = f"""
+    **Note:** A new and improved version of reaction roles has been released. Type `/help role_messages` to learn more!
+
+    **How to Use It:**
+    - Type `/create reaction_role` and choose "Letters" or "Numbers" as symbols for reactions.
+    - Run the command and a window will pop up. Fill in the title and description.
+    - Click Submit, and a new message with a dropdown box will appear. Select the roles you want the reaction role to give.
+    - Finally, click Create to see your reaction role come to life!
+
+    **Reaction Role Details:**
+    - If successful, reactions will be created for others to interact with.
+    - If reactions don't appear, check InfiniBot's permissions, ensuring it can add reactions (also check channel permissions).
+
+    **Letter Representation:**
+    - If "Letters" was chosen, each option will be represented by the first letter of the choice. If the letter is already used, it defaults to "A," then "B," and so on.
+
+    **Understanding Reaction Removal:**
+    - When you react, you'll be given the corresponding role, and your reaction will be removed. To remove the role, react to the same letter again.
+
+    **Troubleshooting Role Acquisition:**
+    - If you didn't get the role after reacting, consider the following:
+    1. The desired role may be equal to or higher than InfiniBot's highest role.
+    2. Ensure InfiniBot has the "Manage Roles" permission.
+
+    **Custom Reaction Roles:**
+    - For custom reaction roles, type `/create custom_reaction_role` and format options like "Emoji = @role, Emoji = @role, Emoji = @role, etc."
+    - Example: "👍 = @Member, 🥸 = @Gamer"
+
+    **Editing Reaction Roles:**
+    - To edit your reaction role, right-click, and go to `Apps → Options → Edit`. Edit the text and options.
+        - Tip: If the Edit option isn't visible, check that the message is from InfiniBot, is a reaction role, and is still an active message.
+
+    For additional assistance, join us at {support_server_link} or contact us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "How to set up reaction roles with InfiniBot!", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Set Up Reaction Roles with InfiniBot", description = description, color = nextcord.Color.greyple())
     
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView()) 
 
 @help.subcommand(name = "role_messages", description = "Help with creating role messages")
 async def roleMessagesHelp(interaction: Interaction):
-    description = f"""Set up role messages to allow members to assign themselves roles using a modern interface!
+    description = f"""Role messages allow members to assign themselves roles using a modern interface.
+    
+    **How to Use:**
+    - Type `/create role_message` and choose "Get Started." You'll then be prompted to input the title of the role message and an optional description.
+    - Afterward, you can edit your text or change the color. If you're satisfied, proceed to add roles by clicking "Next."
+    - Creating an option involves choosing a role, providing a name, and an optional description for that option.
+    - Customize the text or add/remove roles for the option. A single option can grant multiple roles.
+    - Click "Finish" to reach a screen where you can edit every part of your role message, including adding, editing, or deleting more options.
+    - Click "Finish" again, and choose whether the role message allows users to select a single option or multiple options.
+    - Lastly, click "Create Role Message" to bring your role message to life!
 
-    **How to use it**
-        • Type `/create role_message` and choose "Get Started". You will be prompted to include the title of the role message and an optional description.
-        • Next, you have the option to edit your text or change the color. Assuming you're happy with the current state of your role message, let's add some roles!
-        • Click "Next". Now we're creating an option. You will be prompted to choose a role. This role will be granted when the user selects this option.
-        • Then, you'll be prompted to choose the name and an optional description for that option.
-        • You'll be brought to a new screen. Here, you can change the text (name and description) or add/remove more roles for this option. A single option can grant multiple roles.
-        • When you're done, click "Finish". You'll be brought to a screen where you can edit every part of your role message. You will also be able to add, edit, or delete more options.
-        • Finally, click "Finish" one more time. You'll be prompted to choose whether you want this role message to allow users to select a single option or multiple options.
-        • Lastly, click "Create Role Message", and your role message will come to life!
+    **Functionality:**
+    - Members can click the button below the role message to be prompted to select available options.
 
-    **What does it do?**
-        • Members can now click the button below the role message. When they do so, they will be prompted to select available options.
+    **Troubleshooting:**
+    - If members encounter an error, they'll receive a prompt to report the issue to a server admin.
+    - To resolve, check InfiniBot's "Manage Roles" permission and ensure InfiniBot has a higher role than any assigned roles.
+    - If issues persist, submit a question/issue in our [support server]({support_server_link}).
 
-    **Members are reporting issues**
-        • If there is an error when doing this, members will be prompted, and they may report the issue to the server admin.
-        • To resolve this issue, try to double-check InfiniBot's permissions for the "Manage Roles" permission and ensure that InfiniBot has a higher role than any of the roles it assigns.
-        • If these steps don't fix the problem, submit a question/issue at {supportServerLink}.
+    **Editing Role Messages:**
+    - Right-click on the message and go to `Apps → Options → Edit` to modify the text, options, and mode of the role message.
+        - Tip: If the Edit option is missing, confirm the message is from InfiniBot, is a role message, and is still active.
 
-    **Edit Role Messages**
-        • To edit your role message, right-click on the message and go to `Apps → Options → Edit`. From here, you can edit the text, options, and mode of the role message.
-            → Tip: If you don't see the Edit option, check that the message is from InfiniBot, is a role message, and is still an active message.
-
-
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    For additional assistance, join us at {support_server_link} or contact us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "How to set up role messages with InfiniBot!", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Setting Up Role Messages:", description = description, color = nextcord.Color.greyple())
     
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView()) 
 
 @help.subcommand(name = "join_and_leave_messages", description = "Help with join / leave messages")
 async def joinLeaveMessagesHelp(interaction: Interaction):
-    description = f"""Want to greet your members? Go ahead and set up join / leave messages!
-    
-    **How to set a join / leave message**
-        • Go to `/dashboard → Join / Leave Messages`. In here, select either "Join Message" or "Leave Message" and write your message! If you want to reference the member who joined, include "[member]" in your message.
-        • After running this command, InfiniBot will greet and say farewell to members however you would like!
-        
-    **Don't want it?**
-        • Don't need this feature? That's fine! You can turn it off by going to `/dashboard → Join / Leave Messages` and editing the "Join Message" and "Leave Message" to be blank.
-    
-    **Extra Commands**
-        • `/dashboard → Join / Leave Messages → Join Message Channel` allows you to configure where the join message will be sent.
-        • `/dashboard → Join / Leave Messages → Leave Message Channel` allows you to configure where the leave message will be sent.
-       
-    
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    description = f"""
+    **Setting up Join/Leave Messages:**
+    - Navigate to `/dashboard → Join/Leave Messages`. Choose either "Join Message" or "Leave Message" and craft your desired message. To reference the joining member, include "[member]" in your message.
+    - Now, InfiniBot will warmly welcome and bid farewell to members according to your preferences.
+
+    **Disabling Join and Leave Messages**
+    - If you don't need this feature, you can disable it by going to `/dashboard → Join/Leave Messages` and clearing the "Join Message" and "Leave Message" fields.
+
+    **Additional Commands:**
+    - Use `/dashboard → Join/Leave Messages → Join Message Channel` to specify where the join message will be sent.
+    - Employ `/dashboard → Join/Leave Messages → Leave Message Channel` to configure the destination for leave messages.
+
+    For further assistance, join us at {support_server_link} or reach out to us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "How to set up join and leave messages with InfiniBot", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Greet Your Members with Join/Leave Messages", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView())  
 
 @help.subcommand(name = "birthdays", description = "Help with birthdays")
 async def birthdaysHelp(interaction: Interaction):
-    description = f"""Never forget a birthday again and let InfiniBot do all the work!
-    
-    **How to add a birthday**
-        • Go to `/dashboard → Birthdays → Add` and choose the member, click next, and then enter the date of their birthday. This MUST be formatted as month, day, year (MM/DD/YYYY).
-        • If you know it, you can even include their real name!
-        • Now, on their birthday at 8:00 AM MDT, they will be wished a happy birthday on the server and via a dm!
-        
-    **Editing and Deleting**
-        • You can go to `/dashboard → Birthdays` and use both "Edit" and "Delete" incase you made a mistake, or don't want InfiniBot to celebrate their birthday anymore.
-        
-    **Extra Commands**
-        • `/dashboard → Birthdays → Delete All` will delete all the birthdays in the server.
-    
-    
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    description = f"""
+    **Adding a Birthday:**
+    - Visit `/dashboard → Birthdays → Add`. Select the member, proceed to the next step, and enter their birthday, formatted as month, day, year (MM/DD/YYYY).
+    - Optionally, include their real name if you have it.
+    - On their birthday at 8:00 AM MDT, InfiniBot will automatically extend birthday wishes on the server and through a direct message!
+
+    **Editing and Deleting:**
+    - Navigate to `/dashboard → Birthdays` to use both "Edit" and "Delete" in case of errors or if you no longer want InfiniBot to celebrate a particular birthday.
+
+    **Additional Commands:**
+    - Use `/dashboard → Birthdays → Delete All` to clear all birthdays in the server.
+
+    For additional assistance, join us at {support_server_link} or reach out to us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "How to set up birthdays with InfiniBot", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Never Miss a Birthday Again with InfiniBot", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView())  
 
 @help.subcommand(name = "logging", description = "Help with logging.")
 async def loggingHelp(interaction: Interaction):
-    description = f"""Ever find it annoying how members can edit or delete their message and leave you with no proof? With logging enabled, you will never have to worry about this again.
-    
-    **What is the Log Channel?**
-        • Whenever a log is created, it has to go somewhere! Creating a private channel specifically for logs is highly encouraged. Go to `/dashboard → Logging → Log Channel` and choose a channel to automatically be used for logging.
-            → Note: Make sure the channel has application commands enabled and InfiniBot has access to it!
-            → Tip: Go ahead and turn notifications to "Nothing" for this channel, as it will constently be logging.
-    
-    **What will it log?**
-        • InfiniBot will log the following:
-            → Deleted Messages
-            → Edited Messages
-            → Nickname Changes
-            → Role Changes
-            → Kicks
-            → Bans
-        
-    **There is a *slight* limitation**
-        • Discord has a slight limitation regarding deleted messages. Therefore, in some senarios, the logs may not include the actual message, and/or author/deleter. By clicking "More Information", more information will be presented about the specific situation.
-        
-    **Don't want it?**
-        • Don't feel like logging suits your needs? That's fine! You can turn it off by going to `/dashboard → Enable/Disable Features → Logging`, and selecting "Disable"
+    description = f"""Enable logging by going to `/dashboard → Logging`.
 
-    
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    **Log Channel Setup:**
+    - Create a private channel dedicated to logs by going to `/dashboard → Logging → Log Channel`. Choose a channel for automatic logging.
+    - Note: Ensure the chosen channel has application commands enabled, and InfiniBot has access to it.
+        - Tip: Set channel notifications to "Nothing" as it will be consistently logging.
+
+    **What Gets Logged:**
+    - InfiniBot will log message deletions, edits, and server changes.
+
+    **Slight Limitation:**
+    - Discord has a minor limitation with deleted messages. As a result, logs may not always include the whole story. Click "More Information" on the message for specifics.
+
+    **Not Interested in Logging?**
+    - If logging doesn't suit your needs, turn it off at `/dashboard → Logging → Disable Logging`.
+
+    For additional assistance, join us at {support_server_link} or reach out to us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "How logging works with InfiniBot", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Never Lose Track with Message Logging!", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView())
 
 @help.subcommand(name = "leveling", description = "Help with leveling and level rewards.")
 async def levelingHelp(interaction: Interaction):
-    description = f"""Enjoy a leveling system for your members and keep your server active!
-    
-    By default, everything is already set up for leveling! Whenever members type in text channels, InfiniBot will give them points to level up. But, even though this is cool, you can do more with it!
-    
-    **Set up Level Rewards**
-        • Create specific roles for once members reach a certain level. For example, you could create a member-plus role with the ability to add custom emojis to the server, and you could use that as a level reward. Here's how to set that up:
-        • Go to `/dashboard → Leveling → Level Rewards → Create` and select the role you would like to assign. Then, choose a level. Now, once members reach that level, they can get that role, but if they loose that level, they will loose the role.
-            → Tip: Don't choose too high of a level. Levels are calculated via the equation 0.1x^0.65, so each level will make the next harder and harder to get to.
-            → Warning: If you link a role to a level reward, anyone who does not meet that level will have that role automatically taken from them once their level updates, so be careful.
-    
-    **How are points given?**
-        • Points are given via every character in a message. The longer the message, the more points. However, you can't spam a long message, as InfiniBot will check to make sure that the message is not spamed.
-        • Levels are calculed by 0.1x^0.65, so it's exponential. In English, the more levels you have, the harder it is to get to the next one.
-        
-    **How do I loose points?**
-        • Every day at midnight MDT, every member will loose a certain amount of points from their score. This is not their levels, but their points. Overtime, this can add up and it can take your levels, so be careful!
-        • The amount of points lost per day can be changed via `/dashboard → Leveling → Points Lost Per Day`. The default is 2 per day.
-        
-    **Don't want it?**
-        • Think that it doesn't work for you? That's fine! You can turn it off by going to `/dashboard → Enable/Disable Features → Leveling`, and selecting "Disable"
-        
-    **Extra Commands**
-        • `/leaderboard` allows you to see where you rank with the rest of the server.
-        • `/set level` allows you to set the level of any member on the server via a slash command (you can also do this within the dashboard).
-        • `/set score` allows you to set the score of any member on the server via a slash command (you can also do this within the dashboard).
-        • `/dashboard → Leveling → Leveling Channel` lets you set a channel to be the announcement place for level ups / level rewards.
-        • `/dashboard → Leveling → Level Up Message` allows you to change what message will be sent when someone levels up.
-        • `/view levels [level]` lets you calculate the score requirement for each level.
-        • `/dashboard → Leveling → Manage Members → Reset` will set everyone in the server back to level 0.
-    
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    description = f"""
+    InfiniBot has a built-in system for leveling in your server. Enable it by going to `/dashboard → Leveling`.
+
+    **Setting up Level Rewards:**
+    - Create specific roles as rewards for reaching certain levels. Go to `/dashboard → Leveling → Level Rewards → Create`, choose the role, and set the corresponding level.
+        - Tip: Avoid choosing excessively high levels; levels are calculated exponentially using the equation 0.1x^0.65, making each subsequent level harder to achieve.
+    - Warning: Linking a role to a level reward will automatically remove the role from members who don't meet the level requirement.
+
+    **Earning Points:**
+    - Points are awarded based on the length of messages. Longer messages earn more points. Anti-spam measures are in place to ensure fair distribution.
+
+    **Losing Points:**
+    - Every day at midnight MDT, members lose a set amount of points. Adjust this amount at `/dashboard → Leveling → Points Lost Per Day`. Default is 2 points per day.
+
+    **Disabling Leveling:**
+    - If the leveling system doesn't suit your server, disable it at `/dashboard → Leveling → Disable Leveling`.
+
+    **Extra Commands:**
+    - `/leaderboard`: Check your rank within the server.
+    - `/set level`: Set the level of any member via slash command.
+    - `/dashboard → Leveling → Notification Channel`: Set a channel for level up and reward announcements.
+    - `/dashboard → Leveling → Level Up Message`: Customize the message sent when someone levels up.
+    - `/dashboard → Leveling → Manage Members → Reset`: Reset everyone in the server to level 0.
+
+    For additional assistance, join us at {support_server_link} or contact us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "Set up leveling with InfiniBot", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Elevate Your Server with the Leveling System", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView())
 
 @help.subcommand(name = "other", description = "Help with other features.")
 async def otherHelp(interaction: Interaction):
-    description = f"""InfiniBot has a lot of useful features, but some were a bit miscellaneous. Below are those features.
-    
-    **Purging Channels**
-        • To purge a channel, type `/purge [all]` and the whole channel should be deleted
-            → Note: for big channels, `/purge [all]` is much more efficient than deleting messages one with the following option.
-        • Another way to purge a channel is to use `/dashboard [100]` and InfiniBot will purge the channel of 100 messages.
-            → Tip: You can use any number — 100 was an example.
-    
-    **Motivational Statement**
-        • Type `/motivational_statement` and get, uh, a motivational statement — if you squint.
-        
-    **Change Nickname**
-        • Type`/change_nick [member] [new nickname]` and be able to change a member's nickname via a command.
-            → Tip: For bigger servers, it might not be worth your time to scroll though the members list. Therefore, you can use a command instead.
-        
-    **Default Roles**
-        • A default roles are roles that will be given to anyone who joins the server. To set this up, go to `/dashboard → Default Roles` and choose up to 5 roles. Now, any time a member joins the server, they will be greeted with those roles.
-       
-    **Delete Invites**
-        • If you are managing a large server and don't want people advertising their servers, you can enable this feature. Go to `/dashboard → Enable / Disable Features → Delete Invites` and select "Enable". InfiniBot will now delete any message that includes an invite.
-            → Note: If you have the permission "Administrator", you are immune to this.
-        
-    **Check InfiniBot's Permissions**
-        • It's always a good idea to check InfiniBot's permissions to make sure that it has everything it needs. To do this, simply use `/check_infinibot_permissions` and give InfiniBot the permissions it wants.
-        
-    **DM Commands**
-        • You can right click on any dm that InfiniBot sent you, go to `Options → Delete Message` and InfiniBot will delete that message it sent to you.
-            → Similarly, typing `del` in InfiniBot's dm channel will have InfiniBot delete the last message it sent to you.
-        • Typing `clear` in InfiniBot's dm will have InfiniBot delete all the messages it sent to you.
-        • You can also opt in and out of dm notifications using `/opt_into_dms` and `/opt_out_of_dms`.
-    
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    description = f"""Explore some of InfiniBot's diverse features that don't fit into specific categories:
+
+    **Purging Channels:**
+    - To purge a channel, use `/purge all` to efficiently delete the entire channel's history.
+    - Note: For large channels, `/purge all` is more efficient than deleting messages individually.
+    - Alternatively, use `/purge #` to purge the channel of the last # messages.
+
+    **Motivational Statement:**
+    - Generate a motivational statement with `/motivational_statement` (if you squint).
+
+    **Change Nickname:**
+    - Modify a member's nickname with `/change_nick [member] [new nickname]` via a command.
+        - Tip: Useful for larger servers where scrolling through the members list may be time-consuming.
+
+    **Default Roles:**
+    - Set default roles for new members at `/dashboard → Default Roles`. Up to 5 roles can be assigned to greet new members.
+
+    **Delete Invites:**
+    - Manage server invites by enabling this feature at `/dashboard → Enable/Disable Features → Delete Invites`.
+        - Note: Users with the "Administrator" permission are immune to this feature.
+
+    **Check InfiniBot's Permissions:**
+    - Ensure InfiniBot has the necessary permissions by using `/check_infinibot_permissions`.
+
+    **DM Commands:**
+    - Right-click on any DM from InfiniBot, go to `Options → Delete Message` to remove a specific message.
+    - Typing `del` in InfiniBot's DM channel deletes the last message sent to you.
+    - Typing `clear` in InfiniBot's DM deletes all messages sent to you.
+    - Opt in/out of DM notifications with `/opt_into_dms` and `/opt_out_of_dms`.
+
+    For additional assistance, join us at {support_server_link} or contact us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "Other commands with InfiniBot", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Miscellaneous Features Overview", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView()) 
 
 @help.subcommand(name = "infinibot_mod", description = "Help with Infinibot Mod.")
 async def infinibotMod(interaction: Interaction):
-    description = f"""**It says I need Infinibot Mod?**
-        • Some features are locked down so that only admins can use them. If you are an admin, go ahead and assign yourself the role Infinibot Mod (which should have been automatically created by InfiniBot). Once you have this role, you will have full access to InfiniBot and its features.
-    
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    description = f"""Some features are restricted to administrators for enhanced control. If you are an admin, follow these steps:
+
+    - Assign yourself the role "Infinibot Mod," which InfiniBot should have automatically created.
+    - With the "Infinibot Mod" role, you'll gain complete access to InfiniBot and its features.
+
+    For additional assistance, join us at {support_server_link} or contact us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "InfiniBot Mod", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "It says I need Infinibot Mod?", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView()) 
 
 @help.subcommand(name = "join_to_create_vcs", description = "Help with Join To Create Voice Channels")
 async def joinToCreateVoiceChannelsHelp(interaction: Interaction):
-    description = f"""Want to have a voice channel for everyone in the server but not feel cluttered? Join To Create Voice Channels are the way to go.
-    
-    **How to set up a Join-To-Create Voice Channel**
-        • Go to `/dashboard → Join-To-Create VCs → Configure → Add`.  
-        • Select your channel and click "Add".
-            → Tip: Don't see your voice channel? Check to make sure that InfiniBot has the permissions to view it.
-        
-    **What did it do?**
-        • Now, you can join that voice channel, and it will move you to a new voice channel with your name on it! Once everyone leaves, the channel will be deleted.
-    
-    **Disable this feature on a voice channel**
-        • To disable this feature on any voice channel, go to `/dashboard → Join-To-Create VCs → Configure → Delete` and select the voice channel.
-        • Click "Delete"
-       
-    
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    description = f"""
+    **Setting up Join-To-Create Voice Channel:**
+    - Navigate to `/dashboard → Join-To-Create VCs → Configure → Add`.
+    - Select your desired channel and click "Add."
+        - Tip: If you don't see your voice channel, ensure InfiniBot has the necessary permissions to view it.
+
+    **How it Works:**
+    - Join the configured voice channel, and InfiniBot will create a personalized voice channel for you. Once everyone leaves, the channel automatically gets deleted.
+
+    **Disabling the Feature:**
+    - To disable Join-To-Create on a voice channel, go to `/dashboard → Join-To-Create VCs → Configure → Delete`.
+    - Select the voice channel and click "Delete."
+
+    For additional assistance, join us at {support_server_link} or contact us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "How to set up join-to-create vcs with InfiniBot", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Enjoy Clean and Convenient Voice Channels with Join-To-Create", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView())  
     
 @help.subcommand(name = "stats", description = "Help with Server Statistics messages")
 async def statsHelp(interaction: Interaction):
-    description = f"""Want to know how many people are in your server? Use server statistics to always keep track.
-    
-    **How to set up a Server Statistics message**
-        • Use `/setup_stats` in the channel where you want to have the Statistics message.
-            → Tip: Every time a member joins or leaves the server, this message will update.
-        
-    **Why can't I create another?**
-        • Because these are updated constantly, InfiniBot currently can only keep track of one. Therefore, you can only have one of these messages. If you want to move the message, just run the command somewhere else (although it will deactivate the first message).
-           
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    description = f"""
+    **Setting up a Server Statistics Message:**
+    - Execute `/setup_stats` in the desired channel where you want the Statistics message.
+        - Tip: This message automatically updates every time a member joins or leaves the server.
+
+    **Limitations on Multiple Messages:**
+    - InfiniBot can only keep track of one Statistics message at a time since they are constantly updated.
+    - If you want to move the message, simply run the command elsewhere, but it will deactivate the original message.
+
+    For additional assistance, join us at {support_server_link} or contact us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "How to set up statistics messages with InfiniBot", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Stay Informed with Server Statistics", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView())  
        
 @help.subcommand(name = "auto_bans", description = "Help with Auto Bans")
 async def autoBansHelp(interaction: Interaction):
-    description = f"""Banning is a powerful tool, however, Discord limits you in some cases. With InfiniBot, you can ban members even before and after they join your server.  
-        
-    **How to Auto-Ban a Member (Never Joined your Server)**
-        ★ Make sure InfiniBot has the "Ban Members" permission.
-        • Go to `/dashboard → Auto-Bans → Add` and follow the instructions.
-        • Once you finish, they will be auto-banned the second they join this server.   
-        
-    **How to Revoke an Auto-Ban**
-        ★ Make sure InfiniBot has the "Ban Members" permission.
-        • Go to `/dashboard → Auto-Bans → Revoke` and select any member to revoke their auto-ban.
-        • Click "Revoke Auto-Ban"
-        
-    **How to Ban a Member (still in the server or after they have left)**
-        ★ Make sure both you and InfiniBot have the "Ban Members" permission.
-        • Right click on the member or message, select "Apps", and click ether "Ban Member" or "Options → Ban Message Author".
-            → Tip: If you don't see the "Ban Message Author" option in the Options popup, check that both you and InfiniBot have permission to ban the user.
-        • Click "Yes, ban" on the message that will appear.
-        • The member is now banned from this server.
-    
-           
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    description = f"""
+    **Auto-Banning a Member (Before Joining):**
+    - Ensure InfiniBot has the "Ban Members" permission.
+    - Visit `/dashboard → Auto-Bans → Add` and follow the instructions.
+    - Once configured, members will be auto-banned the moment they join your server.
+
+    **Revoking an Auto-Ban:**
+    - Make sure InfiniBot has the "Ban Members" permission.
+    - Access `/dashboard → Auto-Bans → Revoke` and select a member to revoke their auto-ban.
+    - Click "Revoke Auto-Ban."
+
+    **Banning a Member (In or After Leaving the Server):**
+    - Confirm both you and InfiniBot have the "Ban Members" permission.
+    - Right-click on the member or message, choose "Apps," and select either "Ban Member" or "Options → Ban Message Author."
+        - Tip: If "Ban Message Author" is not visible, ensure both you and InfiniBot have permission to ban the user.
+    - Click "Yes, ban" on the confirmation message.
+    - The member is now banned from the server.
+
+    For additional assistance, join us at {support_server_link} or contact us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "How to set up auto-bans with InfiniBot", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Empower Your Moderation with InfiniBot's Ban Features", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView()) 
    
 @help.subcommand(name = "embeds", description = "Help with Embeds")
 async def embedsHelp(interaction: Interaction):
-    description = f"""Discord's default messages *can* look really good. But sometimes, the default message just doesn't cut it. For that, use embeds!
-        
-    **How to Create an Embed**
-        • Type `/create embed` and choose your title, text, and color.
-        
-    **How to Edit an Embed**
-        • Go to the embed, and right click. Go to `Apps → Options → Edit`
-            → Tip: If you don't see the Edit option, check that the message is from InfiniBot, is an embed, and that it is still an active message.
-        • From here, you can edit the embed's title, description, and color
-         
-    For more help, join us at {supportServerLink} or contact at infinibotassistance@gmail.com.
+    description = f"""
+    Discord's default messages are sleek, but when you need that extra flair, turn to embeds!
+
+    **Creating an Embed:**
+    - Type `/create embed` and select your title, text, and color.
+
+    **Editing an Embed:**
+    - Right-click on the embed, go to `Apps → Options → Edit`.
+    - Modify the embed's title, description, and color as needed.
+
+    For additional assistance, join us at {support_server_link} or contact us at infinibotassistance@gmail.com.
     """
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = standardizeStrIndention(description)
     
-    embed = nextcord.Embed(title = "How to use embeds with InfiniBot", description = description, color = nextcord.Color.greyple())
+    embed = nextcord.Embed(title = "Elevate Your Messages with Embeds", description = description, color = nextcord.Color.greyple())
     await interaction.response.send_message(embed = embed, ephemeral = True, view = SupportAndInviteView()) 
     
  
@@ -12842,7 +13656,7 @@ async def embedsHelp(interaction: Interaction):
 
 
 
-@bot.slash_command("admin", guild_ids = developmentGuild)
+@bot.slash_command("admin", guild_ids = dev_guilds)
 async def admin(interaction: Interaction):
     pass
 
@@ -12857,23 +13671,23 @@ async def sendMessageToAllGuilds(interaction: Interaction):
     description = modal.descriptionValue
     
     
-    if interaction.user.id in developerID:
+    if interaction.user.id in dev_id:
 
         embed = nextcord.Embed(title = title, description = description, color = nextcord.Color.gold())
 
         for guild in bot.guilds:
             try:
                 # Do some special stuff if it's the InfiniBot server
-                if guild.id == infiniBotGuild:
-                    channel = guild.get_channel(updatesChannel)
-                    role = guild.get_role(infiniBotUpdatesRole)
+                if guild.id == infiniBot_guild:
+                    channel = guild.get_channel(updates_channel)
+                    role = guild.get_role(infiniBot_updates_role)
                     await channel.send(content = role.mention, embed = embed, view = SupportAndInviteView())
                     print(f"Message sent to InfiniBot Server Updates Area")
                     
                 else:
                     # If the server wants updates
                     server = Server(guild.id)
-                    if not server.getUpdates:
+                    if not server.get_updates_enabled:
                         continue
                     
                     # Find a channel
@@ -12902,7 +13716,7 @@ async def getAllGuilds(interaction: Interaction):
     await interaction.response.defer()
     
     membercount = 0
-    if interaction.user.id in developerID:
+    if interaction.user.id in dev_id:
 
         formattedGuilds = ""
         number = 1
@@ -13041,7 +13855,7 @@ async def adminCommands(message: nextcord.Message):
             Bots: {len(guild.bots)}
             
             **Configurations:**
-            {server.rawData}
+            {server.raw_data}
             
             **Time In Server**: {duration.days} days"""
             
