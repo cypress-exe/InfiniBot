@@ -8320,6 +8320,8 @@ async def checkProfanity(server: Server, message: nextcord.Message):
     # Checks
     if not utils.enabled.ProfanityModeration(server = server): return
     if message.channel.type != nextcord.ChannelType.stage_voice and message.channel.is_nsfw(): return
+    # Sometimes, the member is not a member of the guild for some reason. Let's rule that out.
+    if not isinstance(message.author, nextcord.Member): return
     if message.author.guild_permissions.administrator: return
     
     # Message Content
