@@ -2630,13 +2630,20 @@ class ReactionRoleView(nextcord.ui.View):
         super().__init__()
 
         options = []
+        # In case there are more than 25 roles, let's do this in reverse. We want the lowest roles to appear here, if nothing else.
+        roles.reverse()
         for role in roles:
-            options.append(nextcord.SelectOption(label = role.name, value = role.name))
+            if len(options) >= 25:
+                # We can't add any more to this.
+                break
+            else:
+                options.append(nextcord.SelectOption(label = role.name, value = role.name))
+                
             
-        self.selection = None
+        self.selection = []
         
-        if len(roles) < 10:
-            maxValues = len(roles)
+        if len(options) < 10:
+            maxValues = len(options)
         else:
             maxValues = 10
         
@@ -2651,6 +2658,7 @@ class ReactionRoleView(nextcord.ui.View):
     async def createCallback(self, interaction: Interaction):
         self.selection = self.select.values
         if self.selection == []: return
+        if self.selection == None: return
         
         self.select.disabled = True
         self.button.disabled = True
@@ -9011,24 +9019,22 @@ async def createVote(interaction: Interaction, title: str, message: str, options
         if _type == "Letters":
             if not option[0].lower() in addedOptions_Asci: #if we have not already used this reaction
                 letter = option[0]
-                reaction = asci_to_emoji(letter)
+                reaction, letter_used = asci_to_emoji(letter, fallback_letter = getNextOpenLetter(addedOptions_Asci))
                 reactionsFormatted += "\n" + reaction + " " + option
-                addedOptions_Asci.append(letter.lower())
+                addedOptions_Asci.append(letter_used.lower())
                 addedOptions_Emojis.append(reaction)
-                counter += 1
             else:
                 letter = getNextOpenLetter(addedOptions_Asci)
-                reaction = asci_to_emoji(letter)
+                reaction, letter_used = asci_to_emoji(letter)
                 reactionsFormatted += "\n" + reaction + " " + option
-                addedOptions_Asci.append(letter.lower())
-                addedOptions_Emojis.append(reaction)
-                counter += 1      
+                addedOptions_Asci.append(letter_used.lower())
+                addedOptions_Emojis.append(reaction) 
                 
         elif _type == "Numbers":
             letter = option[0]
-            reaction = asci_to_emoji(counter)
+            reaction, letter_used = asci_to_emoji(counter)
             reactionsFormatted += "\n" + reaction + " " + option
-            addedOptions_Asci.append(letter.lower())
+            addedOptions_Asci.append(letter_used.lower())
             addedOptions_Emojis.append(reaction)
             counter += 1
         
@@ -9061,48 +9067,48 @@ async def createVote(interaction: Interaction, title: str, message: str, options
     server.messages.add("Vote", interaction.channel.id, partialMessage.id, interaction.user.id)
     server.messages.save()
 
-def asci_to_emoji(letter):
+def asci_to_emoji(letter, fallback_letter = "1"):
     letter = str(letter)
     letter = letter.lower()
 
-    if letter == "a": return "🇦"
-    if letter == "b": return "🇧"
-    if letter == "c": return "🇨"
-    if letter == "d": return "🇩"
-    if letter == "e": return "🇪"
-    if letter == "f": return "🇫"
-    if letter == "g": return "🇬"
-    if letter == "h": return "🇭"
-    if letter == "i": return "🇮"
-    if letter == "j": return "🇯"
-    if letter == "k": return "🇰"
-    if letter == "l": return "🇱"
-    if letter == "m": return "🇲"
-    if letter == "n": return "🇳"
-    if letter == "o": return "🇴"
-    if letter == "p": return "🇵"
-    if letter == "q": return "🇶"
-    if letter == "r": return "🇷"
-    if letter == "s": return "🇸"
-    if letter == "t": return "🇹"
-    if letter == "u": return "🇺"
-    if letter == "v": return "🇻"
-    if letter == "w": return "🇼"
-    if letter == "x": return "🇽"
-    if letter == "y": return "🇾"
-    if letter == "z": return "🇿"
-    if letter == "1": return "1️⃣"
-    if letter == "2": return "2️⃣"
-    if letter == "3": return "3️⃣"
-    if letter == "4": return "4️⃣"
-    if letter == "5": return "5️⃣"
-    if letter == "6": return "6️⃣"
-    if letter == "7": return "7️⃣"
-    if letter == "8": return "8️⃣"
-    if letter == "9": return "9️⃣"
-    if letter == "0": return "0️⃣"
+    if letter == "a": return "🇦", "a"
+    if letter == "b": return "🇧", "b"
+    if letter == "c": return "🇨", "c"
+    if letter == "d": return "🇩", "d"
+    if letter == "e": return "🇪", "e"
+    if letter == "f": return "🇫", "f"
+    if letter == "g": return "🇬", "g"
+    if letter == "h": return "🇭", "h"
+    if letter == "i": return "🇮", "i"
+    if letter == "j": return "🇯", "j"
+    if letter == "k": return "🇰", "k"
+    if letter == "l": return "🇱", "l"
+    if letter == "m": return "🇲", "m"
+    if letter == "n": return "🇳", "n"
+    if letter == "o": return "🇴", "o"
+    if letter == "p": return "🇵", "p"
+    if letter == "q": return "🇶", "q"
+    if letter == "r": return "🇷", "r"
+    if letter == "s": return "🇸", "s"
+    if letter == "t": return "🇹", "t"
+    if letter == "u": return "🇺", "u"
+    if letter == "v": return "🇻", "v"
+    if letter == "w": return "🇼", "w"
+    if letter == "x": return "🇽", "x"
+    if letter == "y": return "🇾", "y"
+    if letter == "z": return "🇿", "z"
+    if letter == "1": return "1️⃣", "1"
+    if letter == "2": return "2️⃣", "2"
+    if letter == "3": return "3️⃣", "3"
+    if letter == "4": return "4️⃣", "4"
+    if letter == "5": return "5️⃣", "5"
+    if letter == "6": return "6️⃣", "6"
+    if letter == "7": return "7️⃣", "7"
+    if letter == "8": return "8️⃣", "8"
+    if letter == "9": return "9️⃣", "9"
+    if letter == "0": return "0️⃣", "0"
 
-    return "🇿"
+    return asci_to_emoji(fallback_letter)
 
 def getNextOpenLetter(list):
     if not ("a" in list): return "a"
@@ -9257,21 +9263,21 @@ def reactionRoleOptionsFormatter(_type: str, roles: list[nextcord.Role], emojis:
         if _type == "Letters":
             if not role.name[0].lower() in addedOptions_Asci: #if we have not already used this reaction
                 letter = role.name[0]
-                reaction = asci_to_emoji(letter)
+                reaction, letter_used = asci_to_emoji(letter, fallback_letter = getNextOpenLetter(addedOptions_Asci))
                 reactionsFormatted += "\n" + reaction + " " + (role.mention if mentionRoles else role.name)
-                addedOptions_Asci.append(letter.lower())
+                addedOptions_Asci.append(letter_used.lower())
                 addedOptions_Emojis.append(reaction)
             else:
                 letter = getNextOpenLetter(addedOptions_Asci)
-                reaction = asci_to_emoji(letter)
+                reaction, letter_used = asci_to_emoji(letter)
                 reactionsFormatted += "\n" + reaction + " " + (role.mention if mentionRoles else role.name)
-                addedOptions_Asci.append(letter.lower())
+                addedOptions_Asci.append(letter_used.lower())
                 addedOptions_Emojis.append(reaction)
         elif _type == "Numbers":
             letter = role.name[0]
-            reaction = asci_to_emoji(count)
+            reaction, letter_used = asci_to_emoji(count)
             reactionsFormatted += "\n" + reaction + " " + (role.mention if mentionRoles else role.name)
-            addedOptions_Asci.append(letter.lower())
+            addedOptions_Asci.append(letter_used.lower())
             addedOptions_Emojis.append(reaction)
             count += 1
         else:
@@ -9283,7 +9289,12 @@ def reactionRoleOptionsFormatter(_type: str, roles: list[nextcord.Role], emojis:
     return reactionsFormatted, addedOptions_Emojis
 
 async def createReactionRole(interaction: Interaction, title: str, message: str, rolesStr: list[str], _type: str, mentionRoles: bool):
-    if not interaction.guild: return
+    if not interaction.guild: 
+        print("Guild is \"not\" for some reason: createReactionRole")
+        return
+    if interaction.guild == None:
+        print("Guild is equal to None for some reason: createReactionRole")
+        return
       
     # Decode roles and emojis
     if _type != "Custom":
@@ -12319,12 +12330,12 @@ class EditReactionRole(nextcord.ui.View):
                         if _type == "0":
                             # Letter Reaction Role
                             if not firstLetter in addedOptions_Asci: # If this letter has not already been used as a reaction
-                                emoji = asci_to_emoji(firstLetter)
-                                addedOptions_Asci.append(firstLetter)
+                                emoji, letter_used = asci_to_emoji(firstLetter, fallback_letter = getNextOpenLetter(addedOptions_Asci))
+                                addedOptions_Asci.append(letter_used)
                             else:
-                                nextOpenLetter = getNextOpenLetter(firstLetter)
-                                emoji = asci_to_emoji(nextOpenLetter)
-                                addedOptions_Asci.append(nextOpenLetter)
+                                nextOpenLetter = getNextOpenLetter(addedOptions_Asci)
+                                emoji, letter_used = asci_to_emoji(nextOpenLetter)
+                                addedOptions_Asci.append(letter_used)
                         elif _type == "1":
                             # Number Reaction Role
                             emoji = asci_to_emoji(number)
