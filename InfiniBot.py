@@ -7275,7 +7275,7 @@ class Onboarding(nextcord.ui.View):
 
     
   
-@bot.slash_command(name = "opt_into_dms", description = "Opt out of dm notifications from InfiniBot.")
+@bot.slash_command(name = "opt_into_dms", description = "Opt in for dm notifications from InfiniBot.")
 async def opt_into_dms(interaction: Interaction):
     member = Member(interaction.user.id)
     
@@ -9197,7 +9197,7 @@ async def reactionRoleCommand(interaction: Interaction, type: str = SlashOption(
         #Finish Proccessing...
         await createReactionRole(interaction, title, description, view.selection, type, mentionRoles)
     
-@create.subcommand(name = "custom_reaction_role", description = "Automatically create a vote that you can customize with emojis.")
+@create.subcommand(name = "custom_reaction_role", description = "Legacy: Create a reaction role with customized emojis. (Requires Infinibot Mod)")
 async def customReactionRoleCommand(interaction: Interaction, options: str = SlashOption(description = "Format: \"👍 = @Member, 🥸 = @Gamer\""), mentionRoles: bool = SlashOption(name = "mention_roles", description = "Mention the roles with @mention", required = False, default = True)):   
     if await hasRole(interaction):
         if not utils.enabled.ReactionRoles(guild_id = interaction.guild.id):
@@ -10851,9 +10851,11 @@ async def on_voice_state_update(member: nextcord.Member, before: nextcord.VoiceS
                     if not vc.active:
                         return
                     break
+                
+            category = after.channel.category if after.channel.category else member.guild
             
             try:
-                vc = await after.channel.category.create_voice_channel(name = f"{member.name} Vc")
+                vc = await category.create_voice_channel(name = f"{member.name} Vc")
             except nextcord.errors.Forbidden:
                 await sendErrorMessageToOwner(member.guild, "Manage Channels", guild_permission = True)
                 return
@@ -13057,7 +13059,7 @@ async def change_nick(interaction: Interaction, member: nextcord.Member, nicknam
     if interaction.guild.id in nickname_changed:
         nickname_changed.pop(nickname_changed.index(interaction.guild.id))
 
-@set.subcommand(name = "default_role", description = "Set a default role that will be given to anyone who joins the server. (Requires Infinibot Mod)")
+#@set.subcommand(name = "default_role", description = "Set a default role that will be given to anyone who joins the server. (Requires Infinibot Mod)")
 async def defaultRole(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Leave blank to disable this feature.", required=False)):
     if not utils.enabled.DefaultRoles(guild_id = interaction.guild.id):
         await interaction.response.send_message(embed = nextcord.Embed(title = "Default Roles Disabled", description = "Default Roles have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
