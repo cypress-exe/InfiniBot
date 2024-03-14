@@ -8,7 +8,7 @@ import platform
 def is_connected():
     try:
         host = socket.gethostbyname("google.com")
-        s = socket.create_connection((host, 80), 2)
+        s = socket.create_connection((host, 80), timeout = 2)
         s.close()
         return True
     except:
@@ -21,7 +21,7 @@ while True:
     if is_connected():
         break
     else:
-        print("NO INTERNET!!! Retrying in 2 seconds...")
+        print("Fatal Error: No Connection. Retrying in 2 seconds...")
         time.sleep(2)
     
 
