@@ -1061,7 +1061,7 @@ class Server:
             #handle birthdays
             self.birthdays: list[Birthday] = [Birthday(self.guild, birthday) for birthday in self.__rawBirthdays]
             #self.birthdays = [birthday for birthday in self.birthdays if birthday != None and birthday.member != None] # Disabled due to issue with InfiniBot restarting
-            self.birthdays = sorted(self.birthdays, key = lambda x: (x.member.display_name))
+            #self.birthdays = sorted(self.birthdays, key = lambda x: (x.member.display_name))
             
             #handle levels
             self.levels = Levels(self.guild)
@@ -1073,9 +1073,9 @@ class Server:
             self.auto_bans: list[AutoBan] = [AutoBan(ban) for ban in self.__rawBans]
             self.auto_bans = sorted(self.auto_bans, key = lambda x: (x.member_name))
         
-            #handle messages
-            self.messages = Messages(self.guild_id)
-            '''Not automatically initialized. Will be auto-initalized upon any changes.'''
+        #handle messages
+        self.messages = Messages(self.guild_id)
+        '''Not automatically initialized. Will be auto-initalized upon any changes.'''
         
         if self.guild == None:
             return None;
@@ -3472,7 +3472,7 @@ class Dashboard(nextcord.ui.View):
                                     if selection != None: self.deleteWord(selection, interaction.guild.id)
                                     await self.outer.setup(interaction)
                                     
-                                def deleteWord(word: str, guild_id):
+                                def deleteWord(self, word: str, guild_id):
                                     server = Server(guild_id) 
                                     server.profane_words.pop(server.profane_words.index(word))
                                     server.saveProfaneWords()
