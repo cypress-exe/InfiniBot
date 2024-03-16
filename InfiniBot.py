@@ -818,7 +818,7 @@ class Levels:
         self.all_members: list[Level] = []
         for level in self.__getLevels():
             level_class = Level(self.guild, level)
-            if level_class.member != None: self.all_members.append(level_class)
+            if True or level_class.member != None: self.all_members.append(level_class) # Disabled due to issue with InfiniBot restarting
             else: need_to_save = True
             
         if need_to_save: self.saveLevels()
@@ -1060,7 +1060,7 @@ class Server:
 
             #handle birthdays
             self.birthdays: list[Birthday] = [Birthday(self.guild, birthday) for birthday in self.__rawBirthdays]
-            self.birthdays = [birthday for birthday in self.birthdays if birthday != None and birthday.member != None]
+            #self.birthdays = [birthday for birthday in self.birthdays if birthday != None and birthday.member != None] # Disabled due to issue with InfiniBot restarting
             self.birthdays = sorted(self.birthdays, key = lambda x: (x.member.display_name))
             
             #handle levels
@@ -1073,9 +1073,9 @@ class Server:
             self.auto_bans: list[AutoBan] = [AutoBan(ban) for ban in self.__rawBans]
             self.auto_bans = sorted(self.auto_bans, key = lambda x: (x.member_name))
         
-        #handle messages
-        self.messages = Messages(self.guild_id)
-        '''Not automatically initialized. Will be auto-initalized upon any changes.'''
+            #handle messages
+            self.messages = Messages(self.guild_id)
+            '''Not automatically initialized. Will be auto-initalized upon any changes.'''
         
         if self.guild == None:
             return None;
@@ -5342,7 +5342,7 @@ class Dashboard(nextcord.ui.View):
                 birthdays = []
                 for bday in server.birthdays:
                     try:
-                        if bday.member == None:
+                        if False or bday.member == None: # Disabled due to issue with InfiniBot restarting
                             server.deleteBirthday(bday.memberID)
                             server.saveBirthdays()
                             continue
@@ -10163,7 +10163,7 @@ async def view_birthdays(interaction: Interaction):
     birthdays = []
     for birthday in server.birthdays:
         try:
-            if birthday.member == None:
+            if False or birthday.member == None: # Disabled due to issue with InfiniBot restarting 
                 server.deleteBirthday(birthday.memberID)
                 server.saveBirthdays()
                 continue
