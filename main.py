@@ -30,20 +30,25 @@ print("Starting up InfiniBot...")
 
 if platform.system() == "Windows":
     # This is the development server
-    file = os.path.join(os.getcwd(), "InfiniBot.py")
+    infinibot_code_path = os.path.join(os.getcwd(), "InfiniBot.py")
     
     # Open a new command prompt window and run a command in it
-    subprocess.Popen(['cmd.exe', '/c', 'start', 'cmd.exe', '/k', 'python', file])
+    subprocess.Popen(['cmd.exe', '/c', 'start', 'cmd.exe', '/k', 'python', infinibot_code_path])
     
 elif platform.system() == "Linux":
     # This is the production server. We should set our cwd as to not introduce any surprises
     user = os.getenv("USER")
     os.chdir(f"/home/{user}/Desktop/InfiniBot")
-    file = os.path.join(os.getcwd(), "InfiniBot.py")
+    infinibot_code_path = os.path.join(os.getcwd(), "InfiniBot.py")
     
     # Open a new terminal window and run a command in it
-    subprocess.call(["x-terminal-emulator", "-e", "python", file])
-    
+    subprocess.call(["x-terminal-emulator", "-e", "python", infinibot_code_path])
+
+    # Also in the production server, the code for the fan needs to run
+    fan_code_path = os.path.join(os.getcwd(), "Server/fan.py")
+    subprocess.call(["x-terminal-emulator", "-e", "python", fan_code_path])
+    print("Launched Fan Script")
+
 else:
     # OS not supported
     print("OS NOT SUPPORTED!!!")
