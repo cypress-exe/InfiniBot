@@ -1,0 +1,3 @@
+Go to "/home/infinibot/.config/autostart"
+Find "InfiniBot"
+Double click to edit the path. This is a ".desktop" file.
