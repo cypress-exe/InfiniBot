@@ -1,3 +1,4 @@
+from grpc import server
 from nextcord import AuditLogAction, Interaction, SlashOption
 from nextcord.ext import commands
 #from youtube_dl import YoutubeDL
@@ -21,7 +22,7 @@ import sys
 import re
 import copy
 
-
+from custom_types import MISSING
 
 
 
@@ -32,31 +33,6 @@ import copy
 VERSION = 2.0
 
 # ------------------------------------------------------------------------------------------------------------------------------------------
-
-
-
-# ----- TYPES ------------
-
-class _Missing:
-    def __eq__(self, other):
-        return self is other
-
-    def __hash__(self):
-        return id(self)
-
-    def __bool__(self):
-        return False
-
-    def __repr__(self):
-        return "..."
-
-MISSING = _Missing
-'''A constant value used for cases when there is no value.'''
-
-# ------------------------
-
-
-
 
 
 
