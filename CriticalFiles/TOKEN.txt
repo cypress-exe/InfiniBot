@@ -1,5 +1,0 @@
-DISCORDTOKEN
-NONE
-
-Line 1: Discord Token
-Line 2: TopGG Token
