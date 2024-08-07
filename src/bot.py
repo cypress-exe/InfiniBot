@@ -27,7 +27,6 @@ from custom_types import MISSING
 
 
 
-
 # ----------------------------------------------------------- VERSION OF INFINIBOT---------------------------------------------------------
 
 VERSION = 2.0
@@ -7504,10 +7503,10 @@ async def on_message(message: nextcord.Message):
 
 # RUN EVERY MINUTE ===========================================================================================================================================================================
 dbl_token = ""
-with open("./CriticalFiles/TOKEN.txt", "r") as file:
+with open("./generated/configure/TOKEN.txt", "r") as file:
     dbl_token = file.read().split("\n")[1]
     
-if dbl_token != "NONE":
+if dbl_token.lower() != "none":
     import topgg
     bot.topggpy = topgg.DBLClient(bot, dbl_token)
 
@@ -14138,7 +14137,7 @@ async def adminCommands(message: nextcord.Message):
 
 
 token = ""
-with open("./CriticalFiles/TOKEN.txt", "r") as file:
+with open("./generated/configure/TOKEN.txt", "r") as file:
     token = file.read().split("\n")[0]
     
     

@@ -7,8 +7,8 @@ from database import Database
 from custom_types import UNSET_VALUE
 
 # Database Paths
-database_url = "sqlite:///./Files/database.db"
-database_build_file_path = "./CriticalFiles/db_build.sql"
+database_url = "sqlite:///./generated/files/database.db"
+database_build_file_path = "./resources/db_build.sql"
 
 class DatabaseForInfiniBot(Database): # Alters Database to add InfiniBot-specific functions
     def get_all_entries(self):
