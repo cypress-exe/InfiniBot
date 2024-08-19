@@ -1,7 +1,7 @@
 import json
+import copy
 
-from numpy import str0
-from sqlalchemy import column
+from nextcord import Embed as NextcordEmbed
 
 from database import Database
 from custom_types import UNSET_VALUE
@@ -64,6 +64,34 @@ class Server_TableManager:
     def _set_variable(self, table, column, id, value, id_sql_name = "id"): 
         database.execute_query(f"UPDATE {table} SET {column} = :value WHERE {id_sql_name} = {id}", args = {"value": value}, commit = True)
 
+    def custom_property_getter(self, private_name, property_name, getter_modifier=None):
+        # Create the private attribute if it doesn't exist
+        if private_name not in dir(self):
+            setattr(self, private_name, UNSET_VALUE)
+        
+        # If the private attribute doesn't have a value, get it from the SQL database
+        if getattr(self, private_name) is UNSET_VALUE:
+            value = (
+                self._get_variable(self.table_name, property_name, self.server_id, id_sql_name=self.id_sql_name)
+                if self._entry_exists_in_table
+                else database.get_column_default(self.table_name, property_name, format=True)
+            )
+            value = getter_modifier(value) if getter_modifier else value
+            setattr(self, private_name, value)
+        
+        return getattr(self, private_name)
+    
+    def custom_property_setter(self, value, private_name, property_name, setter_modifier=None):
+        # Create the private attribute if it doesn't exist
+        if private_name not in dir(self):
+            setattr(self, private_name, UNSET_VALUE)
+        
+        # Modify the value to be what it should be saved as
+        modified_value = setter_modifier(value) if setter_modifier else value
+        self._ensure_existence()
+        self._set_variable(self.table_name, property_name, self.server_id, modified_value, id_sql_name=self.id_sql_name)
+        setattr(self, private_name, value)
+
     def custom_property(property_name, getter_modifier=None, setter_modifier=None):
         """
         Custom decorator for creating properties that are either booleans, integers, floats, or strings.
@@ -87,33 +115,11 @@ class Server_TableManager:
         def decorator(method):
             # Getter function for the property
             def getter(self):
-                # Create the private attribute if it doesn't exist
-                if private_name not in dir(self):
-                    setattr(self, private_name, UNSET_VALUE)
-                
-                # If the private attribute doesn't have a value, get it from the SQL database
-                if getattr(self, private_name) is UNSET_VALUE:
-                    value = (
-                        self._get_variable(self.table_name, property_name, self.server_id, id_sql_name=self.id_sql_name)
-                        if self._entry_exists_in_table
-                        else database.get_column_default(self.table_name, property_name, format=True)
-                    )
-                    value = getter_modifier(value) if getter_modifier else value
-                    setattr(self, private_name, value)
-                
-                return getattr(self, private_name)
+                return Server_TableManager.custom_property_getter(self, private_name, property_name, getter_modifier=getter_modifier)
 
             # Setter function for the property
             def setter(self, value):
-                # Create the private attribute if it doesn't exist
-                if private_name not in dir(self):
-                    setattr(self, private_name, UNSET_VALUE)
-                
-                # Modify the value to be what it should be saved as
-                modified_value = setter_modifier(value) if setter_modifier else value
-                self._ensure_existence()
-                self._set_variable(self.table_name, property_name, self.server_id, modified_value, id_sql_name=self.id_sql_name)
-                setattr(self, private_name, value)
+                Server_TableManager.custom_property_setter(self, value, private_name, property_name, setter_modifier=setter_modifier)
 
             return property(getter, setter)
 
@@ -293,6 +299,117 @@ class Server_TableManager:
         def setter_modifier(value):
             if isinstance(value, list) or value is None: return json.dumps(value)
             raise TypeError('Must be of type List or None')
+
+        return Server_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier)
+
+    def embed_property(property_name:(int | None)):
+        """
+        Custom decorator for creating properties that are embeds. Stores any embed properties.
+        Handles SQL retrieval, setting, cleaning, etc...
+
+        Args:
+            property_name (str): The name of the column associated with the property. Also the name of the property.
+
+        Uses:
+            ```
+            @ServerTableManager.embed_property("property_name")
+            def property_name(self): pass
+            ```
+        """
+        valid_arguments = ["title", "description", "url", "timestamp", "color", "footer", "image", "thumbnail", "author", "fields"]
+
+        class EmbedProperty:
+            def __init__(self, property_name, **kwargs):
+                self.property_name = property_name
+                
+                # Populate properties
+                self.properties = {}
+                for key, value in kwargs.items():
+                    if key not in valid_arguments:
+                        raise KeyError(f"Invalid embed property: {key}")
+                    self.properties[key] = value
+                    
+            def __getitem__(self, key):
+                if key in self.properties:
+                    return self.properties[key]
+                else:
+                    if key in valid_arguments:
+                        return None
+                    else:
+                        raise KeyError(f"Invalid embed property: {key}")
+                    
+            def __setitem__(self, key, value):
+                if key in valid_arguments:
+                    self.properties[key] = value
+                    #self = copy.deepcopy(self)
+                else:
+                    raise KeyError(f"Invalid embed property: {key}")
+                
+            def __str__(self):
+                return json.dumps(self.properties)
+            
+            # def __setattr__(self, name, value):
+            #     print(name)
+            #     if name in valid_arguments:
+            #         print("Syncing")
+            #         self.properties[name] = value
+            #         # Access the parent class using 'self.__class__.__bases__[0]' 
+            #         # print(self.__class__)
+            #         # print(self.__class__.__mro__)
+            #         # self.__class__.__bases__[0]._set_variable(
+            #         #     self.__class__.__bases__[0].table_name,
+            #         #     "embed", 
+            #         #     self.__class__.__bases__[0].server_id,
+            #         #     json.dumps(self.properties), 
+            #         #     id_sql_name=self.__class__.__bases__[0].id_sql_name
+            #         # )  # Trigger setter
+            #         print("nothing happening")
+                    
+                
+            #     else:
+            #         super().__setattr__(name, value)
+                
+            # def __getattr__(self, name):
+            #     print(name)
+            #     if name in valid_arguments:
+            #         if name in self.properties:
+            #             return self.properties[name]
+            #         else:
+            #             return None
+            #     else:
+            #         return getattr(self, name)
+                
+            def get_embed(self):
+                return NextcordEmbed(**self.properties)
+                    
+                    
+
+        def getter_modifier(value):
+            print("Getter modifier running")
+            if value is None: # This case should never happen.
+                return EmbedProperty(property_name)
+
+            # value = {"title":"Embed Title", "description":"Embed Description...", "color": 0x00FFFF, ...}
+            value_decoded = json.loads(str(value))
+            
+            # Ensure all embed properties are valid
+            for key, value in value_decoded.items():
+                if key not in valid_arguments:
+                    raise KeyError(f"Invalid embed property: {key}")
+            
+            return EmbedProperty(property_name, **value_decoded)
+
+        def setter_modifier(value):
+            print(f"Setting variable in database to: {value}")
+            if not isinstance(value, EmbedProperty):
+                raise TypeError('Must be of type server.ServerTableManager.embed_property.<local>.EmbedProperty')
+            
+            embed_properties = value.properties
+            properties_to_save = {}
+            for key, value in embed_properties.items():
+                if key in valid_arguments:
+                    properties_to_save[key] = value
+            return json.dumps(properties_to_save)
 
         return Server_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier)
 
@@ -723,11 +840,8 @@ class Server:
         @Server_TableManager.channel_property("channel", accept_none_value=False)
         def channel(self): pass
 
-        @Server_TableManager.string_property("message_title")
-        def message_title(self): pass
-
-        @Server_TableManager.string_property("message_description")
-        def message_description(self): pass
+        @Server_TableManager.embed_property("embed")
+        def embed(self): pass
 
         @Server_TableManager.boolean_property("allow_join_cards")
         def allow_join_cards(self): pass
@@ -738,7 +852,7 @@ class Server:
         return self._leave_message
     class LeaveMessage(Server_TableManager):
         def __init__(self, server_id):
-            super().__init__(server_id, "join_message")
+            super().__init__(server_id, "leave_message")
 
         @Server_TableManager.boolean_property("active")
         def active(self): pass
@@ -746,9 +860,19 @@ class Server:
         @Server_TableManager.channel_property("channel", accept_none_value=False)
         def channel(self): pass
 
-        @Server_TableManager.string_property("message_title")
-        def message_title(self): pass
+        @Server_TableManager.embed_property("embed")
+        def embed(self): pass
+        
 
-        @Server_TableManager.string_property("message_description")
-        def message_description(self): pass
+server = Server(1234)
 
+print()
+print("server.join_message.embed.color: (Should be None)")
+print(server.join_message.embed["color"])
+
+print()
+print("Editing color to 0x00FFFF.")
+server.join_message.embed["color"] = 0x00FFFF
+
+print("Running")
+server.join_message.embed = copy.copy(server.join_message.embed)

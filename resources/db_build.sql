@@ -49,8 +49,7 @@ CREATE TABLE IF NOT EXISTS join_message( -- #optimize
     id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    message_title TEXT DEFAULT '@member just joined the server!',
-    message_description TEXT DEFAULT 'Hello there, @member!',
+    embed TEXT DEFAULT '{"title":"@member just joined the server!","description":"Hello there, @member!"}',
     allow_join_cards BOOLEAN DEFAULT true
 );
 
@@ -59,6 +58,5 @@ CREATE TABLE IF NOT EXISTS leave_message( -- #optimize
     id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    message_title TEXT DEFAULT '@member just left the server.',
-    message_description TEXT DEFAULT '@member left.'
+    embed TEXT DEFAULT '{"title":"@member just left the server.","description":"@member left."}'
 );
