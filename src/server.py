@@ -841,7 +841,7 @@ class Server:
         def channel(self): pass
 
         @Server_TableManager.embed_property("embed")
-        def embed(self): pass
+        def embed(self): self.embed = copy.copy(self.embed)
 
         @Server_TableManager.boolean_property("allow_join_cards")
         def allow_join_cards(self): pass
@@ -875,4 +875,4 @@ print("Editing color to 0x00FFFF.")
 server.join_message.embed["color"] = 0x00FFFF
 
 print("Running")
-server.join_message.embed = copy.copy(server.join_message.embed)
+server.join_message.embed()
