@@ -3431,7 +3431,7 @@ class Dashboard(nextcord.ui.View):
                                             await interaction.response.send_message(embed = response, ephemeral=True)
                                             self.stop()
                                       
-                                    def addWord(word: str, guild_id):
+                                    def addWord(self, word: str, guild_id):
                                         server = Server(guild_id)
                                         
                                         if word.lower() in [x.lower() for x in server.profane_words]:
