@@ -39,13 +39,13 @@ VERSION = 2.0
 
 
 # IDs
-dev_guilds = [968872260557488158, 995459530202808332]
-dev_id = [836701982425219072]
-infiniBot_guild = None
+dev_guilds = []
+dev_ids = []
+infinibot_guild = None
 issue_report_channel = None
 submission_channel = None
 updates_channel = None
-infiniBot_updates_role = None
+infinibot_updates_role = None
 
 # Links
 support_server_link = 'https://discord.gg/mWgJJ8ZqwR'
@@ -94,20 +94,22 @@ bot = commands.Bot(intents = intents, allowed_mentions = nextcord.AllowedMention
 
 # LOAD IDS ==============================================================================================================================================================
 def load_ids():
-    global infiniBot_guild, issue_report_channel, submission_channel, updates_channel, infiniBot_updates_role
+    global dev_guilds, dev_ids, infinibot_guild, issue_report_channel, submission_channel, updates_channel, infinibot_updates_role
     
     ids_file = None
     
-    with open("./CriticalFiles/IDS.json") as file:
+    with open("./generated/configure/special_channel_ids.json") as file:
         ids_file = file.read()    
 
     json_file = json.loads(ids_file)
     
-    infiniBot_guild = json_file["InfiniBotGuild"]
-    issue_report_channel = json_file["IssueReportChannel"]
-    submission_channel = json_file["SubmissionChannel"]
-    updates_channel = json_file["UpdatesChannel"]
-    infiniBot_updates_role = json_file["InfiniBotUpdatesRole"]
+    dev_guilds = json_file["dev_guilds"]
+    dev_ids = json_file["dev_ids"]
+    infinibot_guild = json_file["infinibot_guild"]
+    issue_report_channel = json_file["issue_report_channel"]
+    submission_channel = json_file["submission_channel"]
+    updates_channel = json_file["updates_channel"]
+    infinibot_updates_role = json_file["infinibot_updates_role"]
 
 load_ids()
 
@@ -2887,7 +2889,7 @@ class IssueReportModal(nextcord.ui.Modal):
     async def callback(self, interaction: Interaction): 
         server = None
         for guild in bot.guilds:
-            if guild.id == infiniBot_guild: server = guild
+            if guild.id == infinibot_guild: server = guild
         
         if server == None:
             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
@@ -2920,7 +2922,7 @@ class IdeaReportModal(nextcord.ui.Modal):
     async def callback(self, interaction: Interaction): 
         server = None
         for guild in bot.guilds:
-            if guild.id == infiniBot_guild: server = guild
+            if guild.id == infinibot_guild: server = guild
         
         if server == None:
             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
@@ -11243,7 +11245,7 @@ class JokeView(nextcord.ui.View):
             # Try to post a message to the submission channel on the InfiniBot Support Server
             server = None
             for guild in bot.guilds:
-                if guild.id == infiniBot_guild: server = guild
+                if guild.id == infinibot_guild: server = guild
             
             if server == None:
                 print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
@@ -11324,7 +11326,7 @@ class JokeVerificationView(nextcord.ui.View):
                         await self.message.edit(embeds = embeds, view = None)
                         
                         # Try to dm
-                        support_server = bot.get_guild(infiniBot_guild)
+                        support_server = bot.get_guild(infinibot_guild)
                         if not support_server:
                             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                             return
@@ -11345,7 +11347,7 @@ class JokeVerificationView(nextcord.ui.View):
                    
                 # Get confirmation that we will be able to dm the user
                 try:
-                    support_server = bot.get_guild(infiniBot_guild)
+                    support_server = bot.get_guild(infinibot_guild)
                 except nextcord.errors.Forbidden:
                     print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                     return
@@ -11443,7 +11445,7 @@ class JokeVerificationView(nextcord.ui.View):
                         
                         # Try to dm
                         try:
-                            support_server = bot.get_guild(infiniBot_guild)
+                            support_server = bot.get_guild(infinibot_guild)
                         except nextcord.errors.Forbidden:
                             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                             return
@@ -11465,7 +11467,7 @@ class JokeVerificationView(nextcord.ui.View):
                 
                 # Get confirmation that we will be able to dm the user
                 try:
-                    support_server = bot.get_guild(infiniBot_guild)
+                    support_server = bot.get_guild(infinibot_guild)
                 except nextcord.errors.Forbidden:
                     print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                     return
@@ -13661,16 +13663,16 @@ async def sendMessageToAllGuilds(interaction: Interaction):
     description = modal.descriptionValue
     
     
-    if interaction.user.id in dev_id:
+    if interaction.user.id in dev_ids:
 
         embed = nextcord.Embed(title = title, description = description, color = nextcord.Color.gold())
 
         for guild in bot.guilds:
             try:
                 # Do some special stuff if it's the InfiniBot server
-                if guild.id == infiniBot_guild:
+                if guild.id == infinibot_guild:
                     channel = guild.get_channel(updates_channel)
-                    role = guild.get_role(infiniBot_updates_role)
+                    role = guild.get_role(infinibot_updates_role)
                     await channel.send(content = role.mention, embed = embed, view = SupportAndInviteView())
                     print(f"Message sent to InfiniBot Server Updates Area")
                     
@@ -13706,7 +13708,7 @@ async def getAllGuilds(interaction: Interaction):
     await interaction.response.defer()
     
     membercount = 0
-    if interaction.user.id in dev_id:
+    if interaction.user.id in dev_ids:
 
         formattedGuilds = ""
         number = 1
