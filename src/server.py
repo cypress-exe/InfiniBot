@@ -1,5 +1,4 @@
 import json
-import copy
 
 from nextcord import Embed as NextcordEmbed
 
@@ -64,35 +63,7 @@ class Server_TableManager:
     def _set_variable(self, table, column, id, value, id_sql_name = "id"): 
         database.execute_query(f"UPDATE {table} SET {column} = :value WHERE {id_sql_name} = {id}", args = {"value": value}, commit = True)
 
-    def custom_property_getter(self, private_name, property_name, getter_modifier=None):
-        # Create the private attribute if it doesn't exist
-        if private_name not in dir(self):
-            setattr(self, private_name, UNSET_VALUE)
-        
-        # If the private attribute doesn't have a value, get it from the SQL database
-        if getattr(self, private_name) is UNSET_VALUE:
-            value = (
-                self._get_variable(self.table_name, property_name, self.server_id, id_sql_name=self.id_sql_name)
-                if self._entry_exists_in_table
-                else database.get_column_default(self.table_name, property_name, format=True)
-            )
-            value = getter_modifier(value) if getter_modifier else value
-            setattr(self, private_name, value)
-        
-        return getattr(self, private_name)
-    
-    def custom_property_setter(self, value, private_name, property_name, setter_modifier=None):
-        # Create the private attribute if it doesn't exist
-        if private_name not in dir(self):
-            setattr(self, private_name, UNSET_VALUE)
-        
-        # Modify the value to be what it should be saved as
-        modified_value = setter_modifier(value) if setter_modifier else value
-        self._ensure_existence()
-        self._set_variable(self.table_name, property_name, self.server_id, modified_value, id_sql_name=self.id_sql_name)
-        setattr(self, private_name, value)
-
-    def custom_property(property_name, getter_modifier=None, setter_modifier=None):
+    def custom_property(property_name, getter_modifier=None, setter_modifier=None, **kwargs):
         """
         Custom decorator for creating properties that are either booleans, integers, floats, or strings.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -108,6 +79,8 @@ class Server_TableManager:
             def property_name(self): pass
             ```
         """
+        data_structure = kwargs["data_structure"] if "data_structure" in kwargs else None
+        
         # A private variable needs to be created for every public one. This allows the value of the variable to be saved,
         # Eliminating the need to make an SQL query for every time the variable is retrieved.
         private_name = f"_{property_name}"
@@ -115,17 +88,54 @@ class Server_TableManager:
         def decorator(method):
             # Getter function for the property
             def getter(self):
-                return Server_TableManager.custom_property_getter(self, private_name, property_name, getter_modifier=getter_modifier)
+                # Create the private attribute if it doesn't exist
+                if private_name not in dir(self):
+                    setattr(self, private_name, UNSET_VALUE)
+                
+                # If the private attribute doesn't have a value, get it from the SQL database
+                if getattr(self, private_name) is UNSET_VALUE:
+                    value = (
+                        self._get_variable(self.table_name, property_name, self.server_id, id_sql_name=self.id_sql_name)
+                        if self._entry_exists_in_table
+                        else database.get_column_default(self.table_name, property_name, format=True)
+                    )
+                    value = getter_modifier(value) if getter_modifier else value
+                    value = data_structure(value) if data_structure is not None else value
+                    
+                    # Cache the value for future use
+                    setattr(self, private_name, value)
+
+                    # Return the value
+                    return value
+                
+                return getattr(self, private_name)
 
             # Setter function for the property
             def setter(self, value):
-                Server_TableManager.custom_property_setter(self, value, private_name, property_name, setter_modifier=setter_modifier)
+                # If the value is of type datastruct, request the values to save
+                if data_structure is not None and isinstance(value, data_structure):
+                    value = value.serialize()
+                
+                # Create the private attribute if it doesn't exist (CAN THIS BE REMOVED?)
+                if private_name not in dir(self):
+                    setattr(self, private_name, UNSET_VALUE)
+                
+                # Modify the value to be what it should be saved as
+                modified_value = setter_modifier(value) if setter_modifier else value
+                
+                # Save variable
+                self._ensure_existence()
+                self._set_variable(self.table_name, property_name, self.server_id, modified_value, id_sql_name=self.id_sql_name)
+                
+                # Cache the value for future use
+                value = data_structure(value) if data_structure is not None else value # Because values were serialized earlier, they need to be deserialized into the data_stucture
+                setattr(self, private_name, value)
 
             return property(getter, setter)
 
         return decorator
     
-    def integer_property(property_name:int):
+    def integer_property(property_name:int, **kwargs):
         """
         Custom decorator for creating properties that are integers.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -140,16 +150,20 @@ class Server_TableManager:
             ```
         """
 
+        data_structure = kwargs["data_structure"] if "data_structure" in kwargs else None
+
         def setter_modifier(value):
             if isinstance(value, str):
                 if value.isdigit(): value = int(value)
             if isinstance(value, int):
                 return value
+            if isinstance(value, UNSET_VALUE): return value
+            if isinstance(value, data_structure): return value
             raise TypeError('Must be of type Int')
 
-        return Server_TableManager.custom_property(property_name, setter_modifier=setter_modifier)
+        return Server_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
 
-    def float_property(property_name:float):
+    def float_property(property_name:float, **kwargs):
         """
         Custom decorator for creating properties that are floats.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -173,9 +187,9 @@ class Server_TableManager:
                 return value
             raise TypeError('Must be of type Float')
 
-        return Server_TableManager.custom_property(property_name, setter_modifier=setter_modifier)
+        return Server_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
 
-    def boolean_property(property_name:bool):
+    def boolean_property(property_name:bool, **kwargs):
         """
         Custom decorator for creating properties that are booleans.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -198,9 +212,9 @@ class Server_TableManager:
                 return value
             raise TypeError('Must be of type Boolean')
 
-        return Server_TableManager.custom_property(property_name, setter_modifier=setter_modifier)
+        return Server_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
 
-    def string_property(property_name:str):
+    def string_property(property_name:str, **kwargs):
         """
         Custom decorator for creating properties that are strings.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -223,9 +237,9 @@ class Server_TableManager:
                     raise TypeError('Must be of type Boolean')
             return value
 
-        return Server_TableManager.custom_property(property_name, setter_modifier=setter_modifier)
+        return Server_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
 
-    def channel_property(property_name:(int | UNSET_VALUE | None), accept_unset_value = True, accept_none_value = True):
+    def channel_property(property_name:(int | UNSET_VALUE | None), accept_unset_value = True, accept_none_value = True, **kwargs):
         """
         Custom decorator for creating properties that are channels.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -272,9 +286,9 @@ class Server_TableManager:
                 return json.dumps({'status': 'SET', 'value': value})
             raise TypeError('Must be of type Int, None, or UNSET_VALUE')
 
-        return Server_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier)
+        return Server_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier, **kwargs)
 
-    def list_property(property_name:(list | None)):
+    def list_property(property_name:(list | None), accept_duplicate_values = True, **kwargs):
         """
         Custom decorator for creating properties that are lists.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -297,12 +311,15 @@ class Server_TableManager:
             return value_deserialized
 
         def setter_modifier(value):
-            if isinstance(value, list) or value is None: return json.dumps(value)
+            if isinstance(value, list) or value is None: 
+                if not accept_duplicate_values:
+                    if len(set(value)) != len(value): raise TypeError('This variable has been modified to not accept duplicate values.')
+                return json.dumps(value)
             raise TypeError('Must be of type List or None')
 
-        return Server_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier)
+        return Server_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier, **kwargs)
 
-    def embed_property(property_name:(int | None)):
+    def embed_property(property_name:(int | None), **kwargs):
         """
         Custom decorator for creating properties that are embeds. Stores any embed properties.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -319,9 +336,7 @@ class Server_TableManager:
         valid_arguments = ["title", "description", "url", "timestamp", "color", "footer", "image", "thumbnail", "author", "fields"]
 
         class EmbedProperty:
-            def __init__(self, property_name, **kwargs):
-                self.property_name = property_name
-                
+            def __init__(self, **kwargs):
                 # Populate properties
                 self.properties = {}
                 for key, value in kwargs.items():
@@ -340,54 +355,34 @@ class Server_TableManager:
                     
             def __setitem__(self, key, value):
                 if key in valid_arguments:
-                    self.properties[key] = value
-                    #self = copy.deepcopy(self)
+                    if value is None:
+                        if key in self.properties: self.properties.pop(key)
+                    else:
+                        self.properties[key] = value
+
                 else:
                     raise KeyError(f"Invalid embed property: {key}")
                 
             def __str__(self):
                 return json.dumps(self.properties)
-            
-            # def __setattr__(self, name, value):
-            #     print(name)
-            #     if name in valid_arguments:
-            #         print("Syncing")
-            #         self.properties[name] = value
-            #         # Access the parent class using 'self.__class__.__bases__[0]' 
-            #         # print(self.__class__)
-            #         # print(self.__class__.__mro__)
-            #         # self.__class__.__bases__[0]._set_variable(
-            #         #     self.__class__.__bases__[0].table_name,
-            #         #     "embed", 
-            #         #     self.__class__.__bases__[0].server_id,
-            #         #     json.dumps(self.properties), 
-            #         #     id_sql_name=self.__class__.__bases__[0].id_sql_name
-            #         # )  # Trigger setter
-            #         print("nothing happening")
-                    
                 
-            #     else:
-            #         super().__setattr__(name, value)
-                
-            # def __getattr__(self, name):
-            #     print(name)
-            #     if name in valid_arguments:
-            #         if name in self.properties:
-            #             return self.properties[name]
-            #         else:
-            #             return None
-            #     else:
-            #         return getattr(self, name)
-                
-            def get_embed(self):
+            def to_embed(self):
                 return NextcordEmbed(**self.properties)
-                    
-                    
+            
+            def subsitute_placeholders(self, **kwargs):
+                for property_key, property_value in self.properties.items():
+                    if isinstance(property_value, str):
+                        for kwarg_key, kwarg_value in kwargs.items():
+                            self.properties[property_key] = property_value.replace(f"@{kwarg_key}", kwarg_value)
+                            
+                    if property_key == "fields": # fields is a list
+                        for field in property_value:
+                            for kwarg_key, kwarg_value in kwargs.items():
+                                field["value"].replace(f"@{kwarg_key}", kwarg_value)
 
         def getter_modifier(value):
-            print("Getter modifier running")
             if value is None: # This case should never happen.
-                return EmbedProperty(property_name)
+                return EmbedProperty()
 
             # value = {"title":"Embed Title", "description":"Embed Description...", "color": 0x00FFFF, ...}
             value_decoded = json.loads(str(value))
@@ -397,12 +392,11 @@ class Server_TableManager:
                 if key not in valid_arguments:
                     raise KeyError(f"Invalid embed property: {key}")
             
-            return EmbedProperty(property_name, **value_decoded)
+            return EmbedProperty(**value_decoded)
 
         def setter_modifier(value):
-            print(f"Setting variable in database to: {value}")
             if not isinstance(value, EmbedProperty):
-                raise TypeError('Must be of type server.ServerTableManager.embed_property.<local>.EmbedProperty')
+                raise TypeError('Must be of type EmbedProperty')
             
             embed_properties = value.properties
             properties_to_save = {}
@@ -411,7 +405,7 @@ class Server_TableManager:
                     properties_to_save[key] = value
             return json.dumps(properties_to_save)
 
-        return Server_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier)
+        return Server_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier, **kwargs)
 
 class IntegratedList_TableManager:
     """
@@ -726,6 +720,9 @@ class Server:
         self._level_rewards = None
         self._join_message = None
         self._leave_message = None
+        self._birthdays = None
+        self._join_to_create_vcs = None
+        self._autobans = None
 
     def remove_all_data(self):
         '''Removes all data relating to this server from the database.'''
@@ -803,11 +800,8 @@ class Server:
         @Server_TableManager.channel_property("channel")
         def channel(self): pass
 
-        @Server_TableManager.string_property("message_title")
-        def message_title(self): pass
-
-        @Server_TableManager.string_property("message_description")
-        def message_description(self): pass
+        @Server_TableManager.embed_property("level_up_embed")
+        def level_up_embed(self): pass
 
         @Server_TableManager.integer_property("points_lost_per_day")
         def points_lost_per_day(self): pass
@@ -841,7 +835,7 @@ class Server:
         def channel(self): pass
 
         @Server_TableManager.embed_property("embed")
-        def embed(self): self.embed = copy.copy(self.embed)
+        def embed(self): pass
 
         @Server_TableManager.boolean_property("allow_join_cards")
         def allow_join_cards(self): pass
@@ -863,16 +857,148 @@ class Server:
         @Server_TableManager.embed_property("embed")
         def embed(self): pass
         
+    @property
+    def birthdays(self):
+        if self._birthdays is None: self._birthdays = self.Birthdays(self.server_id)
+        return self._birthdays
+    class Birthdays(Server_TableManager):
+        def __init__(self, server_id):
+            super().__init__(server_id, "birthdays")
 
-server = Server(1234)
+        @Server_TableManager.channel_property("channel")
+        def channel(self): pass
 
-print()
-print("server.join_message.embed.color: (Should be None)")
-print(server.join_message.embed["color"])
+        @Server_TableManager.embed_property("embed")
+        def embed(self): pass
+                
+        class _data_structure:
+            def __init__(self, data):
+                self.birthdays = [self._birthday(d) for d in data]
 
-print()
-print("Editing color to 0x00FFFF.")
-server.join_message.embed["color"] = 0x00FFFF
+            def serialize(self):
+                return [b.serialize() for b in self.birthdays]
 
-print("Running")
-server.join_message.embed()
+            def __getitem__(self, member_id):
+                return self.get_birthday_via_member(member_id)
+            
+            def __str__(self):
+                return str([str(b) for b in self.birthdays])
+                        
+            def get_birthday_via_member(self, member_id):
+                for birthday in self.birthdays:
+                    if birthday.member_id == member_id:
+                        return birthday
+                return None
+            
+            def get_birthday_via_date(self, date):
+                for birthday in self.birthdays:
+                    if birthday.date == date:
+                        return birthday
+                return None
+            
+            def add_birthday(self, *args, **kwargs):
+                member_id = args[0]
+                date = args[1]
+                real_name = None
+                if len(args) > 2: real_name = args[2]
+
+                if "real_name" in kwargs: real_name = kwargs["real_name"]
+                if "realname" in kwargs: real_name = kwargs["realname"]
+
+                if self.get_birthday_via_member(member_id) is not None: return
+
+                data = [member_id, date, real_name] if real_name else [member_id, date]
+                self.birthdays.append(self._birthday(data))
+
+            def edit_birthday(self, *args, **kwargs):
+                member_id = args[0]
+                date = args[1]
+                real_name = None
+                if len(args) > 2: real_name = args[2]
+
+                if "real_name" in kwargs: real_name = kwargs["real_name"]
+                if "realname" in kwargs: real_name = kwargs["realname"]
+
+                for birthday in self.birthdays:
+                    if birthday.member_id == member_id:
+                        birthday.date = date
+                        birthday.real_name = real_name
+                        break
+
+            def delete_birthday(self, member_id):
+                self.birthdays = [b for b in self.birthdays if b.member_id != member_id]
+
+            class _birthday:
+                def __init__(self, data):
+                    self.member_id = None
+                    self.date = None
+                    self.real_name = None
+
+                    if data is None: return
+                    if len(data) < 2: return
+
+                    self.member_id = data[0]
+                    self.date = data[1]
+                    if len(data) > 2: self.real_name = data[2]
+                
+                def serialize(self):
+                    if self.real_name is None: return [self.member_id, self.date]
+                    return [self.member_id, self.date, self.real_name]
+                
+                def __str__(self):
+                    return str(self.serialize())
+
+        def add_birthday(self, *args, **kwargs):
+            birthdays = self.birthdays_list
+            birthdays.add_birthday(*args, **kwargs)
+            self.birthdays_list = birthdays
+
+        def edit_birthday(self, *args, **kwargs):
+            birthdays = self.birthdays_list
+            birthdays.edit_birthday(*args, **kwargs)
+            self.birthdays_list = birthdays
+
+        def delete_birthday(self, member_id):
+            birthdays = self.birthdays_list
+            birthdays.delete_birthday(member_id)
+            self.birthdays_list = birthdays
+
+        def get_birthday(self, member_id = None, date = None):
+            birthdays = self.birthdays_list
+            if member_id is not None: return birthdays.get_birthday_via_member(member_id)
+            if date is not None: return birthdays.get_birthday_via_date(date)
+
+            raise ValueError("member_id and date cannot both be None")
+        
+        def get_all_birthdays(self, date = None):
+            if date is None: return self.birthdays_list.birthdays
+
+            birthdays = self.birthdays_list
+            return [b for b in birthdays.birthdays if b.date == date]
+
+        @Server_TableManager.list_property("birthdays_list", data_structure = _data_structure) # [[12345, "2022-01-01"], [12345, "2022-01-01", "Billy"]]
+        def birthdays_list(self): pass
+
+        @Server_TableManager.integer_property("runtime")
+        def runtime(self): pass
+
+    @property
+    def join_to_create_vcs(self):
+        if self._join_to_create_vcs is None: self._join_to_create_vcs = self.JoinToCreateVCs(self.server_id)
+        return self._join_to_create_vcs
+    class JoinToCreateVCs(Server_TableManager):
+        def __init__(self, server_id):
+            super().__init__(server_id, "join_to_create_vcs")
+        
+        @Server_TableManager.list_property("channels", accept_duplicate_values = False)
+        def channels(self): pass
+
+    @property
+    def autobans(self):
+        if self._autobans is None: self._autobans = self.AutoBans(self.server_id)
+        return self._autobans
+    class AutoBans(IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("auto_bans", "server_id", server_id, "member_id")
+        
+        

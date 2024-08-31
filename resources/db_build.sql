@@ -1,3 +1,5 @@
+-- Start of File db_build.sql ---
+
 -- Create Profanity Moderation Table (server table)
 CREATE TABLE IF NOT EXISTS profanity_moderation( -- #optimize
     id INT PRIMARY KEY,
@@ -29,8 +31,7 @@ CREATE TABLE IF NOT EXISTS leveling( -- #optimize
     id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    message_title TEXT DEFAULT 'Congratulations, @member!',
-    message_description TEXT DEFAULT 'Congrats! You reached level [level]!',
+    level_up_embed TEXT DEFAULT '{"title":"Congratulations, @displayname!","description":"Congrats @member! You reached level [level]!"}',
     points_lost_per_day INT DEFAULT 5,
     exempt_channels TEXT DEFAULT '[]',
     allow_leveling_cards BOOL DEFAULT true
@@ -49,7 +50,7 @@ CREATE TABLE IF NOT EXISTS join_message( -- #optimize
     id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    embed TEXT DEFAULT '{"title":"@member just joined the server!","description":"Hello there, @member!"}',
+    embed TEXT DEFAULT '{"title":"@displayname just joined the server!","description":"Hello there, @member!"}',
     allow_join_cards BOOLEAN DEFAULT true
 );
 
@@ -58,5 +59,28 @@ CREATE TABLE IF NOT EXISTS leave_message( -- #optimize
     id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    embed TEXT DEFAULT '{"title":"@member just left the server.","description":"@member left."}'
+    embed TEXT DEFAULT '{"title":"@displayname just left the server.","description":"@member left."}'
 );
+
+-- Create Birthdays Table (server table)
+CREATE TABLE IF NOT EXISTS birthdays( -- #optimize
+    id INT PRIMARY KEY,
+    channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
+    embed TEXT DEFAULT '{"title":"Happy Birthday, @realname!","description":"Hello there, @member!"}',
+    birthdays_list TEXT DEFAULT '[]',
+    runtime TEXT DEFAULT "8:00"
+)
+
+-- Create Join To Create VCS Table (server table)
+CREATE TABLE IF NOT EXISTS join_to_create_vcs( -- #optimize
+    id INT PRIMARY KEY,
+    channels TEXT DEFAULT '[]'
+)
+
+-- Create Auto-Bans Table (integrated list table)
+CREATE TABLE IF NOT EXISTS auto_bans( -- #optimize
+    server_id INT,
+    member_id INT,
+    member_name TEXT,
+    PRIMARY KEY (server_id, member_id)
+)
