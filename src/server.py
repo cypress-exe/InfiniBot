@@ -13,43 +13,60 @@ class DatabaseForInfiniBot(Database): # Alters Database to add InfiniBot-specifi
     def get_all_entries(self):
         return self.get_unique_entries_for_database()
 
-database = DatabaseForInfiniBot(database_url, database_build_file_path)
+database = None
+def init_database():
+    global database
+    database = DatabaseForInfiniBot(database_url, database_build_file_path)
+
+init_database()
 
 class Server_TableManager:
-    def __init__(self, server_id:int, table_name:str, id_sql_name = "id"):
+    def __init__(self, server_id:int, table_name:str):
         self.server_id = server_id
         self.table_name = table_name
-        self.id_sql_name = id_sql_name
+        self.id_sql_name = database.all_primary_keys[table_name]
 
         self._entry_exists_in_table = database.does_entry_exist(self.table_name, self.server_id)
 
     def __str__(self):
-        column_names_and_types = database.all_column_types[self.table_name]
-        column_names = [*column_names_and_types]
-        properties = []
-        for row in column_names:
-            if row in dir(self):
-                properties.append(row)
+        column_names_and_types = self.get_column_names_and_types()
+        properties = self.__dict__()
 
         return "\n".join(f"{prop} ({column_names_and_types[prop]}): {getattr(self, prop)}" for prop in properties)
+    
+    def __dict__(self):
+        column_names_and_types = self.get_column_names_and_types()
+        column_names = [*column_names_and_types]
+        properties = {}
+        for row in column_names:
+            if row in dir(self):
+                properties[row] = getattr(self, row)
+
+        return properties
+    
+    def get_column_names_and_types(self):
+        return database.all_column_types[self.table_name]
+    
+    def get_column_names_and_defaults(self):
+        return database.all_column_defaults[self.table_name]
 
     def _ensure_existence(self):
         if not self._entry_exists_in_table:
             self._init_regular_entry(self.table_name, self.server_id)
 
-    def _init_regular_entry(self, table: str, id: int):
+    def _init_regular_entry(self, table: str, server_id: int):
         '''Creates an entry for a server. Warning: This will ignore if the server already exists and will not warn.''' 
         column_defaults = database.all_column_defaults[table]
 
         # Create the query
         query_values = ", ".join(list(column_defaults.values()))
-        query = f"INSERT OR IGNORE INTO {table} VALUES ({id}, {query_values})"
+        query = f"INSERT OR IGNORE INTO {table} VALUES ({server_id}, {query_values})"
         
         database.execute_query(query, commit = True)
 
-    def _get_variable(self, table, column, id, id_sql_name = "id"):
+    def _get_variable(self, table, column, server_id):
         # Get the response
-        response = database.execute_query(f"Select {column} FROM {table} WHERE {id_sql_name} = {id}")
+        response = database.execute_query(f"Select {column} FROM {table} WHERE {self.id_sql_name} = {server_id}")
 
         # Clean up the response
         cleaned_response = database.get_query_first_value(response)
@@ -60,8 +77,8 @@ class Server_TableManager:
         # Format the response
         return database.format_var_to_pythonic_type(_type, cleaned_response)
 
-    def _set_variable(self, table, column, id, value, id_sql_name = "id"): 
-        database.execute_query(f"UPDATE {table} SET {column} = :value WHERE {id_sql_name} = {id}", args = {"value": value}, commit = True)
+    def _set_variable(self, table, column, id, value): 
+        database.execute_query(f"UPDATE {table} SET {column} = :value WHERE {self.id_sql_name} = {id}", args = {"value": value}, commit = True)
 
     def custom_property(property_name, getter_modifier=None, setter_modifier=None, **kwargs):
         """
@@ -95,7 +112,7 @@ class Server_TableManager:
                 # If the private attribute doesn't have a value, get it from the SQL database
                 if getattr(self, private_name) is UNSET_VALUE:
                     value = (
-                        self._get_variable(self.table_name, property_name, self.server_id, id_sql_name=self.id_sql_name)
+                        self._get_variable(self.table_name, property_name, self.server_id)
                         if self._entry_exists_in_table
                         else database.get_column_default(self.table_name, property_name, format=True)
                     )
@@ -125,7 +142,7 @@ class Server_TableManager:
                 
                 # Save variable
                 self._ensure_existence()
-                self._set_variable(self.table_name, property_name, self.server_id, modified_value, id_sql_name=self.id_sql_name)
+                self._set_variable(self.table_name, property_name, self.server_id, modified_value)
                 
                 # Cache the value for future use
                 value = data_structure(value) if data_structure is not None else value # Because values were serialized earlier, they need to be deserialized into the data_stucture
@@ -234,7 +251,7 @@ class Server_TableManager:
                 try:
                     value = str(value)
                 except ValueError:
-                    raise TypeError('Must be of type Boolean')
+                    raise TypeError('Must be of type String')
             return value
 
         return Server_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
@@ -257,14 +274,14 @@ class Server_TableManager:
 
         def getter_modifier(value):
             if value is None: # This case should never happen. In the senario that it does, this is a good fallback value.
-                if accept_unset_value: return UNSET_VALUE()
+                if accept_unset_value: return UNSET_VALUE
                 elif accept_none_value: return None
                 else: return 0
 
             # value = {"status": ('SET'|'UNSET'|'NONE'), "value": ______}
             packet = json.loads(str(value))
             if packet['status'] == 'UNSET':
-                return UNSET_VALUE()
+                return UNSET_VALUE
             if packet['status'] == 'NONE':
                 return None
 
@@ -713,7 +730,7 @@ class Server:
     def __init__(self, server_id:int):
         self.server_id = server_id
 
-        self._profanity_moderation = None
+        self._profanity_moderation_profile = None
         self._spam_moderation = None
         self._logging = None
         self._leveling = None
@@ -730,12 +747,12 @@ class Server:
             database.force_remove_entry(table, self.server_id) # This isn't working for some reason.
 
     @property
-    def profanity_moderation(self):
-        if self._profanity_moderation is None: self._profanity_moderation = self.Profanity_Moderation(self.server_id)
-        return self._profanity_moderation
-    class Profanity_Moderation(Server_TableManager):
+    def profanity_moderation_profile(self):
+        if self._profanity_moderation_profile is None: self._profanity_moderation_profile = self.Profanity_Moderation_Profile(self.server_id)
+        return self._profanity_moderation_profile
+    class Profanity_Moderation_Profile(Server_TableManager):
         def __init__(self, server_id):
-            super().__init__(server_id, "profanity_moderation")
+            super().__init__(server_id, "profanity_moderation_profile")
 
         @Server_TableManager.boolean_property("active")
         def active(self): pass
@@ -755,250 +772,248 @@ class Server:
         @Server_TableManager.list_property("custom_words")
         def custom_words(self): pass
 
-    @property
-    def spam_moderation(self):
-        if self._spam_moderation is None: self._spam_moderation = self.Spam_Moderation(self.server_id)
-        return self._spam_moderation
-    class Spam_Moderation(Server_TableManager):
-        def __init__(self, server_id):
-            super().__init__(server_id, "spam_moderation")
+    # @property
+    # def spam_moderation(self):
+    #     if self._spam_moderation is None: self._spam_moderation = self.Spam_Moderation(self.server_id)
+    #     return self._spam_moderation
+    # class Spam_Moderation(Server_TableManager):
+    #     def __init__(self, server_id):
+    #         super().__init__(server_id, "spam_moderation")
 
-        @Server_TableManager.boolean_property("active")
-        def active(self): pass
+    #     @Server_TableManager.boolean_property("active")
+    #     def active(self): pass
 
-        @Server_TableManager.integer_property("messages_threshold")
-        def messages_threshold(self): pass
+    #     @Server_TableManager.integer_property("messages_threshold")
+    #     def messages_threshold(self): pass
 
-        @Server_TableManager.integer_property("timeout_seconds")
-        def timeout_seconds(self): pass
+    #     @Server_TableManager.integer_property("timeout_seconds")
+    #     def timeout_seconds(self): pass
 
-    @property
-    def logging(self):
-        if self._logging is None: self._logging = self.Logging(self.server_id)
-        return self._logging
-    class Logging(Server_TableManager):
-        def __init__(self, server_id):
-            super().__init__(server_id, "logging")
+    # @property
+    # def logging(self):
+    #     if self._logging is None: self._logging = self.Logging(self.server_id)
+    #     return self._logging
+    # class Logging(Server_TableManager):
+    #     def __init__(self, server_id):
+    #         super().__init__(server_id, "logging")
 
-        @Server_TableManager.boolean_property("active")
-        def active(self): pass
+    #     @Server_TableManager.boolean_property("active")
+    #     def active(self): pass
 
-        @Server_TableManager.channel_property("channel")
-        def channel(self): pass
+    #     @Server_TableManager.channel_property("channel")
+    #     def channel(self): pass
 
-    @property
-    def leveling(self):
-        if self._leveling is None: self._leveling = self.Leveling(self.server_id)
-        return self._leveling
-    class Leveling(Server_TableManager):
-        def __init__(self, server_id):
-            super().__init__(server_id, "leveling")
+    # @property
+    # def leveling(self):
+    #     if self._leveling is None: self._leveling = self.Leveling(self.server_id)
+    #     return self._leveling
+    # class Leveling(Server_TableManager):
+    #     def __init__(self, server_id):
+    #         super().__init__(server_id, "leveling")
 
-        @Server_TableManager.boolean_property("active")
-        def active(self): pass
+    #     @Server_TableManager.boolean_property("active")
+    #     def active(self): pass
 
-        @Server_TableManager.channel_property("channel")
-        def channel(self): pass
+    #     @Server_TableManager.channel_property("channel")
+    #     def channel(self): pass
 
-        @Server_TableManager.embed_property("level_up_embed")
-        def level_up_embed(self): pass
+    #     @Server_TableManager.embed_property("level_up_embed")
+    #     def level_up_embed(self): pass
 
-        @Server_TableManager.integer_property("points_lost_per_day")
-        def points_lost_per_day(self): pass
+    #     @Server_TableManager.integer_property("points_lost_per_day")
+    #     def points_lost_per_day(self): pass
 
-        @Server_TableManager.list_property("exempt_channels")
-        def exempt_channels(self): pass
+    #     @Server_TableManager.list_property("exempt_channels")
+    #     def exempt_channels(self): pass
 
-        @Server_TableManager.boolean_property("allow_level_cards")
-        def allow_level_cards(self): pass
+    #     @Server_TableManager.boolean_property("allow_level_cards")
+    #     def allow_level_cards(self): pass
 
-    @property
-    def level_rewards(self):
-        if self._level_rewards is None: self._level_rewards = self.LevelRewards(self.server_id)
-        return self._level_rewards
-    class LevelRewards(IntegratedList_TableManager):
-        def __init__(self, server_id):
-            super().__init__("level_rewards", "server_id", server_id, "role_id")
+    # @property
+    # def level_rewards(self):
+    #     if self._level_rewards is None: self._level_rewards = self.LevelRewards(self.server_id)
+    #     return self._level_rewards
+    # class LevelRewards(IntegratedList_TableManager):
+    #     def __init__(self, server_id):
+    #         super().__init__("level_rewards", "server_id", server_id, "role_id")
 
-    @property
-    def join_message(self):
-        if self._join_message is None: self._join_message = self.JoinMessage(self.server_id)
-        return self._join_message
-    class JoinMessage(Server_TableManager):
-        def __init__(self, server_id):
-            super().__init__(server_id, "join_message")
+    # @property
+    # def join_message(self):
+    #     if self._join_message is None: self._join_message = self.JoinMessage(self.server_id)
+    #     return self._join_message
+    # class JoinMessage(Server_TableManager):
+    #     def __init__(self, server_id):
+    #         super().__init__(server_id, "join_message")
 
-        @Server_TableManager.boolean_property("active")
-        def active(self): pass
+    #     @Server_TableManager.boolean_property("active")
+    #     def active(self): pass
 
-        @Server_TableManager.channel_property("channel", accept_none_value=False)
-        def channel(self): pass
+    #     @Server_TableManager.channel_property("channel", accept_none_value=False)
+    #     def channel(self): pass
 
-        @Server_TableManager.embed_property("embed")
-        def embed(self): pass
+    #     @Server_TableManager.embed_property("embed")
+    #     def embed(self): pass
 
-        @Server_TableManager.boolean_property("allow_join_cards")
-        def allow_join_cards(self): pass
+    #     @Server_TableManager.boolean_property("allow_join_cards")
+    #     def allow_join_cards(self): pass
 
-    @property
-    def leave_message(self):
-        if self._leave_message is None: self._leave_message = self.LeaveMessage(self.server_id)
-        return self._leave_message
-    class LeaveMessage(Server_TableManager):
-        def __init__(self, server_id):
-            super().__init__(server_id, "leave_message")
+    # @property
+    # def leave_message(self):
+    #     if self._leave_message is None: self._leave_message = self.LeaveMessage(self.server_id)
+    #     return self._leave_message
+    # class LeaveMessage(Server_TableManager):
+    #     def __init__(self, server_id):
+    #         super().__init__(server_id, "leave_message")
 
-        @Server_TableManager.boolean_property("active")
-        def active(self): pass
+    #     @Server_TableManager.boolean_property("active")
+    #     def active(self): pass
 
-        @Server_TableManager.channel_property("channel", accept_none_value=False)
-        def channel(self): pass
+    #     @Server_TableManager.channel_property("channel", accept_none_value=False)
+    #     def channel(self): pass
 
-        @Server_TableManager.embed_property("embed")
-        def embed(self): pass
+    #     @Server_TableManager.embed_property("embed")
+    #     def embed(self): pass
         
-    @property
-    def birthdays(self):
-        if self._birthdays is None: self._birthdays = self.Birthdays(self.server_id)
-        return self._birthdays
-    class Birthdays(Server_TableManager):
-        def __init__(self, server_id):
-            super().__init__(server_id, "birthdays")
+    # @property
+    # def birthdays(self):
+    #     if self._birthdays is None: self._birthdays = self.Birthdays(self.server_id)
+    #     return self._birthdays
+    # class Birthdays(Server_TableManager):
+    #     def __init__(self, server_id):
+    #         super().__init__(server_id, "birthdays")
 
-        @Server_TableManager.channel_property("channel")
-        def channel(self): pass
+    #     @Server_TableManager.channel_property("channel")
+    #     def channel(self): pass
 
-        @Server_TableManager.embed_property("embed")
-        def embed(self): pass
+    #     @Server_TableManager.embed_property("embed")
+    #     def embed(self): pass
                 
-        class _data_structure:
-            def __init__(self, data):
-                self.birthdays = [self._birthday(d) for d in data]
+    #     class _data_structure:
+    #         def __init__(self, data):
+    #             self.birthdays = [self._birthday(d) for d in data]
 
-            def serialize(self):
-                return [b.serialize() for b in self.birthdays]
+    #         def serialize(self):
+    #             return [b.serialize() for b in self.birthdays]
 
-            def __getitem__(self, member_id):
-                return self.get_birthday_via_member(member_id)
+    #         def __getitem__(self, member_id):
+    #             return self.get_birthday_via_member(member_id)
             
-            def __str__(self):
-                return str([str(b) for b in self.birthdays])
+    #         def __str__(self):
+    #             return str([str(b) for b in self.birthdays])
                         
-            def get_birthday_via_member(self, member_id):
-                for birthday in self.birthdays:
-                    if birthday.member_id == member_id:
-                        return birthday
-                return None
+    #         def get_birthday_via_member(self, member_id):
+    #             for birthday in self.birthdays:
+    #                 if birthday.member_id == member_id:
+    #                     return birthday
+    #             return None
             
-            def get_birthday_via_date(self, date):
-                for birthday in self.birthdays:
-                    if birthday.date == date:
-                        return birthday
-                return None
+    #         def get_birthday_via_date(self, date):
+    #             for birthday in self.birthdays:
+    #                 if birthday.date == date:
+    #                     return birthday
+    #             return None
             
-            def add_birthday(self, *args, **kwargs):
-                member_id = args[0]
-                date = args[1]
-                real_name = None
-                if len(args) > 2: real_name = args[2]
+    #         def add_birthday(self, *args, **kwargs):
+    #             member_id = args[0]
+    #             date = args[1]
+    #             real_name = None
+    #             if len(args) > 2: real_name = args[2]
 
-                if "real_name" in kwargs: real_name = kwargs["real_name"]
-                if "realname" in kwargs: real_name = kwargs["realname"]
+    #             if "real_name" in kwargs: real_name = kwargs["real_name"]
+    #             if "realname" in kwargs: real_name = kwargs["realname"]
 
-                if self.get_birthday_via_member(member_id) is not None: return
+    #             if self.get_birthday_via_member(member_id) is not None: return
 
-                data = [member_id, date, real_name] if real_name else [member_id, date]
-                self.birthdays.append(self._birthday(data))
+    #             data = [member_id, date, real_name] if real_name else [member_id, date]
+    #             self.birthdays.append(self._birthday(data))
 
-            def edit_birthday(self, *args, **kwargs):
-                member_id = args[0]
-                date = args[1]
-                real_name = None
-                if len(args) > 2: real_name = args[2]
+    #         def edit_birthday(self, *args, **kwargs):
+    #             member_id = args[0]
+    #             date = args[1]
+    #             real_name = None
+    #             if len(args) > 2: real_name = args[2]
 
-                if "real_name" in kwargs: real_name = kwargs["real_name"]
-                if "realname" in kwargs: real_name = kwargs["realname"]
+    #             if "real_name" in kwargs: real_name = kwargs["real_name"]
+    #             if "realname" in kwargs: real_name = kwargs["realname"]
 
-                for birthday in self.birthdays:
-                    if birthday.member_id == member_id:
-                        birthday.date = date
-                        birthday.real_name = real_name
-                        break
+    #             for birthday in self.birthdays:
+    #                 if birthday.member_id == member_id:
+    #                     birthday.date = date
+    #                     birthday.real_name = real_name
+    #                     break
 
-            def delete_birthday(self, member_id):
-                self.birthdays = [b for b in self.birthdays if b.member_id != member_id]
+    #         def delete_birthday(self, member_id):
+    #             self.birthdays = [b for b in self.birthdays if b.member_id != member_id]
 
-            class _birthday:
-                def __init__(self, data):
-                    self.member_id = None
-                    self.date = None
-                    self.real_name = None
+    #         class _birthday:
+    #             def __init__(self, data):
+    #                 self.member_id = None
+    #                 self.date = None
+    #                 self.real_name = None
 
-                    if data is None: return
-                    if len(data) < 2: return
+    #                 if data is None: return
+    #                 if len(data) < 2: return
 
-                    self.member_id = data[0]
-                    self.date = data[1]
-                    if len(data) > 2: self.real_name = data[2]
+    #                 self.member_id = data[0]
+    #                 self.date = data[1]
+    #                 if len(data) > 2: self.real_name = data[2]
                 
-                def serialize(self):
-                    if self.real_name is None: return [self.member_id, self.date]
-                    return [self.member_id, self.date, self.real_name]
+    #             def serialize(self):
+    #                 if self.real_name is None: return [self.member_id, self.date]
+    #                 return [self.member_id, self.date, self.real_name]
                 
-                def __str__(self):
-                    return str(self.serialize())
+    #             def __str__(self):
+    #                 return str(self.serialize())
 
-        def add_birthday(self, *args, **kwargs):
-            birthdays = self.birthdays_list
-            birthdays.add_birthday(*args, **kwargs)
-            self.birthdays_list = birthdays
+    #     def add_birthday(self, *args, **kwargs):
+    #         birthdays = self.birthdays_list
+    #         birthdays.add_birthday(*args, **kwargs)
+    #         self.birthdays_list = birthdays
 
-        def edit_birthday(self, *args, **kwargs):
-            birthdays = self.birthdays_list
-            birthdays.edit_birthday(*args, **kwargs)
-            self.birthdays_list = birthdays
+    #     def edit_birthday(self, *args, **kwargs):
+    #         birthdays = self.birthdays_list
+    #         birthdays.edit_birthday(*args, **kwargs)
+    #         self.birthdays_list = birthdays
 
-        def delete_birthday(self, member_id):
-            birthdays = self.birthdays_list
-            birthdays.delete_birthday(member_id)
-            self.birthdays_list = birthdays
+    #     def delete_birthday(self, member_id):
+    #         birthdays = self.birthdays_list
+    #         birthdays.delete_birthday(member_id)
+    #         self.birthdays_list = birthdays
 
-        def get_birthday(self, member_id = None, date = None):
-            birthdays = self.birthdays_list
-            if member_id is not None: return birthdays.get_birthday_via_member(member_id)
-            if date is not None: return birthdays.get_birthday_via_date(date)
+    #     def get_birthday(self, member_id = None, date = None):
+    #         birthdays = self.birthdays_list
+    #         if member_id is not None: return birthdays.get_birthday_via_member(member_id)
+    #         if date is not None: return birthdays.get_birthday_via_date(date)
 
-            raise ValueError("member_id and date cannot both be None")
+    #         raise ValueError("member_id and date cannot both be None")
         
-        def get_all_birthdays(self, date = None):
-            if date is None: return self.birthdays_list.birthdays
+    #     def get_all_birthdays(self, date = None):
+    #         if date is None: return self.birthdays_list.birthdays
 
-            birthdays = self.birthdays_list
-            return [b for b in birthdays.birthdays if b.date == date]
+    #         birthdays = self.birthdays_list
+    #         return [b for b in birthdays.birthdays if b.date == date]
 
-        @Server_TableManager.list_property("birthdays_list", data_structure = _data_structure) # [[12345, "2022-01-01"], [12345, "2022-01-01", "Billy"]]
-        def birthdays_list(self): pass
+    #     @Server_TableManager.list_property("birthdays_list", data_structure = _data_structure) # [[12345, "2022-01-01"], [12345, "2022-01-01", "Billy"]]
+    #     def birthdays_list(self): pass
 
-        @Server_TableManager.integer_property("runtime")
-        def runtime(self): pass
+    #     @Server_TableManager.integer_property("runtime")
+    #     def runtime(self): pass
 
-    @property
-    def join_to_create_vcs(self):
-        if self._join_to_create_vcs is None: self._join_to_create_vcs = self.JoinToCreateVCs(self.server_id)
-        return self._join_to_create_vcs
-    class JoinToCreateVCs(Server_TableManager):
-        def __init__(self, server_id):
-            super().__init__(server_id, "join_to_create_vcs")
+    # @property
+    # def join_to_create_vcs(self):
+    #     if self._join_to_create_vcs is None: self._join_to_create_vcs = self.JoinToCreateVCs(self.server_id)
+    #     return self._join_to_create_vcs
+    # class JoinToCreateVCs(Server_TableManager):
+    #     def __init__(self, server_id):
+    #         super().__init__(server_id, "join_to_create_vcs")
         
-        @Server_TableManager.list_property("channels", accept_duplicate_values = False)
-        def channels(self): pass
+    #     @Server_TableManager.list_property("channels", accept_duplicate_values = False)
+    #     def channels(self): pass
 
-    @property
-    def autobans(self):
-        if self._autobans is None: self._autobans = self.AutoBans(self.server_id)
-        return self._autobans
-    class AutoBans(IntegratedList_TableManager):
-        def __init__(self, server_id):
-            super().__init__("auto_bans", "server_id", server_id, "member_id")
-        
-        
+    # @property
+    # def autobans(self):
+    #     if self._autobans is None: self._autobans = self.AutoBans(self.server_id)
+    #     return self._autobans
+    # class AutoBans(IntegratedList_TableManager):
+    #     def __init__(self, server_id):
+    #         super().__init__("auto_bans", "server_id", server_id, "member_id")

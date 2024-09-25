@@ -7,6 +7,7 @@ import re
 import os
 
 from custom_types import UNSET_VALUE
+from utils import format_var_to_pythonic_type
 
 class Database:
     """
@@ -42,6 +43,7 @@ class Database:
         self.all_column_defaults:dict[str, dict[str, str]] = {}
         self.all_column_types:dict[str, dict[str, str]] = {}
         self.all_column_names:dict[str, list[str]] = {}
+        self.all_primary_keys:dict[str, str] = {}
 
         self.build_database(db_build_file_path) # Database must be valid at initialization
         self.index_tables() # Index tables at runtime
@@ -99,13 +101,16 @@ class Database:
         self.all_column_defaults = {}
         self.all_column_types = {}
         self.all_column_names = {}
+        self.all_primary_keys = {}
         
         for table in self.tables:
             column_defaults = {}
             column_types = {}
             column_names = []
+            primary_key = None
             table_info = self.execute_query(f"PRAGMA table_info({table})", multiple_values=True)
-            table_schema = self.execute_query(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{table}'", multiple_values=False)
+            table_schema = self.execute_query(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{table}'",
+                                               multiple_values=False)
 
             # Check for "-- #optimize" marker in the table schema
             if "-- #optimize" in table_schema[0]:
@@ -115,14 +120,18 @@ class Database:
                 column_names.append(col_info[1])
                 if len(col_info) < 5: continue
 
-                col_name, _type, _, default_value = col_info[1:5]
+                col_name, _type, _, default_value, primary_key_status = col_info[1:6]
                 if default_value is not None:
                     column_defaults[col_name] = default_value
-                    column_types[col_name] = _type
+                column_types[col_name] = _type
+
+                if primary_key_status == 1:
+                    primary_key = col_name
             
             self.all_column_defaults[table] = column_defaults
             self.all_column_types[table] = column_types
             self.all_column_names[table] = column_names
+            self.all_primary_keys[table] = primary_key
     
     def remove_extraneous_rows(self, table:str, skip_table_validation_check=False) -> None:
         """
@@ -162,7 +171,10 @@ class Database:
             table (str): Table name.
             id (int): Entry ID.
         """
-        self.execute_query(f"DELETE FROM {table} WHERE id = {id}", commit=True)
+        id_sql_name = self.get_id_sql_name(table)
+        self.execute_query(f"DELETE FROM {table} WHERE {id_sql_name} = :id", 
+                           args={"id": id}, 
+                           commit=True)
     
     def get_column_default(self, table:str, column_name:str, format=False) -> (bool | int | str | UNSET_VALUE | Any):
         """
@@ -188,7 +200,7 @@ class Database:
         
         if format:
             _type = self.get_column_type(table, column_name)
-            default_value = self.format_var_to_pythonic_type(_type, default_value)
+            default_value = format_var_to_pythonic_type(_type, default_value)
 
         return default_value
     
@@ -230,33 +242,6 @@ class Database:
         
         if len(query_result) > 0: return query_result[0]
         return None
-    
-    def format_var_to_pythonic_type(self, _type:str, value):
-        """
-        Format a variable based on its type.
-
-        Args:
-            _type (str): Data type of the variable.
-            value (any): Value to format.
-
-        Returns:
-            any: Formatted value.
-        """
-        if _type.lower() == "boolean" or _type.lower() == "bool":
-            if isinstance(value, int):
-                return bool(value)
-            if isinstance(value, str):
-                return value.lower() == "true"
-        if _type.lower() == "integer" or _type.lower() == "int":
-            if isinstance(value, str):
-                return int(value)
-        if _type.lower() == "text":
-            if isinstance(value, str):
-                if value.startswith("'") and value.endswith("'"):
-                    return value[1:-1]
-                else:
-                    return value
-        return value
 
     def does_entry_exist(self, table:str, id: int) -> bool:
         """
@@ -269,7 +254,10 @@ class Database:
         Returns:
             bool: True if entry exists, False otherwise.
         """
-        entry = self.execute_query(f"SELECT * FROM {table} WHERE id = :id", args={"id": id}, multiple_values=True)
+        id_sql_name = self.get_id_sql_name(table)
+        entry = self.execute_query(f"SELECT * FROM {table} WHERE {id_sql_name} = :id", 
+                                   args={"id": id}, 
+                                   multiple_values=True)
         return bool(entry)
     
     def get_table_unique_entries(self, table:str) -> Generator[int, int, int]:
@@ -279,7 +267,9 @@ class Database:
         Returns:
             Generator[int, int, int]: Generator yielding integer IDs.
         """
-        ids = self.execute_query(f"SELECT DISTINCT id FROM {table}", multiple_values=True)
+        id_sql_name = self.get_id_sql_name(table)
+        ids = self.execute_query(f"SELECT DISTINCT {id_sql_name} FROM {table}", 
+                                 multiple_values=True)
         for id_tuple in ids:
             id = id_tuple[0]
             yield id
@@ -299,3 +289,21 @@ class Database:
             unique_ids.update(ids)
         
         return list(unique_ids)
+    
+    def get_id_sql_name(self, table:str) -> str:
+        """
+        Get the SQL name of the primary key of a table.
+
+        Args:
+            table (str): Table name.
+
+        Returns:
+            str: SQL name of the primary key.
+        """
+        if table not in self.all_primary_keys:
+            raise KeyError(f"Table {table} not found in all_primary_keys.")
+
+        if self.all_primary_keys[table] == None:
+            raise KeyError(f"Table {table} does not have a primary key.")
+
+        return self.all_primary_keys[table]
