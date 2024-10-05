@@ -1,5 +1,8 @@
 -- Start of File db_build.sql ---
 
+
+
+-- START OF PROFILES
 -- Create profanity_moderation_profile Table (server table)
 CREATE TABLE IF NOT EXISTS profanity_moderation_profile( -- #optimize
     server_id INT PRIMARY KEY,
@@ -16,7 +19,8 @@ CREATE TABLE IF NOT EXISTS spam_moderation_profile( -- #optimize
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     messages_threshold INT DEFAULT 5,
-    timeout_seconds INT DEFAULT 60
+    timeout_seconds INT DEFAULT 60,
+    delete_invites BOOLEAN DEFAULT false
 );
 
 -- Create logging_profile Table (server table)
@@ -36,14 +40,6 @@ CREATE TABLE IF NOT EXISTS leveling_profile( -- #optimize
     exempt_channels TEXT DEFAULT '[]',
     allow_leveling_cards BOOLEAN DEFAULT true
 );
-
--- Create level_rewards Table (integrated list table)
-CREATE TABLE IF NOT EXISTS level_rewards(
-    server_id INT,
-    role_id INT,
-    level INT,
-    PRIMARY KEY (server_id, role_id)
-)
 
 -- Create join_message_profile Table (server table)
 CREATE TABLE IF NOT EXISTS join_message_profile( -- #optimize
@@ -70,6 +66,51 @@ CREATE TABLE IF NOT EXISTS birthdays_profile( -- #optimize
     runtime TEXT DEFAULT "8:00"
 )
 
+-- Create infinibot_settings_profile Table (server table)
+CREATE TABLE IF NOT EXISTS infinibot_settings_profile( -- #optimize
+    server_id INT PRIMARY KEY,
+    get_updates BOOLEAN DEFAULT true
+)
+
+
+
+
+-- START of SIMPLE LISTS
+-- Create join_to_create_vcs Table (server table)
+CREATE TABLE IF NOT EXISTS join_to_create_vcs( -- #optimize
+    server_id INT PRIMARY KEY,
+    channels TEXT DEFAULT '[]'
+)
+
+-- Create default_roles Table (server table)
+CREATE TABLE IF NOT EXISTS default_roles( -- #optimize
+    server_id INT PRIMARY KEY,
+    default_roles TEXT DEFAULT '[]'
+)
+
+
+
+
+
+
+-- START of INTEGRATED LISTS
+-- Create moderation_strikes Table (integrated list table)
+CREATE TABLE IF NOT EXISTS moderation_strikes( -- #optimize
+    server_id INT,
+    member_id INT,
+    strikes INT,
+    last_strike DATETIME,
+    PRIMARY KEY (server_id, member_id)
+)
+
+-- Create level_rewards Table (integrated list table)
+CREATE TABLE IF NOT EXISTS level_rewards(
+    server_id INT,
+    role_id INT,
+    level INT,
+    PRIMARY KEY (server_id, role_id)
+)
+
 -- Create birthdays Table (integrated list table)
 CREATE TABLE IF NOT EXISTS birthdays( -- #optimize
     server_id INT,
@@ -79,12 +120,6 @@ CREATE TABLE IF NOT EXISTS birthdays( -- #optimize
     PRIMARY KEY (server_id, member_id)
 )
 
--- Create join_to_create_vcs Table (server table)
-CREATE TABLE IF NOT EXISTS join_to_create_vcs( -- #optimize
-    server_id INT PRIMARY KEY,
-    channels TEXT DEFAULT '[]'
-)
-
 -- Create auto_bans Table (integrated list table)
 CREATE TABLE IF NOT EXISTS auto_bans( -- #optimize
     server_id INT,
@@ -92,3 +127,10 @@ CREATE TABLE IF NOT EXISTS auto_bans( -- #optimize
     member_name TEXT,
     PRIMARY KEY (server_id, member_id)
 )
+
+
+
+
+
+
+-- START of MESSAGE LOGS

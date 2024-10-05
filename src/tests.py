@@ -414,6 +414,8 @@ class TestServer(unittest.TestCase):
                 value = float(random.random() * random.randint(0, 1000000000))
             return value
 
+
+    # PROFILES
     def test_profainity_moderation_profile(self):
         server_id = random.randint(0, 1000000000)
 
@@ -438,6 +440,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "spam_moderation_profile", "active", False, [True, False])
         self.run_test_on_property(server, "spam_moderation_profile", "messages_threshold", 5, [12, 0])
         self.run_test_on_property(server, "spam_moderation_profile", "timeout_seconds", 60, [140, 0])
+        self.run_test_on_property(server, "spam_moderation_profile", "delete_invites", False, [True, False])
 
         server.remove_all_data()
 
@@ -466,17 +469,6 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "leveling_profile", "exempt_channels", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]])
         self.run_test_on_property(server, "leveling_profile", "allow_leveling_cards", True, [False, True])
 
-        server.remove_all_data()
-
-    def test_level_rewards(self):
-        server_id = random.randint(0, 1000000000)
-
-        server = Server(server_id)
-
-        # Using run_test_on_integrated_list_property
-        test = self.RunTestOnIntegratedListProperty(server, "level_rewards", ["role_id:int", "level:int"], [5, 20])
-        test.run(self)
-        
         server.remove_all_data()
 
     def test_join_message_profile(self):
@@ -519,6 +511,60 @@ class TestServer(unittest.TestCase):
 
         server.remove_all_data()
 
+    def test_infinibot_settings_profile(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_property
+        self.run_test_on_property(server, "infinibot_settings_profile", "get_updates", True, [False, True])
+
+        server.remove_all_data()
+
+    # SIMPLE LISTS
+    def test_join_to_create_vcs(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_property
+        self.run_test_on_property(server, "join_to_create_vcs", "channels", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]])
+
+        server.remove_all_data()
+
+    def test_default_roles(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_property
+        self.run_test_on_property(server, "default_roles", "default_roles", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]])
+
+        server.remove_all_data()
+
+    # INTEGRATED LISTS
+    def test_moderation_strikes(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_integrated_list_property
+        test = self.RunTestOnIntegratedListProperty(server, "moderation_strikes", ["member_id:int", "strikes:int", "last_strike:date"], [5, 20])
+        test.run(self)
+
+        server.remove_all_data()
+
+    def test_level_rewards(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_integrated_list_property
+        test = self.RunTestOnIntegratedListProperty(server, "level_rewards", ["role_id:int", "level:int"], [5, 20])
+        test.run(self)
+        
+        server.remove_all_data()
+
     def test_birthdays(self):
         server_id = random.randint(0, 1000000000)
 
@@ -527,16 +573,6 @@ class TestServer(unittest.TestCase):
         # Using run_test_on_integrated_list_property
         test = self.RunTestOnIntegratedListProperty(server, "birthdays", ["member_id:int", "birth_date:date", "real_name:str"], [5, 20])
         test.run(self)
-
-        server.remove_all_data()
-
-    def test_join_to_create_vcs(self):
-        server_id = random.randint(0, 1000000000)
-
-        server = Server(server_id)
-
-        # Using run_test_on_property
-        self.run_test_on_property(server, "join_to_create_vcs", "channels", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]])
 
         server.remove_all_data()
 

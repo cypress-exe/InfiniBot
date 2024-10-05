@@ -750,6 +750,7 @@ class Server:
 
         self._profanity_moderation_profile = None
         self._spam_moderation_profile = None
+        self._moderation_strikes = None
         self._logging_profile = None
         self._leveling_profile = None
         self._level_rewards = None
@@ -759,12 +760,15 @@ class Server:
         self._birthdays = None
         self._join_to_create_vcs = None
         self._autobans = None
+        self._default_roles = None
+        self._infinibot_settings_profile = None
 
     def remove_all_data(self):
         '''Removes all data relating to this server from the database.'''
         for table in database.tables:
             database.force_remove_entry(table, self.server_id) # This isn't working for some reason.
 
+    # PROFILES
     @property
     def profanity_moderation_profile(self):
         if self._profanity_moderation_profile is None: self._profanity_moderation_profile = self.Profanity_Moderation_Profile(self.server_id)
@@ -808,6 +812,9 @@ class Server:
         @Server_TableManager.integer_property("timeout_seconds")
         def timeout_seconds(self): pass
 
+        @Server_TableManager.boolean_property("delete_invites")
+        def delete_invites(self): pass
+
     @property
     def logging_profile(self):
         if self._logging_profile is None: self._logging_profile = self.Logging_Profile(self.server_id)
@@ -847,14 +854,6 @@ class Server:
 
         @Server_TableManager.boolean_property("allow_leveling_cards")
         def allow_leveling_cards(self): pass
-
-    @property
-    def level_rewards(self):
-        if self._level_rewards is None: self._level_rewards = self.Level_Rewards(self.server_id)
-        return self._level_rewards
-    class Level_Rewards(IntegratedList_TableManager):
-        def __init__(self, server_id):
-            super().__init__("level_rewards", "server_id", server_id, "role_id")
 
     @property
     def join_message_profile(self):
@@ -911,13 +910,18 @@ class Server:
         def runtime(self): pass
 
     @property
-    def birthdays(self):
-        if self._birthdays is None: self._birthdays = self.Birthdays(self.server_id)
-        return self._birthdays
-    class Birthdays(IntegratedList_TableManager):
+    def infinibot_settings_profile(self):
+        if self._infinibot_settings_profile is None: self._infinibot_settings_profile = self.InfinibotSettingsProfile(self.server_id)
+        return self._infinibot_settings_profile
+    class InfinibotSettingsProfile(Server_TableManager):
         def __init__(self, server_id):
-            super().__init__("birthdays", "server_id", server_id, "member_id")
+            super().__init__(server_id, "infinibot_settings_profile")
 
+        @Server_TableManager.boolean_property("get_updates")
+        def get_updates(self): pass
+
+
+    # SIMPLE LISTS
     @property
     def join_to_create_vcs(self):
         if self._join_to_create_vcs is None: self._join_to_create_vcs = self.JoinToCreateVCs(self.server_id)
@@ -928,6 +932,43 @@ class Server:
         
         @Server_TableManager.list_property("channels", accept_duplicate_values = False)
         def channels(self): pass
+
+    @property
+    def default_roles(self):
+        if self._default_roles is None: self._default_roles = self.DefaultRoles(self.server_id)
+        return self._default_roles
+    class DefaultRoles(Server_TableManager):
+        def __init__(self, server_id):
+            super().__init__(server_id, "default_roles")
+
+        @Server_TableManager.list_property("default_roles", accept_duplicate_values = False)
+        def default_roles(self): pass
+
+
+    # INTEGRATED LISTS
+    @property
+    def moderation_strikes(self):
+        if self._moderation_strikes is None: self._moderation_strikes = self.ModerationStrikes(self.server_id)
+        return self._moderation_strikes
+    class ModerationStrikes(IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("moderation_strikes", "server_id", server_id, "member_id")
+    
+    @property
+    def level_rewards(self):
+        if self._level_rewards is None: self._level_rewards = self.Level_Rewards(self.server_id)
+        return self._level_rewards
+    class Level_Rewards(IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("level_rewards", "server_id", server_id, "role_id")
+
+    @property
+    def birthdays(self):
+        if self._birthdays is None: self._birthdays = self.Birthdays(self.server_id)
+        return self._birthdays
+    class Birthdays(IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("birthdays", "server_id", server_id, "member_id")
 
     @property
     def autobans(self):
