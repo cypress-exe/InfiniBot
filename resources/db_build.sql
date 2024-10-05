@@ -34,14 +34,14 @@ CREATE TABLE IF NOT EXISTS leveling_profile( -- #optimize
     level_up_embed TEXT DEFAULT '{"title":"Congratulations, @displayname!","description":"Congrats @member! You reached level [level]!"}',
     points_lost_per_day INT DEFAULT 5,
     exempt_channels TEXT DEFAULT '[]',
-    allow_leveling_cards BOOL DEFAULT true
+    allow_leveling_cards BOOLEAN DEFAULT true
 );
 
 -- Create level_rewards Table (integrated list table)
 CREATE TABLE IF NOT EXISTS level_rewards(
     server_id INT,
     role_id INT,
-    level_number INT,
+    level INT,
     PRIMARY KEY (server_id, role_id)
 )
 

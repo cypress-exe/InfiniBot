@@ -4,6 +4,7 @@ from nextcord import Embed as NextcordEmbed
 
 from database import Database
 from custom_types import UNSET_VALUE
+from utils import format_var_to_pythonic_type
 
 # Database Paths
 database_url = "sqlite:///./generated/files/database.db"
@@ -75,9 +76,9 @@ class Server_TableManager:
         _type = database.get_column_type(table, column)
 
         # Format the response
-        return database.format_var_to_pythonic_type(_type, cleaned_response)
+        return format_var_to_pythonic_type(_type, cleaned_response)
 
-    def _set_variable(self, table, column, id, value): 
+    def _set_variable(self, table, column, id, value):
         database.execute_query(f"UPDATE {table} SET {column} = :value WHERE {self.id_sql_name} = {id}", args = {"value": value}, commit = True)
 
     def custom_property(property_name, getter_modifier=None, setter_modifier=None, **kwargs):
@@ -133,10 +134,6 @@ class Server_TableManager:
                 if data_structure is not None and isinstance(value, data_structure):
                     value = value.serialize()
                 
-                # Create the private attribute if it doesn't exist (CAN THIS BE REMOVED?)
-                if private_name not in dir(self):
-                    setattr(self, private_name, UNSET_VALUE)
-                
                 # Modify the value to be what it should be saved as
                 modified_value = setter_modifier(value) if setter_modifier else value
                 
@@ -147,6 +144,7 @@ class Server_TableManager:
                 # Cache the value for future use
                 value = data_structure(value) if data_structure is not None else value # Because values were serialized earlier, they need to be deserialized into the data_stucture
                 setattr(self, private_name, value)
+                self._entry_exists_in_table = database.does_entry_exist(self.table_name, self.server_id)
 
             return property(getter, setter)
 
@@ -695,6 +693,26 @@ class IntegratedList_TableManager:
         query = f"DELETE FROM {self.table_name} WHERE {self.primary_key_sql_name} = :primary_key_value AND {self.secondary_key_sql_name} = :secondary_key_value"
         database.execute_query(query, {'primary_key_value': self.primary_key_value, 'secondary_key_value': secondary_key_value}, commit=True)
 
+    def __len__(self):
+        """
+        Return the length of the list.
+
+        Returns:
+            int: The length of the list.
+        """
+        return len(list(self._get_all_entries()))
+    
+    def __contains__(self, secondary_key_value):
+        """
+        Check if an entry exists in the list.
+
+        Args:
+            secondary_key_value (str): The value of the secondary key.
+
+        Returns:
+            bool: True if the entry exists, False otherwise.
+        """
+        return self._check_entry_existence(secondary_key_value)
 
     def __iter__(self):
         """
@@ -731,9 +749,9 @@ class Server:
         self.server_id = server_id
 
         self._profanity_moderation_profile = None
-        self._spam_moderation = None
-        self._logging = None
-        self._leveling = None
+        self._spam_moderation_profile = None
+        self._logging_profile = None
+        self._leveling_profile = None
         self._level_rewards = None
         self._join_message = None
         self._leave_message = None
@@ -772,70 +790,70 @@ class Server:
         @Server_TableManager.list_property("custom_words")
         def custom_words(self): pass
 
-    # @property
-    # def spam_moderation(self):
-    #     if self._spam_moderation is None: self._spam_moderation = self.Spam_Moderation(self.server_id)
-    #     return self._spam_moderation
-    # class Spam_Moderation(Server_TableManager):
-    #     def __init__(self, server_id):
-    #         super().__init__(server_id, "spam_moderation")
+    @property
+    def spam_moderation_profile(self):
+        if self._spam_moderation_profile is None: self._spam_moderation_profile = self.Spam_Moderation_Profile(self.server_id)
+        return self._spam_moderation_profile
+    class Spam_Moderation_Profile(Server_TableManager):
+        def __init__(self, server_id):
+            super().__init__(server_id, "spam_moderation_profile")
 
-    #     @Server_TableManager.boolean_property("active")
-    #     def active(self): pass
+        @Server_TableManager.boolean_property("active")
+        def active(self): pass
 
-    #     @Server_TableManager.integer_property("messages_threshold")
-    #     def messages_threshold(self): pass
+        @Server_TableManager.integer_property("messages_threshold")
+        def messages_threshold(self): pass
 
-    #     @Server_TableManager.integer_property("timeout_seconds")
-    #     def timeout_seconds(self): pass
+        @Server_TableManager.integer_property("timeout_seconds")
+        def timeout_seconds(self): pass
 
-    # @property
-    # def logging(self):
-    #     if self._logging is None: self._logging = self.Logging(self.server_id)
-    #     return self._logging
-    # class Logging(Server_TableManager):
-    #     def __init__(self, server_id):
-    #         super().__init__(server_id, "logging")
+    @property
+    def logging_profile(self):
+        if self._logging_profile is None: self._logging_profile = self.Logging_Profile(self.server_id)
+        return self._logging_profile
+    class Logging_Profile(Server_TableManager):
+        def __init__(self, server_id):
+            super().__init__(server_id, "logging_profile")
 
-    #     @Server_TableManager.boolean_property("active")
-    #     def active(self): pass
+        @Server_TableManager.boolean_property("active")
+        def active(self): pass
 
-    #     @Server_TableManager.channel_property("channel")
-    #     def channel(self): pass
+        @Server_TableManager.channel_property("channel", accept_none_value=False)
+        def channel(self): pass
 
-    # @property
-    # def leveling(self):
-    #     if self._leveling is None: self._leveling = self.Leveling(self.server_id)
-    #     return self._leveling
-    # class Leveling(Server_TableManager):
-    #     def __init__(self, server_id):
-    #         super().__init__(server_id, "leveling")
+    @property
+    def leveling_profile(self):
+        if self._leveling_profile is None: self._leveling_profile = self.Leveling_Profile(self.server_id)
+        return self._leveling_profile
+    class Leveling_Profile(Server_TableManager):
+        def __init__(self, server_id):
+            super().__init__(server_id, "leveling_profile")
 
-    #     @Server_TableManager.boolean_property("active")
-    #     def active(self): pass
+        @Server_TableManager.boolean_property("active")
+        def active(self): pass
 
-    #     @Server_TableManager.channel_property("channel")
-    #     def channel(self): pass
+        @Server_TableManager.channel_property("channel")
+        def channel(self): pass
 
-    #     @Server_TableManager.embed_property("level_up_embed")
-    #     def level_up_embed(self): pass
+        @Server_TableManager.embed_property("level_up_embed")
+        def level_up_embed(self): pass
 
-    #     @Server_TableManager.integer_property("points_lost_per_day")
-    #     def points_lost_per_day(self): pass
+        @Server_TableManager.integer_property("points_lost_per_day")
+        def points_lost_per_day(self): pass
 
-    #     @Server_TableManager.list_property("exempt_channels")
-    #     def exempt_channels(self): pass
+        @Server_TableManager.list_property("exempt_channels")
+        def exempt_channels(self): pass
 
-    #     @Server_TableManager.boolean_property("allow_level_cards")
-    #     def allow_level_cards(self): pass
+        @Server_TableManager.boolean_property("allow_leveling_cards")
+        def allow_leveling_cards(self): pass
 
-    # @property
-    # def level_rewards(self):
-    #     if self._level_rewards is None: self._level_rewards = self.LevelRewards(self.server_id)
-    #     return self._level_rewards
-    # class LevelRewards(IntegratedList_TableManager):
-    #     def __init__(self, server_id):
-    #         super().__init__("level_rewards", "server_id", server_id, "role_id")
+    @property
+    def level_rewards(self):
+        if self._level_rewards is None: self._level_rewards = self.Level_Rewards(self.server_id)
+        return self._level_rewards
+    class Level_Rewards(IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("level_rewards", "server_id", server_id, "role_id")
 
     # @property
     # def join_message(self):

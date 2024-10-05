@@ -1,12 +1,12 @@
-from typing import Any
 import unittest
 import random
-import string
+import os
+import shutil
+import uuid
 
 from custom_types import UNSET_VALUE
 from database import Database
-from server import Server, Server_TableManager
-from utils import format_var_to_pythonic_type
+from server import Server
 import server
 
 # Database Tests
@@ -14,7 +14,7 @@ class TestDatabase(unittest.TestCase):
     def get_memory_database(self):
         return Database("sqlite://", "resources/test_db_build.sql")
     
-    def create_test_row(self, database: Database, table, id):
+    def create_test_row(self, database:Database, table, id):
         column_defaults = database.all_column_defaults[table]
         query_values = ", ".join(list(column_defaults.values()))
         query = f"INSERT OR IGNORE INTO {table} VALUES ({id}, {query_values})"
@@ -209,11 +209,11 @@ class TestDatabase(unittest.TestCase):
             self.assertEqual(result, answers[table])
 
 class TestServer(unittest.TestCase):
-    def __init__(self, methodName: str = ...) -> None:
+    def __init__(self, methodName:str = ...) -> None:
         super().__init__(methodName)
         # Overwrite variables
-        server.database_url = f"sqlite://"
-        server.init_database() # Hijack the database url to make it a memory database
+        server.database_url = f"sqlite:///./generated/temp/testing_database_can_remove.db"
+        server.init_database() # Hijack the database url to make it a testing database
     
     def test_server_creation(self):
         server_id = random.randint(0, 1000000000)
@@ -224,22 +224,267 @@ class TestServer(unittest.TestCase):
 
         server.remove_all_data()
 
+    def run_test_on_property(self, primary_server_instance, table_name, property_name:str, default_value, test_values):
+        print(f'Testing property "{property_name}". Default value: {default_value}, test values: {test_values}')
+        
+        def get_property(server, table_name, property_name):
+            """Fetches the property from the server, handling itemized properties."""
+            split_property_name = property_name.split("[")
+            if len(split_property_name) == 2:
+                item_name = split_property_name[1][:-1]  # Remove trailing "]"
+                return getattr(getattr(server, table_name), split_property_name[0])[item_name]
+            return getattr(getattr(server, table_name), property_name)
+
+        def set_property(server, table_name, property_name, value):
+            """Sets the property on the server, handling itemized properties."""
+            split_property_name = property_name.split("[")
+            if len(split_property_name) == 2:
+                item_name = split_property_name[1][:-1]  # Remove trailing "]"
+                prop = getattr(getattr(server, table_name), split_property_name[0])
+                prop[item_name] = value
+                setattr(getattr(server, table_name), split_property_name[0], prop)
+            else:
+                setattr(getattr(server, table_name), property_name, value)
+
+        # Check the default value
+        self.assertEqual(get_property(primary_server_instance, table_name, property_name), default_value)
+
+        # Ensure test_values is a list
+        if not isinstance(test_values, list):
+            test_values = [test_values]
+
+        # Check each test value
+        for test_value in test_values:
+            set_property(primary_server_instance, table_name, property_name, test_value)
+            self.assertEqual(get_property(primary_server_instance, table_name, property_name), test_value)
+
+            # Create a new server instance and verify the property value is consistent
+            new_server_instance = Server(getattr(primary_server_instance, table_name).server_id)
+            self.assertEqual(get_property(new_server_instance, table_name, property_name), test_value)
+            del new_server_instance
+
+    class RunTestOnIntegratedListProperty:
+        """Helper class to generate test data and perform tests on integrated list properties."""
+        
+        def __init__(self, server: 'Server', table_name: str, test_values: list, iterations: list):
+            self.server = server
+            self.table_name = table_name
+            self.test_values = test_values
+            self.iterations = iterations
+
+            # Ensure the minimum number of iterations is 2
+            if self.iterations[0] < 2:
+                self.iterations[0] = 2
+                print("WARNING: Iterations[0] must be at least 2. Value changed.")
+
+        def generate_test_data_for_integrated_lists(self):
+            """Generates the test data with consistent secondary keys across iterations."""
+            secondary_key_name = self.test_values[0].split(":")[0]
+            secondary_key_values = []
+
+            test_data = []
+
+            for iteration_index in range(self.iterations[0]):
+                iteration = []
+
+                # For each row in this iteration
+                for row_index in range(self.iterations[1]):
+                    row_data = {}
+                    for value in self.test_values:
+                        value_name, value_type = value.split(":")
+
+                        # If this is the secondary_key, we need special handling
+                        if value_name == secondary_key_name:
+                            # On the first iteration, generate unique secondary_key values
+                            if iteration_index == 0:
+                                if value_type == "int":
+                                    key_value = random.randint(0, 1000000000)
+                                    while key_value in secondary_key_values:
+                                        key_value = random.randint(0, 1000000000)
+                                elif value_type == "str":
+                                    key_value = str(uuid.uuid4())
+                                    while key_value in secondary_key_values:
+                                        key_value = str(uuid.uuid4())
+                                
+                                # Store the unique secondary_key value for future iterations
+                                secondary_key_values.append(key_value)
+
+                            # In subsequent iterations, use the previously stored secondary_key
+                            row_data[value_name] = secondary_key_values[row_index]
+                        
+                        # Handle other properties (non-secondary_key)
+                        else:
+                            valid = False
+                            while not valid:
+                                if value_type == "str":
+                                    row_data[value_name] = str(uuid.uuid4())
+                                elif value_type == "int":
+                                    row_data[value_name] = random.randint(0, 1000000000)
+                                elif value_type == "bool":
+                                    row_data[value_name] = bool(random.randint(0, 1))
+                                elif value_type == "float":
+                                    row_data[value_name] = float(random.random() * random.randint(0, 1000000000))
+                                
+                                # Ensure the value is unique for non-secondary_key fields
+                                valid = all(row_data[value_name] != row.get(value_name) for row in iteration)
+
+                    iteration.append(row_data)
+                test_data.append(iteration)
+
+            return test_data
+
+        def run(self, test_case: unittest.TestCase):
+            """Runs tests on the integrated list property for add, edit, and delete operations."""
+            print("Running tests on integrated list property: " + self.table_name + " with test iterations: " + str(self.iterations))
+
+            test_data = self.generate_test_data_for_integrated_lists()
+            default_test_data = test_data[0]
+
+            property = getattr(self.server, self.table_name)
+            test_case.assertEqual(len(property), 0)
+
+            # Add test entries
+            for test_entry in default_test_data:
+                property.add(**test_entry)
+
+            # Verify the entries were added correctly
+            self._verify_entries(test_case, property, default_test_data)
+
+            # Verify consistency with a new server instance
+            self._verify_data_in_new_server_instance(test_case, self.server.server_id, default_test_data)
+
+            # Perform edits across iterations
+            for iteration_number in range(1, self.iterations[0]):
+                edit_test_data = test_data[iteration_number]
+
+                for test_entry in edit_test_data:
+                    secondary_key_value = list(test_entry.values())[0]
+                    property.edit(secondary_key_value, **test_entry)
+
+                self._verify_data_in_new_server_instance(test_case, self.server.server_id, edit_test_data)
+
+            # Test deletions
+            for test_entry in default_test_data:
+                secondary_key_value = list(test_entry.values())[0]
+                property.delete(secondary_key_value)
+
+            # Verify all entries are deleted
+            new_server_instance = Server(self.server.server_id)
+            property = getattr(new_server_instance, self.table_name)
+            test_case.assertEqual(len(property), 0)
+            del new_server_instance
+
+            print("Finished running tests on integrated list property: " + self.table_name)
+
+        def _verify_entries(self, test_case, property, test_data):
+            """Helper function to verify that the entries match the expected data."""
+            for test_entry in test_data:
+                secondary_key_value = list(test_entry.values())[0]
+                for key, value in test_entry.items():
+                    test_case.assertEqual(getattr(property[secondary_key_value], key), value)
+
+        def _verify_data_in_new_server_instance(self, test_case, server_id, test_data):
+            """Helper function to create a new server instance and verify data consistency."""
+            new_server_instance = Server(server_id)
+            property = getattr(new_server_instance, self.table_name)
+
+            for test_entry in test_data:
+                secondary_key_value = list(test_entry.values())[0]
+                data = property[secondary_key_value]
+                for key, value in test_entry.items():
+                    test_case.assertEqual(getattr(data, key), value)
+
+            del new_server_instance
+
+        def _generate_unique_value(self, existing_values, value_type):
+            """Generates a unique value based on the type and ensures it doesn't conflict."""
+            if value_type == "str":
+                value = str(uuid.uuid4())
+                while value in existing_values:
+                    value = str(uuid.uuid4())
+            elif value_type == "int":
+                value = random.randint(0, 1000000000)
+                while value in existing_values:
+                    value = random.randint(0, 1000000000)
+            elif value_type == "bool":
+                value = bool(random.randint(0, 1))
+            elif value_type == "float":
+                value = float(random.random() * random.randint(0, 1000000000))
+            return value
+
     def test_profainity_moderation_profile(self):
         server_id = random.randint(0, 1000000000)
 
         server = Server(server_id)
-        profile = server.profanity_moderation_profile
 
-        self.assertEqual(profile.server_id, server_id)
-        self.assertEqual(profile.active, False)
-        self.assertEqual(profile.channel, UNSET_VALUE)
-        self.assertEqual(profile.max_strikes, 3)
-        self.assertEqual(profile.strike_expire_days, 7)
-        self.assertEqual(profile.timeout_seconds, 3600)
-        self.assertEqual(profile.custom_words, [])
+        # Using run_test_on_property
+        self.run_test_on_property(server, "profanity_moderation_profile", "active", False, [True, False])
+        self.run_test_on_property(server, "profanity_moderation_profile", "channel", UNSET_VALUE, [1234567989, None, UNSET_VALUE])
+        self.run_test_on_property(server, "profanity_moderation_profile", "max_strikes", 3, [5, 0])
+        self.run_test_on_property(server, "profanity_moderation_profile", "strike_expire_days", 7, [10, 0])
+        self.run_test_on_property(server, "profanity_moderation_profile", "timeout_seconds", 3600, [7200, 0])
+        self.run_test_on_property(server, "profanity_moderation_profile", "custom_words", [], [["hello", "world"], ["apple", "banana", "orange", "pineapple", "grape"], []])
 
+        server.remove_all_data()
+
+    def test_spam_moderation_profile(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_property
+        self.run_test_on_property(server, "spam_moderation_profile", "active", False, [True, False])
+        self.run_test_on_property(server, "spam_moderation_profile", "messages_threshold", 5, [12, 0])
+        self.run_test_on_property(server, "spam_moderation_profile", "timeout_seconds", 60, [140, 0])
+
+        server.remove_all_data()
+
+    def test_logging_profile(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_property
+        self.run_test_on_property(server, "logging_profile", "active", False, [True, False])
+        self.run_test_on_property(server, "logging_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE])
+
+        server.remove_all_data()
+
+    def test_leveling_profile(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_property
+        self.run_test_on_property(server, "leveling_profile", "active", False, [True, False])
+        self.run_test_on_property(server, "leveling_profile", "channel", UNSET_VALUE, [1234567989, None, UNSET_VALUE])
+        self.run_test_on_property(server, "leveling_profile", "level_up_embed[title]", "Congratulations, @displayname!", ["Title_Changed", None])
+        self.run_test_on_property(server, "leveling_profile", "level_up_embed[description]", "Congrats @member! You reached level [level]!", ["Description_Changed"])
+        self.run_test_on_property(server, "leveling_profile", "points_lost_per_day", 5, [12, 0])
+        self.run_test_on_property(server, "leveling_profile", "exempt_channels", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]])
+        self.run_test_on_property(server, "leveling_profile", "allow_leveling_cards", True, [False, True])
+
+        server.remove_all_data()
+
+    def test_level_rewards(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_integrated_list_property
+        test = self.RunTestOnIntegratedListProperty(server, "level_rewards", ["role_id:int", "level:int"], [20, 6])
+        test.run(self)
+        
         server.remove_all_data()
 
 
 if __name__ == "__main__":
+    # Remove everything in generated/temp
+    if os.path.exists("generated/temp"):
+        shutil.rmtree("generated/temp")
+        # Create it again
+        os.makedirs("generated/temp")
+    else:
+        os.makedirs("generated/temp")
+
     unittest.main()
