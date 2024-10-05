@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS join_message_profile( -- #optimize
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    embed TEXT DEFAULT '{"title":"@displayname just joined the server!","description":"Hello there, @member!"}',
+    embed TEXT DEFAULT '{"title":"@displayname just joined the server!","description":"Welcome to the server, @member!"}',
     allow_join_cards BOOLEAN DEFAULT true
 );
 
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS leave_message_profile( -- #optimize
 CREATE TABLE IF NOT EXISTS birthdays_profile( -- #optimize
     server_id INT PRIMARY KEY,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    embed TEXT DEFAULT '{"title":"Happy Birthday, @realname!","description":"Hello there, @member!"}',
+    embed TEXT DEFAULT '{"title":"Happy Birthday, @realname!","description":"@member just turned @age!"}',
     runtime TEXT DEFAULT "8:00"
 )
 

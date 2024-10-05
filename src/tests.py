@@ -1,7 +1,5 @@
 import unittest
 import random
-import os
-import shutil
 import uuid
 
 from custom_types import UNSET_VALUE
@@ -212,7 +210,7 @@ class TestServer(unittest.TestCase):
     def __init__(self, methodName:str = ...) -> None:
         super().__init__(methodName)
         # Overwrite variables
-        server.database_url = f"sqlite:///./generated/temp/testing_database_can_remove.db"
+        server.database_url = f"sqlite:///"
         server.init_database() # Hijack the database url to make it a testing database
     
     def test_server_creation(self):
@@ -247,7 +245,7 @@ class TestServer(unittest.TestCase):
                 setattr(getattr(server, table_name), property_name, value)
 
         # Check the default value
-        self.assertEqual(get_property(primary_server_instance, table_name, property_name), default_value)
+        self.assertEqual(get_property(primary_server_instance, table_name, property_name), default_value, msg=f"Default value for \"{property_name}\" is claimed to be \"{default_value}\", but is \"{get_property(primary_server_instance, table_name, property_name)}\".")
 
         # Ensure test_values is a list
         if not isinstance(test_values, list):
@@ -324,11 +322,15 @@ class TestServer(unittest.TestCase):
                                     row_data[value_name] = bool(random.randint(0, 1))
                                 elif value_type == "float":
                                     row_data[value_name] = float(random.random() * random.randint(0, 1000000000))
+                                elif value_type == "date":
+                                    row_data[value_name] = f"{random.randint(1000, 9999)}-{random.randint(1, 12)}-{random.randint(1, 28)}"
                                 
                                 # Ensure the value is unique for non-secondary_key fields
                                 valid = all(row_data[value_name] != row.get(value_name) for row in iteration)
 
                     iteration.append(row_data)
+                # Scramble iteration
+                random.shuffle(iteration)
                 test_data.append(iteration)
 
             return test_data
@@ -472,19 +474,83 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_integrated_list_property
-        test = self.RunTestOnIntegratedListProperty(server, "level_rewards", ["role_id:int", "level:int"], [20, 6])
+        test = self.RunTestOnIntegratedListProperty(server, "level_rewards", ["role_id:int", "level:int"], [5, 20])
         test.run(self)
         
         server.remove_all_data()
 
+    def test_join_message_profile(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_property
+        self.run_test_on_property(server, "join_message_profile", "active", False, [True, False])
+        self.run_test_on_property(server, "join_message_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE])
+        self.run_test_on_property(server, "join_message_profile", "embed[title]", "@displayname just joined the server!", ["Title_Changed", None])
+        self.run_test_on_property(server, "join_message_profile", "embed[description]", "Welcome to the server, @member!", ["Description_Changed"])
+        self.run_test_on_property(server, "join_message_profile", "allow_join_cards", True, [False, True])
+
+        server.remove_all_data()
+
+    def test_leave_message_profile(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_property
+        self.run_test_on_property(server, "leave_message_profile", "active", False, [True, False])
+        self.run_test_on_property(server, "leave_message_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE])
+        self.run_test_on_property(server, "leave_message_profile", "embed[title]", "@displayname just left the server.", ["Title_Changed", None])
+        self.run_test_on_property(server, "leave_message_profile", "embed[description]", "@member left.", ["Description_Changed"])
+
+        server.remove_all_data()
+
+    def test_birthdays_profile(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_property
+        self.run_test_on_property(server, "birthdays_profile", "channel", UNSET_VALUE, [1234567989, None, UNSET_VALUE])
+        self.run_test_on_property(server, "birthdays_profile", "embed[title]", "Happy Birthday, @realname!", ["Title_Changed", None])
+        self.run_test_on_property(server, "birthdays_profile", "embed[description]", "@member just turned @age!", ["Description_Changed"])
+        self.run_test_on_property(server, "birthdays_profile", "runtime", "8:00", ["12:00", "8:00", "18:00", "0:00"])
+
+        server.remove_all_data()
+
+    def test_birthdays(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_integrated_list_property
+        test = self.RunTestOnIntegratedListProperty(server, "birthdays", ["member_id:int", "birth_date:date", "real_name:str"], [5, 20])
+        test.run(self)
+
+        server.remove_all_data()
+
+    def test_join_to_create_vcs(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_property
+        self.run_test_on_property(server, "join_to_create_vcs", "channels", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]])
+
+        server.remove_all_data()
+
+    def test_autobans(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_integrated_list_property
+        test = self.RunTestOnIntegratedListProperty(server, "autobans", ["member_id:int", "member_name:str"], [5, 20])
+        test.run(self)
+
+        server.remove_all_data()
+
 
 if __name__ == "__main__":
-    # Remove everything in generated/temp
-    if os.path.exists("generated/temp"):
-        shutil.rmtree("generated/temp")
-        # Create it again
-        os.makedirs("generated/temp")
-    else:
-        os.makedirs("generated/temp")
-
     unittest.main()

@@ -753,8 +753,9 @@ class Server:
         self._logging_profile = None
         self._leveling_profile = None
         self._level_rewards = None
-        self._join_message = None
-        self._leave_message = None
+        self._join_message_profile = None
+        self._leave_message_profile = None
+        self._birthdays_profile = None
         self._birthdays = None
         self._join_to_create_vcs = None
         self._autobans = None
@@ -855,183 +856,83 @@ class Server:
         def __init__(self, server_id):
             super().__init__("level_rewards", "server_id", server_id, "role_id")
 
-    # @property
-    # def join_message(self):
-    #     if self._join_message is None: self._join_message = self.JoinMessage(self.server_id)
-    #     return self._join_message
-    # class JoinMessage(Server_TableManager):
-    #     def __init__(self, server_id):
-    #         super().__init__(server_id, "join_message")
+    @property
+    def join_message_profile(self):
+        if self._join_message_profile is None: self._join_message_profile = self.JoinMessageProfile(self.server_id)
+        return self._join_message_profile
+    class JoinMessageProfile(Server_TableManager):
+        def __init__(self, server_id):
+            super().__init__(server_id, "join_message_profile")
 
-    #     @Server_TableManager.boolean_property("active")
-    #     def active(self): pass
+        @Server_TableManager.boolean_property("active")
+        def active(self): pass
 
-    #     @Server_TableManager.channel_property("channel", accept_none_value=False)
-    #     def channel(self): pass
+        @Server_TableManager.channel_property("channel", accept_none_value=False)
+        def channel(self): pass
 
-    #     @Server_TableManager.embed_property("embed")
-    #     def embed(self): pass
+        @Server_TableManager.embed_property("embed")
+        def embed(self): pass
 
-    #     @Server_TableManager.boolean_property("allow_join_cards")
-    #     def allow_join_cards(self): pass
+        @Server_TableManager.boolean_property("allow_join_cards")
+        def allow_join_cards(self): pass
 
-    # @property
-    # def leave_message(self):
-    #     if self._leave_message is None: self._leave_message = self.LeaveMessage(self.server_id)
-    #     return self._leave_message
-    # class LeaveMessage(Server_TableManager):
-    #     def __init__(self, server_id):
-    #         super().__init__(server_id, "leave_message")
+    @property
+    def leave_message_profile(self):
+        if self._leave_message_profile is None: self._leave_message_profile = self.LeaveMessageProfile(self.server_id)
+        return self._leave_message_profile
+    class LeaveMessageProfile(Server_TableManager):
+        def __init__(self, server_id):
+            super().__init__(server_id, "leave_message_profile")
 
-    #     @Server_TableManager.boolean_property("active")
-    #     def active(self): pass
+        @Server_TableManager.boolean_property("active")
+        def active(self): pass
 
-    #     @Server_TableManager.channel_property("channel", accept_none_value=False)
-    #     def channel(self): pass
+        @Server_TableManager.channel_property("channel", accept_none_value=False)
+        def channel(self): pass
 
-    #     @Server_TableManager.embed_property("embed")
-    #     def embed(self): pass
+        @Server_TableManager.embed_property("embed")
+        def embed(self): pass
         
-    # @property
-    # def birthdays(self):
-    #     if self._birthdays is None: self._birthdays = self.Birthdays(self.server_id)
-    #     return self._birthdays
-    # class Birthdays(Server_TableManager):
-    #     def __init__(self, server_id):
-    #         super().__init__(server_id, "birthdays")
+    @property
+    def birthdays_profile(self):
+        if self._birthdays_profile is None: self._birthdays_profile = self.BirthdaysProfile(self.server_id)
+        return self._birthdays_profile
+    class BirthdaysProfile(Server_TableManager):
+        def __init__(self, server_id):
+            super().__init__(server_id, "birthdays_profile")
 
-    #     @Server_TableManager.channel_property("channel")
-    #     def channel(self): pass
+        @Server_TableManager.channel_property("channel")
+        def channel(self): pass
 
-    #     @Server_TableManager.embed_property("embed")
-    #     def embed(self): pass
+        @Server_TableManager.embed_property("embed")
+        def embed(self): pass
                 
-    #     class _data_structure:
-    #         def __init__(self, data):
-    #             self.birthdays = [self._birthday(d) for d in data]
+        @Server_TableManager.string_property("runtime")
+        def runtime(self): pass
 
-    #         def serialize(self):
-    #             return [b.serialize() for b in self.birthdays]
+    @property
+    def birthdays(self):
+        if self._birthdays is None: self._birthdays = self.Birthdays(self.server_id)
+        return self._birthdays
+    class Birthdays(IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("birthdays", "server_id", server_id, "member_id")
 
-    #         def __getitem__(self, member_id):
-    #             return self.get_birthday_via_member(member_id)
-            
-    #         def __str__(self):
-    #             return str([str(b) for b in self.birthdays])
-                        
-    #         def get_birthday_via_member(self, member_id):
-    #             for birthday in self.birthdays:
-    #                 if birthday.member_id == member_id:
-    #                     return birthday
-    #             return None
-            
-    #         def get_birthday_via_date(self, date):
-    #             for birthday in self.birthdays:
-    #                 if birthday.date == date:
-    #                     return birthday
-    #             return None
-            
-    #         def add_birthday(self, *args, **kwargs):
-    #             member_id = args[0]
-    #             date = args[1]
-    #             real_name = None
-    #             if len(args) > 2: real_name = args[2]
-
-    #             if "real_name" in kwargs: real_name = kwargs["real_name"]
-    #             if "realname" in kwargs: real_name = kwargs["realname"]
-
-    #             if self.get_birthday_via_member(member_id) is not None: return
-
-    #             data = [member_id, date, real_name] if real_name else [member_id, date]
-    #             self.birthdays.append(self._birthday(data))
-
-    #         def edit_birthday(self, *args, **kwargs):
-    #             member_id = args[0]
-    #             date = args[1]
-    #             real_name = None
-    #             if len(args) > 2: real_name = args[2]
-
-    #             if "real_name" in kwargs: real_name = kwargs["real_name"]
-    #             if "realname" in kwargs: real_name = kwargs["realname"]
-
-    #             for birthday in self.birthdays:
-    #                 if birthday.member_id == member_id:
-    #                     birthday.date = date
-    #                     birthday.real_name = real_name
-    #                     break
-
-    #         def delete_birthday(self, member_id):
-    #             self.birthdays = [b for b in self.birthdays if b.member_id != member_id]
-
-    #         class _birthday:
-    #             def __init__(self, data):
-    #                 self.member_id = None
-    #                 self.date = None
-    #                 self.real_name = None
-
-    #                 if data is None: return
-    #                 if len(data) < 2: return
-
-    #                 self.member_id = data[0]
-    #                 self.date = data[1]
-    #                 if len(data) > 2: self.real_name = data[2]
-                
-    #             def serialize(self):
-    #                 if self.real_name is None: return [self.member_id, self.date]
-    #                 return [self.member_id, self.date, self.real_name]
-                
-    #             def __str__(self):
-    #                 return str(self.serialize())
-
-    #     def add_birthday(self, *args, **kwargs):
-    #         birthdays = self.birthdays_list
-    #         birthdays.add_birthday(*args, **kwargs)
-    #         self.birthdays_list = birthdays
-
-    #     def edit_birthday(self, *args, **kwargs):
-    #         birthdays = self.birthdays_list
-    #         birthdays.edit_birthday(*args, **kwargs)
-    #         self.birthdays_list = birthdays
-
-    #     def delete_birthday(self, member_id):
-    #         birthdays = self.birthdays_list
-    #         birthdays.delete_birthday(member_id)
-    #         self.birthdays_list = birthdays
-
-    #     def get_birthday(self, member_id = None, date = None):
-    #         birthdays = self.birthdays_list
-    #         if member_id is not None: return birthdays.get_birthday_via_member(member_id)
-    #         if date is not None: return birthdays.get_birthday_via_date(date)
-
-    #         raise ValueError("member_id and date cannot both be None")
+    @property
+    def join_to_create_vcs(self):
+        if self._join_to_create_vcs is None: self._join_to_create_vcs = self.JoinToCreateVCs(self.server_id)
+        return self._join_to_create_vcs
+    class JoinToCreateVCs(Server_TableManager):
+        def __init__(self, server_id):
+            super().__init__(server_id, "join_to_create_vcs")
         
-    #     def get_all_birthdays(self, date = None):
-    #         if date is None: return self.birthdays_list.birthdays
+        @Server_TableManager.list_property("channels", accept_duplicate_values = False)
+        def channels(self): pass
 
-    #         birthdays = self.birthdays_list
-    #         return [b for b in birthdays.birthdays if b.date == date]
-
-    #     @Server_TableManager.list_property("birthdays_list", data_structure = _data_structure) # [[12345, "2022-01-01"], [12345, "2022-01-01", "Billy"]]
-    #     def birthdays_list(self): pass
-
-    #     @Server_TableManager.integer_property("runtime")
-    #     def runtime(self): pass
-
-    # @property
-    # def join_to_create_vcs(self):
-    #     if self._join_to_create_vcs is None: self._join_to_create_vcs = self.JoinToCreateVCs(self.server_id)
-    #     return self._join_to_create_vcs
-    # class JoinToCreateVCs(Server_TableManager):
-    #     def __init__(self, server_id):
-    #         super().__init__(server_id, "join_to_create_vcs")
-        
-    #     @Server_TableManager.list_property("channels", accept_duplicate_values = False)
-    #     def channels(self): pass
-
-    # @property
-    # def autobans(self):
-    #     if self._autobans is None: self._autobans = self.AutoBans(self.server_id)
-    #     return self._autobans
-    # class AutoBans(IntegratedList_TableManager):
-    #     def __init__(self, server_id):
-    #         super().__init__("auto_bans", "server_id", server_id, "member_id")
+    @property
+    def autobans(self):
+        if self._autobans is None: self._autobans = self.AutoBans(self.server_id)
+        return self._autobans
+    class AutoBans(IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("auto_bans", "server_id", server_id, "member_id")
