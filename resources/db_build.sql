@@ -73,8 +73,6 @@ CREATE TABLE IF NOT EXISTS infinibot_settings_profile( -- #optimize
 )
 
 
-
-
 -- START of SIMPLE LISTS
 -- Create join_to_create_vcs Table (server table)
 CREATE TABLE IF NOT EXISTS join_to_create_vcs( -- #optimize
@@ -95,7 +93,7 @@ CREATE TABLE IF NOT EXISTS default_roles( -- #optimize
 
 -- START of INTEGRATED LISTS
 -- Create moderation_strikes Table (integrated list table)
-CREATE TABLE IF NOT EXISTS moderation_strikes( -- #optimize
+CREATE TABLE IF NOT EXISTS moderation_strikes(
     server_id INT,
     member_id INT,
     strikes INT,
@@ -112,7 +110,7 @@ CREATE TABLE IF NOT EXISTS level_rewards(
 )
 
 -- Create birthdays Table (integrated list table)
-CREATE TABLE IF NOT EXISTS birthdays( -- #optimize
+CREATE TABLE IF NOT EXISTS birthdays(
     server_id INT,
     member_id INT,
     birth_date DATE,
@@ -121,7 +119,7 @@ CREATE TABLE IF NOT EXISTS birthdays( -- #optimize
 )
 
 -- Create auto_bans Table (integrated list table)
-CREATE TABLE IF NOT EXISTS auto_bans( -- #optimize
+CREATE TABLE IF NOT EXISTS auto_bans(
     server_id INT,
     member_id INT,
     member_name TEXT,
@@ -130,7 +128,30 @@ CREATE TABLE IF NOT EXISTS auto_bans( -- #optimize
 
 
 
-
-
-
 -- START of MESSAGE LOGS
+-- Create embeds table (integrated list table)
+CREATE TABLE IF NOT EXISTS embeds(
+    server_id INT,
+    message_id INT,
+    channel_id INT,
+    author_id INT,
+    PRIMARY KEY (server_id, message_id)
+)
+
+-- Create reaction_roles table (integrated list table)
+CREATE TABLE IF NOT EXISTS reaction_roles(
+    server_id INT,
+    message_id INT,
+    channel_id INT,
+    author_id INT,
+    PRIMARY KEY (server_id, message_id)
+)
+
+-- Create role_messages table (integrated list table)
+CREATE TABLE IF NOT EXISTS role_messages(
+    server_id INT,
+    message_id INT,
+    channel_id INT,
+    author_id INT,
+    PRIMARY KEY (server_id, message_id)
+)

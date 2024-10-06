@@ -511,6 +511,23 @@ class IntegratedList_TableManager:
         query = f"SELECT {self.secondary_key_sql_name} FROM {self.table_name} WHERE {self.primary_key_sql_name} = :primary_key_value"
         raw_values = database.execute_query(query, {'primary_key_value': self.primary_key_value}, multiple_values=True)
         return [database.get_query_first_value(value) for value in raw_values]
+    
+    def _get_all_matching_indexes(self, columns:dict):
+        """
+        Retrieve all values in the table with the given columns.
+
+        Args:
+            columns (dict): A dictionary of column names and their corresponding values.
+
+        Returns:
+            list: A list of all secondary key values in the table with the given columns.
+        """
+        # Get all entries in the table
+        query = f"SELECT {self.secondary_key_sql_name} FROM {self.table_name} WHERE {self.primary_key_sql_name} = :primary_key_value"
+        for key, value in columns.items():
+            query += f" AND {key} = :{key}"
+        raw_values = database.execute_query(query, {'primary_key_value': self.primary_key_value, **columns}, multiple_values=True)
+        return [database.get_query_first_value(value) for value in raw_values]
             
 
     def _package_list_into_dataclass(self, data:tuple):
@@ -562,7 +579,7 @@ class IntegratedList_TableManager:
         if self.primary_key_sql_name not in data_dict.keys():
             data_dict[self.primary_key_sql_name] = self.primary_key_value
         elif data_dict[self.primary_key_sql_name] != self.primary_key_value:
-            raise ValueError(f"Primary key \"{self.primary_key_sql_name}\" does not match \"{self.primary_key_value}\".")
+            raise ValueError(f"Primary key \"{self.primary_key_sql_name}\" ({data_dict[self.primary_key_sql_name]}) does not match \"{self.primary_key_value}\".")
 
         if self.secondary_key_sql_name not in data_dict.keys():
             raise KeyError(f"Secondary key \"{self.secondary_key_sql_name}\" not found.")
@@ -614,7 +631,8 @@ class IntegratedList_TableManager:
         Retrieve an entry from the list based on the secondary key value.
 
         Args:
-            second_key_value (str): The value of the secondary key.
+            item (str): The value of the secondary key.
+            item (list): The values of keys to match.
 
         Returns:
             dataclass: The dataclass representing the entry.
@@ -625,6 +643,19 @@ class IntegratedList_TableManager:
         data = self._get_entry(second_key_value)
         if data is None: raise KeyError(f"Secondary key \"{second_key_value}\" not found in table.")
         return self._package_list_into_dataclass(data)
+
+    def get_matching(self, **kwargs):
+        """
+        Get all entries that match the given criteria.
+
+        Args:
+            **kwargs: Keyword arguments representing the criteria to match.
+
+        Returns:
+            list: A list of dataclasses representing the matching entries.
+        """
+        data = self._get_all_matching_indexes(kwargs)
+        return [self._get_entry(row) for row in data]
 
     def add(self, **kwargs):
         """
@@ -750,18 +781,24 @@ class Server:
 
         self._profanity_moderation_profile = None
         self._spam_moderation_profile = None
-        self._moderation_strikes = None
         self._logging_profile = None
         self._leveling_profile = None
-        self._level_rewards = None
         self._join_message_profile = None
         self._leave_message_profile = None
         self._birthdays_profile = None
-        self._birthdays = None
-        self._join_to_create_vcs = None
-        self._autobans = None
-        self._default_roles = None
         self._infinibot_settings_profile = None
+        
+        self._join_to_create_vcs = None
+        self._default_roles = None
+        
+        self._moderation_strikes = None
+        self._level_rewards = None
+        self._birthdays = None
+        self._autobans = None
+        
+        self._embeds = None
+        self._reaction_roles = None
+        self._role_messages = None
 
     def remove_all_data(self):
         '''Removes all data relating to this server from the database.'''
@@ -977,3 +1014,28 @@ class Server:
     class AutoBans(IntegratedList_TableManager):
         def __init__(self, server_id):
             super().__init__("auto_bans", "server_id", server_id, "member_id")
+
+    # MESSAGE LOGS
+    @property
+    def embeds(self):
+        if self._embeds is None: self._embeds = self.Embeds(self.server_id)
+        return self._embeds
+    class Embeds(IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("embeds", "server_id", server_id, "message_id")
+
+    @property
+    def reaction_roles(self):
+        if self._reaction_roles is None: self._reaction_roles = self.ReactionRoles(self.server_id)
+        return self._reaction_roles
+    class ReactionRoles(IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("reaction_roles", "server_id", server_id, "message_id")
+
+    @property
+    def role_messages(self):
+        if self._role_messages is None: self._role_messages = self.RoleMessages(self.server_id)
+        return self._role_messages
+    class RoleMessages(IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("role_messages", "server_id", server_id, "message_id")

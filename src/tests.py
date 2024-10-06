@@ -19,9 +19,11 @@ class TestDatabase(unittest.TestCase):
         database.execute_query(query, commit = True)
 
     def test_setup(self):
+        print("Testing database setup...")
         database = self.get_memory_database()
 
     def test_database_integrity(self):
+        print("Testing database integrity...")
         database = self.get_memory_database()
         self.assertEqual(len(database.tables), 3)
 
@@ -39,6 +41,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(database.all_primary_keys, {'table_1': 'primary_key', 'table_2': 'primary_key_1', 'table_3': 'primary_key'})
 
     def test_execute_query(self):
+        print("Testing that the database can execute queries...")
         database = self.get_memory_database()
 
         self.create_test_row(database, "table_1", 1234)
@@ -48,6 +51,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(result, [(1234, 0, '{"status": "UNSET", "value": null}', 3, '[]')])
 
     def test_optimization(self):
+        print("Testing database optimization...")
         database = self.get_memory_database()
 
         test_servers = [random.randint(0, 1000000000) for _ in range(20)]
@@ -74,6 +78,7 @@ class TestDatabase(unittest.TestCase):
             self.assertEqual(results, [])
 
     def test_force_remove_entry(self):
+        print("Testing database force remove entry...")
         database = self.get_memory_database()
         
         self.create_test_row(database, "table_1", 123456789)
@@ -90,6 +95,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(results, [])
 
     def test_get_column_default(self):
+        print("Testing database get column default...")
         database = self.get_memory_database()
 
         test_values_no_format = {
@@ -137,6 +143,7 @@ class TestDatabase(unittest.TestCase):
                 self.assertEqual(value, test_values_with_format[table][column])
 
     def test_does_entry_exist(self):
+        print("Testing database does entry exist...")
         database = self.get_memory_database()
 
         self.create_test_row(database, "table_1", 123456789)
@@ -150,6 +157,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(result, False)
 
     def test_get_table_unique_entries(self):
+        print("Testing database get table unique entries...")
         database = self.get_memory_database()
 
         test_servers = [random.randint(0, 1000000000) for _ in range(20)]
@@ -163,6 +171,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(unique_entries, test_servers)
 
     def test_get_table_unique_entries(self):
+        print("Testing database get table unique entries...")
         database = self.get_memory_database()
 
         test_servers = [random.randint(100000, 199999) for _ in range(20)]
@@ -194,6 +203,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(set(unique_entries), set(test_servers + test_servers_unique_table_1 + test_servers_unique_table_3))
 
     def test_get_id_sql_name(self):
+        print("Testing database get id sql name...")
         database = self.get_memory_database()
 
         answers = {
@@ -264,16 +274,26 @@ class TestServer(unittest.TestCase):
     class RunTestOnIntegratedListProperty:
         """Helper class to generate test data and perform tests on integrated list properties."""
         
-        def __init__(self, server: 'Server', table_name: str, test_values: list, iterations: list):
+        def __init__(self, server: 'Server', table_name: str, test_values: list, iterations: list, extra_keys_to_query: list = []):
             self.server = server
             self.table_name = table_name
             self.test_values = test_values
-            self.iterations = iterations
+            self.iterations = iterations # [iteration_count, rows_per_iteration]
+            self.ektq = extra_keys_to_query
 
-            # Ensure the minimum number of iterations is 2
-            if self.iterations[0] < 2:
-                self.iterations[0] = 2
-                print("WARNING: Iterations[0] must be at least 2. Value changed.")
+            # Ensure the minimum number of iterations is correct
+            minimum_iterations = 2 + len(self.ektq)
+            if self.iterations[0] < minimum_iterations:
+                self.iterations[0] = minimum_iterations
+                print(f"####################### WARNING: Iterations[0] must be at least {minimum_iterations}. Value changed. #######################")
+
+            minimum_rows = 0 if len(self.ektq) == 0 else 3
+            if self.iterations[1] < minimum_rows:
+                self.iterations[1] = minimum_rows
+                print(f"####################### WARNING: Iterations[1] must be at least {minimum_rows}. Value changed. #######################")
+
+            self.ektq_row_values = {}
+            self.ektw_row_mappings = {}
 
         def generate_test_data_for_integrated_lists(self):
             """Generates the test data with consistent secondary keys across iterations."""
@@ -285,9 +305,25 @@ class TestServer(unittest.TestCase):
             for iteration_index in range(self.iterations[0]):
                 iteration = []
 
+                ektq_row_name = None
+                ektq_row_value = None
+                ektq_row_mapping = None
+                index_of_ektq = iteration_index + len(self.ektq) - self.iterations[0]
+                if index_of_ektq >= 0:
+                    ektq_row_name = self.ektq[index_of_ektq]
+                    ektq_row_value = UNSET_VALUE
+                    
+                    # Generate valid subset for consistent keys mapping
+                    ektq_row_mapping = self._generate_valid_subset_for_ektq(self.iterations[1] - 1)
+
                 # For each row in this iteration
                 for row_index in range(self.iterations[1]):
                     row_data = {}
+                    ektq_row = False
+                    if ektq_row_mapping is not None:
+                        if row_index in ektq_row_mapping:
+                            ektq_row = True
+
                     for value in self.test_values:
                         value_name, value_type = value.split(":")
 
@@ -328,7 +364,19 @@ class TestServer(unittest.TestCase):
                                 # Ensure the value is unique for non-secondary_key fields
                                 valid = all(row_data[value_name] != row.get(value_name) for row in iteration)
 
+                                # Overwrite the value if using a constant key
+                                if ektq_row: # Extra Keys to Query in effect
+                                    if value_name == ektq_row_name:
+                                        if ektq_row_value == UNSET_VALUE: ektq_row_value = row_data[value_name]
+                                        else: row_data[value_name] = ektq_row_value
+                                        valid = True
+
                     iteration.append(row_data)
+
+                # Add Extra Keys To Query (etkq) for later reference
+                self.ektq_row_values[ektq_row_name] = ektq_row_value
+                self.ektw_row_mappings[ektq_row_name] = ektq_row_mapping
+
                 # Scramble iteration
                 random.shuffle(iteration)
                 test_data.append(iteration)
@@ -340,6 +388,7 @@ class TestServer(unittest.TestCase):
             print("Running tests on integrated list property: " + self.table_name + " with test iterations: " + str(self.iterations))
 
             test_data = self.generate_test_data_for_integrated_lists()
+            print("Generated test data")
             default_test_data = test_data[0]
 
             property = getattr(self.server, self.table_name)
@@ -355,6 +404,8 @@ class TestServer(unittest.TestCase):
             # Verify consistency with a new server instance
             self._verify_data_in_new_server_instance(test_case, self.server.server_id, default_test_data)
 
+            print(f"Adding entries to integrated list property \"{self.table_name}\" successful.")
+
             # Perform edits across iterations
             for iteration_number in range(1, self.iterations[0]):
                 edit_test_data = test_data[iteration_number]
@@ -364,6 +415,22 @@ class TestServer(unittest.TestCase):
                     property.edit(secondary_key_value, **test_entry)
 
                 self._verify_data_in_new_server_instance(test_case, self.server.server_id, edit_test_data)
+
+                # See if this is an iteration with extra keys to query (ektq)
+                index_of_ektq = ((iteration_number) + len(self.ektq)) - self.iterations[0]
+                if index_of_ektq >= 0:
+                    ektq_row_name = self.ektq[index_of_ektq]
+                    ektq_row_value = self.ektq_row_values[ektq_row_name]
+                    ektq_row_mapping = self.ektw_row_mappings[ektq_row_name]
+                    rows = property.get_matching(**{ektq_row_name: ektq_row_value})
+                    
+                    test_case.assertEqual(len(rows), len(ektq_row_mapping), msg = "Integrated List Failure: class.get_maching returned incorrect number of rows. Expected: " + str(len(ektq_row_mapping)) + " Actual: " + str(len(rows)))
+                    for row in rows:
+                        test_case.assertEqual(getattr(row, ektq_row_name), ektq_row_value, msg = "Integrated List Failure: class.get_maching returned at least one incorrect row. Expected: " + str(ektq_row_value) + " Actual: " + str(getattr(row, ektq_row_name)))
+                    print(f"Extra Keys To Query (etkq) successful for iteration {iteration_number + 1}.")
+
+
+            print(f"Editing entries in integrated list property \"{self.table_name}\" successful.")
 
             # Test deletions
             for test_entry in default_test_data:
@@ -375,6 +442,8 @@ class TestServer(unittest.TestCase):
             property = getattr(new_server_instance, self.table_name)
             test_case.assertEqual(len(property), 0)
             del new_server_instance
+
+            print(f"Deleting entries in integrated list property \"{self.table_name}\" successful.")
 
             print("Finished running tests on integrated list property: " + self.table_name)
 
@@ -414,6 +483,18 @@ class TestServer(unittest.TestCase):
                 value = float(random.random() * random.randint(0, 1000000000))
             return value
 
+        def _generate_valid_subset_for_ektq(self, X):
+            """Generates a random valid subset of X elements for constant keys."""
+            # Create a range of elements from 0 to X (inclusive)
+            full_range = range(0, X + 1)
+
+            # Choose a random subset length between 2 and X (inclusive)
+            r = random.randint(2, X)
+
+            # Randomly select a valid combination of size 'r' from the full range
+            random_combination = random.sample(full_range, r)
+
+            return random_combination
 
     # PROFILES
     def test_profainity_moderation_profile(self):
@@ -587,6 +668,40 @@ class TestServer(unittest.TestCase):
 
         server.remove_all_data()
 
+    # MESSAGE LOGS
+    def test_embeds(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_integrated_list_property
+        test = self.RunTestOnIntegratedListProperty(server, "embeds", ["message_id:int", "channel_id:int", "author_id:int"], [3, 10], extra_keys_to_query=["channel_id"])
+        test.run(self)
+
+        server.remove_all_data()
+
+    def test_reaction_roles(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_integrated_list_property
+        test = self.RunTestOnIntegratedListProperty(server, "reaction_roles", ["message_id:int", "channel_id:int", "author_id:int"], [3, 10], extra_keys_to_query=["channel_id"])
+        test.run(self)
+
+        server.remove_all_data()
+
+    
+    def test_role_messages(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_integrated_list_property
+        test = self.RunTestOnIntegratedListProperty(server, "role_messages", ["message_id:int", "channel_id:int", "author_id:int"], [3, 10], extra_keys_to_query=["channel_id"])
+        test.run(self)
+
+        server.remove_all_data()
 
 if __name__ == "__main__":
     unittest.main()
