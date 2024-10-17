@@ -1,10 +1,17 @@
 import unittest
 import random
 import uuid
+import logging
+import os
 
 from custom_types import UNSET_VALUE
+from log_manager import setup_logging, change_logging_level
+
 from database import Database
 from server import Server
+from file_manager import JSONFile
+from global_settings import get_global_kill_status, get_persistent_data
+
 import server
 
 # Database Tests
@@ -19,11 +26,11 @@ class TestDatabase(unittest.TestCase):
         database.execute_query(query, commit = True)
 
     def test_setup(self):
-        print("Testing database setup...")
+        logging.info("Testing database setup...")
         database = self.get_memory_database()
 
     def test_database_integrity(self):
-        print("Testing database integrity...")
+        logging.info("Testing database integrity...")
         database = self.get_memory_database()
         self.assertEqual(len(database.tables), 3)
 
@@ -41,7 +48,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(database.all_primary_keys, {'table_1': 'primary_key', 'table_2': 'primary_key_1', 'table_3': 'primary_key'})
 
     def test_execute_query(self):
-        print("Testing that the database can execute queries...")
+        logging.info("Testing that the database can execute queries...")
         database = self.get_memory_database()
 
         self.create_test_row(database, "table_1", 1234)
@@ -51,7 +58,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(result, [(1234, 0, '{"status": "UNSET", "value": null}', 3, '[]')])
 
     def test_optimization(self):
-        print("Testing database optimization...")
+        logging.info("Testing database optimization...")
         database = self.get_memory_database()
 
         test_servers = [random.randint(0, 1000000000) for _ in range(20)]
@@ -78,7 +85,7 @@ class TestDatabase(unittest.TestCase):
             self.assertEqual(results, [])
 
     def test_force_remove_entry(self):
-        print("Testing database force remove entry...")
+        logging.info("Testing database force remove entry...")
         database = self.get_memory_database()
         
         self.create_test_row(database, "table_1", 123456789)
@@ -95,7 +102,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(results, [])
 
     def test_get_column_default(self):
-        print("Testing database get column default...")
+        logging.info("Testing database get column default...")
         database = self.get_memory_database()
 
         test_values_no_format = {
@@ -143,7 +150,7 @@ class TestDatabase(unittest.TestCase):
                 self.assertEqual(value, test_values_with_format[table][column])
 
     def test_does_entry_exist(self):
-        print("Testing database does entry exist...")
+        logging.info("Testing database does entry exist...")
         database = self.get_memory_database()
 
         self.create_test_row(database, "table_1", 123456789)
@@ -157,7 +164,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(result, False)
 
     def test_get_table_unique_entries(self):
-        print("Testing database get table unique entries...")
+        logging.info("Testing database get table unique entries...")
         database = self.get_memory_database()
 
         test_servers = [random.randint(0, 1000000000) for _ in range(20)]
@@ -171,7 +178,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(unique_entries, test_servers)
 
     def test_get_table_unique_entries(self):
-        print("Testing database get table unique entries...")
+        logging.info("Testing database get table unique entries...")
         database = self.get_memory_database()
 
         test_servers = [random.randint(100000, 199999) for _ in range(20)]
@@ -203,7 +210,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(set(unique_entries), set(test_servers + test_servers_unique_table_1 + test_servers_unique_table_3))
 
     def test_get_id_sql_name(self):
-        print("Testing database get id sql name...")
+        logging.info("Testing database get id sql name...")
         database = self.get_memory_database()
 
         answers = {
@@ -233,7 +240,7 @@ class TestServer(unittest.TestCase):
         server.remove_all_data()
 
     def run_test_on_property(self, primary_server_instance, table_name, property_name:str, default_value, test_values):
-        print(f'Testing property "{property_name}". Default value: {default_value}, test values: {test_values}')
+        logging.debug(f'Testing property "{property_name}". Default value: {default_value}, test values: {test_values}')
         
         def get_property(server, table_name, property_name):
             """Fetches the property from the server, handling itemized properties."""
@@ -285,12 +292,12 @@ class TestServer(unittest.TestCase):
             minimum_iterations = 2 + len(self.ektq)
             if self.iterations[0] < minimum_iterations:
                 self.iterations[0] = minimum_iterations
-                print(f"####################### WARNING: Iterations[0] must be at least {minimum_iterations}. Value changed. #######################")
+                logging.warning(f"Iterations[0] must be at least {minimum_iterations}. Value changed.")
 
             minimum_rows = 0 if len(self.ektq) == 0 else 3
             if self.iterations[1] < minimum_rows:
                 self.iterations[1] = minimum_rows
-                print(f"####################### WARNING: Iterations[1] must be at least {minimum_rows}. Value changed. #######################")
+                logging.warning(f"Iterations[1] must be at least {minimum_rows}. Value changed.")
 
             self.ektq_row_values = {}
             self.ektw_row_mappings = {}
@@ -385,10 +392,10 @@ class TestServer(unittest.TestCase):
 
         def run(self, test_case: unittest.TestCase):
             """Runs tests on the integrated list property for add, edit, and delete operations."""
-            print("Running tests on integrated list property: " + self.table_name + " with test iterations: " + str(self.iterations))
+            logging.info("Running tests on integrated list property: " + self.table_name + " with test iterations: " + str(self.iterations))
 
             test_data = self.generate_test_data_for_integrated_lists()
-            print("Generated test data")
+            logging.debug("Generated test data")
             default_test_data = test_data[0]
 
             property = getattr(self.server, self.table_name)
@@ -404,7 +411,7 @@ class TestServer(unittest.TestCase):
             # Verify consistency with a new server instance
             self._verify_data_in_new_server_instance(test_case, self.server.server_id, default_test_data)
 
-            print(f"Adding entries to integrated list property \"{self.table_name}\" successful.")
+            logging.debug(f"Adding entries to integrated list property \"{self.table_name}\" successful.")
 
             # Perform edits across iterations
             for iteration_number in range(1, self.iterations[0]):
@@ -427,10 +434,10 @@ class TestServer(unittest.TestCase):
                     test_case.assertEqual(len(rows), len(ektq_row_mapping), msg = "Integrated List Failure: class.get_maching returned incorrect number of rows. Expected: " + str(len(ektq_row_mapping)) + " Actual: " + str(len(rows)))
                     for row in rows:
                         test_case.assertEqual(getattr(row, ektq_row_name), ektq_row_value, msg = "Integrated List Failure: class.get_maching returned at least one incorrect row. Expected: " + str(ektq_row_value) + " Actual: " + str(getattr(row, ektq_row_name)))
-                    print(f"Extra Keys To Query (etkq) successful for iteration {iteration_number + 1}.")
+                    logging.debug(f"Extra Keys To Query (etkq) successful for iteration {iteration_number + 1}.")
 
 
-            print(f"Editing entries in integrated list property \"{self.table_name}\" successful.")
+            logging.debug(f"Editing entries in integrated list property \"{self.table_name}\" successful.")
 
             # Test deletions
             for test_entry in default_test_data:
@@ -443,9 +450,9 @@ class TestServer(unittest.TestCase):
             test_case.assertEqual(len(property), 0)
             del new_server_instance
 
-            print(f"Deleting entries in integrated list property \"{self.table_name}\" successful.")
+            logging.debug(f"Deleting entries in integrated list property \"{self.table_name}\" successful.")
 
-            print("Finished running tests on integrated list property: " + self.table_name)
+            logging.info("Finished running tests on integrated list property: " + self.table_name)
 
         def _verify_entries(self, test_case, property, test_data):
             """Helper function to verify that the entries match the expected data."""
@@ -703,5 +710,84 @@ class TestServer(unittest.TestCase):
 
         server.remove_all_data()
 
+class TestFileManager(unittest.TestCase):
+    def test_json_file(self):
+        logging.info("Testing FileManager -> JSONFile...")
+        test_file = JSONFile("test_file")
+        path = test_file.path
+
+        self.assertEqual(test_file.file_name, "test_file.json")
+
+        test_file.add_variable("bool1", True)
+        test_file.add_variable("bool2", False)
+        test_file.add_variable("bool3", True)
+
+        self.assertTrue(test_file["bool1"])
+        self.assertFalse(test_file["bool2"])
+        self.assertTrue(test_file["bool3"])
+
+        self.assertTrue(len(test_file) == 3)
+
+        test_file["bool2"] = True
+        test_file["bool3"] = False
+
+        del test_file
+
+        # New instance
+        test_file = JSONFile("test_file")
+
+        self.assertTrue(test_file["bool1"])
+        self.assertTrue(test_file["bool2"])
+        self.assertFalse(test_file["bool3"])
+
+        for variable in test_file:
+            self.assertTrue(variable in ["bool1", "bool2", "bool3"])
+
+        test_file.delete_file()
+        self.assertTrue(not os.path.exists(path))
+
+        logging.info("Finished testing FileManager -> JSONFile...")
+
+class TestGlobalSettings(unittest.TestCase):
+    def test_global_kill_status(self):
+        logging.info("Testing GlobalKillStatus...")
+
+        # Clear file
+        get_global_kill_status().reset()
+
+        self.assertFalse(get_global_kill_status()["profanity_moderation"])
+
+        get_global_kill_status()["profanity_moderation"] = True
+        self.assertTrue(get_global_kill_status()["profanity_moderation"])
+
+        self.assertRaises(AttributeError, get_global_kill_status().__getitem__, "fake_item")
+
+        self.assertRaises(AttributeError, get_global_kill_status().__setitem__, "fake_item", True)
+
+        logging.info("Finished testing GlobalKillStatus...")
+
+    def test_persistent_data(self):
+        logging.info("Testing PersistentData...")
+
+        # Clear file
+        get_persistent_data().reset()
+
+        self.assertFalse(get_persistent_data()["login_response_guildID"])
+
+        get_persistent_data()["login_response_guildID"] = True
+        self.assertTrue(get_persistent_data()["login_response_guildID"])
+
+        self.assertRaises(AttributeError, get_persistent_data().__getitem__, "fake_item")
+
+        self.assertRaises(AttributeError, get_persistent_data().__setitem__, "fake_item", True)
+
+        logging.info("Finished testing PersistentData...")
+
+
 if __name__ == "__main__":
+    setup_logging()
+    change_logging_level("DEBUG")
+
+    logging.info("######################## Running Tests ########################")
+    print("Running tests...")
     unittest.main()
