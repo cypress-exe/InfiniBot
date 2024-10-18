@@ -800,6 +800,9 @@ class Server:
         self._reaction_roles = None
         self._role_messages = None
 
+    def __str__(self):
+        return str(self.server_id)
+
     def remove_all_data(self):
         '''Removes all data relating to this server from the database.'''
         for table in database.tables:

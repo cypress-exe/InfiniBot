@@ -1,6 +1,34 @@
 from file_manager import JSONFile
 import logging
 
+
+feature_dependencies = {
+    "dashboard": {
+        "global_kill": "dashboard"
+    },
+    "profanity_moderation": {
+        "global_kill": "profanity_moderation",
+        "server": "profanity_moderation_profile.active"
+    },
+    "spam_moderation": {
+        "global_kill": "spam_moderation",
+        "server": "spam_moderation_profile.active"
+    },
+    "logging": {
+        "global_kill": "logging",
+        "server": "logging_profile.active"
+    },
+    "leveling": {
+        "global_kill": "leveling",
+        "server": "leveling_profile.active"
+    },
+    "level_rewards": {
+        "global_kill": ("level_rewards", "leveling"),
+        "server": "leveling_profile.active"
+    }
+}
+
+
 class GlobalSetting:
     '''This parent class is used to store global settings. It is used to store global settings in the JSON file.'''
     def __init__(self, file_name, variable_list, default_value):
@@ -68,6 +96,10 @@ class GlobalKillStatus(GlobalSetting):
 
         super().__init__("global_kill_status", variable_list, False)
 
+    def reset(self):
+        logging.warning("Clearing global_kill_status.json")
+        super().reset()
+
 class PeristentData(GlobalSetting):
     '''This class is used to store persistent data. It is used to store persistent data in the JSON file. '''
     def __init__(self):
@@ -77,9 +109,33 @@ class PeristentData(GlobalSetting):
         ]
 
         super().__init__("persistent_data", variable_list, None)
-        
+
+class Settings(GlobalSetting):
+    '''This class is used to store and access special channel ids for InfiniBot. Stored in special_channel_ids.json. '''
+    def __init__(self):
+        variable_list = [
+            "dev_guilds",
+            "dev_ids",
+            "infinibot_guild",
+            "issue_report_channel",
+            "submission_channel",
+            "updates_channel",
+            "infinibot_updates_role",
+            "support_server_invite_link",
+            "topgg_link",
+            "topgg_vote_link",
+            "topgg_review_link",
+            "bot_invite_link",
+            "support_email"
+        ]
+
+        super().__init__("settings", variable_list, None)
+
 def get_global_kill_status():
     return GlobalKillStatus()
 
 def get_persistent_data():
     return PeristentData()
+
+def get_settings():
+    return Settings()

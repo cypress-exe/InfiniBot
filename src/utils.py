@@ -1,6 +1,8 @@
+from nextcord import Interaction
 import nextcord
+import logging
 
-
+from global_settings import get_global_kill_status, feature_dependencies
 
 
 def format_var_to_pythonic_type(_type:str, value):
@@ -150,3 +152,91 @@ def standardize_str_indention(string: str):
     # Join the lines back into a string
     return('\n'.join(lines))
 
+def feature_is_active(**kwargs):
+    from server import Server
+
+    server = kwargs.get("server")
+    server_id = kwargs.get("server_id")
+    if kwargs.get("guild_id"): server_id = kwargs.get("guild_id")
+    feature = kwargs.get("feature")
+
+    # Validate inputs
+    if not server and not server_id:
+        raise ValueError(f"Error: {__name__} received no server or server_id.")
+    if not feature:
+        raise ValueError(f"Error: {__name__} received no feature.")
+    
+    if not server:
+        server = Server(server_id)
+
+    # Make feature case insensitive
+    feature = feature.lower()
+
+    # Validate feature
+    if feature not in feature_dependencies:
+        raise ValueError(f"Error: {__name__} received an invalid feature (not in feature_dependencies). Feature: {feature}")
+
+    global_kill_keys = feature_dependencies[feature].get("global_kill", ())
+    if not isinstance(global_kill_keys, tuple):
+        global_kill_keys = (global_kill_keys,)
+
+    server_feature_keys = feature_dependencies[feature].get("server", ())
+    if not isinstance(server_feature_keys, tuple):
+        server_feature_keys = (server_feature_keys,)
+
+    # Check if globally killed
+    global_kill_statuses = get_global_kill_status()
+    for key in global_kill_keys:
+        if feature not in global_kill_statuses:
+            raise ValueError(f"Error: {__name__} received an invalid feature (not registered in global kill settings).")
+
+        if global_kill_statuses[key]:
+            return False
+
+    # Check if feature is enabled in the server
+    for key in server_feature_keys:
+        path = key.split(".")
+        attr = server
+        for level in path:
+            if not hasattr(attr, level):
+                raise ValueError(f"Error: {__name__} received an invalid path when checking if the feature is enabled in the server. Path: {key}")
+            attr = getattr(attr, level)
+
+        if not isinstance(attr, bool):
+            raise ValueError(f"Error: {__name__} received an invalid type when checking if the feature is enabled in the server. Type: {type(attr)}")
+        
+        if not attr:
+            return False
+
+    return True
+
+async def user_has_config_permissions(interaction: Interaction, notify = True):
+    """|coro|
+    
+    Determins if an interaction can be continued if it is protected by InfiniBot Mod.
+
+    ------
+    Parameters
+    ------
+    interaction: `nextcord.Interaction`
+        The interaction.
+        
+    Optional Parameters
+    ------
+    notify: optional [`bool`]
+        Whether to notify the user if they fail. Defaults to True.
+
+    Returns
+    ------
+    `bool`
+        Whether or not the interaction can continue.
+    """
+    
+    if interaction.guild.owner == interaction.user: return True
+    
+    infinibotMod_role = nextcord.utils.get(interaction.guild.roles, name='Infinibot Mod')
+    if infinibotMod_role in interaction.user.roles:
+        return True
+
+    if notify: await interaction.response.send_message(embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.\n\nType `/help infinibot_mod` for more information.", color = nextcord.Color.red()), ephemeral = True)
+    return False

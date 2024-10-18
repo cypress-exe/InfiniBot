@@ -11,8 +11,14 @@ from database import Database
 from server import Server
 from file_manager import JSONFile
 from global_settings import get_global_kill_status, get_persistent_data
+from utils import feature_is_active
 
 import server
+
+def hijack_database_url():
+    logging.warning("Hijacking database url to use memory database")
+    server.database_url = "sqlite:///"
+    server.init_database()
 
 # Database Tests
 class TestDatabase(unittest.TestCase):
@@ -226,9 +232,6 @@ class TestDatabase(unittest.TestCase):
 class TestServer(unittest.TestCase):
     def __init__(self, methodName:str = ...) -> None:
         super().__init__(methodName)
-        # Overwrite variables
-        server.database_url = f"sqlite:///"
-        server.init_database() # Hijack the database url to make it a testing database
     
     def test_server_creation(self):
         server_id = random.randint(0, 1000000000)
@@ -783,10 +786,53 @@ class TestGlobalSettings(unittest.TestCase):
 
         logging.info("Finished testing PersistentData...")
 
+class TestUtils(unittest.TestCase):
+    def test_feature_is_active(self):
+        logging.info("Testing feature_is_active...")
+
+        # Clear global kill status file to get consistent results
+        get_global_kill_status().reset()
+
+        # BEGIN TESTING 
+        self.assertFalse(feature_is_active(server_id=1, feature="profanity_moderation"),
+                        "Should have returned False as the feature is not globally killed, but the server has the feature disabled by default")
+
+        # Test that if the server has the feature disabled, it will return False
+        server = Server(random.randint(0, 1000000000))
+        server.profanity_moderation_profile.active = True
+
+        self.assertTrue(feature_is_active(server=server, feature="profanity_moderation"),
+                         "Should have returned True as the feature is enabled in the server and is not globally killed")
+
+        server.remove_all_data()
+
+        # Test that if the feature is globally killed, it will return False regardless of the server's settings
+        get_global_kill_status()["profanity_moderation"] = True
+
+        self.assertFalse(feature_is_active(server_id=1, feature="profanity_moderation"),
+                         "Should have returned False as the feature is globally killed")
+
+        server = Server(random.randint(0, 1000000000))
+        server.profanity_moderation_profile.active = True
+
+        self.assertFalse(feature_is_active(server=server, feature="profanity_moderation"),
+                         "Should have returned False as the feature is globally killed")
+        
+        server.remove_all_data()
+
+        get_global_kill_status().reset()
+
+        logging.info("Finished testing feature_is_active...")
+
+
+
+
 
 if __name__ == "__main__":
     setup_logging()
     change_logging_level("DEBUG")
+
+    hijack_database_url()
 
     logging.info("######################## Running Tests ########################")
     print("Running tests...")
