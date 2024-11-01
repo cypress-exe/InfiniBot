@@ -4,13 +4,15 @@ import nextcord
 import datetime
 import humanfriendly
 import copy
+import logging
 
-import ui_components
-import utils
-import help_commands
-from custom_types import UNSET_VALUE
+import src.ui_components
+import src.utils
+import src.help_commands
+import src.views
+from src.custom_types import UNSET_VALUE
 
-from server import Server
+from src.server import Server
 
 
 class Dashboard(nextcord.ui.View):
@@ -51,14 +53,14 @@ class Dashboard(nextcord.ui.View):
         for child in self.children: del child
         self.__init__(interaction)
         
-        if not utils.feature_is_active(guild_id = interaction.guild.id, feature = "dashboard"):
-            await ui_components.disabled_feature_override(self, interaction)
+        if not src.utils.feature_is_active(guild_id = interaction.guild.id, feature = "dashboard"):
+            await src.ui_components.disabled_feature_override(self, interaction)
             return
         
         description = """Welcome to the InfiniBot Dashboard! Choose a feature to setup / edit:"""
         
         # On Mobile, extra spaces cause problems. We'll get rid of them here:
-        description = utils.standardize_str_indention(description)
+        description = src.utils.standardize_str_indention(description)
         
         embed = nextcord.Embed(title = "Dashboard", description = description, color = nextcord.Color.blue())
         try: await interaction.response.edit_message(embed = embed, view = self)
@@ -101,7 +103,7 @@ class Dashboard(nextcord.ui.View):
                 Use the buttons below to configure profanity and spam moderation.
                 """
                 
-                description = utils.standardize_str_indention(description)
+                description = src.utils.standardize_str_indention(description)
                 
                 embed = nextcord.Embed(title = "Dashboard - Moderation", description = description, color = nextcord.Color.blue())
                 await interaction.response.edit_message(embed = embed, view = self)
@@ -152,8 +154,8 @@ class Dashboard(nextcord.ui.View):
                         # Redirect to Activation Screen if needed
                         server = Server(interaction.guild.id)
                         if not server.profanity_moderation_profile.active: 
-                            await self.EnableDisableButton.EnableDisableView(self).setup(interaction) # BEGIN SLOWLY GOING THROUGH AND FIXING THINGS. 
-                            #                                                                           GOAL: GET DASHBOARD WORKING FOR PROFANITY MODERATION
+                            logging.debug(f"Profanity moderation is disabled for server {interaction.guild.id}. Forwarding to activation screen.")
+                            await self.EnableDisableButton.EnableDisableView(self).setup(interaction)
                             return
                             
                         if self.onboarding_modifier: self.onboarding_modifier(self)
@@ -168,11 +170,13 @@ class Dashboard(nextcord.ui.View):
                         self.manageMembersBtn.__init__(self, max_strikes = server.profanity_moderation_profile.max_strikes)
                         
                         # Global Kill
-                        if not utils.feature_is_active(server = server, feature = "profanity_moderation"):
-                            await ui_components.disabled_feature_override(self, interaction)
+                        if not src.utils.feature_is_active(server = server, feature = "profanity_moderation"): # Works because we redirect to the activation screen if profanity moderation is locally disabled
+                            logging.debug(f"Profanity moderation is disabled for {interaction.guild.id}. Forwarding to disabled feature override.")
+                            await src.ui_components.disabled_feature_override(self, interaction)
                             return
                         
-                        if server.profanity_moderation_profile.channel == None:
+                        if server.profanity_moderation_profile.channel == UNSET_VALUE:
+                            logging.debug(f"Admin channel not set for {interaction.guild.id}. Forwarding to admin channel button.")
                             await self.adminChannelBtn.callback(interaction, skipped = True)
                             return
                         
@@ -199,7 +203,7 @@ class Dashboard(nextcord.ui.View):
                         
                         For more information, use: {UNSET_VALUE}
                         """ # TODO add shortcut for help command
-                        description = utils.standardize_str_indention(description)
+                        description = src.utils.standardize_str_indention(description)
                         
                         
                         embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity", description = description, color = nextcord.Color.blue())
@@ -308,7 +312,7 @@ class Dashboard(nextcord.ui.View):
                         #             embed: nextcord.Embed = copy.copy(self.outer.embed)
                         #             embed.description = "Remove Moderated Words"
                         #             embed.clear_fields()
-                        #             await ui_components.SelectView(embed, ProfaneWords, self.selectionCallback, continueButtonLabel = "Delete").setup(interaction)
+                        #             await src.ui_components.SelectView(embed, ProfaneWords, self.selectionCallback, continueButtonLabel = "Delete").setup(interaction)
                                     
                         #         async def selectionCallback(self, interaction: Interaction, selection):
                         #             if selection != None: self.deleteWord(selection, interaction.guild.id)
@@ -445,7 +449,7 @@ class Dashboard(nextcord.ui.View):
                                     
                         #             embed: nextcord.Embed = copy.copy(self.outer.embed)
                         #             embed.description = "Select a member"
-                        #             await ui_components.SelectView(embed, memberSelectOptions, self.callbackPart1, placeholder = "Choose a Member", continueButtonLabel = "Next", preserveOrder = True).setup(interaction)
+                        #             await src.ui_components.SelectView(embed, memberSelectOptions, self.callbackPart1, placeholder = "Choose a Member", continueButtonLabel = "Next", preserveOrder = True).setup(interaction)
                                     
                         #         async def callbackPart1(self, interaction: Interaction, selection):
                         #             if selection == None: #if they canceled
@@ -597,24 +601,23 @@ class Dashboard(nextcord.ui.View):
                             self.outer = outer
                                                 
                         async def callback(self, interaction: Interaction, skipped = False):
-                            return
                             self.skipped = skipped
-                            server = Server_DEP(interaction.guild.id)
+                            server = Server(interaction.guild.id)
                                 
                             selectOptions = []
                             for channel in interaction.guild.text_channels:
                                 if channel.category != None: categoryName = channel.category.name
                                 else: categoryName = None
                                 #check permissions
-                                if await checkTextChannelPermissions(channel, False):
-                                    selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.admin_channel != None and server.admin_channel.id == channel.id)))
+                                if await src.utils.check_text_channel_permissions(channel, False):
+                                    selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.profanity_moderation_profile.channel != None and server.profanity_moderation_profile.channel == channel.id)))
                             
                             if self.skipped: title = "Dashboard - Moderation - Profanity"
                             else: title = "Dashboard - Moderation - Profanity - Admin Channel"
                             embed = nextcord.Embed(title = title, 
                                                    description = "Choose a channel for moderation info.\n\n**Ensure Admin-Only Access**\nThis channel lets members report incorrect strikes, so limit access to admins.\n\n**Can't Find Your Channel?**\nEnsure InfiniBot has permissions to view and send messages in all your channels.", 
                                                    color = nextcord.Color.blue())
-                            await ui_components.SelectView(embed, selectOptions, self.SelectViewCallback, continueButtonLabel = "Confirm", cancelButtonLabel = ("Back" if self.skipped else "Cancel")).setup(interaction)
+                            await src.ui_components.SelectView(embed, selectOptions, self.SelectViewCallback, continueButtonLabel = "Confirm", cancelButtonLabel = ("Back" if self.skipped else "Cancel")).setup(interaction)
                             
                         async def SelectViewCallback(self, interaction: Interaction, selection):
                             if selection == None:
@@ -625,79 +628,75 @@ class Dashboard(nextcord.ui.View):
                                     await self.outer.outer.setup(interaction)
                                     return
                                 
-                            server = Server_DEP(interaction.guild.id)
-                            if server.setAdminChannelID(selection):
-                                server.saveData()
-                                await self.outer.setup(interaction)
+                            server = Server(interaction.guild.id)
+                            server.profanity_moderation_profile.channel = selection
+                            await self.outer.setup(interaction)
                                 
                             #send a message to the new admin channel
                             embed = nextcord.Embed(title = "Admin Channel Set", description = f"Strikes will now be logged in this channel.\n\n**Ensure Admin-Only Access**\nThis channel lets members report incorrect strikes, so limit access to admins.", color =  nextcord.Color.green())
                             embed.set_footer(text = f"Action done by {interaction.user}")
-                            await server.admin_channel.send(embed = embed, view = SupportAndInviteView())
+                            await server.admin_channel.send(embed = embed, view = src.views.SupportAndInviteView())
                               
                     class EnableDisableButton(nextcord.ui.Button):
                         def __init__(self, outer):
                             super().__init__(label = "Disable Profanity Moderation", row = 3)
                             self.outer = outer
                             
-                        # class EnableDisableView(nextcord.ui.View):
-                        #     def __init__(self, outer):
-                        #         super().__init__(timeout = None)
-                        #         self.outer = outer
+                        class EnableDisableView(nextcord.ui.View):
+                            def __init__(self, outer):
+                                super().__init__(timeout = None)
+                                self.outer = outer
                                 
-                        #         self.backBtn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
-                        #         self.backBtn.callback = self.backBtnCallback
-                        #         self.add_item(self.backBtn)
+                                self.backBtn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
+                                self.backBtn.callback = self.backBtnCallback
+                                self.add_item(self.backBtn)
                                 
-                        #         self.actionBtn = nextcord.ui.Button(label = "ACTION", style = nextcord.ButtonStyle.green)
-                        #         self.actionBtn.callback = self.actionBtnCallback
-                        #         self.add_item(self.actionBtn)
+                                self.actionBtn = nextcord.ui.Button(label = "ACTION", style = nextcord.ButtonStyle.green)
+                                self.actionBtn.callback = self.actionBtnCallback
+                                self.add_item(self.actionBtn)
                                 
                                 
-                        #     async def setup(self, interaction: Interaction, server = None):
-                        #         if not server: server = Server_DEP(interaction.guild.id)
+                            async def setup(self, interaction: Interaction, server = None):
+                                if not server: server = Server(interaction.guild.id)
                                 
-                        #         # Determine whether or not we are active or not.
-                        #         if server.profanity_moderation_enabled:
-                        #             # We *are* active. Give info for deactivation
-                        #             embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity - Disable", 
-                        #                                    description = "Are you sure you want to disable profanity moderation? You can re-enable this feature at any time.",
-                        #                                    color = nextcord.Color.blue())
-                        #             self.actionBtn.label = "Disable"
+                                # Determine whether or not we are active or not.
+                                if server.profanity_moderation_profile.active:
+                                    # We *are* active. Give info for deactivation
+                                    embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity - Disable", 
+                                                           description = "Are you sure you want to disable profanity moderation? You can re-enable this feature at any time.",
+                                                           color = nextcord.Color.blue())
+                                    self.actionBtn.label = "Disable"
                                     
-                        #         else:
-                        #             # We are *not* active. Give info for activation
-                        #             embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity",
-                        #                                    description = "Profanity moderation is currently disabled. Do you want to enable it?",
-                        #                                    color = nextcord.Color.blue())
-                        #             self.actionBtn.label = "Enable"
+                                else:
+                                    # We are *not* active. Give info for activation
+                                    embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity",
+                                                           description = "Profanity moderation is currently disabled. Do you want to enable it?",
+                                                           color = nextcord.Color.blue())
+                                    self.actionBtn.label = "Enable"
                                     
-                        #         await interaction.response.edit_message(embed = embed, view = self)
+                                await interaction.response.edit_message(embed = embed, view = self)
                                 
-                        #     async def backBtnCallback(self, interaction: Interaction, server = None):
-                        #         if not server: server = Server_DEP(interaction.guild.id)
+                            async def backBtnCallback(self, interaction: Interaction, server = None):
+                                if not server: server = Server(interaction.guild.id)
                                 
-                        #         # Return either to profanity moderation or moderation.
-                        #         if server.profanity_moderation_enabled:
-                        #             # Profanity Moderation is enabled. Put us in here.
-                        #             await self.outer.setup(interaction)
+                                # Return either to profanity moderation or moderation.
+                                if server.profanity_moderation_profile.active:
+                                    # Profanity Moderation is enabled. Put us in here.
+                                    await self.outer.setup(interaction)
                                     
-                        #         else:
-                        #             # Profanity Moderation is disabled. Put us in the level above (moderation)
-                        #             await self.outer.outer.setup(interaction)
+                                else:
+                                    # Profanity Moderation is disabled. Put us in the level above (moderation)
+                                    await self.outer.outer.setup(interaction)
                                 
-                        #     async def actionBtnCallback(self, interaction: Interaction):
-                        #         server = Server_DEP(interaction.guild.id)
+                            async def actionBtnCallback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
                                 
-                        #         server.profanity_moderation_enabled = (not server.profanity_moderation_enabled)
+                                server.profanity_moderation_profile.active = (not server.profanity_moderation_profile.active)
                                 
-                        #         server.saveData()
-                                
-                        #         # Return them.
-                        #         await self.backBtnCallback(interaction, server = server)
+                                # Return them.
+                                await self.backBtnCallback(interaction, server = server)
                             
                         async def callback(self, interaction: Interaction):
-                            return
                             await self.EnableDisableView(self.outer).setup(interaction)
                                      
                 async def callback(self, interaction: Interaction):
@@ -740,8 +739,8 @@ class Dashboard(nextcord.ui.View):
                         
             #             server = Server_DEP(interaction.guild.id)
                         
-            #             if not utils.enabled.SpamModeration(server = server):
-            #                 await ui_components.disabled_feature_override(self, interaction)
+            #             if not src.utils.enabled.SpamModeration(server = server):
+            #                 await src.ui_components.disabled_feature_override(self, interaction)
             #                 return
                         
                         
@@ -753,7 +752,7 @@ class Dashboard(nextcord.ui.View):
             #             Messages Threshold: {server.messages_threshold} messages
                         
             #             For more information, use: {spamModerationHelp.get_mention()}"""
-            #             description = utils.standardize_str_indention(description)
+            #             description = src.utils.standardize_str_indention(description)
                         
             #             embed = nextcord.Embed(title = "Dashboard - Moderation - Spam", 
             #                                    description = description, 
@@ -944,8 +943,8 @@ class Dashboard(nextcord.ui.View):
     #             server = Server_DEP(interaction.guild.id)
                 
     #             # Global Kill
-    #             if not utils.enabled.Logging(server = server):
-    #                 await ui_components.disabled_feature_override(self, interaction)
+    #             if not src.utils.enabled.Logging(server = server):
+    #                 await src.ui_components.disabled_feature_override(self, interaction)
     #                 return
                 
     #             if server.log_channel == None:
@@ -962,7 +961,7 @@ class Dashboard(nextcord.ui.View):
     #             Log Channel: {log_channel_name}
                 
     #             For more information, use: {loggingHelp.get_mention()}"""
-    #             description = utils.standardize_str_indention(description)
+    #             description = src.utils.standardize_str_indention(description)
                 
     #             embed = nextcord.Embed(title = "Dashboard - Logging", 
     #                                    description = description, 
@@ -997,12 +996,12 @@ class Dashboard(nextcord.ui.View):
     #                 Choose a channel for logs.
 
     #                 Tip: Set notification settings for this channel to "Nothing". InfiniBot will constantly be logging in this channel."""
-    #                 description = utils.standardize_str_indention(description)
+    #                 description = src.utils.standardize_str_indention(description)
                     
     #                 embed = nextcord.Embed(title = ("Dashboard - Logging" if self.skipped else "Dashboard - Logging - Log Channel"), 
     #                                        description = description, color = nextcord.Color.blue())
                     
-    #                 await ui_components.SelectView(embed, 
+    #                 await src.ui_components.SelectView(embed, 
     #                                  selectOptions, 
     #                                  self.SelectViewCallback, 
     #                                  continueButtonLabel = "Confirm", 
@@ -1146,8 +1145,8 @@ class Dashboard(nextcord.ui.View):
                 
     #             server = Server_DEP(interaction.guild.id)
                 
-    #             if not utils.enabled.Leveling(server = server):
-    #                 await ui_components.disabled_feature_override(self, interaction)
+    #             if not src.utils.enabled.Leveling(server = server):
+    #                 await src.ui_components.disabled_feature_override(self, interaction)
     #                 return
                 
     #             if server.leveling_channel == False: levelingChannelName = "No Notifications"
@@ -1178,7 +1177,7 @@ class Dashboard(nextcord.ui.View):
                 
     #             For more information, use: {levelingHelp.get_mention()}
     #             """
-    #             description = utils.standardize_str_indention(description)
+    #             description = src.utils.standardize_str_indention(description)
                 
     #             embed = nextcord.Embed(title = "Dashboard - Leveling", 
     #                                    description = description, 
@@ -1310,7 +1309,7 @@ class Dashboard(nextcord.ui.View):
                             
     #                         embed: nextcord.Embed = copy.copy(self.outer.embed)
     #                         embed.description = "Choose a Member"
-    #                         await ui_components.SelectView(embed, memberSelectOptions, self.selectViewCallback, continueButtonLabel = "Next", placeholder = "Choose", preserveOrder = True).setup(interaction)
+    #                         await src.ui_components.SelectView(embed, memberSelectOptions, self.selectViewCallback, continueButtonLabel = "Next", placeholder = "Choose", preserveOrder = True).setup(interaction)
                         
     #                     async def selectViewCallback(self, interaction: Interaction, selection):       
     #                         if selection == None:
@@ -1389,8 +1388,8 @@ class Dashboard(nextcord.ui.View):
     #                 async def setup(self, interaction: Interaction):
     #                     server = Server_DEP(interaction.guild.id)
                         
-    #                     if not utils.enabled.LevelRewards(server = server):
-    #                         await ui_components.disabled_feature_override(self, interaction)
+    #                     if not src.utils.enabled.LevelRewards(server = server):
+    #                         await src.ui_components.disabled_feature_override(self, interaction)
     #                         return
                         
     #                     self.embed = nextcord.Embed(title = "Dashboard - Leveling - Level Rewards", 
@@ -1433,7 +1432,7 @@ class Dashboard(nextcord.ui.View):
     #                             embed = nextcord.Embed(title = "Dashboard - Leveling - Level Rewards - Add",
     #                                                    description = "Select a role to be rewarded.\n\n**Note**\nThe selected role will be revoked from members below the specified level requirement (to be set later).",
     #                                                    color = nextcord.Color.blue())
-    #                             await ui_components.SelectView(embed, selectOptions, self.selectViewCallback, continueButtonLabel = "Next", placeholder = "Choose").setup(interaction)            
+    #                             await src.ui_components.SelectView(embed, selectOptions, self.selectViewCallback, continueButtonLabel = "Next", placeholder = "Choose").setup(interaction)            
                             
     #                     async def selectViewCallback(self, interaction: Interaction, selection):
     #                         if selection == None: 
@@ -1515,7 +1514,7 @@ class Dashboard(nextcord.ui.View):
     #                             embed = nextcord.Embed(title = "Dashboard - Leveling - Level Rewards - Delete",
     #                                                    description = "Select a level reward to delete. This does not delete the role.",
     #                                                    color = nextcord.Color.blue())
-    #                             await ui_components.SelectView(embed, selectOptions, self.selectViewCallback, continueButtonLabel = "Delete", placeholder = "Choose").setup(interaction)
+    #                             await src.ui_components.SelectView(embed, selectOptions, self.selectViewCallback, continueButtonLabel = "Delete", placeholder = "Choose").setup(interaction)
                    
     #                     async def selectViewCallback(self, interaction: Interaction, selection):
     #                         if selection == None:
@@ -1613,7 +1612,7 @@ class Dashboard(nextcord.ui.View):
     #                     selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.leveling_channel != None and server.leveling_channel != False and server.leveling_channel.id == channel.id)))
                         
     #                 embed = nextcord.Embed(title = "Dashboard - Leveling - Notifications Channel", description = "Select a channel to notify about level updates.", color = nextcord.Color.blue())
-    #                 await ui_components.SelectView(embed, selectOptions, self.selectViewCallback).setup(interaction)
+    #                 await src.ui_components.SelectView(embed, selectOptions, self.selectViewCallback).setup(interaction)
 
     #             async def selectViewCallback(self, interaction: Interaction, selection):
     #                 if selection == None:
@@ -1732,8 +1731,8 @@ class Dashboard(nextcord.ui.View):
     #                             return
                             
     #                         embed = nextcord.Embed(title = "Dashboard - Leveling - Exempt Channels - Add", description = "Choose a channel to make exempt (messages won't grant points in this channel)", color = nextcord.Color.blue())
-    #                         ui_components.selectView = ui_components.SelectView(embed, options, self.selectCallback, placeholder = "Choose a Channel", continueButtonLabel = "Add Channel")
-    #                         await ui_components.selectView.setup(interaction)
+    #                         src.ui_components.selectView = src.ui_components.SelectView(embed, options, self.selectCallback, placeholder = "Choose a Channel", continueButtonLabel = "Add Channel")
+    #                         await src.ui_components.selectView.setup(interaction)
                
     #                     async def selectCallback(self, interaction: Interaction, choice):
     #                         if choice != None:
@@ -1758,8 +1757,8 @@ class Dashboard(nextcord.ui.View):
     #                             options.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = channel_category))
                             
     #                         embed = nextcord.Embed(title = "Dashboard - Leveling - Exempt Channels - Delete", description = "Choose a Channel to Remove from Exempt Channels", color = nextcord.Color.blue())
-    #                         ui_components.selectView = ui_components.SelectView(embed, options, self.selectCallback, placeholder = "Choose a Channel", continueButtonLabel = "Delete Channel")
-    #                         await ui_components.selectView.setup(interaction)
+    #                         src.ui_components.selectView = src.ui_components.SelectView(embed, options, self.selectCallback, placeholder = "Choose a Channel", continueButtonLabel = "Delete Channel")
+    #                         await src.ui_components.selectView.setup(interaction)
                
     #                     async def selectCallback(self, interaction: Interaction, choice):
     #                         if choice != None:
@@ -1937,8 +1936,8 @@ class Dashboard(nextcord.ui.View):
     #             server = Server_DEP(interaction.guild.id)
                 
     #             # Global Kill
-    #             if not utils.enabled.JoinLeaveMessages(server = server):
-    #                 await ui_components.disabled_feature_override(self, interaction)
+    #             if not src.utils.enabled.JoinLeaveMessages(server = server):
+    #                 await src.ui_components.disabled_feature_override(self, interaction)
     #                 return
                 
     #             if server.join_message != None and server.join_channel != False: join_message = f"```{server.join_message}```"
@@ -2014,9 +2013,9 @@ class Dashboard(nextcord.ui.View):
     #                     selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.join_channel != None and server.join_channel != False and server.join_channel.id == channel.id)))
                     
     #                 embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Messages Channel", description = "Select a channel to send join messages", color = nextcord.Color.blue())
-    #                 await ui_components.SelectView(embed, selectOptions, self.ui_components.SelectViewReturn, continueButtonLabel = "Confirm").setup(interaction)
+    #                 await src.ui_components.SelectView(embed, selectOptions, self.src.ui_components.SelectViewReturn, continueButtonLabel = "Confirm").setup(interaction)
                       
-    #             async def ui_components.SelectViewReturn(self, interaction: Interaction, selection):
+    #             async def src.ui_components.SelectViewReturn(self, interaction: Interaction, selection):
     #                 if selection == None:
     #                     await self.outer.setup(interaction)
     #                     return
@@ -2072,9 +2071,9 @@ class Dashboard(nextcord.ui.View):
     #                     selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.leave_channel != None and server.leave_channel != False and server.leave_channel.id == channel.id)))
                     
     #                 embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Leave Messages Channel", description = "Select a channel to send leave messages", color = nextcord.Color.blue())
-    #                 await ui_components.SelectView(embed, selectOptions, self.ui_components.SelectViewReturn, continueButtonLabel = "Confirm").setup(interaction)
+    #                 await src.ui_components.SelectView(embed, selectOptions, self.src.ui_components.SelectViewReturn, continueButtonLabel = "Confirm").setup(interaction)
                       
-    #             async def ui_components.SelectViewReturn(self, interaction: Interaction, selection):
+    #             async def src.ui_components.SelectViewReturn(self, interaction: Interaction, selection):
     #                 if selection == None:
     #                     await self.outer.setup(interaction)
     #                     return
@@ -2184,8 +2183,8 @@ class Dashboard(nextcord.ui.View):
                 
     #             server = Server_DEP(interaction.guild.id)
                 
-    #             if not utils.enabled.Birthdays(server = server):
-    #                 await ui_components.disabled_feature_override(self, interaction)
+    #             if not src.utils.enabled.Birthdays(server = server):
+    #                 await src.ui_components.disabled_feature_override(self, interaction)
     #                 return
                 
     #             birthdays = []
@@ -2219,7 +2218,7 @@ class Dashboard(nextcord.ui.View):
                 
     #             For more information, use: {birthdaysHelp.get_mention()}
     #             """
-    #             description = utils.standardize_str_indention(description)
+    #             description = src.utils.standardize_str_indention(description)
                 
     #             self.embed = nextcord.Embed(title = "Dashboard - Birthdays", description = description, color = nextcord.Color.blue())
                 
@@ -2250,9 +2249,9 @@ class Dashboard(nextcord.ui.View):
     #                     await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Members", description = "Every member in your server already has a birthday! Go invite someone!", color = nextcord.Color.red()), ephemeral = True)
     #                     return
                     
-    #                 await ui_components.SelectView(self.outer.embed, memberSelectOptions, self.ui_components.SelectViewReturn, placeholder = "Choose a Member", continueButtonLabel = "Next").setup(interaction)
+    #                 await src.ui_components.SelectView(self.outer.embed, memberSelectOptions, self.src.ui_components.SelectViewReturn, placeholder = "Choose a Member", continueButtonLabel = "Next").setup(interaction)
                     
-    #             async def ui_components.SelectViewReturn(self, interaction: Interaction, selection):
+    #             async def src.ui_components.SelectViewReturn(self, interaction: Interaction, selection):
     #                 if selection == None:
     #                     await self.outer.setup(interaction)
     #                     return
@@ -2303,9 +2302,9 @@ class Dashboard(nextcord.ui.View):
     #                     await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Members", description = "No members in your server have birthdays. Add some!", color = nextcord.Color.red()), ephemeral = True)
     #                     return
                     
-    #                 await ui_components.SelectView(self.outer.embed, memberSelectOptions, self.ui_components.SelectViewReturn, placeholder = "Choose a Member", continueButtonLabel = "Next").setup(interaction)
+    #                 await src.ui_components.SelectView(self.outer.embed, memberSelectOptions, self.src.ui_components.SelectViewReturn, placeholder = "Choose a Member", continueButtonLabel = "Next").setup(interaction)
                     
-    #             async def ui_components.SelectViewReturn(self, interaction: Interaction, selection):
+    #             async def src.ui_components.SelectViewReturn(self, interaction: Interaction, selection):
     #                 if selection == None:
     #                     await self.outer.setup(interaction)
     #                     return
@@ -2361,9 +2360,9 @@ class Dashboard(nextcord.ui.View):
     #                     await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Members", description = "No members in your server have birthdays. Add some!", color = nextcord.Color.red()), ephemeral = True)
     #                     return
                     
-    #                 await ui_components.SelectView(self.outer.embed, memberSelectOptions, self.ui_components.SelectViewReturn, placeholder = "Choose a Member", continueButtonLabel = "Delete").setup(interaction)
+    #                 await src.ui_components.SelectView(self.outer.embed, memberSelectOptions, self.src.ui_components.SelectViewReturn, placeholder = "Choose a Member", continueButtonLabel = "Delete").setup(interaction)
                     
-    #             async def ui_components.SelectViewReturn(self, interaction: Interaction, selection):
+    #             async def src.ui_components.SelectViewReturn(self, interaction: Interaction, selection):
     #                 if selection == None:
     #                     await self.outer.setup(interaction)
     #                     return
@@ -2423,9 +2422,9 @@ class Dashboard(nextcord.ui.View):
     #                     selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.birthday_channel != None and server.birthday_channel.id == channel.id)))
                     
     #                 embed = nextcord.Embed(title = "Dashboard - Birthdays - Notification Channel", description = "Select a channel to send birthday messages.", color = nextcord.Color.blue())
-    #                 await ui_components.SelectView(embed, selectOptions, self.ui_components.SelectViewReturn, continueButtonLabel = "Confirm").setup(interaction)
+    #                 await src.ui_components.SelectView(embed, selectOptions, self.src.ui_components.SelectViewReturn, continueButtonLabel = "Confirm").setup(interaction)
                       
-    #             async def ui_components.SelectViewReturn(self, interaction: Interaction, selection):
+    #             async def src.ui_components.SelectViewReturn(self, interaction: Interaction, selection):
     #                 if selection == None:
     #                     await self.outer.setup(interaction)
     #                     return
@@ -2470,9 +2469,9 @@ class Dashboard(nextcord.ui.View):
                 
     #             server = Server_DEP(interaction.guild.id)
                 
-    #             if not utils.enabled.DefaultRoles(server = server):
+    #             if not src.utils.enabled.DefaultRoles(server = server):
     #                 self.add_item(self.cancelBtn)
-    #                 await ui_components.disabled_feature_override(self, interaction)
+    #                 await src.ui_components.disabled_feature_override(self, interaction)
     #                 return
                 
     #             selectOptions = []
@@ -2570,8 +2569,8 @@ class Dashboard(nextcord.ui.View):
     #         async def setup(self, interaction: Interaction):
     #             if self.onboarding_modifier: self.onboarding_modifier(self)
                 
-    #             if not utils.enabled.JoinToCreateVCs(guild_id = interaction.guild.id):
-    #                 await ui_components.disabled_feature_override(self, interaction)
+    #             if not src.utils.enabled.JoinToCreateVCs(guild_id = interaction.guild.id):
+    #                 await src.ui_components.disabled_feature_override(self, interaction)
     #                 return
                 
     #             if self.onboarding_embed: embeds = [self.onboarding_embed, self.getMessageEmbed(interaction.guild)]
@@ -2599,7 +2598,7 @@ class Dashboard(nextcord.ui.View):
     #                     • Manage Channel
     #                     • Connect
     #                     • Move Members"""
-    #                     dontSeeYourChannelMessage = utils.standardize_str_indention(dontSeeYourChannelMessage)
+    #                     dontSeeYourChannelMessage = src.utils.standardize_str_indention(dontSeeYourChannelMessage)
     #                     self.embed.description += dontSeeYourChannelMessage
                         
     #                     #get the vcs
@@ -2665,10 +2664,10 @@ class Dashboard(nextcord.ui.View):
     #                         • Connect"""
                         
     #                         # On Mobile, extra spaces cause problems. We'll get rid of them here:
-    #                         description = utils.standardize_str_indention(description)
+    #                         description = src.utils.standardize_str_indention(description)
                             
     #                         embed = nextcord.Embed(title = "Dashboard - Join-To-Create-VCs - Add Channel", description = description, color = nextcord.Color.blue())
-    #                         view = ui_components.SelectView(embed,
+    #                         view = src.ui_components.SelectView(embed,
     #                                           options = selectOptions, 
     #                                           returnCommand = self.selectCallback, 
     #                                           continueButtonLabel = "Add", 
@@ -2707,10 +2706,10 @@ class Dashboard(nextcord.ui.View):
     #                         description = """Select a Join-To-Create Voice Channel to no longer be a Join-To-Create Voice Channel."""
                         
     #                         # On Mobile, extra spaces cause problems. We'll get rid of them here:
-    #                         description = utils.standardize_str_indention(description)
+    #                         description = src.utils.standardize_str_indention(description)
                             
     #                         embed = nextcord.Embed(title = "Dashboard - Join-To-Create-VCs - Delete Channel", description = description, color = nextcord.Color.blue())
-    #                         view = ui_components.SelectView(embed,
+    #                         view = src.ui_components.SelectView(embed,
     #                                           options = selectOptions, 
     #                                           returnCommand = self.selectCallback, 
     #                                           continueButtonLabel = "Delete", 
@@ -2768,8 +2767,8 @@ class Dashboard(nextcord.ui.View):
     #             if interaction.guild.me.guild_permissions.ban_members:
     #                 server = Server_DEP(interaction.guild.id)
                     
-    #                 if not utils.enabled.AutoBans(server = server):
-    #                     await ui_components.disabled_feature_override(self, interaction)
+    #                 if not src.utils.enabled.AutoBans(server = server):
+    #                     await src.ui_components.disabled_feature_override(self, interaction)
     #                     return
                     
     #                 autoBans = []
@@ -2803,7 +2802,7 @@ class Dashboard(nextcord.ui.View):
     #                 For more information, use: {autoBansHelp.get_mention()}"""
                     
     #                 # On Mobile, extra spaces cause problems. We'll get rid of them here:
-    #                 description = utils.standardize_str_indention(description)
+    #                 description = src.utils.standardize_str_indention(description)
                             
 
     #             else:
@@ -2858,7 +2857,7 @@ class Dashboard(nextcord.ui.View):
     #                     """
                         
     #                     # On Mobile, extra spaces cause problems. We'll get rid of them here:
-    #                     description = utils.standardize_str_indention(description)
+    #                     description = src.utils.standardize_str_indention(description)
 
                         
     #                     embed = nextcord.Embed(title = "Dashboard - Auto-Bans - Add", description = description, color = nextcord.Color.blue())
@@ -2936,7 +2935,7 @@ class Dashboard(nextcord.ui.View):
     #                     autoBans.append(nextcord.SelectOption(label = label, description = f"ID: {autoBan.member_id}", value = autoBan.member_id))
                     
     #                 embed = nextcord.Embed(title = "Dashboard - Auto-Bans - Revoke", description = "To revoke an auto-ban, select the member, and click \"Revoke Auto-Ban\". They will then be able to join this server without being auto-banned.", color = nextcord.Color.blue())
-    #                 await ui_components.SelectView(embed = embed, options = autoBans, returnCommand = self.selectViewCallback, placeholder = "Select a Member", continueButtonLabel = "Revoke Auto-Ban").setup(interaction)
+    #                 await src.ui_components.SelectView(embed = embed, options = autoBans, returnCommand = self.selectViewCallback, placeholder = "Select a Member", continueButtonLabel = "Revoke Auto-Ban").setup(interaction)
             
     #             async def selectViewCallback(self, interaction: Interaction, selection):
     #                 if selection != None:
@@ -2978,8 +2977,8 @@ class Dashboard(nextcord.ui.View):
     #         async def setup(self, interaction: Interaction):
     #             server = Server_DEP(interaction.guild.id)
                 
-    #             if not utils.enabled.ActiveMessages(server = server):
-    #                 await ui_components.disabled_feature_override(self, interaction)
+    #             if not src.utils.enabled.ActiveMessages(server = server):
+    #                 await src.ui_components.disabled_feature_override(self, interaction)
     #                 return
                 
     #             description = f"""InfiniBot caches every vote, reaction role, and embedded message posted on this server (using InfiniBot), enabling the ability to edit these messages. However, there is a maximum limit for some messages (indicated below). Please refer to the list below to manage your active messages.
@@ -2990,7 +2989,7 @@ class Dashboard(nextcord.ui.View):
     #             {self.activeMessageStats(server, "Role Message")}"""
                 
     #             # On Mobile, extra spaces cause problems. We'll get rid of them here:
-    #             description = utils.standardize_str_indention(description)
+    #             description = src.utils.standardize_str_indention(description)
                 
     #             embed = nextcord.Embed(title = "Dashboard - Active Messages", description = description, color = nextcord.Color.blue())
     #             await interaction.response.edit_message(embed = embed, view = self)
@@ -3140,7 +3139,7 @@ class Dashboard(nextcord.ui.View):
     #             """
                 
     #             # On Mobile, extra spaces cause problems. We'll get rid of them here:
-    #             settings_value = utils.standardize_str_indention(settings_value)
+    #             settings_value = src.utils.standardize_str_indention(settings_value)
                 
     #             embed = nextcord.Embed(title = "Dashboard - Extra Features", description = f"Choose a feature to enable / disable\n{settings_value}", color = nextcord.Color.blue())
     #             await interaction.response.edit_message(embed = embed, view = self)
@@ -3214,6 +3213,6 @@ class Dashboard(nextcord.ui.View):
     #         await self.ExtraFeaturesButton(self.outer, interaction.guild.id).setup(interaction)       
 
 async def run_dashboard_command(interaction: Interaction):
-    if await utils.user_has_config_permissions(interaction):
+    if await src.utils.user_has_config_permissions(interaction):
         view = Dashboard(interaction)
         await view.setup(interaction)

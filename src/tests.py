@@ -7,11 +7,11 @@ import os
 from custom_types import UNSET_VALUE
 from log_manager import setup_logging, change_logging_level
 
-from database import Database
-from server import Server
-from file_manager import JSONFile
-from global_settings import get_global_kill_status, get_persistent_data
-from utils import feature_is_active
+from src.database import Database
+from src.server import Server
+from src.file_manager import JSONFile
+from src.global_settings import get_global_kill_status, get_persistent_data
+from src.utils import feature_is_active
 
 import server
 
@@ -829,11 +829,13 @@ class TestUtils(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    raise Exception("This file is not intended to be run directly. Please run the main.py file instead.")
+
+def run():
     setup_logging()
     change_logging_level("DEBUG")
 
     hijack_database_url()
 
     logging.info("######################## Running Tests ########################")
-    print("Running tests...")
     unittest.main()

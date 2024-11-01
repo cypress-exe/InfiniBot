@@ -1,0 +1,14 @@
+{
+  "name": "infinibot-container",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",  // Use Python 3.11 explicitly
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "python.pythonPath": "/usr/local/bin/python"  // Set the Python interpreter path
+      }
+    }
+  },
+  "postCreateCommand": "pip install --no-cache-dir -r requirements.txt",  // Install dependencies after creating the container
+  "remoteUser": "vscode"  // Use the vscode user for consistent permissions
+}

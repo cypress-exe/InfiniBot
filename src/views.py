@@ -1,6 +1,6 @@
 import nextcord
 
-from global_settings import get_settings
+from src.global_settings import get_settings
 
 class SupportView(nextcord.ui.View):
     def __init__(self):

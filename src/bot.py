@@ -2,11 +2,13 @@ from nextcord import AuditLogAction, Interaction, SlashOption
 from nextcord.ext import commands
 import nextcord
 import logging
+import sys
 
-from file_manager import JSONFile
-import utils
+from src.file_manager import JSONFile
+from src.log_manager import setup_logging, change_logging_level
+import src.utils
 
-from dashboard import run_dashboard_command
+from src.dashboard import run_dashboard_command
 
 
 # INIT BOT ==============================================================================================================================================================
@@ -44,4 +46,4 @@ def run():
 
 
 if __name__ == "__main__":
-  run()
+  raise Exception("This file is not intended to be run directly. Please run the main.py file instead.")

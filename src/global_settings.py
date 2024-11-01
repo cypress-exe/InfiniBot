@@ -1,4 +1,4 @@
-from file_manager import JSONFile
+from src.file_manager import JSONFile
 import logging
 
 

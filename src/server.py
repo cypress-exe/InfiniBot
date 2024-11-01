@@ -2,9 +2,9 @@ import json
 
 from nextcord import Embed as NextcordEmbed
 
-from database import Database
-from custom_types import UNSET_VALUE
-from utils import format_var_to_pythonic_type
+from src.database import Database
+from src.custom_types import UNSET_VALUE
+from src.utils import format_var_to_pythonic_type
 
 # Database Paths
 database_url = "sqlite:///./generated/files/database.db"

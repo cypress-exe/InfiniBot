@@ -1,8 +1,9 @@
 from nextcord import Interaction
 import nextcord
 import logging
+import datetime
 
-from global_settings import get_global_kill_status, feature_dependencies
+from src.global_settings import get_global_kill_status, feature_dependencies
 
 
 def format_var_to_pythonic_type(_type:str, value):
@@ -234,9 +235,129 @@ async def user_has_config_permissions(interaction: Interaction, notify = True):
     
     if interaction.guild.owner == interaction.user: return True
     
-    infinibotMod_role = nextcord.utils.get(interaction.guild.roles, name='Infinibot Mod')
+    infinibotMod_role = nextcord.src.utils.get(interaction.guild.roles, name='Infinibot Mod')
     if infinibotMod_role in interaction.user.roles:
         return True
 
     if notify: await interaction.response.send_message(embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.\n\nType `/help infinibot_mod` for more information.", color = nextcord.Color.red()), ephemeral = True)
     return False
+
+async def check_text_channel_permissions(channel: nextcord.TextChannel, autoWarn: bool, customChannelName: str = None):
+    """|coro|
+    
+    Ensure that InfiniBot has permissions to send messages and embeds in a channel.
+
+    ------
+    Parameters
+    ------
+    channel: `nextcord.TextChannel`
+        The channel to check.
+    autoWarn: `bool`
+        Whether or not to warn the guild's owner if InfiniBot does NOT have the required permissions.
+        
+    Optional Parameters
+    ------
+    customChannelName: optional [`str`]
+        If warning the owner, customChannelName specifies a specific name for the channel instead of the default channel name. Defaults to None.
+
+    Returns
+    ------
+    `bool`
+        Whether or not InfiniBot has permissions to send messages and embeds in the channel.
+    """    
+    
+    if channel == None:
+        return False
+    
+    if channel.guild == None:
+        return False
+    
+    if channel.guild.me == None:
+        return False
+    
+    channelName = (customChannelName if customChannelName else channel.name)
+    
+    if channel.permissions_for(channel.guild.me).view_channel:
+        if channel.permissions_for(channel.guild.me).send_messages:
+            if channel.permissions_for(channel.guild.me).embed_links:
+                return True
+            elif autoWarn:
+                await send_error_message_to_server_owner(channel.guild, "Embed Links", channel = channelName, administrator = False)
+        elif autoWarn:
+            await send_error_message_to_server_owner(channel.guild, "Send Messages and/or Embed Links", channel = channelName, administrator = False)
+    elif autoWarn:
+        await send_error_message_to_server_owner(channel.guild, "View Channels", channel = channelName, administrator = False)
+
+    return False
+
+async def send_error_message_to_server_owner(guild: nextcord.Guild, permission, message = None, administrator = True, channel = None, guild_permission = False):
+    """|coro|
+    
+    Sends an error message to the owner of the server via dm
+
+    ------
+    Parameters
+    ------
+    guild: `nextcord.Guild` 
+        The guild in which the error occured.
+    permission: `str`
+        The permission needed.
+
+    Optional Parameters
+    ------
+    message: `str`
+        A custom message to send (the opt out info is appended to this). Defaults to None.
+    administrator: `bool`
+        Whether to include info about giving InfiniBot adminstrator. Defaults to True.
+    channel: `str`
+        The channel where the permission is needed. Defaults to None (meaning the message says "one or more channels").
+    guild_permission: `bool`
+        Whether the permission is a guild permission. If so, channel (↑) is overwritten. Defaults to False.
+
+    Returns
+    ------
+        `None`
+    """
+    
+    if not guild:
+        logging.warning("No guild found for send_error_message_to_server_owner")
+        return
+    
+    logging.debug(f"send_error_message_to_server_owner({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
+    member = guild.owner
+    
+    # if member == None: return
+    # member_settings = Member(member.id) # TODO get this working when members are working
+    # if not member_settings.dms_enabled: return
+    
+    if channel != None:
+        channels = channel
+    else:
+        channels = "one or more channels"
+        
+    if guild_permission:
+        inChannels = ""
+    else:
+        inChannels = f" in {channels}"
+        
+    
+    
+    if message == None:
+        if permission != None: 
+            embed = nextcord.Embed(title = f"Missing Permissions in in \"{guild.name}\" Server", description = f"InfiniBot is missing the **{permission}** permission{inChannels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.", color = nextcord.Color.red())
+        else:
+            embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"InfiniBot is missing a permission{inChannels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.", color = nextcord.Color.red())
+    else:
+        embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"{message}", color = nextcord.Color.red())
+
+    embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
+    embed.timestamp = datetime.datetime.now()
+
+    try:
+        dm = await member.create_dm()
+        if administrator:
+            await dm.send(embed = embed) # TODO add ErrorWhyAdminPrivilegesButton()
+        else:
+            await dm.send(embed = embed)
+    except:
+        return

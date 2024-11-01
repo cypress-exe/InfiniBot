@@ -1,9 +1,9 @@
 from nextcord import Interaction
 import nextcord
 
-import utils
-from global_settings import get_settings
-import views
+import src.utils
+from src.global_settings import get_settings
+import src.views
 
 # NEEDS TO BE FIXED
 
@@ -20,10 +20,10 @@ import views
 #   """
   
 #   # On Mobile, extra spaces cause problems. We'll get rid of them here:
-#   description = utils.standardize_str_indention(description)
+#   description = src.utils.standardize_str_indention(description)
   
 #   embed = nextcord.Embed(title = "Help", description = description, color = nextcord.Color.greyple())
-#   await interaction.response.send_message(embed = embed, ephemeral=True, view = views.SupportAndInviteView())
+#   await interaction.response.send_message(embed = embed, ephemeral=True, view = src.views.SupportAndInviteView())
 
 
 # @help.subcommand(name = "moderation_profanity", description = "Help with the Admin Channel, Strikes, Infinibot Mod, Flagged/Profane Words, and more.")
@@ -68,7 +68,7 @@ import views
 #   """
   
 #   # On Mobile, extra spaces cause problems. We'll get rid of them here:
-#   description = utils.standardize_str_indention(description)
+#   description = src.utils.standardize_str_indention(description)
   
 #   embed = nextcord.Embed(title = "Fine-Tune Profanity Moderation for Your Server", description = description, color = nextcord.Color.greyple())
-#   await interaction.response.send_message(embed = embed, ephemeral = True, view = views.SupportAndInviteView())
+#   await interaction.response.send_message(embed = embed, ephemeral = True, view = src.views.SupportAndInviteView())

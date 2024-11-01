@@ -6,8 +6,8 @@ from sqlalchemy.orm import sessionmaker
 import re
 import os
 
-from custom_types import UNSET_VALUE
-from utils import format_var_to_pythonic_type
+from src.custom_types import UNSET_VALUE
+from src.utils import format_var_to_pythonic_type
 
 class Database:
     """
@@ -83,6 +83,8 @@ class Database:
         Args:
             build_file_path (str): Path to the build file.
         """
+        build_file_path = os.path.abspath(build_file_path)
+        print(build_file_path)
         if not os.path.exists(build_file_path):
             raise FileNotFoundError("Database build file not found.")
 
