@@ -15,4 +15,4 @@ COPY . /app
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Start the bot
-CMD ["python", "bot.py"]
+CMD ["python", "main.py"]

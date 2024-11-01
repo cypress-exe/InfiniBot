@@ -6,11 +6,8 @@ services:
     container_name: infinibot_container
     restart: always  # Automatically restart if the bot crashes
     volumes:
-      - ./data:/app/generated  # Persistent data storage (for logs or other files)
-    environment:
-      - DISCORD_TOKEN=${DISCORD_TOKEN}  # Pass environment variables securely
-      - TOPGG_TOKEN=${TOPGG_TOKEN}
-    command: python main.py  # Run your main bot script
+      - ./data:/app/generated  # Persistent data storage
+    command: python main.py  # Run main bot script
 
 volumes:
   data:

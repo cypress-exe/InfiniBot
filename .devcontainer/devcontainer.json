@@ -9,6 +9,5 @@
       }
     }
   },
-  "postCreateCommand": "pip install --no-cache-dir -r requirements.txt",  // Install dependencies after creating the container
   "remoteUser": "vscode"  // Use the vscode user for consistent permissions
 }

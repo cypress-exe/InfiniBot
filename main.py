@@ -5,6 +5,7 @@ import shutil
 import sys
 
 from src.log_manager import setup_logging, change_logging_level
+from src.file_manager import JSONFile
 import src.bot as bot
 
 # Functions
@@ -18,6 +19,28 @@ def create_environment():
     if not os.path.exists(destination_path):
       shutil.copy(source_path, destination_path)
       print("Copied file: " + source_path + " to " + destination_path)
+
+  def get_token():
+    # Check token
+    print("Checking token...")
+    if not os.path.exists("generated/configure/TOKEN.json"):
+      print("Token not found in generated/configure/TOKEN.txt. Please configure your token.")
+      print("Please enter discord token (SKIP to skip token configuration):")
+      discord_token = input()
+
+      if discord_token.lower() == "skip":
+        print("Skipping token configuration.")
+        return
+
+      print("Please enter topgg token (leave blank to skip):")
+      topgg_token = input()
+      if topgg_token == "": topgg_token = "NONE"
+      
+      JSONFile("TOKEN").add_variable("discord_auth_token", discord_token)
+      JSONFile("TOKEN").add_variable("topgg_auth_token", topgg_token)
+
+    else:
+      print("Token found! Continuing...")
   
   create_folder("generated")
   create_folder("generated/files")
@@ -26,8 +49,10 @@ def create_environment():
     
   copy_file("defaults/default_profane_words.txt", "generated/configure/default_profane_words.txt")
   copy_file("defaults/special_channel_ids.json", "generated/configure/special_channel_ids.json")
-  
-  print("To modify defaults, edit the files in generated/configure")
+
+  get_token()
+
+  print("To modify defaults, edit settings file in generated/configure")
   
 def configure_logging():
   setup_logging()
