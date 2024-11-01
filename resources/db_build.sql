@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS profanity_moderation_profile( -- #optimize
     max_strikes INT DEFAULT 3,
     strike_expire_days INT DEFAULT 7,
     timeout_seconds INT DEFAULT 3600,
-    custom_words TEXT DEFAULT '[]'
+    filtered_words TEXT DEFAULT '[]'
 );
 
 -- Create spam_moderation_profile Table (server table)

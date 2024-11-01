@@ -518,7 +518,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "profanity_moderation_profile", "max_strikes", 3, [5, 0])
         self.run_test_on_property(server, "profanity_moderation_profile", "strike_expire_days", 7, [10, 0])
         self.run_test_on_property(server, "profanity_moderation_profile", "timeout_seconds", 3600, [7200, 0])
-        self.run_test_on_property(server, "profanity_moderation_profile", "custom_words", [], [["hello", "world"], ["apple", "banana", "orange", "pineapple", "grape"], []])
+        self.run_test_on_property(server, "profanity_moderation_profile", "filtered_words", [], [["hello", "world"], ["apple", "banana", "orange", "pineapple", "grape"], []])
 
         server.remove_all_data()
 
@@ -825,6 +825,7 @@ class TestUtils(unittest.TestCase):
         logging.info("Finished testing feature_is_active...")
 
 if __name__ == "__main__":
+    print("RUNNING ---------------------------------------------------------------------------------------------------------")
     setup_logging(logging.DEBUG)
 
     hijack_database_url()

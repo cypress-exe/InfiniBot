@@ -1,7 +1,10 @@
 {
   "name": "infinibot-container",
-  "image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",  // Use Python 3.11 explicitly
-  "workspaceFolder": "/workspace",
+  "build": {
+    "context": ".",
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceFolder": "/app",
   "customizations": {
     "vscode": {
       "settings": {

@@ -1,18 +1,15 @@
-# Dockerfile
 # Use an official lightweight Python image suitable for Raspberry Pi (arm architecture)
-FROM arm64v8/python:3.11-slim
+FROM mcr.microsoft.com/devcontainers/python:bullseye
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Optionally upgrade pip
+# Copy the rest of the bot code into the container
+COPY . .
+
 RUN pip install --upgrade pip
 
-# Copy the bot code into the container
-COPY . /app
-
 # Install the required Python packages (from requirements.txt)
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r ./requirements.txt
 
-# Start the bot
-CMD ["python", "main.py"]
+ENTRYPOINT ["./entrypoint.sh"]

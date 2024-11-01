@@ -2,12 +2,8 @@ from nextcord import AuditLogAction, Interaction, SlashOption
 from nextcord.ext import commands
 import nextcord
 import logging
-import sys
-import os
 
 from src.file_manager import JSONFile
-from src.log_manager import setup_logging, change_logging_level
-import src.utils
 
 from src.dashboard import run_dashboard_command
 

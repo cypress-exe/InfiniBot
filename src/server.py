@@ -328,7 +328,7 @@ class Server_TableManager:
         def setter_modifier(value):
             if isinstance(value, list) or value is None: 
                 if not accept_duplicate_values:
-                    if len(set(value)) != len(value): raise TypeError('This variable has been modified to not accept duplicate values.')
+                    if len(set(value)) != len(value): raise ValueError('This variable has been modified to not accept duplicate values.')
                 return json.dumps(value)
             raise TypeError('Must be of type List or None')
 
@@ -832,8 +832,8 @@ class Server:
         @Server_TableManager.integer_property("timeout_seconds")
         def timeout_seconds(self): pass
 
-        @Server_TableManager.list_property("custom_words")
-        def custom_words(self): pass
+        @Server_TableManager.list_property("filtered_words", accept_duplicate_values = False)
+        def filtered_words(self): pass
 
     @property
     def spam_moderation_profile(self):
