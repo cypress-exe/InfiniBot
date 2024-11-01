@@ -18,7 +18,7 @@ def create_logging_folder():
     return test_folder_path
 
 
-def setup_logging():
+def setup_logging(level = logging.INFO):
     test_folder_path = create_logging_folder()
     test_folder_path = os.path.abspath(test_folder_path)
 
@@ -39,7 +39,7 @@ def setup_logging():
     logging.root.addHandler(console_handler)
 
     # Set the logging level
-    logging.root.setLevel(logging.INFO)
+    logging.root.setLevel(level)
 
     logging.info("Created logging folder and logging file")
     print(f"Created folder: {test_folder_path}")

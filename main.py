@@ -116,10 +116,5 @@ if __name__ == "__main__":
   check_internet_connection()
   print("Connection aquired!")
 
-  if "--test" in sys.argv:
-    print("Running Tests...")
-    import src.tests as tests
-    tests.run()
-  else:
-    print("Starting InfiniBot...")
-    bot.run()
+  print("Starting InfiniBot...")
+  bot.run()

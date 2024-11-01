@@ -154,7 +154,7 @@ def standardize_str_indention(string: str):
     return('\n'.join(lines))
 
 def feature_is_active(**kwargs):
-    from server import Server
+    from src.server import Server
 
     server = kwargs.get("server")
     server_id = kwargs.get("server_id")
