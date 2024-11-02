@@ -168,10 +168,13 @@ class Server_TableManager:
         data_structure = kwargs["data_structure"] if "data_structure" in kwargs else None
 
         def setter_modifier(value):
+            if value == None: return None
             if isinstance(value, str):
                 if value.isdigit(): value = int(value)
             if isinstance(value, int):
                 return value
+            if isinstance(value, float):
+                return int(value)
             if isinstance(value, UNSET_VALUE): return value
             if isinstance(value, data_structure): return value
             raise TypeError('Must be of type Int')

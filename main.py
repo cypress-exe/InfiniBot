@@ -6,41 +6,41 @@ import sys
 
 from src.log_manager import setup_logging, change_logging_level
 from src.file_manager import JSONFile
-import src.bot as bot
+import logging
 
 # Functions
 def create_environment():
   def create_folder(folder_path):
-    if not os.path.exists(folder_path):
-      os.makedirs(folder_path)
-      print("Created folder: " + folder_path)
+    os.makedirs(folder_path, exist_ok=True)
+    logging.info("Created folder: " + folder_path)
   
   def copy_file(source_path, destination_path):
     if not os.path.exists(destination_path):
       shutil.copy(source_path, destination_path)
-      print("Copied file: " + source_path + " to " + destination_path)
+      logging.info("Copied file: " + source_path + " to " + destination_path)
 
   def get_token():
     # Check token
-    print("Checking token...")
+    logging.info("Checking token...")
     if not os.path.exists("generated/configure/TOKEN.json"):
-      print("Token not found in generated/configure/TOKEN.txt. Please configure your token.")
-      print("Please enter discord token (SKIP to skip token configuration):")
-      discord_token = input()
-
-      if discord_token.lower() == "skip":
-        print("Skipping token configuration.")
-        return
-
-      print("Please enter topgg token (leave blank to skip):")
-      topgg_token = input()
-      if topgg_token == "": topgg_token = "NONE"
+      print("Token not found in generated/configure/TOKEN.txt. Please configure your token!!!")
       
-      JSONFile("TOKEN").add_variable("discord_auth_token", discord_token)
-      JSONFile("TOKEN").add_variable("topgg_auth_token", topgg_token)
+      JSONFile("TOKEN").add_variable("discord_auth_token", None)
+      JSONFile("TOKEN").add_variable("topgg_auth_token", None)
 
+      print("Exiting...")
+      exit()
     else:
-      print("Token found! Continuing...")
+      if JSONFile("TOKEN")["discord_auth_token"] == None:
+        print("Token not found in generated/configure/TOKEN.json. Please configure your token!!!")
+        
+        JSONFile("TOKEN").add_variable("discord_auth_token", None)
+        JSONFile("TOKEN").add_variable("topgg_auth_token", None)
+
+        print("Exiting...")
+        exit()
+      else:
+        logging.info("Token found! Continuing...")
   
   create_folder("generated")
   create_folder("generated/files")
@@ -52,7 +52,7 @@ def create_environment():
 
   get_token()
 
-  print("To modify defaults, edit settings file in generated/configure")
+  logging.info("To modify defaults, edit settings file in generated/configure")
   
 def configure_logging():
   setup_logging()
@@ -60,27 +60,27 @@ def configure_logging():
   # Change logging level depending on args
   if "--debug" in sys.argv:
     change_logging_level("DEBUG")
-    print(">> Launching in debug mode.")
+    logging.info(">> Launching in debug mode.")
 
   elif "--info" in sys.argv:
     change_logging_level("INFO")
-    print(">> Launching in info mode.")
+    logging.info(">> Launching in info mode.")
 
   elif "--warning" in sys.argv:
     change_logging_level("WARNING")
-    print(">> Launching in warning mode.")
+    logging.info(">> Launching in warning mode.")
 
   elif "--error" in sys.argv:
     change_logging_level("ERROR")
-    print(">> Launching in error mode.")
+    logging.info(">> Launching in error mode.")
 
   elif "--critical" in sys.argv:
     change_logging_level("CRITICAL")
-    print(">> Launching in critical mode.")
+    logging.info(">> Launching in critical mode.")
 
   else:
     change_logging_level("INFO")
-    print(">> Launching in default mode (INFO).")
+    logging.info(">> Launching in default mode (INFO).")
 
 def check_internet_connection():
   def is_connected():
@@ -99,22 +99,23 @@ def check_internet_connection():
     if is_connected():
       break
     else:
-      print("Fatal Error: No Connection. Retrying in 2 seconds...")
+      logging.info("Fatal Error: No Connection. Retrying in 2 seconds...")
       time.sleep(2)
 
 
 if __name__ == "__main__":
-  print("Creating Environment...")
+  logging.info("Creating Environment...")
   create_environment()
-  print("Environment created!")
+  logging.info("Environment created!")
 
-  print("Initializing Logging...")
+  logging.info("Initializing Logging...")
   configure_logging()
-  print("Logging initialized!")
+  logging.info("Logging initialized!")
 
-  print("Checking Internet Connection...")
+  logging.info("Checking Internet Connection...")
   check_internet_connection()
-  print("Connection aquired!")
+  logging.info("Connection aquired!")
 
-  print("Starting InfiniBot...")
+  logging.info("Starting InfiniBot...")
+  import src.bot as bot
   bot.run()

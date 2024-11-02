@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import unittest
 import random
 import uuid
@@ -516,7 +518,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "profanity_moderation_profile", "active", False, [True, False])
         self.run_test_on_property(server, "profanity_moderation_profile", "channel", UNSET_VALUE, [1234567989, None, UNSET_VALUE])
         self.run_test_on_property(server, "profanity_moderation_profile", "max_strikes", 3, [5, 0])
-        self.run_test_on_property(server, "profanity_moderation_profile", "strike_expire_days", 7, [10, 0])
+        self.run_test_on_property(server, "profanity_moderation_profile", "strike_expire_days", 7, [10, 0, None])
         self.run_test_on_property(server, "profanity_moderation_profile", "timeout_seconds", 3600, [7200, 0])
         self.run_test_on_property(server, "profanity_moderation_profile", "filtered_words", [], [["hello", "world"], ["apple", "banana", "orange", "pineapple", "grape"], []])
 

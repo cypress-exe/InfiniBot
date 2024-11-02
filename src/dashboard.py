@@ -5,6 +5,7 @@ import datetime
 import humanfriendly
 import copy
 import logging
+import json
 
 import src.ui_components as ui_components
 import src.utils as utils
@@ -195,7 +196,7 @@ class Dashboard(nextcord.ui.View):
                         **Settings**
                         Maximum Strikes: {server.profanity_moderation_profile.max_strikes}
                         Strike Expire Time: {strike_expire_days}
-                        Timeout Duration: {utils.seconds_to_humanfriendly_time(server.profanity_moderation_profile.timeout_seconds)}
+                        Timeout Duration: {humanfriendly.format_timespan(server.profanity_moderation_profile.timeout_seconds)}
                         Admin Channel: {admin_channel}
                         
                         **Understanding Strikes:**
@@ -334,211 +335,196 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Manage Members", style = nextcord.ButtonStyle.gray, disabled = (max_strikes == 0))
                             self.outer = outer
                             
-                        class ManageMembersView(nextcord.ui.View):#Strikes Window -----------------------------------------------------
+                        class ManageMembersView(nextcord.ui.View):
                             def __init__(self, outer):
                                 super().__init__(timeout=None)
                                 self.outer = outer
-                                
-                                self.edit_strikes_btn = self.EditStrikesButton(self)
-                                self.add_item(self.edit_strikes_btn)
-                                
-                                self.delete_all_strikes_btn = self.DeleteAllStrikesButton(self)
-                                self.add_item(self.delete_all_strikes_btn)
-                                
-                                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
-                                self.back_btn.callback = self.back_btn_callback
-                                self.add_item(self.back_btn)
-                                
-                            async def setup(self, interaction: Interaction):
-                                self.members = self.get_members(interaction, limit = 25)
-                                
-                                members_string = []
-                                for index in self.members:
-                                    members_string.append(index[0])
 
-                                self.embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity - Manage Members", color = nextcord.Color.blue())
-                                self.embed.add_field(name = "Strike - Member", value = "\n".join(members_string), inline = True)
+                                self.add_item(self.EditStrikesButton(self))
+                                self.add_item(self.ResetAllStrikesButton(self))
                                 
-                                await interaction.response.edit_message(embed = self.embed, view = self)
+                                back_btn = nextcord.ui.Button(label="Back", style=nextcord.ButtonStyle.danger, row=1)
+                                back_btn.callback = self.back_btn_callback
+                                self.add_item(back_btn)
                             
-                            def get_members(self, interaction: Interaction, limit: str = None):
-                                """
-                                Fetches members from the server, sorted by strikes.
+                            async def setup(self, interaction: Interaction):
+                                self.members = self.get_members(interaction, limit=25)
                                 
-                                Parameters:
-                                - interaction: The interaction object containing guild information.
-                                - limit: Optional limit on the number of members to retrieve.
+                                members_string = [f"{item[2]} - {item[0]}" for item in self.members]
+                                self.embed = nextcord.Embed(
+                                    title="Dashboard - Moderation - Profanity - Manage Members",
+                                    color=nextcord.Color.blue()
+                                )
+                                self.embed.add_field(name="Strike # - Member", value="\n".join(members_string), inline=True)
                                 
-                                Yields:
-                                - A list containing a formatted string of strikes and member name, and the member ID.
-                                """
+                                await interaction.response.edit_message(embed=self.embed, view=self)
+                            
+                            def get_members(self, interaction: Interaction, limit: int = None):
+                                """Fetches and sorts members by strike count."""
                                 server = Server(interaction.guild_id)
-                                
                                 data = []
                                 for member in interaction.guild.members:
-                                    # Skip the member if it is a bot
-                                    if member.bot:
-                                        continue
+                                    if member.bot: continue # ignore bots
                                     
-                                    # Stop if the limit is reached
-                                    if limit is not None and len(data) >= limit:
-                                        # Sort collected data by strikes and member name, descending
-                                        sorted_members = sorted(data, key=lambda x: (x[0], x[1]), reverse=True)
-                                        for item in sorted_members:
-                                            yield [f"{item[0]} - {item[1]}", item[2]]
-                                        yield [f"{len(interaction.guild.members) - limit} more. Use */get_strikes* to get a specific member's strike(s)", None]
+                                    strikes = 0
+                                    if member.id in server.moderation_strikes:
+                                        strikes = server.moderation_strikes[member.id].strikes
+                                    data.append([member.display_name, member.id, strikes])
+
+                                data = sorted(data, key=lambda x: (-x[2], x[0]))
+
+                                for i, item in enumerate(data):
+                                    if limit and i >= limit:
+                                        yield [f"{len(data) - limit} more. Use */get_strikes* to view specific member strikes", None, None]
                                         return
-                                    
-                                    # Retrieve strike information for each member
-                                    strike = server.getStrike(member.id)
-                                    # Format member name with nickname if available
-                                    member_name = f"{member} ({member.nick})" if member.nick else f"{member}"
-                                    
-                                    data.append([strike.strike, member_name, member.id])
-                                
-                                # Return sorted list of members based on strikes and name
-                                for item in sorted(data, key=lambda x: (x[0], x[1]), reverse=True):
-                                    yield [f"{item[0]} - {item[1]}", item[2]]
-                        
+                                    # EX: [member_name, member_id, strike#]
+                                    yield item
+                            
                             async def back_btn_callback(self, interaction: Interaction):
                                 await self.outer.setup(interaction)
-                                await interaction.edit_original_message(view = self.outer)
-                                
+                                await interaction.edit_original_message(view=self.outer)
+                            
                             class EditStrikesButton(nextcord.ui.Button):
                                 def __init__(self, outer):
-                                    super().__init__(label = "Edit", style = nextcord.ButtonStyle.gray)
-                                    self.outer = outer
-                                    
-                                class EditStrikesView(nextcord.ui.View):#Edit Strikes Window -----------------------------------------------------
-                                    def __init__(self, outer, guild: nextcord.Guild, userSelection):
+                                    super().__init__(label="Edit", style=nextcord.ButtonStyle.gray)
+                                    self.outer = outer                      
+                                
+                                class EditStrikesView(nextcord.ui.View):
+                                    def __init__(self, outer, guild: nextcord.Guild, user_selection):
                                         super().__init__(timeout=None)
                                         self.outer = outer
+
+                                        user_selection = json.loads(user_selection)
+
+                                        self.member_name, self.member_id, self.member_strikes = user_selection
+
+                                        server = Server(guild.id)
                                         
-                                        server = Server_DEP(guild.id)
+                                        strike_levels = [
+                                            nextcord.SelectOption(label=str(level), default=(level==self.member_strikes))
+                                            for level in range(server.profanity_moderation_profile.max_strikes + 1)
+                                        ][::-1] # invert list
                                         
-                                        strikeSelectOptions: list[nextcord.SelectOption] = [nextcord.SelectOption(label = str(number)) for number in range(0, int(server.max_strikes) + 1)]
-                                        strikeSelectOptions.reverse()
-                                        self.strikeSelect = nextcord.ui.Select(options = strikeSelectOptions, placeholder = "Choose a Strike")
-                                        self.add_item(self.strikeSelect)
+                                        self.strike_select = nextcord.ui.Select(options=strike_levels, placeholder="Choose a Strike Level")
+                                        self.strike_select.callback = self.confirm_selection
+                                        self.add_item(self.strike_select)
                                         
-                                        self.cancelBtn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
-                                        self.cancelBtn.callback = self.cancelBtnCallback
-                                        self.add_item(self.cancelBtn)
-                                        
-                                        self.confirmBtn = self.ConfirmButton(self.outer, self, userSelection)
-                                        self.add_item(self.confirmBtn)
-                                        
+                                        cancel_btn = nextcord.ui.Button(label="Cancel", style=nextcord.ButtonStyle.danger)
+                                        cancel_btn.callback = self.cancel
+                                        self.add_item(cancel_btn)
+
                                     async def setup(self, interaction: Interaction):
-                                        Embed = self.outer.embed
-                                        Embed.description = "Select a Strike"
-                                        await interaction.response.edit_message(embed = Embed, view = self)
-                                        
-                                    async def cancelBtnCallback(self, interaction: Interaction):
+                                        embed:nextcord.Embed = self.outer.embed.copy()
+                                        embed.description = f"Select a strike level for {self.member_name}."
+                                        embed._fields.clear() # Not technically supported.
+                                        await interaction.response.edit_message(embed=embed, view=self)
+                                    
+                                    async def cancel(self, interaction: Interaction):
                                         await self.outer.setup(interaction)
+                                    
+                                    async def confirm_selection(self, interaction: Interaction):
+                                        strikes = int(self.strike_select.values[0])
+                                        server = Server(interaction.guild.id)
                                         
-                                    class ConfirmButton(nextcord.ui.Button):
-                                        def __init__(self, outer, parent, userSelection):
-                                            super().__init__(label = "Confirm", style = nextcord.ButtonStyle.blurple)
-                                            self.outer = outer
-                                            self.parent = parent
-                                            self.userSelection = userSelection
-                                            
-                                        async def callback(self, interaction: Interaction):
-                                            member = self.userSelection
-                                            strikes = self.parent.strikeSelect.values
-                                            
-                                            if strikes == []:
-                                                return
-                                            
-                                            strike = int(strikes[0])
-                                            
-                                            server = Server_DEP(interaction.guild.id)
-                                            discordMember = server.getStrike(member)
-                                            discordMember.strike = strike
-                                            await self.outer.setup(interaction)
-                                                            
-                                async def callback(self, interaction: Interaction):# Edit Strikes Callback and First Step ————————————————————————————————————————————————————————————
-                                    #getting people
-                                    memberSelectOptions = []
-                                    for data in self.outer.getMembers(interaction):
-                                        memberSelectOptions.append(nextcord.SelectOption(label = data[0], value = data[1]))
-                                    
-                                    embed: nextcord.Embed = copy.copy(self.outer.embed)
-                                    embed.description = "Select a member"
-                                    await ui_components.SelectView(embed, memberSelectOptions, self.callbackPart1, placeholder = "Choose a Member", continueButtonLabel = "Next", preserveOrder = True).setup(interaction)
-                                    
-                                async def callbackPart1(self, interaction: Interaction, selection):
-                                    if selection == None: #if they canceled
+                                        if self.member_id in server.moderation_strikes:
+                                            if strikes != 0: 
+                                                server.moderation_strikes.edit(self.member_id, strikes=strikes, last_strike=datetime.datetime.now())
+                                            else:
+                                                server.moderation_strikes.delete(self.member_id)
+                                        else:
+                                            if strikes != 0:
+                                                server.moderation_strikes.add(member_id=self.member_id, strikes=strikes, last_strike=datetime.datetime.now())
+                                        
+                                        await self.outer.setup(interaction)
+
+                                async def callback(self, interaction: Interaction):
+                                    member_select_options = [
+                                        nextcord.SelectOption(label=f"{data[2]} - {data[0]}", value=json.dumps(data)) for data in self.outer.get_members(interaction)
+                                    ]
+                                    embed = self.outer.embed.copy()
+                                    embed.description = "Choose a Member:"
+                                    await ui_components.SelectView(
+                                        embed, member_select_options, self.member_select_view_callback, placeholder="Choose a Member", continueButtonLabel="Next", preserveOrder=True
+                                    ).setup(interaction)
+
+                                async def member_select_view_callback(self, interaction: Interaction, selection):
+                                    if not selection: # User clicked "Cancel"
                                         await self.outer.setup(interaction)
                                     else:
                                         await self.EditStrikesView(self.outer, interaction.guild, selection).setup(interaction)
-                                                        
-                            class DeleteAllStrikesButton(nextcord.ui.Button):
+                                        
+                            class ResetAllStrikesButton(nextcord.ui.Button):  
                                 def __init__(self, outer):
-                                    super().__init__(label = "Clear", style = nextcord.ButtonStyle.gray)
+                                    super().__init__(label="Reset All Strikes", style=nextcord.ButtonStyle.gray)
                                     self.outer = outer
-                                    
-                                class DeleteAllStrikesView(nextcord.ui.View):
+
+                                class ResetAllStrikesView(nextcord.ui.View):
                                     def __init__(self, outer):
-                                        super().__init__(timeout = None)
+                                        super().__init__(timeout=None)
                                         self.outer = outer
                                         
-                                        self.noBtn = nextcord.ui.Button(label = "No", style = nextcord.ButtonStyle.danger)
-                                        self.noBtn.callback = self.noBtnCommand
-                                        self.add_item(self.noBtn)
+                                        no_btn = nextcord.ui.Button(label="No", style=nextcord.ButtonStyle.danger)
+                                        no_btn.callback = self.cancel
+                                        self.add_item(no_btn)
                                         
-                                        self.yesBtn = nextcord.ui.Button(label = "Yes", style = nextcord.ButtonStyle.green)
-                                        self.yesBtn.callback = self.yesBtnCommand
-                                        self.add_item(self.yesBtn)
-                                        
+                                        yes_btn = nextcord.ui.Button(label="Yes", style=nextcord.ButtonStyle.green)
+                                        yes_btn.callback = self.confirm
+                                        self.add_item(yes_btn)
+
                                     async def setup(self, interaction: Interaction):
-                                        embed = nextcord.Embed(title = "Are you sure you want to do this?", description = "By choosing \"Yes\", you will reset all strikes in the server to 0.\nThis action cannot be undone.", color = nextcord.Color.blue())
-                                        await interaction.response.edit_message(embed = embed, view = self)
-                                        
-                                    async def noBtnCommand(self, interaction: Interaction):
+                                        embed = nextcord.Embed(
+                                            title="Are you sure you want to reset all strikes?",
+                                            description="This action cannot be undone.",
+                                            color=nextcord.Color.blue()
+                                        )
+                                        await interaction.response.edit_message(embed=embed, view=self)
+
+                                    async def cancel(self, interaction: Interaction):
                                         await self.outer.setup(interaction)
+
+                                    async def confirm(self, interaction: Interaction):
+                                        server = Server(interaction.guild.id)
                                         
-                                    async def yesBtnCommand(self, interaction: Interaction):
-                                        server = Server_DEP(interaction.guild.id)
-                                        server.strikes = []
-                                        server.saveStrikes()
+                                        # Delete all strikes:
+                                        for strike_info in server.moderation_strikes:
+                                            server.moderation_strikes.delete(strike_info.member_id)
+
                                         await self.outer.setup(interaction)
                                     
                                 async def callback(self, interaction: Interaction):
-                                    await self.DeleteAllStrikesView(self.outer).setup(interaction)
-                            
-                        async def callback(self, interaction: Interaction): # Strikes Callback ————————————————————————————————————————————————————————————
-                            view = self.ManageMembersView(self.outer)
-                            await view.setup(interaction)
+                                    await self.ResetAllStrikesView(self.outer).setup(interaction)
+
+                        async def callback(self, interaction: Interaction):
+                            await self.ManageMembersView(self.outer).setup(interaction)
 
                     class MaxStrikesButton(nextcord.ui.Button):
                         def __init__(self, outer):
                             super().__init__(label = "Maximum Strikes", style = nextcord.ButtonStyle.gray, row  = 1)
                             self.outer = outer
                             
-                        # class MaxStrikesModal(nextcord.ui.Modal): #Max Strikes Modal -----------------------------------------------------
-                        #     def __init__(self, outer, guild_id):
-                        #         super().__init__(title = "Maximum Strikes")
-                        #         self.outer = outer
-                        #         server = Server_DEP(guild_id)
+                        class MaxStrikesModal(nextcord.ui.Modal): #Max Strikes Modal -----------------------------------------------------
+                            def __init__(self, outer, guild_id):
+                                super().__init__(title = "Maximum Strikes")
+                                self.outer = outer
+                                server = Server(guild_id)
                                 
-                        #         self.input = nextcord.ui.TextInput(label = "Maximum Strikes (Must be a number)", default_value = server.max_strikes, placeholder = "This Field is Required", max_length=2)
-                        #         self.add_item(self.input)
+                                self.input = nextcord.ui.TextInput(label = "Maximum Strikes (Must be a number)", 
+                                                                   default_value = server.profanity_moderation_profile.max_strikes, 
+                                                                   placeholder = "This Field is Required", max_length=2)
+                                self.add_item(self.input)
                                 
-                        #     async def callback(self, interaction: Interaction):
-                        #         try:
-                        #             if int(self.input.value) > 25: raise Exception
-                        #         except:
-                        #             await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The Maximum Strikes needs to be a positive number below 26.", color = nextcord.Color.red()), ephemeral=True)
-                        #             return
+                            async def callback(self, interaction: Interaction):
+                                try:
+                                    if int(self.input.value) > 25: raise Exception
+                                except:
+                                    await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The Maximum Strikes needs to be a positive number below 26.", color = nextcord.Color.red()), ephemeral=True)
+                                    return
                                 
-                        #         server = Server_DEP(interaction.guild.id)
-                        #         server.max_strikes = int(self.input.value)
-                        #         server.saveData()
-                        #         await self.outer.setup(interaction)
+                                server = Server(interaction.guild.id)
+                                server.profanity_moderation_profile.max_strikes = self.input.value
+                                await self.outer.setup(interaction)
                                 
                         async def callback(self, interaction: Interaction):
-                            return
                             await interaction.response.send_modal(self.MaxStrikesModal(self.outer, interaction.guild.id))
                                        
                     class StrikeExpireTimeButton(nextcord.ui.Button):
@@ -546,34 +532,35 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Strike Expire Time", style = nextcord.ButtonStyle.gray, row  = 1)
                             self.outer = outer
                             
-                        # class StrikeExpireTimeModal(nextcord.ui.Modal): #Strike Expire Time Modal -----------------------------------------------------
-                        #     def __init__(self, outer, guild_id):
-                        #         super().__init__(title = "Strike Expire Time")
-                        #         self.outer = outer
-                        #         server = Server_DEP(guild_id)
+                        class StrikeExpireTimeModal(nextcord.ui.Modal): #Strike Expire Time Modal -----------------------------------------------------
+                            def __init__(self, outer, guild_id):
+                                super().__init__(title = "Strike Expire Time")
+                                self.outer = outer
+                                server = Server(guild_id)
                                 
-                        #         self.input = nextcord.ui.TextInput(label = "Strike Expire Time (Days) (Must be a number)", default_value = server.strike_expire_time, placeholder = "Disable this feature", max_length=2, required = False)
-                        #         self.add_item(self.input)
+                                self.input = nextcord.ui.TextInput(label = "Strike Expire Time (Days) (Must be a number)", 
+                                                                   default_value = server.profanity_moderation_profile.strike_expire_days, 
+                                                                   placeholder = "Disable this feature", max_length=2, required = False)
+                                self.add_item(self.input)
                                 
-                        #     async def callback(self, interaction: Interaction):
-                        #         if self.input.value != None:
-                        #             try:
-                        #                 int(self.input.value)
-                        #             except:
-                        #                 await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The Strike Expire Time needs to be a number.", color = nextcord.Color.red()), ephemeral=True)
-                        #                 return
+                            async def callback(self, interaction: Interaction):
+                                if self.input.value != None and self.input.value != "":
+                                    try:
+                                        int(self.input.value)
+                                        if int(self.input.value) <= 0: raise Exception
+                                    except:
+                                        await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The Strike Expire Time needs to be a number greater than 0.", color = nextcord.Color.red()), ephemeral=True)
+                                        return
                                 
-                        #             server = Server_DEP(interaction.guild.id)
-                        #             server.strike_expire_time = int(self.input.value)
-                        #         else:
-                        #             server = Server_DEP(interaction.guild.id)
-                        #             server.strike_expire_time = None
+                                    server = Server(interaction.guild.id)
+                                    server.profanity_moderation_profile.strike_expire_days = int(self.input.value)
+                                else:
+                                    server = Server(interaction.guild.id)
+                                    server.profanity_moderation_profile.strike_expire_days = None
                                     
-                        #         server.saveData()
-                        #         await self.outer.setup(interaction)
+                                await self.outer.setup(interaction)
                                 
                         async def callback(self, interaction: Interaction):
-                            return
                             await interaction.response.send_modal(self.StrikeExpireTimeModal(self.outer, interaction.guild.id))
                                    
                     class TimeoutDurationButton(nextcord.ui.Button):
@@ -581,33 +568,35 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Timeout Duration", style = nextcord.ButtonStyle.gray, row = 2)
                             self.outer = outer
                             
-                        # class TimeoutDurationModal(nextcord.ui.Modal): #Timeout Duration Modal -----------------------------------------------------
-                        #     def __init__(self, outer, guild_id):
-                        #         super().__init__(title = "Timeout Duration")
-                        #         self.outer = outer
-                        #         server = Server_DEP(guild_id)
+                        class TimeoutDurationModal(nextcord.ui.Modal): #Timeout Duration Modal -----------------------------------------------------
+                            def __init__(self, outer, guild_id):
+                                super().__init__(title = "Timeout Duration")
+                                self.outer = outer
+                                server = Server(guild_id)
                                 
-                        #         self.input = nextcord.ui.TextInput(label = "Timeout Duration (Format: 5s, 10m, 1h, 2d)", default_value = server.profanity_timeout_time, placeholder = "This Field is Required", max_length=10)
-                        #         self.add_item(self.input)
+                                timeout_time_human_readable = humanfriendly.format_timespan(server.profanity_moderation_profile.timeout_seconds)
+                                self.input = nextcord.ui.TextInput(label = "Timeout Duration (Format: 2 days, 5 seconds)", 
+                                                                   default_value = timeout_time_human_readable, 
+                                                                   placeholder = "This Field is Required", max_length=200)
+                                self.add_item(self.input)
                                 
-                        #     async def callback(self, interaction: Interaction):
-                        #         if self.input.value == "" or self.input.value == None:
-                        #             await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The Timeout Time needs to be like this: 10s, 20s, 1m, 30m, 1h, 5h, 1d", color = nextcord.Color.red()), ephemeral=True)
-                        #             return
+                            async def callback(self, interaction: Interaction):
+                                format_error_embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The timeout time needs to be formated like this: 10 seconds, 20 minutes, 1 hour and 20 minutes, 1 day, etc...", color = nextcord.Color.red())
+                                if self.input.value == "" or self.input.value == None:
+                                    await interaction.response.send_message(embed = format_error_embed, ephemeral=True)
+                                    return
                                 
-                        #         try:
-                        #             humanfriendly.parse_timespan(self.input.value)
-                        #         except:
-                        #             await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The Timeout Time needs to be like this: 10s, 20s, 1m, 30m, 1h, 5h, 1d", color = nextcord.Color.red()), ephemeral=True)
-                        #             return
+                                try:
+                                    response_in_seconds = humanfriendly.parse_timespan(self.input.value)
+                                except:
+                                    await interaction.response.send_message(embed = format_error_embed, ephemeral=True)
+                                    return
                                 
-                        #         server = Server_DEP(interaction.guild.id)
-                        #         server.profanity_timeout_time = self.input.value
-                        #         server.saveData()
-                        #         await self.outer.setup(interaction)
+                                server = Server(interaction.guild.id)
+                                server.profanity_moderation_profile.timeout_seconds = response_in_seconds
+                                await self.outer.setup(interaction)
                                 
                         async def callback(self, interaction: Interaction):
-                            return
                             await interaction.response.send_modal(self.TimeoutDurationModal(self.outer, interaction.guild.id))
                             
                     class AdminChannelButton(nextcord.ui.Button):

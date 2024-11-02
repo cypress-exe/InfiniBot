@@ -42,7 +42,6 @@ def setup_logging(level = logging.INFO):
     logging.root.setLevel(level)
 
     logging.info("Created logging folder and logging file")
-    print(f"Created folder: {test_folder_path}")
 
 def change_logging_level(level):
     if level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:

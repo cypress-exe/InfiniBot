@@ -1,13 +1,7 @@
-version: '3.8'
-
 services:
   infinibot:
     build: .
     container_name: infinibot_container
     restart: always  # Automatically restart if the bot crashes
     volumes:
-      - ./data:/app/generated  # Persistent data storage
-    command: python main.py  # Run main bot script
-
-volumes:
-  data:
+      - ../generated:/app/generated  # Persistent data storage

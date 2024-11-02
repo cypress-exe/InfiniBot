@@ -235,7 +235,7 @@ async def user_has_config_permissions(interaction: Interaction, notify = True):
     
     if interaction.guild.owner == interaction.user: return True
     
-    infinibotMod_role = nextcord.src.utils.get(interaction.guild.roles, name='Infinibot Mod')
+    infinibotMod_role = nextcord.utils.get(interaction.guild.roles, name='Infinibot Mod')
     if infinibotMod_role in interaction.user.roles:
         return True
 
@@ -361,23 +361,3 @@ async def send_error_message_to_server_owner(guild: nextcord.Guild, permission, 
             await dm.send(embed = embed)
     except:
         return
-    
-def seconds_to_humanfriendly_time(seconds):
-    """Converts seconds to a human readable string"""
-    units = [
-        ("day", 86400),
-        ("hour", 3600),
-        ("minute", 60),
-        ("second", 1)
-    ]
-    
-    parts = []
-    for name, unit_seconds in units:
-        if seconds >= unit_seconds:
-            count = seconds // unit_seconds
-            seconds %= unit_seconds
-            # Handle pluralization
-            part_name = f"{name}{'s' if count != 1 else ''}"
-            parts.append(f"{count} {part_name}")
-    
-    return ", ".join(parts)

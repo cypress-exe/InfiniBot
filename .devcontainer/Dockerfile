@@ -1,15 +1,20 @@
-# Use an official lightweight Python image suitable for Raspberry Pi (arm architecture)
-FROM mcr.microsoft.com/devcontainers/python:bullseye
+# Base Python image
+FROM mcr.microsoft.com/devcontainers/python:bullseye AS base
 
-# Set the working directory in the container
+# Set the working directory
 WORKDIR /app
 
-# Copy the rest of the bot code into the container
-COPY . .
-
+# Upgrade pip version
 RUN pip install --upgrade pip
 
-# Install the required Python packages (from requirements.txt)
-RUN pip install --no-cache-dir -r ./requirements.txt
+# Copy the requirements and install dependencies in a separate layer
+COPY requirements.txt .
 
+# Install Python dependencies with no pip upgrade
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Set entrypoint
 ENTRYPOINT ["./entrypoint.sh"]

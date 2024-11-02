@@ -3478,15 +3478,15 @@ async def getChannel(guild: nextcord.Guild):
         else:
             return None
     else:
-        general = nextcord.src.utils.find(lambda x: x.name == 'general',  guild.text_channels)
+        general = nextcord.utils.find(lambda x: x.name == 'general',  guild.text_channels)
         if await checkTextChannelPermissions(general, False):
             return general
         else: 
-            welcome = nextcord.src.utils.find(lambda x: x.name == 'welcome',  guild.text_channels)
+            welcome = nextcord.utils.find(lambda x: x.name == 'welcome',  guild.text_channels)
             if await checkTextChannelPermissions(welcome, False):
                 return welcome
             else:
-                greetings = nextcord.src.utils.find(lambda x: x.name == "greetings", guild.text_channels)
+                greetings = nextcord.utils.find(lambda x: x.name == "greetings", guild.text_channels)
                 if await checkTextChannelPermissions(greetings, False):
                     return greetings
                 else: 
@@ -3623,7 +3623,7 @@ async def hasRole(interaction: Interaction, notify = True):
     
     if interaction.guild.owner == interaction.user: return True
     
-    infinibotMod_role = nextcord.src.utils.get(interaction.guild.roles, name='Infinibot Mod')
+    infinibotMod_role = nextcord.utils.get(interaction.guild.roles, name='Infinibot Mod')
     if infinibotMod_role in interaction.user.roles:
         return True
 
@@ -3955,7 +3955,7 @@ async def timeout(member: nextcord.Member, time: str, reason: str = None):
         if time == 0.0: 
             await member.edit(timeout=None, reason = reason)
         else:
-            await member.edit(timeout=nextcord.src.utils.utcnow()+datetime.timedelta(seconds=time), reason = reason)
+            await member.edit(timeout=nextcord.utils.utcnow()+datetime.timedelta(seconds=time), reason = reason)
         
         return True
     except Exception as error:
@@ -5170,9 +5170,9 @@ async def on_raw_reaction_add(payload: nextcord.RawReactionActionEvent):
         match = re.search(pattern, string)
         if match:
             id = int(match.group(2))
-            role = nextcord.src.utils.get(guild.roles, id = id)
+            role = nextcord.utils.get(guild.roles, id = id)
         else:
-            role = nextcord.src.utils.get(guild.roles, name = string)
+            role = nextcord.utils.get(guild.roles, name = string)
         return role
     
     async def sendNoRoleError():
@@ -5206,7 +5206,7 @@ async def on_raw_reaction_add(payload: nextcord.RawReactionActionEvent):
                         discordRole = getRole(" ".join(lineSplit[1:]))
                         if discordRole: # If it exists
                             # Check the user's roles
-                            userRole = nextcord.src.utils.get(user.roles, id = discordRole.id)
+                            userRole = nextcord.utils.get(user.roles, id = discordRole.id)
                             # Give / Take the role
                             try:
                                 if userRole:
@@ -8071,11 +8071,11 @@ class EditReactionRole(nextcord.ui.View):
                 match = re.search(pattern, string)
                 if match:
                     id = int(match.group(2))
-                    role = nextcord.src.utils.get(guild.roles, id = id)
+                    role = nextcord.utils.get(guild.roles, id = id)
                 elif string.isdigit():
-                    role = nextcord.src.utils.get(guild.roles, id = int(string))
+                    role = nextcord.utils.get(guild.roles, id = int(string))
                 else:
-                    role = nextcord.src.utils.get(guild.roles, name = string)
+                    role = nextcord.utils.get(guild.roles, name = string)
                     
                 return role
            
@@ -9502,7 +9502,7 @@ async def sendMessageToAllGuilds(interaction: Interaction):
                         continue
                     
                     # Find a channel
-                    general = nextcord.src.utils.find(lambda x: x.name == 'general',  guild.text_channels)
+                    general = nextcord.utils.find(lambda x: x.name == 'general',  guild.text_channels)
                     if general: await general.send(embed = embed, view = SupportAndInviteView())
                     else: 
                         channel = await getChannel(guild)
