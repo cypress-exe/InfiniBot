@@ -826,8 +826,14 @@ class Server:
         @Server_TableManager.channel_property("channel")
         def channel(self): pass
 
+        @Server_TableManager.boolean_property("strike_system_active")
+        def strike_system_active(self): pass
+
         @Server_TableManager.integer_property("max_strikes")
         def max_strikes(self): pass
+
+        @Server_TableManager.boolean_property("strike_expiring_active")
+        def strike_expiring_active(self): pass
 
         @Server_TableManager.integer_property("strike_expire_days")
         def strike_expire_days(self): pass

@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS profanity_moderation_profile( -- #optimize
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
+    strike_system_active BOOLEAN DEFAULT true,
     max_strikes INT DEFAULT 3,
+    strike_expiring_active BOOLEAN DEFAULT true,
     strike_expire_days INT DEFAULT 7,
     timeout_seconds INT DEFAULT 3600,
     filtered_words TEXT DEFAULT '[]'

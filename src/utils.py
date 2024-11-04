@@ -156,10 +156,10 @@ def standardize_str_indention(string: str):
 def feature_is_active(**kwargs):
     from src.server import Server
 
-    server = kwargs.get("server")
-    server_id = kwargs.get("server_id")
-    if kwargs.get("guild_id"): server_id = kwargs.get("guild_id")
-    feature = kwargs.get("feature")
+    server:Server = kwargs.get("server")
+    server_id:int = kwargs.get("server_id")
+    if kwargs.get("guild_id"): server_id:int = kwargs.get("guild_id")
+    feature:str = kwargs.get("feature")
 
     # Validate inputs
     if not server and not server_id:
