@@ -795,6 +795,7 @@ class Server:
         self._default_roles = None
         
         self._moderation_strikes = None
+        self._member_levels = None
         self._level_rewards = None
         self._birthdays = None
         self._autobans = None
@@ -1004,10 +1005,18 @@ class Server:
             super().__init__("moderation_strikes", "server_id", server_id, "member_id")
     
     @property
+    def member_levels(self):
+        if self._member_levels is None: self._member_levels = self.MemberLevels(self.server_id)
+        return self._member_levels
+    class MemberLevels(IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("member_levels", "server_id", server_id, "member_id")
+    
+    @property
     def level_rewards(self):
-        if self._level_rewards is None: self._level_rewards = self.Level_Rewards(self.server_id)
+        if self._level_rewards is None: self._level_rewards = self.LevelRewards(self.server_id)
         return self._level_rewards
-    class Level_Rewards(IntegratedList_TableManager):
+    class LevelRewards(IntegratedList_TableManager):
         def __init__(self, server_id):
             super().__init__("level_rewards", "server_id", server_id, "role_id")
 

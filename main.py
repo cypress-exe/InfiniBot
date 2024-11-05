@@ -48,7 +48,6 @@ def create_environment():
   create_folder("generated/configure")
     
   copy_file("defaults/default_profane_words.txt", "generated/configure/default_profane_words.txt")
-  copy_file("defaults/special_channel_ids.json", "generated/configure/special_channel_ids.json")
 
   get_token()
 

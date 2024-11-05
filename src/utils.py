@@ -2,6 +2,7 @@ from nextcord import Interaction
 import nextcord
 import logging
 import datetime
+import math
 
 from src.global_settings import get_global_kill_status, feature_dependencies
 
@@ -210,6 +211,51 @@ def feature_is_active(**kwargs):
             return False
 
     return True
+
+def convert_score_and_level(score: int = None, level: int = None):
+    if score != None: # CALCULATING LEVEL
+        score /= 10
+        if score == 0: return 0
+        return(math.floor(score ** 0.65)) # levels are calculated by x^0.65
+    
+    elif level != None: # CALCULATING SCORE
+        if level == 0: return 0
+    
+        score = level**(1/0.65)
+        score *= 10
+        score = math.floor(score)
+        
+        for _ in range(0, 100):
+            if convert_score_and_level(score=score) == level:
+                return score
+            elif convert_score_and_level(score=score) > level:
+                score -= 1
+            else:
+                score += 1
+        
+        return(score) #levels are calculated by x^0.65
+    
+    else:
+        raise ValueError(f"Error: {__name__} received no score or level.")
+
+def role_assignable_by_infinibot(role: nextcord.Role):
+    """Determins if InfiniBot can assign a role.
+
+    ------
+    Parameters
+    ------
+    role: `nextcord.Role`
+        The role to check
+
+    Returns
+    ------
+    `bool`
+        True if assignable, False if not.
+    """    
+    if role.is_default(): return False
+    if role.is_integration(): return False
+    
+    return role.is_assignable()
 
 async def user_has_config_permissions(interaction: Interaction, notify = True):
     """|coro|

@@ -557,7 +557,7 @@ class TestServer(unittest.TestCase):
 
         # Using run_test_on_property
         self.run_test_on_property(server, "leveling_profile", "active", False, [True, False])
-        self.run_test_on_property(server, "leveling_profile", "channel", UNSET_VALUE, [1234567989, None, UNSET_VALUE])
+        self.run_test_on_property(server, "leveling_profile", "channel", None, [1234567989, UNSET_VALUE, 0, None])
         self.run_test_on_property(server, "leveling_profile", "level_up_embed[title]", "Congratulations, @displayname!", ["Title_Changed", None])
         self.run_test_on_property(server, "leveling_profile", "level_up_embed[description]", "Congrats @member! You reached level [level]!", ["Description_Changed"])
         self.run_test_on_property(server, "leveling_profile", "points_lost_per_day", 5, [12, 0])
@@ -647,6 +647,17 @@ class TestServer(unittest.TestCase):
         test = self.RunTestOnIntegratedListProperty(server, "moderation_strikes", ["member_id:int", "strikes:int", "last_strike:date"], [5, 20])
         test.run(self)
 
+        server.remove_all_data()
+
+    def test_member_levels(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_integrated_list_property
+        test = self.RunTestOnIntegratedListProperty(server, "member_levels", ["member_id:int", "score:int"], [5, 20])
+        test.run(self)
+        
         server.remove_all_data()
 
     def test_level_rewards(self):

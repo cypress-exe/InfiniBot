@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS logging_profile( -- #optimize
 CREATE TABLE IF NOT EXISTS leveling_profile( -- #optimize
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
-    channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
+    channel TEXT DEFAULT '{"status": "NONE", "value": null}',
     level_up_embed TEXT DEFAULT '{"title":"Congratulations, @displayname!","description":"Congrats @member! You reached level [level]!"}',
     points_lost_per_day INT DEFAULT 5,
     exempt_channels TEXT DEFAULT '[]',
@@ -103,11 +103,19 @@ CREATE TABLE IF NOT EXISTS moderation_strikes(
     PRIMARY KEY (server_id, member_id)
 )
 
+-- Create member_levels Table (integrated list table)
+CREATE TABLE IF NOT EXISTS member_levels(
+    server_id INT,
+    member_id INT,
+    score INT,
+    PRIMARY KEY (server_id, member_id)
+)
+
 -- Create level_rewards Table (integrated list table)
 CREATE TABLE IF NOT EXISTS level_rewards(
     server_id INT,
     role_id INT,
-    level INT,
+    level INT, -- "level" is technically an SQL keyword, but it doesn't seem to cause an issue here.
     PRIMARY KEY (server_id, role_id)
 )
 
