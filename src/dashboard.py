@@ -183,10 +183,10 @@ class Dashboard(nextcord.ui.View):
 
                         InfiniBot also supports a strike system for profanity. You can manage the system by clicking "Manage Strike System".
 
-                        **Configuration**
-                        Timeout Duration: {humanfriendly.format_timespan(server.profanity_moderation_profile.timeout_seconds)}
-                        Admin Channel: {admin_channel}
-                        Strike System: {strike_system_active}
+                        **Settings**
+                        - **Timeout Duration:** {humanfriendly.format_timespan(server.profanity_moderation_profile.timeout_seconds)}
+                        - **Admin Channel:** {admin_channel}
+                        - **Strike System:** {strike_system_active}
 
                         For more information, use: {UNSET_VALUE}
                         """ # TODO add shortcut for help command
@@ -452,13 +452,13 @@ class Dashboard(nextcord.ui.View):
                                     strike_info = utils.standardize_str_indention(strike_info)
 
                                     if server.profanity_moderation_profile.strike_expiring_active == False: strike_expiration_info = ""
-                                    else: strike_expiration_info = f"\nStrike Expire Time: {server.profanity_moderation_profile.strike_expire_days} days"
+                                    else: strike_expiration_info = f"\n- **Strike Expire Time:** {server.profanity_moderation_profile.strike_expire_days} days"
 
                                     description = f"""
                                     Configure how you want InfiniBot to handle strikes.
                                     {strike_info}
-                                    **Configuration**
-                                    Maximum Strikes: {server.profanity_moderation_profile.max_strikes}{strike_expiration_info}
+                                    **Settings**
+                                    - **Maximum Strikes:** {server.profanity_moderation_profile.max_strikes}{strike_expiration_info}
                                     
                                     To manage each member's strikes, click "Manage Members".
                                     """
@@ -941,8 +941,8 @@ class Dashboard(nextcord.ui.View):
                         InfiniBot helps you moderate spam in your server. Customize the options below to suit your server's requirements.
                         
                         **Settings**
-                        Timeout Duration: {timeout_time}
-                        Messages Threshold: {server.spam_moderation_profile.messages_threshold} messages
+                        - **Timeout Duration:** {timeout_time}
+                        - **Messages Threshold:** {server.spam_moderation_profile.messages_threshold} messages
                         
                         For more information, use: {UNSET_VALUE}""" # TODO add shortcut for help command
                         
@@ -1143,10 +1143,10 @@ class Dashboard(nextcord.ui.View):
                 log_channel_name = interaction.guild.get_channel(server.logging_profile.channel).mention
 
                 description = f"""
-                InfiniBot enhances server management with comprehensive logging. View deleted and edited messages, and administrative changes.
+                ✅ ​ InfiniBot is set up to enhance server management with comprehensive logging. View deleted and edited messages, and administrative changes.
                 
                 **Settings**
-                Log Channel: {log_channel_name}
+                - **Log Channel:** {log_channel_name}
                 
                 For more information, use: {UNSET_VALUE}""" # TODO add shortcut for help command
                 description = utils.standardize_str_indention(description)
@@ -1299,25 +1299,19 @@ class Dashboard(nextcord.ui.View):
                 self.level_rewards_btn = self.LevelRewardsButton(self)
                 self.add_item(self.level_rewards_btn)
 
+                self.advanced_btn = self.AdvancedButton(self)
+                self.add_item(self.advanced_btn)
+
                 self.leveling_channel_btn = self.LevelingChannelButton(self)
                 self.add_item(self.leveling_channel_btn)
                 
                 self.leveling_message_btn = self.LevelingMessageButton(self)
                 self.add_item(self.leveling_message_btn)
-                
-                self.points_lost_per_day_btn = self.PointsLostPerDayButton(self)
-                self.add_item(self.points_lost_per_day_btn)
-                
-                self.exempt_channels_btn = self.ExemptChannelsButton(self)
-                self.add_item(self.exempt_channels_btn)
-                
-                self.level_cards_btn = self.LevelCardsButton(self)
-                self.add_item(self.level_cards_btn)
-                
+
                 self.disable_btn = self.EnableDisableButton(self)
                 self.add_item(self.disable_btn)
                 
-                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 4)
+                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 3)
                 self.back_btn.callback = self.back_btn_callback
                 self.add_item(self.back_btn)
                 
@@ -1340,31 +1334,21 @@ class Dashboard(nextcord.ui.View):
                     await ui_components.disabled_feature_override(self, interaction)
                     return
                 
-                if server.leveling_profile.channel == None: leveling_channel_name = "No Notifications"
+                if server.leveling_profile.channel == None: leveling_channel_name = "No Notifications (disabled)"
                 elif server.leveling_profile.channel == 0: leveling_channel_name = "System Messages Channel"
                 else: leveling_channel_name = interaction.guild.get_channel(server.leveling_profile.channel).mention
                 
-                if server.leveling_profile.points_lost_per_day == None: points_lost_per_day = "DISABLED"
-                else: points_lost_per_day = server.leveling_profile.points_lost_per_day
+                if server.leveling_profile.channel == None: leveling_message = "N/A (Notifications are disabled)\n"
+                else: leveling_message = f"\n```Title: {server.leveling_profile.level_up_embed["title"]} \
+                    \nDescription: {server.leveling_profile.level_up_embed['description']}```"
                 
-                if server.leveling_profile.channel == None: leveling_message = "N/A"
-                else: leveling_message = f"Title: {server.leveling_profile.level_up_embed["title"]} \
-                    \nDescription: {server.leveling_profile.level_up_embed['description']}"
-                
-                if server.leveling_profile.allow_leveling_cards: allow_level_cards = "Yes"
-                else: allow_level_cards = "No"
                 
                 description = f"""
-                InfiniBot enhances server engagement through leveling. Tailor the options below to align with your server's preferences.
-                
+                ✅ ​ InfiniBot enhances server engagement through activity-based leveling. Members earn points for participating in the server. Level-up notifications are sent to members' DMs and the notification channel (message & channel configurable below). If enabled, level rewards grant roles based on member levels.
+
                 **Settings:**
-                Notifications Channel: {leveling_channel_name}
-                Points Lost Per Day: {points_lost_per_day}
-                Allow Level-Up Cards: {allow_level_cards}
-                Level Up Message: ```{leveling_message}```
-                **What are Level-Up Cards?**
-                When enabled, members can craft personalized level-up cards displayed after each level-up message.
-                
+                - **Notifications Channel:** {leveling_channel_name}
+                - **Level-Up Message:** {leveling_message}
                 For more information, use: {UNSET_VALUE}
                 """ # TODO add shortcut for help command.
                 description = utils.standardize_str_indention(description)
@@ -1776,7 +1760,15 @@ class Dashboard(nextcord.ui.View):
                         select_options.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = category_name, 
                                                                     default = (server.leveling_profile.channel == channel.id)))
                         
-                    embed = nextcord.Embed(title = "Dashboard - Leveling - Notifications Channel", description = "Select a channel to notify about level updates.", color = nextcord.Color.blue())
+                    description = """
+                    Choose a channel for InfiniBot to send level-up notifications in.
+
+                    **What is the System Messages Channel?**
+                    In Discord's server settings, you can configure a System Messages Channel. If you choose this channel, InfiniBot will send level-up notifications there.
+                    """
+                    description = utils.standardize_str_indention(description)
+
+                    embed = nextcord.Embed(title = "Dashboard - Leveling - Notifications Channel", description = description, color = nextcord.Color.blue())
                     await ui_components.SelectView(embed, select_options, self.select_view_callback).setup(interaction)
 
                 async def select_view_callback(self, interaction: Interaction, selection):
@@ -1794,12 +1786,12 @@ class Dashboard(nextcord.ui.View):
 
             class LevelingMessageButton(nextcord.ui.Button):
                 def __init__(self, outer):
-                    super().__init__(label = "Level Up Message", style = nextcord.ButtonStyle.gray, row  = 1)
+                    super().__init__(label = "Level-Up Message", style = nextcord.ButtonStyle.gray, row  = 1)
                     self.outer = outer
                     
                 class LevelingMessageModal(nextcord.ui.Modal): #Leveling Message Modal -----------------------------------------------------
                     def __init__(self, guild: nextcord.Guild, outer):
-                        super().__init__(timeout = None, title = "Level Up Message")
+                        super().__init__(timeout = None, title = "Level-Up Message")
                         self.outer = outer
                         
                         server = Server(guild.id)
@@ -1827,222 +1819,271 @@ class Dashboard(nextcord.ui.View):
                 async def callback(self, interaction: Interaction):
                     await interaction.response.send_modal(self.LevelingMessageModal(interaction.guild, self.outer))                                     
                     
-            class PointsLostPerDayButton(nextcord.ui.Button):
+            class AdvancedButton(nextcord.ui.Button):
                 def __init__(self, outer):
-                    super().__init__(label = "Points Lost Per Day", style = nextcord.ButtonStyle.gray, row  = 2)
+                    super().__init__(label = "Advanced", style = nextcord.ButtonStyle.gray, row  = 2)
                     self.outer = outer
-                    
-                class PointsLostPerDayModal(nextcord.ui.Modal): #Leveling Message Modal -----------------------------------------------------
-                    def __init__(self, guild: nextcord.Guild, outer):
-                        super().__init__(timeout = None, title = "Points Lost Per Day")
-                        self.outer = outer
-                        
-                        server = Server(guild.id)
-                        
-                        self.pointsLostPerDayTextInput = nextcord.ui.TextInput(label = "Points (must be a number, blank = DISABLED)", style = nextcord.TextInputStyle.short, 
-                                                                               max_length=3, default_value = server.leveling_profile.points_lost_per_day, required = False)
-                        self.add_item(self.pointsLostPerDayTextInput)
-                        
-                    async def callback(self, interaction: Interaction):
-                        server = Server(interaction.guild.id)
-                        
-                        value:str = self.pointsLostPerDayTextInput.value
-                        if not (value == None or value == "" or value == "0"):
-                            if not value.isnumeric() or int(value) < 0:
-                                await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "\"Points\" must be a positive number.", color = nextcord.Color.red()), ephemeral = True)
-                                return
-                            server.leveling_profile.points_lost_per_day = int(value)
-                        
-                            await self.outer.setup(interaction)
-                            await interaction.followup.send(embed = nextcord.Embed(title = "Points Lost Per Day Set", description = f"Every day at midnight, everyone will loose {value} points.", color = nextcord.Color.green()), ephemeral = True)
-                        
-                        else:
-                            server.leveling_profile.points_lost_per_day = None
-                        
-                            await self.outer.setup(interaction)
-                            await interaction.followup.send(embed = nextcord.Embed(title = "Points Lost Per Day Disabled", description = f"InfiniBot will not take points from anyone at midnight.", color = nextcord.Color.green()), ephemeral = True)
-                            
-                async def callback(self, interaction: Interaction):
-                    await interaction.response.send_modal(self.PointsLostPerDayModal(interaction.guild, self.outer))       
-                                          
-            class ExemptChannelsButton(nextcord.ui.Button):
-                def __init__(self, outer):
-                    super().__init__(label = "Exempt Channels", style = nextcord.ButtonStyle.gray, row = 2)
-                    self.outer = outer
-                    
-                class ExemptChannelsView(nextcord.ui.View):
-                    def __init__(self, outer, interaction: Interaction):
+
+                class AdvancedView(nextcord.ui.View):
+                    def __init__(self, outer):
                         super().__init__(timeout = None)
-                        self.outer = outer 
+                        self.outer = outer
+
+                        self.points_lost_per_day_btn = self.PointsLostPerDayButton(self)
+                        self.add_item(self.points_lost_per_day_btn)
                         
-                        add_button = self.AddButton(self, interaction)
-                        self.add_item(add_button)
-                        
-                        delete_button = self.DeleteButton(self, interaction)
-                        self.add_item(delete_button)
-                        
-                        self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
+                        self.level_cards_btn = self.LevelCardsButton(self)
+                        self.add_item(self.level_cards_btn)
+
+                        self.exempt_channels_btn = self.ExemptChannelsButton(self)
+                        self.add_item(self.exempt_channels_btn)
+
+                        self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 2)
                         self.back_btn.callback = self.back_btn_callback
                         self.add_item(self.back_btn)
-                                
+
                     async def setup(self, interaction: Interaction):
                         server = Server(interaction.guild.id)
-                        
-                        leveling_exempt_channels:list[nextcord.abc.GuildChannel] = []
-                        for channel_id in server.leveling_profile.exempt_channels:
-                            channel = interaction.guild.get_channel(channel_id)
-                            if channel == None:
-                                logging.warning(f"Leveling exempt channel ({channel_id}) not found in server {interaction.guild.id}. Deleting...")
-                                leveling_exempt_channel_ids = server.leveling_profile.exempt_channels
-                                leveling_exempt_channel_ids.remove(channel_id)
-                                server.leveling_profile.exempt_channels = leveling_exempt_channels
-                                continue
 
-                            leveling_exempt_channels.append(channel)
+                        allow_level_up_cards = "Yes" if server.leveling_profile.allow_leveling_cards else "No"
                         
-                        channels = "\n".join([f"• {channel.mention}" for channel in leveling_exempt_channels])
-                        
-                        if channels == "":
-                            channels = "You don't have any exempt channels yet. Add one!"
-                        
-                        
-                        description = f"**Select Channels that will not Grant Points when Messages are Sent**\n{channels}\n\n★ 20 Channels Maximum ★"
-                        
-                        embed = nextcord.Embed(title = "Dashboard - Leveling - Exempt Channels", description = description, color = nextcord.Color.blue())
+                        description = f"""
+                        **Advanced Features**
+                        - **Points Lost Per Day:** Automatically removes points from all members at midnight.
+                        - **Custom Level-Up Cards:** Adds personalized cards to level-up messages.
+                        - **Exempt Channels:** Prevents points from being granted in exempted channels.
+
+                        **Settings**
+                        - **Points Lost Per Day:** {server.leveling_profile.points_lost_per_day}  
+                        - **Level-Up Cards:** {allow_level_up_cards}
+                        """
+                        description = utils.standardize_str_indention(description)
+
+                        embed = nextcord.Embed(title = "Dashboard - Leveling - Advanced", description = description, color = nextcord.Color.blue())
                         await interaction.response.edit_message(embed = embed, view = self)
-                    
-                    async def reload(self, interaction: Interaction):
-                        self.__init__(self.outer, interaction)
-                        await self.setup(interaction)
-                    
+
                     async def back_btn_callback(self, interaction: Interaction):
                         await self.outer.setup(interaction)
-                    
-                    class AddButton(nextcord.ui.Button):
-                        def __init__(self, outer, interaction: Interaction):
-                            server = Server(interaction.guild.id)
-                            disabled = (len(server.leveling_profile.exempt_channels) >= 20)
-                            super().__init__(label = "Add Channel", style = nextcord.ButtonStyle.gray, disabled = disabled)
-                            self.outer = outer
-                                                    
-                        async def callback(self, interaction: Interaction):
-                            options = []
-                            server = Server(interaction.guild.id)
-                            for channel in interaction.guild.channels:
-                                if channel.id in server.leveling_profile.exempt_channels: continue # Ignore if already exempt
-                                channel_category = (channel.category.name if channel.category else None)
-                                if type(channel) == nextcord.TextChannel: label = f"#{channel.name}"
-                                elif type(channel) == nextcord.VoiceChannel: label = f"🔉{channel.name}"
-                                else: continue # Ignore if not a text or voice channel
-                                options.append(nextcord.SelectOption(label = label, value = channel.id, description = channel_category))
-                            
-                            if len(options) == 0:
-                                await interaction.response.send_message(embed = nextcord.Embed(title = "No More Channels", description = "You've ran out of channels to exempt. Create more channels, or give InfiniBot higher permissions to see more channels!", color = nextcord.Color.red()), ephemeral = True)
-                                return
-                            
-                            embed = nextcord.Embed(title = "Dashboard - Leveling - Exempt Channels - Add", description = "Choose a channel to make exempt (messages won't grant points in this channel)", color = nextcord.Color.blue())
-                            await ui_components.SelectView(embed, options, self.select_callback, placeholder = "Choose a Channel", continueButtonLabel = "Add Channel").setup(interaction)
-               
-                        async def select_callback(self, interaction: Interaction, choice):
-                            if choice != None:
-                                server = Server(interaction.guild.id)
-                                leveling_exempt_channels:list = server.leveling_profile.exempt_channels
-                                leveling_exempt_channels.append(int(choice))
-                                server.leveling_profile.exempt_channels = leveling_exempt_channels
-                                
-                            await self.outer.reload(interaction)
- 
-                    class DeleteButton(nextcord.ui.Button):
-                        def __init__(self, outer, interaction: Interaction):
-                            server = Server(interaction.guild.id)
-                            disabled = (len(server.leveling_profile.exempt_channels) == 0)
-                            super().__init__(label = "Delete Channel", style = nextcord.ButtonStyle.gray, disabled = disabled)
-                            self.outer = outer
-                                                    
-                        async def callback(self, interaction: Interaction):
-                            options = []
-                            server = Server(interaction.guild.id)
-                            for channel_id in server.leveling_profile.exempt_channels:
-                                channel = interaction.guild.get_channel(channel_id)
-                                if channel == None: # Should never happen due to previous checks.
-                                    logging.warning(f"Leveling exempt channel ({channel_id}) not found in server {interaction.guild.id}. Ignoring...")
-                                    continue
 
-                                channel_category = (channel.category.name if channel.category else None)
-                                if type(channel) == nextcord.TextChannel: label = f"#{channel.name}"
-                                elif type(channel) == nextcord.VoiceChannel: label = f"🔉{channel.name}"
+                    class PointsLostPerDayButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Points Lost Per Day", style = nextcord.ButtonStyle.gray)
+                            self.outer = outer
+                            
+                        class PointsLostPerDayModal(nextcord.ui.Modal): #Leveling Message Modal -----------------------------------------------------
+                            def __init__(self, guild: nextcord.Guild, outer):
+                                super().__init__(timeout = None, title = "Points Lost Per Day")
+                                self.outer = outer
+                                
+                                server = Server(guild.id)
+                                
+                                self.pointsLostPerDayTextInput = nextcord.ui.TextInput(label = "Points (must be a number, blank = DISABLED)", style = nextcord.TextInputStyle.short, 
+                                                                                    max_length=3, default_value = server.leveling_profile.points_lost_per_day, required = False)
+                                self.add_item(self.pointsLostPerDayTextInput)
+                                
+                            async def callback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                value:str = self.pointsLostPerDayTextInput.value
+                                if not (value == None or value == "" or value == "0"):
+                                    if not value.isnumeric() or int(value) < 0:
+                                        await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "\"Points\" must be a positive number.", color = nextcord.Color.red()), ephemeral = True)
+                                        return
+                                    server.leveling_profile.points_lost_per_day = int(value)
+                                
+                                    await self.outer.setup(interaction)
+                                    await interaction.followup.send(embed = nextcord.Embed(title = "Points Lost Per Day Set", description = f"Every day at midnight, everyone will loose {value} points.", color = nextcord.Color.green()), ephemeral = True)
+                                
                                 else:
-                                    logging.warning(f"Leveling exempt channel ({channel_id}) not a text or voice channel in server {interaction.guild.id}. Ignoring...")
-                                    continue
-
-                                options.append(nextcord.SelectOption(label = label, value = channel.id, description = channel_category))
-                            
-                            embed = nextcord.Embed(title = "Dashboard - Leveling - Exempt Channels - Delete", description = "Choose a Channel to Remove from Exempt Channels", color = nextcord.Color.blue())
-                            await ui_components.SelectView(embed, options, self.select_callback, placeholder = "Choose a Channel", continueButtonLabel = "Delete Channel").setup(interaction)
-               
-                        async def select_callback(self, interaction: Interaction, choice):
-                            if choice != None:
-                                server = Server(interaction.guild.id)
-                                for channel_id in server.leveling_profile.exempt_channels:
-                                    if channel_id == int(choice):
-                                        leveling_exempt_channels = server.leveling_profile.exempt_channels
-                                        leveling_exempt_channels.remove(int(choice))
-                                        server.leveling_profile.exempt_channels = leveling_exempt_channels
-                                        break
+                                    server.leveling_profile.points_lost_per_day = None
                                 
-                            await self.outer.reload(interaction)
+                                    await self.outer.setup(interaction)
+                                    await interaction.followup.send(embed = nextcord.Embed(title = "Points Lost Per Day Disabled", description = f"InfiniBot will not take points from anyone at midnight.", color = nextcord.Color.green()), ephemeral = True)
+                                        
+                        async def callback(self, interaction: Interaction):
+                            await interaction.response.send_modal(self.PointsLostPerDayModal(interaction.guild, self.outer))       
+               
+                    class LevelCardsButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Level-Up Cards", style = nextcord.ButtonStyle.gray)
+                            self.outer = outer
+                            
+                        class LevelCardsView(nextcord.ui.View):
+                            def __init__(self, outer, interaction: Interaction):
+                                super().__init__(timeout = None)
+                                self.outer = outer
+                                
+                                server = Server(interaction.guild.id)
+                                
+                                if server.leveling_profile.allow_leveling_cards: button_label = "Disable"
+                                else: button_label = "Enable"
+                                
+                                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger)
+                                self.back_btn.callback = self.back_btn_callback
+                                self.add_item(self.back_btn)
+                                
+                                self.main_btn = nextcord.ui.Button(label = button_label, style = nextcord.ButtonStyle.green)
+                                self.main_btn.callback = self.main_btn_callback
+                                self.add_item(self.main_btn)
+                                
+                            async def setup(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                if server.leveling_profile.allow_leveling_cards: level_cards_status = "on"
+                                else: level_cards_status = "off"
+                        
+                                embed = nextcord.Embed(title = "Dashboard - Leveling - Level-Up Cards", description = f"Currently, level-up cards are turned {level_cards_status}.\n\n**What are level-up cards?**\nWhen enabled, members can craft personalized level-up cards displayed after each level-up message.", color = nextcord.Color.blue())
+                                await interaction.response.edit_message(embed = embed, view = self)
+                                
+                            async def back_btn_callback(self, interaction: Interaction):
+                                await self.outer.setup(interaction)
+                            
+                            async def main_btn_callback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                server.leveling_profile.allow_leveling_cards = not server.leveling_profile.allow_leveling_cards
+                                
+                                await self.outer.setup(interaction)
+                            
+                        async def callback(self, interaction: Interaction):
+                            await self.LevelCardsView(self.outer, interaction).setup(interaction)
+            
+                    class ExemptChannelsButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Exempt Channels", style = nextcord.ButtonStyle.gray, row = 1)
+                            self.outer = outer
+                            
+                        class ExemptChannelsView(nextcord.ui.View):
+                            def __init__(self, outer, interaction: Interaction):
+                                super().__init__(timeout = None)
+                                self.outer = outer 
+                                
+                                add_button = self.AddButton(self, interaction)
+                                self.add_item(add_button)
+                                
+                                delete_button = self.DeleteButton(self, interaction)
+                                self.add_item(delete_button)
+                                
+                                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
+                                self.back_btn.callback = self.back_btn_callback
+                                self.add_item(self.back_btn)
+                                        
+                            async def setup(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                leveling_exempt_channels:list[nextcord.abc.GuildChannel] = []
+                                for channel_id in server.leveling_profile.exempt_channels:
+                                    channel = interaction.guild.get_channel(channel_id)
+                                    if channel == None:
+                                        logging.warning(f"Leveling exempt channel ({channel_id}) not found in server {interaction.guild.id}. Deleting...")
+                                        leveling_exempt_channel_ids = server.leveling_profile.exempt_channels
+                                        leveling_exempt_channel_ids.remove(channel_id)
+                                        server.leveling_profile.exempt_channels = leveling_exempt_channels
+                                        continue
+
+                                    leveling_exempt_channels.append(channel)
+                                
+                                channels = "\n".join([f"• {channel.mention}" for channel in leveling_exempt_channels])
+                                
+                                if channels == "":
+                                    channels = "You don't have any exempt channels yet. Add one!"
+                                
+                                
+                                description = f"Select channels that will not grant points when messages are sent.\n\n**Exempt Channels**\n{channels}\n\n★ 20 Channels Maximum ★"
+                                
+                                embed = nextcord.Embed(title = "Dashboard - Leveling - Exempt Channels", description = description, color = nextcord.Color.blue())
+                                await interaction.response.edit_message(embed = embed, view = self)
+                            
+                            async def reload(self, interaction: Interaction):
+                                self.__init__(self.outer, interaction)
+                                await self.setup(interaction)
+                            
+                            async def back_btn_callback(self, interaction: Interaction):
+                                await self.outer.setup(interaction)
+                            
+                            class AddButton(nextcord.ui.Button):
+                                def __init__(self, outer, interaction: Interaction):
+                                    server = Server(interaction.guild.id)
+                                    disabled = (len(server.leveling_profile.exempt_channels) >= 20)
+                                    super().__init__(label = "Add Channel", style = nextcord.ButtonStyle.gray, disabled = disabled)
+                                    self.outer = outer
+                                                            
+                                async def callback(self, interaction: Interaction):
+                                    options = []
+                                    server = Server(interaction.guild.id)
+                                    for channel in interaction.guild.channels:
+                                        if channel.id in server.leveling_profile.exempt_channels: continue # Ignore if already exempt
+                                        channel_category = (channel.category.name if channel.category else None)
+                                        if type(channel) == nextcord.TextChannel: label = f"#{channel.name}"
+                                        elif type(channel) == nextcord.VoiceChannel: label = f"🔉{channel.name}"
+                                        else: continue # Ignore if not a text or voice channel
+                                        options.append(nextcord.SelectOption(label = label, value = channel.id, description = channel_category))
+                                    
+                                    if len(options) == 0:
+                                        await interaction.response.send_message(embed = nextcord.Embed(title = "No More Channels", description = "You've ran out of channels to exempt. Create more channels, or give InfiniBot higher permissions to see more channels!", color = nextcord.Color.red()), ephemeral = True)
+                                        return
+                                    
+                                    embed = nextcord.Embed(title = "Dashboard - Leveling - Exempt Channels - Add", description = "Choose a channel to make exempt (messages won't grant points in this channel)", color = nextcord.Color.blue())
+                                    await ui_components.SelectView(embed, options, self.select_callback, placeholder = "Choose a Channel", continueButtonLabel = "Add Channel").setup(interaction)
                     
+                                async def select_callback(self, interaction: Interaction, choice):
+                                    if choice != None:
+                                        server = Server(interaction.guild.id)
+                                        leveling_exempt_channels:list = server.leveling_profile.exempt_channels
+                                        leveling_exempt_channels.append(int(choice))
+                                        server.leveling_profile.exempt_channels = leveling_exempt_channels
+                                        
+                                    await self.outer.reload(interaction)
+
+                            class DeleteButton(nextcord.ui.Button):
+                                def __init__(self, outer, interaction: Interaction):
+                                    server = Server(interaction.guild.id)
+                                    disabled = (len(server.leveling_profile.exempt_channels) == 0)
+                                    super().__init__(label = "Delete Channel", style = nextcord.ButtonStyle.gray, disabled = disabled)
+                                    self.outer = outer
+                                                            
+                                async def callback(self, interaction: Interaction):
+                                    options = []
+                                    server = Server(interaction.guild.id)
+                                    for channel_id in server.leveling_profile.exempt_channels:
+                                        channel = interaction.guild.get_channel(channel_id)
+                                        if channel == None: # Should never happen due to previous checks.
+                                            logging.warning(f"Leveling exempt channel ({channel_id}) not found in server {interaction.guild.id}. Ignoring...")
+                                            continue
+
+                                        channel_category = (channel.category.name if channel.category else None)
+                                        if type(channel) == nextcord.TextChannel: label = f"#{channel.name}"
+                                        elif type(channel) == nextcord.VoiceChannel: label = f"🔉{channel.name}"
+                                        else:
+                                            logging.warning(f"Leveling exempt channel ({channel_id}) not a text or voice channel in server {interaction.guild.id}. Ignoring...")
+                                            continue
+
+                                        options.append(nextcord.SelectOption(label = label, value = channel.id, description = channel_category))
+                                    
+                                    embed = nextcord.Embed(title = "Dashboard - Leveling - Exempt Channels - Delete", description = "Choose a Channel to Remove from Exempt Channels", color = nextcord.Color.blue())
+                                    await ui_components.SelectView(embed, options, self.select_callback, placeholder = "Choose a Channel", continueButtonLabel = "Delete Channel").setup(interaction)
+                    
+                                async def select_callback(self, interaction: Interaction, choice):
+                                    if choice != None:
+                                        server = Server(interaction.guild.id)
+                                        for channel_id in server.leveling_profile.exempt_channels:
+                                            if channel_id == int(choice):
+                                                leveling_exempt_channels = server.leveling_profile.exempt_channels
+                                                leveling_exempt_channels.remove(int(choice))
+                                                server.leveling_profile.exempt_channels = leveling_exempt_channels
+                                                break
+                                        
+                                    await self.outer.reload(interaction)
+                            
+                        async def callback(self, interaction: Interaction):
+                            await self.ExemptChannelsView(self.outer, interaction).setup(interaction)
+    
                 async def callback(self, interaction: Interaction):
-                    await self.ExemptChannelsView(self.outer, interaction).setup(interaction)
-       
-            class LevelCardsButton(nextcord.ui.Button):
-                def __init__(self, outer):
-                    super().__init__(label = "Level-Up Cards", style = nextcord.ButtonStyle.gray, row = 3)
-                    self.outer = outer
-                    
-                class LevelCardsView(nextcord.ui.View):
-                    def __init__(self, outer, interaction: Interaction):
-                        super().__init__(timeout = None)
-                        self.outer = outer
-                        
-                        server = Server(interaction.guild.id)
-                        
-                        if server.leveling_profile.allow_leveling_cards: button_label = "Disable"
-                        else: button_label = "Enable"
-                        
-                        self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger)
-                        self.back_btn.callback = self.back_btn_callback
-                        self.add_item(self.back_btn)
-                        
-                        self.main_btn = nextcord.ui.Button(label = button_label, style = nextcord.ButtonStyle.green)
-                        self.main_btn.callback = self.main_btn_callback
-                        self.add_item(self.main_btn)
-                        
-                    async def setup(self, interaction: Interaction):
-                        server = Server(interaction.guild.id)
-                        
-                        if server.leveling_profile.allow_leveling_cards: level_cards_status = "on"
-                        else: level_cards_status = "off"
-                
-                        embed = nextcord.Embed(title = "Dashboard - Leveling - Level-Up Cards", description = f"Currently, level-up cards are turned {level_cards_status}.\n\n**What are level-up cards?**\nWhen enabled, members can craft personalized level-up cards displayed after each level-up message.", color = nextcord.Color.blue())
-                        await interaction.response.edit_message(embed = embed, view = self)
-                        
-                    async def back_btn_callback(self, interaction: Interaction):
-                        await self.outer.setup(interaction)
-                    
-                    async def main_btn_callback(self, interaction: Interaction):
-                        server = Server(interaction.guild.id)
-                        
-                        server.leveling_profile.allow_leveling_cards = not server.leveling_profile.allow_leveling_cards
-                        
-                        await self.outer.setup(interaction)
-                    
-                async def callback(self, interaction: Interaction):
-                    await self.LevelCardsView(self.outer, interaction).setup(interaction)
-                 
+                    await self.AdvancedView(self.outer).setup(interaction)
+                                                             
             class EnableDisableButton(nextcord.ui.Button):
                 def __init__(self, outer):
-                    super().__init__(label = "Disable Leveling", row = 3)
+                    super().__init__(label = "Disable Leveling", row = 2)
                     self.outer = outer
                     
                 class EnableDisableView(nextcord.ui.View):
@@ -2073,7 +2114,7 @@ class Dashboard(nextcord.ui.View):
                         else:
                             # We are *not* active. Give info for activation
                             embed = nextcord.Embed(title = "Dashboard - Leveling",
-                                                    description = "Leveling is currently disabled. Do you want to enable it?",
+                                                    description = "Leveling is currently disabled. Do you want to enable it?\n\nLeveling gives your members a rank based on their activity in the server.",
                                                     color = nextcord.Color.blue())
                             self.action_btn.label = "Enable"
                             

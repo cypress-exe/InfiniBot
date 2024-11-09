@@ -557,10 +557,10 @@ class TestServer(unittest.TestCase):
 
         # Using run_test_on_property
         self.run_test_on_property(server, "leveling_profile", "active", False, [True, False])
-        self.run_test_on_property(server, "leveling_profile", "channel", None, [1234567989, UNSET_VALUE, 0, None])
+        self.run_test_on_property(server, "leveling_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE, 0, None])
         self.run_test_on_property(server, "leveling_profile", "level_up_embed[title]", "Congratulations, @displayname!", ["Title_Changed", None])
         self.run_test_on_property(server, "leveling_profile", "level_up_embed[description]", "Congrats @member! You reached level [level]!", ["Description_Changed"])
-        self.run_test_on_property(server, "leveling_profile", "points_lost_per_day", 5, [12, 0])
+        self.run_test_on_property(server, "leveling_profile", "points_lost_per_day", 0, [12, 5, 0, 1])
         self.run_test_on_property(server, "leveling_profile", "exempt_channels", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]])
         self.run_test_on_property(server, "leveling_profile", "allow_leveling_cards", True, [False, True])
 

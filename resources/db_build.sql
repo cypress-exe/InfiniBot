@@ -36,9 +36,9 @@ CREATE TABLE IF NOT EXISTS logging_profile( -- #optimize
 CREATE TABLE IF NOT EXISTS leveling_profile( -- #optimize
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
-    channel TEXT DEFAULT '{"status": "NONE", "value": null}',
+    channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
     level_up_embed TEXT DEFAULT '{"title":"Congratulations, @displayname!","description":"Congrats @member! You reached level [level]!"}',
-    points_lost_per_day INT DEFAULT 5,
+    points_lost_per_day INT DEFAULT 0,
     exempt_channels TEXT DEFAULT '[]',
     allow_leveling_cards BOOLEAN DEFAULT true
 );
