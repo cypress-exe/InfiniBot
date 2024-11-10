@@ -1,6 +1,15 @@
 # InfiniBot
 
-InfiniBot is a multipurpose Discord utility bot designed to scale across thousands of servers using SQLite for storage and sharding for distribution.
+InfiniBot is a multipurpose Discord utility bot designed to scale across thousands of servers using SQLite for storage and sharding for distribution. InfiniBot offers a variety of features including:
+- Profanity moderation
+- Spam moderation
+- Message and action logging
+- Leveling with rewards
+- Join/leave messages
+- Reaction roles
+- Role messages
+- Birthday messages
+- And more!
 
 Although this project is not open for external contributions at the moment, you are welcome to clone and host it on your own server.
 
