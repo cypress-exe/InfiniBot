@@ -11,10 +11,10 @@ for arg in "$@"; do
 done
 
 # Stop (Delete) previous container
-./remove_container.bash
+bash ./remove_container.bash
 
 # Build new container WITH CACHE
-./build.bash ${cache_string}
+bash ./build.bash ${cache_string}
 
 # Run new container
-./run.bash
+bash ./run.bash

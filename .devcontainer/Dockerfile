@@ -7,14 +7,16 @@ WORKDIR /app
 # Upgrade pip version
 RUN pip install --upgrade pip
 
-# Copy the requirements and install dependencies in a separate layer
+# Install dependencies
 COPY ./.devcontainer/requirements.txt .
-
-# Install Python dependencies with no pip upgrade
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy entrypoint and configure with permissions
+COPY ./.devcontainer/entrypoint.sh .
+RUN chmod +x entrypoint.sh
 
 # Copy application code
 COPY . .
 
 # Set entrypoint
-ENTRYPOINT ["./.devcontainer/entrypoint.sh"]
+ENTRYPOINT ["./entrypoint.sh"]

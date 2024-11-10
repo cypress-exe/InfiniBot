@@ -21,20 +21,22 @@ Additionally, you need to have a Discord bot registered with Discord. There are 
 
 ## Setup
 
-Follow these steps to set up InfiniBot:
+Follow these steps to set up InfiniBot for a linux environment. Some steps may vary for certain operating systems.
 
-1. Clone the repository.
-2. Run `./rebuild_and_run.bash` using a Bash terminal (other command line tools may work, but Bash is the supported one). Docker will begin building the container, which may take some time on the first run.
-3. Once the build completes, InfiniBot will start, but you will see the following error message:
+1. Clone the repository with `git clone https://github.com/cypress-exe/InfiniBot.git`.
+2. Run `sudo snap install docker` to install docker.
+3. Run `sudo bash build.bash` using a Bash terminal (other command line tools may work, but Bash is the supported one). Docker will begin building the container, which may take some time on the first run.
+4. Run `sudo bash run.bash` to run the container.
+5. Once the build completes, InfiniBot will start, but you will see the following error message:
     ```
     FATAL ERROR: Token config file generated in ./generated/configure/TOKEN.json. Please configure your token!!!
     Exiting...
     ```
-4. To resolve this, navigate to `./generated/configure/TOKEN.json` and add your Discord bot’s token to the `discord_auth_token` field.
+6. To resolve this, navigate to `./generated/configure/TOKEN.json` and add your Discord bot’s token to the `discord_auth_token` field.
     - **Note:** The `topgg_auth_token` field is for the token provided by Top.gg (a Discord bot listing website) to report InfiniBot's server count. Since this feature is only used on the official InfiniBot application, you should leave this as `None`.
-5. Restart the bot by running `./rebuild_and_run.bash` again.
-6. InfiniBot should now start up. Make sure to invite your bot to a server to get started.
-7. You can configure additional settings in the `./generated/configure` folder, such as:
+7. Restart the bot by running `sudo bash rebuild_and_run.bash` again.
+8. InfiniBot should now start up. Make sure to invite your bot to a server to get started.
+9. You can configure additional settings in the `./generated/configure` folder, such as:
     - Default profane words to moderate.
     - Global status for all main features (can be overridden with admin commands).
     - Developer IDs, development server IDs, and other configuration settings (most settings should be left as is, as they are used for the official InfiniBot application).
@@ -43,29 +45,29 @@ Follow these steps to set up InfiniBot:
 
 The following scripts are available to manage the project:
 
-### `./build.bash`
+### `sudo bash build.bash`
 Builds the project image without running it.
 
 - **Arguments:**
   - `--use-cache` - Builds the project using cache, which speeds up the process.
 
-### `./remove_container.bash`
+### `sudo bash remove_container.bash`
 Removes the project's container, but leaves the build image intact.
 
-### `./run.bash`
+### `sudo bash run.bash`
 Runs the project, assuming the image exists. The previous container must have been removed.
 
 - **Arguments:**
-  - `-d` - Runs the project in detached mode (no logs). You can stop the project by running `./remove_container.bash`.
+  - `-d` - Runs the project in detached mode (no logs). You can stop the project by running `sudo bash remove_container.bash`.
 
-### `./rebuild_and_run.bash`
+### `sudo bash rebuild_and_run.bash`
 Simplifies the process of rerunning the container after making changes. It stops the container, rebuilds it (using cache), and restarts it.
 
 - **Arguments:**
   - `--no-cache` - Rebuilds the container without using cache, which will take longer but may resolve issues.
 
-### `./run_then_exec.bash`
-Runs the project in detached mode (like `./run.bash -d`) and then executes a shell inside the running container. This can be useful for running tests while the container is running.
+### `sudo bash run_then_exec.bash`
+Runs the project in detached mode (like `sudo bash run.bash -d`) and then executes a shell inside the running container. This can be useful for running tests while the container is running.
 
 ## Credits
 
