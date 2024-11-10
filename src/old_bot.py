@@ -24,8 +24,8 @@ import copy
 from custom_types import MISSING
 
 from dashboard import Dashboard
-from src.ui_components import SelectView, disabled_feature_override
-from src.utils import standardize_dict_properties, standardize_str_indention, get_discord_color_from_string, get_string_from_discord_color
+from ui_components import SelectView, disabled_feature_override
+from utils import standardize_dict_properties, standardize_str_indention, get_discord_color_from_string, get_string_from_discord_color
 from global_settings import global_kill_status
 
 
@@ -44,11 +44,11 @@ VERSION = 2.0
 # IDs
 dev_guilds = []
 dev_ids = []
-infinibot_guild = None
-issue_report_channel = None
-submission_channel = None
-updates_channel = None
-infinibot_updates_role = None
+infinibot_guild_id = None
+issue_report_channel_id = None
+submission_channel_id = None
+updates_channel_id = None
+infinibot_updates_role_id = None
 
 # Links
 support_server_link = 'https://discord.gg/mWgJJ8ZqwR'
@@ -97,7 +97,7 @@ bot = commands.Bot(intents = intents, allowed_mentions = nextcord.AllowedMention
 
 # LOAD IDS ==============================================================================================================================================================
 def load_ids():
-    global dev_guilds, dev_ids, infinibot_guild, issue_report_channel, submission_channel, updates_channel, infinibot_updates_role
+    global dev_guilds, dev_ids, infinibot_guild_id, issue_report_channel_id, submission_channel_id, updates_channel_id, infinibot_updates_role_id
     
     ids_file = None
     
@@ -108,11 +108,11 @@ def load_ids():
     
     dev_guilds = json_file["dev_guilds"]
     dev_ids = json_file["dev_ids"]
-    infinibot_guild = json_file["infinibot_guild"]
-    issue_report_channel = json_file["issue_report_channel"]
-    submission_channel = json_file["submission_channel"]
-    updates_channel = json_file["updates_channel"]
-    infinibot_updates_role = json_file["infinibot_updates_role"]
+    infinibot_guild_id = json_file["infinibot_guild_id"]
+    issue_report_channel_id = json_file["issue_report_channel_id"]
+    submission_channel_id = json_file["submission_channel_id"]
+    updates_channel_id = json_file["updates_channel_id"]
+    infinibot_updates_role_id = json_file["infinibot_updates_role_id"]
 
 load_ids()
 
@@ -1519,7 +1519,7 @@ class Messages:
 
 
 
-# CUSTOM src.views ==========================================================================================================================================================
+# CUSTOM views ==========================================================================================================================================================
 # Strikes "Mark Incorrect" Button
 class IncorrectButton(nextcord.ui.View):
   def __init__(self):
@@ -2093,7 +2093,7 @@ class IssueReportModal(nextcord.ui.Modal):
     async def callback(self, interaction: Interaction): 
         server = None
         for guild in bot.guilds:
-            if guild.id == infinibot_guild: server = guild
+            if guild.id == infinibot_guild_id: server = guild
         
         if server == None:
             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
@@ -2105,7 +2105,7 @@ class IssueReportModal(nextcord.ui.Modal):
         embed.add_field(name = "What Happened Before?", value = self.historyTextInput.value)
         if self.notesTextInput.value != "": embed.add_field(name = "Other notes:", value = self.notesTextInput.value)
         
-        channel = server.get_channel(issue_report_channel)
+        channel = server.get_channel(issue_report_channel_id)
         await channel.send(embed = embed)
         
         await interaction.response.send_message(embed = nextcord.Embed(title = "Issue Report Submitted", description = f"Join us at {support_server_link} or contact at infinibotassistance@gmail.com. and see if your issue will be added to https://discord.com/channels/1009127888483799110/1009136603064713309", color = nextcord.Color.green()), ephemeral=True, view = SupportView())
@@ -2126,7 +2126,7 @@ class IdeaReportModal(nextcord.ui.Modal):
     async def callback(self, interaction: Interaction): 
         server = None
         for guild in bot.guilds:
-            if guild.id == infinibot_guild: server = guild
+            if guild.id == infinibot_guild_id: server = guild
         
         if server == None:
             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
@@ -2138,7 +2138,7 @@ class IdeaReportModal(nextcord.ui.Modal):
         embed.add_field(name = "What Happened Before?", value = self.howItWouldWorkTextInput.value)
         if self.notesTextInput.value != "": embed.add_field(name = "Other notes:", value = self.notesTextInput.value)
         
-        channel = server.get_channel(submission_channel)
+        channel = server.get_channel(submission_channel_id)
         await channel.send(embed = embed)
         
         await interaction.response.send_message(embed = nextcord.Embed(title = "Idea Submitted", description = f"Join us at {support_server_link} or contact at infinibotassistance@gmail.com. and see if your idea will be a reality! You can view our road map here: https://discord.com/channels/1009127888483799110/1009134131835322448", color = nextcord.Color.green()), ephemeral=True, view = SupportView())
@@ -2178,7 +2178,7 @@ class Profile(nextcord.ui.View):
         for child in self.children: del child
         self.__init__()
     
-        if not src.utils.enabled.Profile(guild_id = interaction.guild.id):
+        if not utils.enabled.Profile(guild_id = interaction.guild.id):
             await disabled_feature_override(self, interaction)
             return
     
@@ -3108,14 +3108,14 @@ async def opt_out_of_dms(interaction: Interaction):
 
 
 
-src.viewsInitialized = False
+viewsInitialized = False
 @bot.event#------------------------------------------------------------------------
 async def on_ready():
-    global src.viewsInitialized
+    global viewsInitialized
     
     await bot.wait_until_ready()
     
-    if not src.viewsInitialized:
+    if not viewsInitialized:
         bot.add_view(IncorrectButton())
         bot.add_view(ShowMoreButton())
         bot.add_view(ErrorWhyAdminPrivilegesButton())
@@ -3123,7 +3123,7 @@ async def on_ready():
         bot.add_view(RoleMessageButton_Multiple())
         bot.add_view(JokeView())
         bot.add_view(JokeVerificationView())
-        src.viewsInitialized = True
+        viewsInitialized = True
         
     print(f"Logged in as: {bot.user.name}")
     
@@ -3295,7 +3295,7 @@ async def on_message(message: nextcord.Message):
 
     # Profanity
     Profane = False
-    if src.utils.enabled.ProfanityModeration(server = server):
+    if utils.enabled.ProfanityModeration(server = server):
         Profane = await checkProfanity(server, message)
        
 
@@ -3305,10 +3305,10 @@ async def on_message(message: nextcord.Message):
         if server.delete_invites_enabled and not message.author.guild_permissions.administrator:
             if "discord.gg/" in message.content.lower(): await message.delete()
         # Check spam
-        if src.utils.enabled.SpamModeration(server = server) and not message.author.guild_permissions.administrator:
+        if utils.enabled.SpamModeration(server = server) and not message.author.guild_permissions.administrator:
             await checkSpam(message, server)
         # Give levels
-        if src.utils.enabled.Leveling(server = server): await giveLevels(message)
+        if utils.enabled.Leveling(server = server): await giveLevels(message)
         await adminCommands(message)
 
 
@@ -3915,7 +3915,7 @@ async def onboarding(interaction: Interaction):
 # General
 async def canModerate(interaction: Interaction, server: Server_DEP):
     """Runs a check whether moderation is active. NOT SILENT!"""
-    if src.utils.enabled.ProfanityModeration(server = server):
+    if utils.enabled.ProfanityModeration(server = server):
         return True
     else:
         if not global_kill_status.global_kill_profanity_moderation:
@@ -4026,7 +4026,7 @@ async def giveStrike(guild_id, userID, amount: int, server = None, strike_data =
 # Check a server for strike expirations and rectify them
 async def checkForExpiration(server: Server_DEP):
     '''Check All Strikes in the Server for Expiration'''
-    if not src.utils.enabled.ProfanityModeration(server = server): return
+    if not utils.enabled.ProfanityModeration(server = server): return
     if server.strike_expire_time == None or server.strike_expire_time == 0: return
     if server.max_strikes == 0: return
     
@@ -4084,7 +4084,7 @@ async def checkNickname(guild: nextcord.Guild, before: nextcord.Member, after: n
     
     server = Server_DEP(guild.id)
     
-    if not src.utils.enabled.ProfanityModeration(server = server): return
+    if not utils.enabled.ProfanityModeration(server = server): return
 
     nicknameSplit = nickname.split(" ")
     result = isProfanity(nicknameSplit, server.profane_words)
@@ -4122,7 +4122,7 @@ async def checkProfanity(server: Server_DEP, message: nextcord.Message):
     global auto_deleted_message_time
     
     # Checks
-    if not src.utils.enabled.ProfanityModeration(server = server): return
+    if not utils.enabled.ProfanityModeration(server = server): return
     if message.channel.type != nextcord.ChannelType.stage_voice and message.channel.is_nsfw(): return
     # Sometimes, the member is not a member of the guild for some reason. Let's rule that out.
     if not isinstance(message.author, nextcord.Member): return
@@ -4253,7 +4253,7 @@ async def checkSpam(message: nextcord.Message, server: Server_DEP):
     MESSAGE_CHARS_TO_CHECK_REPETITION = 140    # A message requires these many characters before it is checked for repetition
 
     # If Spam is Enabled
-    if not src.utils.enabled.SpamModeration(server = server): return
+    if not utils.enabled.SpamModeration(server = server): return
     
     # Checks
     if message.author.guild_permissions.administrator: return
@@ -4325,7 +4325,7 @@ async def mystrikes(interaction: Interaction):
     await interaction.response.send_message(embed = nextcord.Embed(title = f"Strikes - {interaction.user}", description = f"You are at {str(theirStrike.strike)} strike(s)", color =  nextcord.Color.blue()))
 
 @bot.slash_command(name = "view_strikes", description = "View another member's strikes. (Requires Infinibot Mod)", dm_permission=False)
-async def src.viewstrikes(interaction: Interaction, member: nextcord.Member):
+async def viewstrikes(interaction: Interaction, member: nextcord.Member):
     if await hasRole(interaction):
         server = Server_DEP(interaction.guild.id)
         if not await canModerate(interaction, server): return
@@ -4757,7 +4757,7 @@ if False:
 VOTETYPES = ["Letters", "Numbers", "Custom"]
 @create.subcommand(name = "vote", description = "Automatically create a vote.")
 async def voteCommand(interaction: Interaction, type: str = SlashOption(choices = ["Letters", "Numbers"])):
-    if not src.utils.enabled.Votes(guild_id = interaction.guild.id):
+    if not utils.enabled.Votes(guild_id = interaction.guild.id):
         await interaction.response.send_message(embed = nextcord.Embed(title = "Votes Disabled", description = "Votes have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
         return
         
@@ -4767,7 +4767,7 @@ async def voteCommand(interaction: Interaction, type: str = SlashOption(choices 
        
 @create.subcommand(name = "custom_vote", description = "Automatically create a vote that you can customize with emojis.")
 async def customVoteCommand(interaction: Interaction, options: str = SlashOption(description = "Format: \"😄 = Yes, 😢 = No\"")):
-    if not src.utils.enabled.Votes(guild_id = interaction.guild.id):
+    if not utils.enabled.Votes(guild_id = interaction.guild.id):
         await interaction.response.send_message(embed = nextcord.Embed(title = "Votes Disabled", description = "Votes have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
         return
     
@@ -4955,7 +4955,7 @@ REACTIONROLETYPES = ["Letters", "Numbers", "Custom"]
 @create.subcommand(name = "reaction_role", description = "Legacy: Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
 async def reactionRoleCommand(interaction: Interaction, type: str = SlashOption(choices = ["Letters", "Numbers"]), mentionRoles: bool = SlashOption(name = "mention_roles", description = "Mention the roles with @mention", required = False, default = True)):
     if await hasRole(interaction):
-        if not src.utils.enabled.ReactionRoles(guild_id = interaction.guild.id):
+        if not utils.enabled.ReactionRoles(guild_id = interaction.guild.id):
             await interaction.response.send_message(embed = nextcord.Embed(title = "Reaction Roles Disabled", description = "Reaction Roles have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
             return
         
@@ -4996,7 +4996,7 @@ async def reactionRoleCommand(interaction: Interaction, type: str = SlashOption(
 @create.subcommand(name = "custom_reaction_role", description = "Legacy: Create a reaction role with customized emojis. (Requires Infinibot Mod)")
 async def customReactionRoleCommand(interaction: Interaction, options: str = SlashOption(description = "Format: \"👍 = @Member, 🥸 = @Gamer\""), mentionRoles: bool = SlashOption(name = "mention_roles", description = "Mention the roles with @mention", required = False, default = True)):   
     if await hasRole(interaction):
-        if not src.utils.enabled.ReactionRoles(guild_id = interaction.guild.id):
+        if not utils.enabled.ReactionRoles(guild_id = interaction.guild.id):
             await interaction.response.send_message(embed = nextcord.Embed(title = "Reaction Roles Disabled", description = "Reaction Roles have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
             return
         
@@ -5247,7 +5247,7 @@ class RoleMessageSetup(nextcord.ui.View):
         self.add_item(getStartedBtn)
         
     async def setup(self, interaction: Interaction):
-        if src.utils.enabled.RoleMessages(guild_id = interaction.guild.id):
+        if utils.enabled.RoleMessages(guild_id = interaction.guild.id):
             embed = nextcord.Embed(title = "Role Message Creation Wizard", description = "We will guide you through the process of creating a custom message that enables users to assign themselves roles.\n★ Unlike reaction roles, this method utilizes a modern interface.\n\n**Click on \"Get Started\" to initiate the process!**", color = nextcord.Color.green())
             await interaction.response.send_message(embed = embed, view = self, ephemeral = True)
         else:
@@ -5750,7 +5750,7 @@ async def on_member_join(member: nextcord.Member):
     server = Server_DEP(member.guild.id)
     
     #banning------------------------------------------------------------
-    if src.utils.enabled.AutoBans(server = server) and server.autoBanExists(member.id):
+    if utils.enabled.AutoBans(server = server) and server.autoBanExists(member.id):
         server.deleteAutoBan(member.id)
         server.saveAutoBans()
         if member.guild.me.guild_permissions.ban_members:
@@ -5778,7 +5778,7 @@ async def on_member_join(member: nextcord.Member):
 
     #welcome them -----------------------------------------------------------------
     joinMessage: str = server.join_message
-    if src.utils.enabled.JoinLeaveMessages(server = server) and joinMessage != None and server.join_channel != False: #if we don't have a join message, what's the point?
+    if utils.enabled.JoinLeaveMessages(server = server) and joinMessage != None and server.join_channel != False: #if we don't have a join message, what's the point?
         if server.join_channel != None: #set the join channel (if none, then it is the system channel)
             channel = server.join_channel
         else:
@@ -5809,7 +5809,7 @@ async def on_member_join(member: nextcord.Member):
             await channel.send(embeds = embeds)
     
     #give them roles --------------------------------------------------------------
-    if src.utils.enabled.DefaultRoles(server = server):
+    if utils.enabled.DefaultRoles(server = server):
         for role in server.default_roles:
             await member.add_roles(role)
         
@@ -5862,7 +5862,7 @@ async def on_member_remove(member: nextcord.Member):
             
     #say farewell to them: --------------------------------------------------------------------------------
     leaveMessage: str = server.leave_message
-    if src.utils.enabled.JoinLeaveMessages(server = server) and leaveMessage != None and server.leave_channel != False: #if we don't have a leave message, what's the point?
+    if utils.enabled.JoinLeaveMessages(server = server) and leaveMessage != None and server.leave_channel != False: #if we don't have a leave message, what's the point?
         if server.leave_channel != None: #set the leave channel (if none, then it is the system channel)
             channel = server.leave_channel
         else:
@@ -5994,7 +5994,7 @@ async def purge(interaction: Interaction, amount: str = SlashOption(description=
 
 
     if await hasRole(interaction):
-        if not src.utils.enabled.Purging(guild_id = interaction.guild.id):
+        if not utils.enabled.Purging(guild_id = interaction.guild.id):
             await interaction.response.send_message(embed = nextcord.Embed(title = "Purging Disabled", description = "Purging has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
             return;
         
@@ -6090,7 +6090,7 @@ async def purge(interaction: Interaction, amount: str = SlashOption(description=
 def shouldLog(guild_id):
     server = Server_DEP(guild_id)
     
-    if not src.utils.enabled.Logging(server = server):
+    if not utils.enabled.Logging(server = server):
         return False, None
 
     if server.log_channel == None:
@@ -6634,7 +6634,7 @@ async def memberRemove(guild: nextcord.Guild, member: nextcord.Member):
 #Join-to-create VC: -------------------------------------------------------------------------------------------------------------------------------------------------------------------     
 @bot.event
 async def on_voice_state_update(member: nextcord.Member, before: nextcord.VoiceState, after: nextcord.VoiceState):
-    if not src.utils.enabled.JoinToCreateVCs(guild_id = member.guild.id):
+    if not utils.enabled.JoinToCreateVCs(guild_id = member.guild.id):
         return
     
     if before.channel == None and after.channel == None: return
@@ -6751,7 +6751,7 @@ def setScoreOfMember(server: Server_DEP, member_id, score):
 
 async def canLevel(interaction: Interaction, server: Server_DEP):
     """Determins whether or not leveling is enabled for the server. NOT SILENT!"""
-    if src.utils.enabled.Leveling(server = server):
+    if utils.enabled.Leveling(server = server):
         return True
     else:
         if not global_kill_status.global_kill_leveling:
@@ -7042,7 +7042,7 @@ class JokeView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        if src.utils.enabled.JokeSubmissions(guild_id = 123546798): # the result of bad code
+        if utils.enabled.JokeSubmissions(guild_id = 123546798): # the result of bad code
             self.button = nextcord.ui.Button(label = "Submit a Joke", custom_id = "submit_a_joke")
             self.button.callback = self.submit_a_joke_callback
             self.add_item(self.button)
@@ -7064,7 +7064,7 @@ class JokeView(nextcord.ui.View):
             # Try to post a message to the submission channel on the InfiniBot Support Server
             server = None
             for guild in bot.guilds:
-                if guild.id == infinibot_guild: server = guild
+                if guild.id == infinibot_guild_id: server = guild
             
             if server == None:
                 print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
@@ -7076,14 +7076,14 @@ class JokeView(nextcord.ui.View):
             embed.add_field(name = "Joke", value = self.joke_description.value)
             if self.joke_answer.value: embed.add_field(name = "Answer", value = self.joke_answer.value)
             
-            channel = server.get_channel(submission_channel)
+            channel = server.get_channel(submission_channel_id)
             await channel.send(embed = embed, view = JokeVerificationView())
             
             # Inform the user that it was sent
             await interaction.response.send_message(embed = nextcord.Embed(title = "Submission Sent", description = "Your submission was sent! Join our support server, and we'll dm you regarding your submission's status.", color = nextcord.Color.green()), ephemeral = True, view = SupportView())
                    
     async def submit_a_joke_callback(self, interaction: Interaction):
-        if not src.utils.enabled.JokeSubmissions(guild_id = interaction.guild.id):
+        if not utils.enabled.JokeSubmissions(guild_id = interaction.guild.id):
             await interaction.response.send_message(embed = nextcord.Embed(title = "Joke Submissions Disabled", description = "Joke Submissions have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
             return
         
@@ -7145,7 +7145,7 @@ class JokeVerificationView(nextcord.ui.View):
                         await self.message.edit(embeds = embeds, view = None)
                         
                         # Try to dm
-                        support_server = bot.get_guild(infinibot_guild)
+                        support_server = bot.get_guild(infinibot_guild_id)
                         if not support_server:
                             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                             return
@@ -7166,7 +7166,7 @@ class JokeVerificationView(nextcord.ui.View):
                    
                 # Get confirmation that we will be able to dm the user
                 try:
-                    support_server = bot.get_guild(infinibot_guild)
+                    support_server = bot.get_guild(infinibot_guild_id)
                 except nextcord.errors.Forbidden:
                     print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                     return
@@ -7264,7 +7264,7 @@ class JokeVerificationView(nextcord.ui.View):
                         
                         # Try to dm
                         try:
-                            support_server = bot.get_guild(infinibot_guild)
+                            support_server = bot.get_guild(infinibot_guild_id)
                         except nextcord.errors.Forbidden:
                             print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                             return
@@ -7286,7 +7286,7 @@ class JokeVerificationView(nextcord.ui.View):
                 
                 # Get confirmation that we will be able to dm the user
                 try:
-                    support_server = bot.get_guild(infinibot_guild)
+                    support_server = bot.get_guild(infinibot_guild_id)
                 except nextcord.errors.Forbidden:
                     print("ERROR: CANNOT FIND INFINIBOT SERVER!!!")
                     return
@@ -7305,7 +7305,7 @@ class JokeVerificationView(nextcord.ui.View):
         
 @bot.slash_command(name = "joke", description = "Get a joke")
 async def jokeCommand(interaction: Interaction):
-    if not src.utils.enabled.Jokes(guild = interaction.guild):
+    if not utils.enabled.Jokes(guild = interaction.guild):
         await interaction.response.send_message(embed = nextcord.Embed(title = "Jokes Disabled", description = "Jokes have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
         return
     
@@ -7455,7 +7455,7 @@ class MessageCommandOptionsView(nextcord.ui.View):
                 self.add_item(yesBtn)
                 
             async def setup(self, interaction: Interaction):
-                if not src.utils.enabled.AutoBans(guild_id = interaction.guild.id):
+                if not utils.enabled.AutoBans(guild_id = interaction.guild.id):
                     await disabled_feature_override(self, interaction)
                     return
                 
@@ -7496,7 +7496,7 @@ async def messageCommandOptions(interaction: Interaction, message: nextcord.Mess
 #Bans: ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @bot.user_command(name = "Ban Member", dm_permission = False)
 async def messageCommandBanMember(interaction: Interaction, member: nextcord.Member):
-    if not src.utils.enabled.AutoBans(guild_id = interaction.guild.id):
+    if not utils.enabled.AutoBans(guild_id = interaction.guild.id):
         await interaction.response.send_message(embed = nextcord.Embed(title = "Banning Disabled", description = "Banning has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
         return;
     
@@ -7599,7 +7599,7 @@ class EditEmbed(nextcord.ui.View):
     async def setup(self, interaction: Interaction):
         await self.loadButtons(interaction)
         
-        if not src.utils.enabled.ActiveMessages(guild_id = interaction.guild.id):
+        if not utils.enabled.ActiveMessages(guild_id = interaction.guild.id):
             await disabled_feature_override(self, interaction)
             return
         
@@ -7778,7 +7778,7 @@ class EditVote(nextcord.ui.View):
     async def setup(self, interaction: Interaction):
         await self.loadButtons(interaction)
         
-        if not src.utils.enabled.ActiveMessages(guild_id = interaction.guild.id):
+        if not utils.enabled.ActiveMessages(guild_id = interaction.guild.id):
             await disabled_feature_override(self, interaction)
             return
         
@@ -7942,7 +7942,7 @@ class EditReactionRole(nextcord.ui.View):
     async def setup(self, interaction: Interaction):
         await self.loadButtons(interaction)
         
-        if not src.utils.enabled.ActiveMessages(guild_id = interaction.guild.id):
+        if not utils.enabled.ActiveMessages(guild_id = interaction.guild.id):
             await disabled_feature_override(self, interaction)
             return
         
@@ -8786,7 +8786,7 @@ class EditRoleMessage(nextcord.ui.View):
 #Other Features: -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 @bot.slash_command(name = "motivational_statement", description = "Get, uh, a motivational statement", dm_permission=False)
 async def motivationalStatement(interaction: Interaction):
-    if not src.utils.enabled.MotivationalStatement(guild_id = interaction.guild.id):
+    if not utils.enabled.MotivationalStatement(guild_id = interaction.guild.id):
         await interaction.response.send_message(embed = nextcord.Embed(title = "Motivational Statements Disabled", description = "Motivational Statements have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
         return;
     
@@ -8857,7 +8857,7 @@ async def change_nick(interaction: Interaction, member: nextcord.Member, nicknam
 
 #@set.subcommand(name = "default_role", description = "Set a default role that will be given to anyone who joins the server. (Requires Infinibot Mod)")
 async def defaultRole(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Leave blank to disable this feature.", required=False)):
-    if not src.utils.enabled.DefaultRoles(guild_id = interaction.guild.id):
+    if not utils.enabled.DefaultRoles(guild_id = interaction.guild.id):
         await interaction.response.send_message(embed = nextcord.Embed(title = "Default Roles Disabled", description = "Default Roles have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
         return;
     
@@ -8879,7 +8879,7 @@ async def defaultRole(interaction: Interaction, role: nextcord.Role = SlashOptio
 
 @create.subcommand(name = "embed", description = "Create a beautiful embed!")
 async def createEmbed(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Role to Ping", required = False)):
-    if not src.utils.enabled.Embeds(guild_id = interaction.guild.id):
+    if not utils.enabled.Embeds(guild_id = interaction.guild.id):
         await interaction.response.send_message(embed = nextcord.Embed(title = "Embeds Disabled", description = "Embeds have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
         return;
     
@@ -9489,9 +9489,9 @@ async def sendMessageToAllGuilds(interaction: Interaction):
         for guild in bot.guilds:
             try:
                 # Do some special stuff if it's the InfiniBot server
-                if guild.id == infinibot_guild:
-                    channel = guild.get_channel(updates_channel)
-                    role = guild.get_role(infinibot_updates_role)
+                if guild.id == infinibot_guild_id:
+                    channel = guild.get_channel(updates_channel_id)
+                    role = guild.get_role(infinibot_updates_role_id)
                     await channel.send(content = role.mention, embed = embed, view = SupportAndInviteView())
                     print(f"Message sent to InfiniBot Server Updates Area")
                     

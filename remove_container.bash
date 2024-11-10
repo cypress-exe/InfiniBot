@@ -1,4 +1,5 @@
 #!/bin/bash
 
-docker rm -f infinibot
-#docker-compose -f .devcontainer/docker-compose.yml down
+docker-compose -f ./.devcontainer/docker-compose.yml down
+
+echo "Container removed."

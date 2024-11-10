@@ -7,13 +7,13 @@ import copy
 import logging
 import json
 
-import src.ui_components as ui_components
-import src.utils as utils
-import src.help_commands as help_commands
-import src.views as views
-from src.custom_types import UNSET_VALUE
+import ui_components as ui_components
+import utils as utils
+import help_commands as help_commands
+import views as views
+from custom_types import UNSET_VALUE
 
-from src.server import Server
+from server import Server
 
 
 class Dashboard(nextcord.ui.View):

@@ -4,7 +4,7 @@ import logging
 import datetime
 import math
 
-from src.global_settings import get_global_kill_status, feature_dependencies
+from global_settings import get_global_kill_status, feature_dependencies
 
 
 def format_var_to_pythonic_type(_type:str, value):
@@ -155,7 +155,7 @@ def standardize_str_indention(string: str):
     return('\n'.join(lines))
 
 def feature_is_active(**kwargs):
-    from src.server import Server
+    from server import Server
 
     server:Server = kwargs.get("server")
     server_id:int = kwargs.get("server_id")

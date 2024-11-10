@@ -6,8 +6,8 @@ from sqlalchemy.orm import sessionmaker
 import re
 import os
 
-from src.custom_types import UNSET_VALUE
-from src.utils import format_var_to_pythonic_type
+from custom_types import UNSET_VALUE
+from utils import format_var_to_pythonic_type
 
 class Database:
     """

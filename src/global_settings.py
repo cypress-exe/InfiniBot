@@ -1,4 +1,4 @@
-from src.file_manager import JSONFile
+from file_manager import JSONFile
 import logging
 
 
@@ -31,14 +31,14 @@ feature_dependencies = {
 
 class GlobalSetting:
     '''This parent class is used to store global settings. It is used to store global settings in the JSON file.'''
-    def __init__(self, file_name, variable_list, default_value):
+    def __init__(self, file_name, variable_list:dict):
         self.file_name = file_name
         file = JSONFile(self.file_name)
 
-        for variable in variable_list:
+        for variable, value in variable_list.items():
             if variable not in file:
-                file.add_variable(variable, default_value)
-                logging.debug(f"Added {variable} to {self.file_name} with value: {default_value}")
+                file.add_variable(variable, value)
+                logging.debug(f"Added {variable} to {self.file_name} with value: {value}")
 
     def __getitem__(self, name):
         file = JSONFile(self.file_name)
@@ -71,30 +71,31 @@ class GlobalSetting:
 class GlobalKillStatus(GlobalSetting):
     '''This class is used to store global kill settings. It is used to store global kill settings in the JSON file. '''
     def __init__(self):
-        variable_list = [
-            "profanity_moderation",
-            "spam_moderation",
-            "logging",
-            "leveling",
-            "level_rewards",
-            "join_leave_messages",
-            "birthdays",
-            "default_roles",
-            "join_to_create_vcs",
-            "auto_bans",
-            # "active_messages", Removed for now since I think it's being phased out in this update
-            "reaction_roles",
-            "embeds",
-            "role_messages",
-            "purging",
-            "motivational_statements",
-            "jokes",
-            "joke_submissions",
-            "dashboard",
-            "profile"
-        ]
+        variable_list = {
+            "profanity_moderation": False,
+            "spam_moderation": False,
+            "logging": False,
+            "leveling": False,
+            "level_rewards": False,
+            "join_leave_messages": False,
+            "birthdays": False,
+            "default_roles": False,
+            "join_to_create_vcs": False,
+            "auto_bans": False,
+            # "active_messages": False, Removed for now since I think it's being phased out in this update
+            "reaction_roles": False,
+            "embeds": False,
+            "role_messages": False,
+            "purging": False,
+            "motivational_statements": False,
+            "jokes": False,
+            "joke_submissions": False,
+            "dashboard": False,
+            "profile": False
+        }
 
-        super().__init__("global_kill_status", variable_list, False)
+
+        super().__init__("global_kill_status", variable_list)
 
     def reset(self):
         logging.warning("Clearing global_kill_status.json")
@@ -103,33 +104,33 @@ class GlobalKillStatus(GlobalSetting):
 class PeristentData(GlobalSetting):
     '''This class is used to store persistent data. It is used to store persistent data in the JSON file. '''
     def __init__(self):
-        variable_list = [
-            "login_response_guildID",
-            "login_response_channelID"
-        ]
+        variable_list = {
+            "login_response_guildID": None,
+            "login_response_channelID": None
+        }
 
-        super().__init__("persistent_data", variable_list, None)
+        super().__init__("persistent_data", variable_list)
 
 class Settings(GlobalSetting):
     '''This class is used to store and access special channel ids for InfiniBot. Stored in special_channel_ids.json. '''
     def __init__(self):
-        variable_list = [
-            "dev_guilds",
-            "dev_ids",
-            "infinibot_guild",
-            "issue_report_channel",
-            "submission_channel",
-            "updates_channel",
-            "infinibot_updates_role",
-            "support_server_invite_link",
-            "topgg_link",
-            "topgg_vote_link",
-            "topgg_review_link",
-            "bot_invite_link",
-            "support_email"
-        ]
+        variable_list = {
+            "dev_guilds": [],
+            "dev_ids": [],
+            "infinibot_guild_id": 0,
+            "issue_report_channel_id": 0,
+            "submission_channel_id": 0,
+            "updates_channel_id": 0,
+            "infinibot_updates_role_id": 0,
+            "support_server_invite_link": "https://example.com",
+            "topgg_link": "https://example.com",
+            "topgg_vote_link": "https://example.com",
+            "topgg_review_link": "https://example.com",
+            "bot_invite_link": "https://example.com",
+            "support_email": "unset_email@example.com"
+        }
 
-        super().__init__("settings", variable_list, None)
+        super().__init__("settings", variable_list)
 
 def get_global_kill_status():
     return GlobalKillStatus()

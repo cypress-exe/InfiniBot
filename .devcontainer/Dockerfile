@@ -8,7 +8,7 @@ WORKDIR /app
 RUN pip install --upgrade pip
 
 # Copy the requirements and install dependencies in a separate layer
-COPY requirements.txt .
+COPY ./.devcontainer/requirements.txt .
 
 # Install Python dependencies with no pip upgrade
 RUN pip install --no-cache-dir -r requirements.txt
@@ -17,4 +17,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Set entrypoint
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["./.devcontainer/entrypoint.sh"]

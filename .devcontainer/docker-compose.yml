@@ -1,7 +1,7 @@
 services:
   infinibot:
-    build: .
+    image: infinibot
     container_name: infinibot_container
-    restart: always  # Automatically restart if the bot crashes
+    restart: "on-failure"  # Automatically restart if the bot crashes
     volumes:
       - ../generated:/app/generated  # Persistent data storage

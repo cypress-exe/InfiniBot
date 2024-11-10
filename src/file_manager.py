@@ -15,6 +15,16 @@ class JSONFile:
       with open(self.path, "w") as file:
         file.write("{}")
 
+    else:
+      # Ensure file is not malformed
+      try:
+        with open(self.path, "r") as file:
+          json.loads(file.read())
+      except json.JSONDecodeError:
+        logging.error(f"{self.path} is malformed. Deleting file.")
+        os.remove(self.path)
+        self.ensure_existence()
+
   def _get_data(self):
     self.ensure_existence()
 
@@ -25,7 +35,7 @@ class JSONFile:
     self.ensure_existence()
 
     with open(self.path, "w") as file:
-      file.write(json.dumps(data))
+      file.write(json.dumps(data, indent=2))
 
   def __contains__(self, key):
     data = self._get_data()

@@ -3,9 +3,9 @@ from nextcord.ext import commands
 import nextcord
 import logging
 
-from src.file_manager import JSONFile
+from file_manager import JSONFile
 
-from src.dashboard import run_dashboard_command
+from dashboard import run_dashboard_command
 
 
 # INIT BOT ==============================================================================================================================================================

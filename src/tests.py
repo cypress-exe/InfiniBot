@@ -6,16 +6,16 @@ import uuid
 import logging
 import os
 
-from src.custom_types import UNSET_VALUE
-from src.log_manager import setup_logging
+from custom_types import UNSET_VALUE
+from log_manager import setup_logging
 
-from src.database import Database
-from src.server import Server
-from src.file_manager import JSONFile
-from src.global_settings import get_global_kill_status, get_persistent_data
-from src.utils import feature_is_active
+from database import Database
+from server import Server
+from file_manager import JSONFile
+from global_settings import get_global_kill_status, get_persistent_data
+from utils import feature_is_active
 
-import src.server as server
+import server as server
 
 def hijack_database_url():
     logging.warning("Hijacking database url to use memory database")
