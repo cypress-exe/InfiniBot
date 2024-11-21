@@ -17,4 +17,4 @@ bash ./remove_container.bash
 bash ./build.bash ${cache_string}
 
 # Run new container
-bash ./run.bash
+bash ./run.bash $@

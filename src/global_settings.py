@@ -3,29 +3,34 @@ import logging
 
 
 feature_dependencies = {
-    "dashboard": {
-        "global_kill": "dashboard"
-    },
+    "dashboard": {"global_kill": "dashboard"},
+    # ------------------------------------------------------------------------------------------------------
     "profanity_moderation": {
         "global_kill": "profanity_moderation",
-        "server": "profanity_moderation_profile.active"
+        "server": "profanity_moderation_profile.active",
     },
     "spam_moderation": {
         "global_kill": "spam_moderation",
-        "server": "spam_moderation_profile.active"
+        "server": "spam_moderation_profile.active",
     },
-    "logging": {
-        "global_kill": "logging",
-        "server": "logging_profile.active"
-    },
-    "leveling": {
-        "global_kill": "leveling",
-        "server": "leveling_profile.active"
-    },
+    # ------------------------------------------------------------------------------------------------------
+    "logging": {"global_kill": "logging", "server": "logging_profile.active"},
+    # ------------------------------------------------------------------------------------------------------
+    "leveling": {"global_kill": "leveling", "server": "leveling_profile.active"},
     "level_rewards": {
         "global_kill": ("level_rewards", "leveling"),
-        "server": "leveling_profile.active"
-    }
+        "server": "leveling_profile.active",
+    },
+    # ------------------------------------------------------------------------------------------------------
+    "join_leave_messages": {"global_kill": "join_leave_messages"},
+    "join_messages": {
+        "global_kill": "join_leave_messages",
+        "server": "join_message_profile.active",
+    },
+    "leave_messages": {
+        "global_kill": "join_leave_messages",
+        "server": "leave_message_profile.active",
+    },
 }
 
 
@@ -67,7 +72,7 @@ class GlobalSetting:
         """
         file = JSONFile(self.file_name)
         file.delete_file()
-        
+
 class GlobalKillStatus(GlobalSetting):
     '''This class is used to store global kill settings. It is used to store global kill settings in the JSON file. '''
     def __init__(self):

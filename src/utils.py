@@ -155,6 +155,18 @@ def standardize_str_indention(string: str):
     return('\n'.join(lines))
 
 def feature_is_active(**kwargs):
+    """
+    Checks if a feature is active for a server (or globally).
+
+    Args:
+        server (Server, optional): The server object to check the feature for.
+        server_id (int, optional): The ID of the server to check the feature for.
+        guild_id (in, optional): The ID of the guild to check the feature for.
+        feature (str): The name of the feature to check.
+
+    Returns:
+        bool: True if the feature is active for the server (or globally), False otherwise.
+    """
     from server import Server
 
     server:Server = kwargs.get("server")
@@ -189,9 +201,6 @@ def feature_is_active(**kwargs):
     # Check if globally killed
     global_kill_statuses = get_global_kill_status()
     for key in global_kill_keys:
-        if feature not in global_kill_statuses:
-            raise ValueError(f"Error: {__name__} received an invalid feature (not registered in global kill settings).")
-
         if global_kill_statuses[key]:
             return False
 

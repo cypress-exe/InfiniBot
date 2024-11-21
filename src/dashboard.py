@@ -29,8 +29,8 @@ class Dashboard(nextcord.ui.View):
         self.leveling_btn = self.LevelingButton(self)
         self.add_item(self.leveling_btn)
         
-        # self.joinLeaveMessagesBtn = self.JoinLeaveMessagesButton(self)
-        # self.add_item(self.joinLeaveMessagesBtn)
+        self.joinLeaveMessagesBtn = self.JoinLeaveMessagesButton(self)
+        self.add_item(self.joinLeaveMessagesBtn)
         
         # self.birthdaysBtn = self.BirthdaysButton(self)
         # self.add_item(self.birthdaysBtn)
@@ -171,9 +171,12 @@ class Dashboard(nextcord.ui.View):
                             return
                         
                         # Strike Info
-                        if server.profanity_moderation_profile.channel == None: admin_channel = "None"
-                        elif server.profanity_moderation_profile.channel == UNSET_VALUE: admin_channel = "UNSET"
-                        else: admin_channel = interaction.guild.get_channel(server.profanity_moderation_profile.channel).mention
+                        if server.profanity_moderation_profile.channel == None: admin_channel_ui_text = "None"
+                        elif server.profanity_moderation_profile.channel == UNSET_VALUE: admin_channel_ui_text = "UNSET"
+                        else: 
+                            admin_channel = interaction.guild.get_channel(server.profanity_moderation_profile.channel)
+                            if admin_channel: admin_channel_ui_text = admin_channel.mention
+                            else: admin_channel_ui_text = "#unknown"
 
                         if server.profanity_moderation_profile.strike_system_active: strike_system_active = "ENABLED"
                         else: strike_system_active = "DISABLED"
@@ -185,7 +188,7 @@ class Dashboard(nextcord.ui.View):
 
                         **Settings**
                         - **Timeout Duration:** {humanfriendly.format_timespan(server.profanity_moderation_profile.timeout_seconds)}
-                        - **Admin Channel:** {admin_channel}
+                        - **Admin Channel:** {admin_channel_ui_text}
                         - **Strike System:** {strike_system_active}
 
                         For more information, use: {UNSET_VALUE}
@@ -757,7 +760,7 @@ class Dashboard(nextcord.ui.View):
                                         
                                         server.profanity_moderation_profile.strike_expiring_active = (not server.profanity_moderation_profile.strike_expiring_active)
                                         
-                                        # Return them.
+                                        # Return the user
                                         await self.back_btn_callback(interaction)
                                     
                                 async def callback(self, interaction: Interaction):
@@ -818,7 +821,7 @@ class Dashboard(nextcord.ui.View):
                                         
                                         server.profanity_moderation_profile.strike_system_active = (not server.profanity_moderation_profile.strike_system_active)
                                         
-                                        # Return them.
+                                        # Return the user
                                         await self.back_btn_callback(interaction)
                                     
                                 async def callback(self, interaction: Interaction):
@@ -885,7 +888,7 @@ class Dashboard(nextcord.ui.View):
                                 
                                 server.profanity_moderation_profile.active = (not server.profanity_moderation_profile.active)
                                 
-                                # Return them.
+                                # Return the user
                                 await self.back_btn_callback(interaction, server = server)
                             
                         async def callback(self, interaction: Interaction):
@@ -1140,13 +1143,15 @@ class Dashboard(nextcord.ui.View):
                     await self.log_channel_btn.callback(interaction, skipped = True)
                     return
                 
-                log_channel_name = interaction.guild.get_channel(server.logging_profile.channel).mention
-
+                log_channel = interaction.guild.get_channel(server.logging_profile.channel)
+                if log_channel: log_channel_ui_text = log_channel.mention
+                else: log_channel_ui_text = "#unknown"
+                
                 description = f"""
                 ✅ ​ InfiniBot is set up to enhance server management with comprehensive logging. View deleted and edited messages, and administrative changes.
                 
                 **Settings**
-                - **Log Channel:** {log_channel_name}
+                - **Log Channel:** {log_channel_ui_text}
                 
                 For more information, use: {UNSET_VALUE}""" # TODO add shortcut for help command
                 description = utils.standardize_str_indention(description)
@@ -1272,7 +1277,7 @@ class Dashboard(nextcord.ui.View):
                         
                         server.logging_profile.active = (not server.logging_profile.active)
 
-                        # Return them.
+                        # Return the user
                         await self.back_btn_callback(interaction)
                     
                 async def callback(self, interaction: Interaction):
@@ -1334,9 +1339,12 @@ class Dashboard(nextcord.ui.View):
                     await ui_components.disabled_feature_override(self, interaction)
                     return
                 
-                if server.leveling_profile.channel == None: leveling_channel_name = "No Notifications (disabled)"
-                elif server.leveling_profile.channel == 0: leveling_channel_name = "System Messages Channel"
-                else: leveling_channel_name = interaction.guild.get_channel(server.leveling_profile.channel).mention
+                if server.leveling_profile.channel == None: leveling_channel_ui_text = "No Notifications (disabled)"
+                elif server.leveling_profile.channel == UNSET_VALUE: leveling_channel_ui_text = "System Messages Channel"
+                else: 
+                    leveling_channel = interaction.guild.get_channel(server.leveling_profile.channel)
+                    if leveling_channel: leveling_channel_ui_text = leveling_channel.mention
+                    else: leveling_channel_ui_text = "#unknown"
                 
                 if server.leveling_profile.channel == None: leveling_message = "N/A (Notifications are disabled)\n"
                 else: leveling_message = f"\n```Title: {server.leveling_profile.level_up_embed["title"]} \
@@ -1347,7 +1355,7 @@ class Dashboard(nextcord.ui.View):
                 ✅ ​ InfiniBot enhances server engagement through activity-based leveling. Members earn points for participating in the server. Level-up notifications are sent to members' DMs and the notification channel (message & channel configurable below). If enabled, level rewards grant roles based on member levels.
 
                 **Settings:**
-                - **Notifications Channel:** {leveling_channel_name}
+                - **Notifications Channel:** {leveling_channel_ui_text}
                 - **Level-Up Message:** {leveling_message}
                 For more information, use: {UNSET_VALUE}
                 """ # TODO add shortcut for help command.
@@ -1658,7 +1666,7 @@ class Dashboard(nextcord.ui.View):
                                 
                                 discord_role = interaction.guild.get_role(int(self.role_id))
                                 
-                                await interaction.followup.send(embed = nextcord.Embed(title = "Level Reward Created", description = f"{discord_role.mention} is now assigned to level {str(level)}.\n\n**Note**\nThis will mean that this role will be revoked to anyone who is below level {str(level)}.", color = nextcord.Color.green()), ephemeral=True)                  
+                                await interaction.followup.send(embed = nextcord.Embed(title = "Level Reward Created", description = f"{discord_role.mention} is now assigned to level {str(level)}.\n\nInfiniBot will revoke this role from anyone who is below level {str(level)}.", color = nextcord.Color.green()), ephemeral=True)                  
 
                                 # TODO Update the Level Rewards for Everyone in the Server
                                 for member in interaction.guild.members:
@@ -1752,7 +1760,7 @@ class Dashboard(nextcord.ui.View):
                     server = Server(interaction.guild.id)
                     select_options = [
                         nextcord.SelectOption(label = "No Notifications", value = "__DISABLED__", description = "Do not notify about level updates.", default = (server.leveling_profile.channel == None)),
-                        nextcord.SelectOption(label = "System Messages Channel", value = "__SYS__", description = "Display in system messages channel", default = (server.leveling_profile.channel == 0))
+                        nextcord.SelectOption(label = "System Messages Channel", value = "__SYS__", description = "Display in system messages channel", default = (server.leveling_profile.channel == UNSET_VALUE))
                         ]
                     for channel in interaction.guild.text_channels:
                         if channel.category != None: category_name = channel.category.name
@@ -1777,7 +1785,7 @@ class Dashboard(nextcord.ui.View):
                         return
                     
                     if selection == "__DISABLED__": new_leveling_channel_value = None
-                    elif selection == "__SYS__": new_leveling_channel_value = 0
+                    elif selection == "__SYS__": new_leveling_channel_value = UNSET_VALUE
                     else: new_leveling_channel_value = selection
                     
                     server = Server(interaction.guild.id)
@@ -1803,7 +1811,7 @@ class Dashboard(nextcord.ui.View):
 
                         self.leveling_message_description_input = nextcord.ui.TextInput(label = "Message Description", style = nextcord.TextInputStyle.paragraph, 
                                                                                   max_length=1024, default_value = server.leveling_profile.level_up_embed["description"], 
-                                                                                  placeholder = "Congrats! You reached level [level")
+                                                                                  placeholder = "Congrats! You reached level [level]!")
                         self.add_item(self.leveling_message_description_input)
                         
                     async def callback(self, interaction: Interaction):
@@ -2137,7 +2145,7 @@ class Dashboard(nextcord.ui.View):
                         
                         server.leveling_profile.active = (not server.leveling_profile.active)
                         
-                        # Return them.
+                        # Return the user
                         await self.back_btn_callback(interaction)
                     
                 async def callback(self, interaction: Interaction):
@@ -2146,253 +2154,513 @@ class Dashboard(nextcord.ui.View):
         async def callback(self, interaction: Interaction):
             await self.LevelingView(self.outer).setup(interaction)
 
-    # class JoinLeaveMessagesButton(nextcord.ui.Button):
-    #     def __init__(self, outer):
-    #         super().__init__(label = "Join / Leave Messages", style = nextcord.ButtonStyle.gray)
-    #         self.outer = outer
+    class JoinLeaveMessagesButton(nextcord.ui.Button):
+        def __init__(self, outer):
+            super().__init__(label = "Join / Leave Messages", style = nextcord.ButtonStyle.gray)
+            self.outer = outer
             
-    #     class JoinLeaveMessagesView(nextcord.ui.View):
-    #         def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
-    #             super().__init__(timeout = None)
-    #             self.outer = outer
-    #             self.onboarding_modifier = onboarding_modifier
-    #             self.onboarding_embed = onboarding_embed
+        class JoinLeaveMessagesView(nextcord.ui.View):
+            def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
+                super().__init__(timeout = None)
+                self.outer = outer
+                self.onboarding_modifier = onboarding_modifier
+                self.onboarding_embed = onboarding_embed
                 
-    #             self.joinMessageBtn = self.JoinMessageButton(self)
-    #             self.add_item(self.joinMessageBtn)
-                
-    #             self.joinChannelBtn = self.JoinChannelButton(self)
-    #             self.add_item(self.joinChannelBtn)
-                
-    #             self.leaveMessageBtn = self.LeaveMessageButton(self)
-    #             self.add_item(self.leaveMessageBtn)
-                
-    #             self.leaveChannelBtn = self.LeaveChannelButton(self)
-    #             self.add_item(self.leaveChannelBtn)
-                
-    #             self.joinCardsBtn = self.JoinCardsButton(self)
-    #             self.add_item(self.joinCardsBtn)
-                
-    #             self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 3)
-    #             self.back_btn.callback = self.back_btn_callback
-    #             self.add_item(self.back_btn)
-                
-    #         async def setup(self, interaction: Interaction):
-    #             if self.onboarding_modifier: self.onboarding_modifier(self)
-                
-    #             # Clean up
-    #             if not self.onboarding_modifier:
-    #                 for child in self.children: 
-    #                     del child 
-    #                     self.__init__(self.outer)
+                self.join_message_btn = self.JoinMessagesButton(self)
+                self.add_item(self.join_message_btn)
 
-    #             server = Server_DEP(interaction.guild.id)
+                self.leave_messages_btn = self.LeaveMessagesButton(self)
+                self.add_item(self.leave_messages_btn)
                 
-    #             # Global Kill
-    #             if not utils.enabled.JoinLeaveMessages(server = server):
-    #                 await ui_components.disabled_feature_override(self, interaction)
-    #                 return
+                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 3)
+                self.back_btn.callback = self.back_btn_callback
+                self.add_item(self.back_btn)
                 
-    #             if server.join_message != None and server.join_channel != False: join_message = f"```{server.join_message}```"
-    #             else: join_message = "N/A"
+            async def setup(self, interaction: Interaction):
+                if self.onboarding_modifier: self.onboarding_modifier(self)
                 
-    #             if server.leave_message != None and server.leave_channel != False: leave_message = f"```{server.leave_message}```"
-    #             else: leave_message = "N/A"
+                # Clean up
+                if not self.onboarding_modifier:
+                    for child in self.children: 
+                        del child 
+                        self.__init__(self.outer)
                 
-    #             if server.allow_join_cards_bool: join_cards_enabled = "Yes"
-    #             else: join_cards_enabled = "No"
+                # Global Kill
+                if not utils.feature_is_active(server_id = interaction.guild.id, feature = "join_leave_messages"): # server_id won't be used here, but it's required as an input
+                    await ui_components.disabled_feature_override(self, interaction)
+                    return
                 
-    #             if server.join_channel == None: join_channel = "System Messages Channel"
-    #             elif server.join_channel == False: join_channel = "DISABLED"
-    #             else: join_channel = server.join_channel.mention
+                description = """
+                InfiniBot can send messages to members when they join or leave the server.
                 
-    #             if server.leave_channel == None: leave_channel = "System Messages Channel"
-    #             elif server.leave_channel == False: leave_channel = "DISABLED"
-    #             else: leave_channel = server.leave_channel.mention
-                
-    #             embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages", description = f"Set up custom messages for member joins and leaves.\n\n**Settings:**\nJoin Messages Channel: {join_channel}\nLeave Messages Channel: {leave_channel}\n\nJoin Cards Enabled: {join_cards_enabled}\n\nJoin Message: {join_message}\nLeave Message: {leave_message}\n\nFor more information, use: {levelingHelp.get_mention()}", color = nextcord.Color.blue())
-                
-    #             if self.onboarding_embed: embeds = [self.onboarding_embed, embed]
-    #             else: embeds = [embed]
-                
-    #             # Update Buttons
-    #             self.joinMessageBtn.disabled = (server.join_channel == False)
-    #             self.leaveMessageBtn.disabled = (server.leave_channel == False)
-                
-    #             await interaction.response.edit_message(embeds = embeds, view = self)
-             
-    #         async def back_btn_callback(self, interaction: Interaction):
-    #             await self.outer.setup(interaction)
-              
-    #         class JoinMessageButton(nextcord.ui.Button):
-    #             def __init__(self, outer):
-    #                 super().__init__(label = "Join Message", style = nextcord.ButtonStyle.gray)
-    #                 self.outer = outer
-                    
-    #             class JoinMessageModal(nextcord.ui.Modal): #Join Message Modal -----------------------------------------------------
-    #                 def __init__(self, guild: nextcord.Guild, outer):
-    #                     super().__init__(timeout = None, title = "Join Message")
-    #                     self.outer = outer
+                To enable / configure this feature, use the **Join Messages** or **Leave Messages** buttons below.
+                """
+                description = utils.standardize_str_indention(description)
+
+                embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages", description = description, color = nextcord.Color.blue())
+                await interaction.response.edit_message(embed = embed, view = self)
+            
+            class JoinMessagesButton(nextcord.ui.Button):
+                def __init__(self, outer):
+                    super().__init__(label = "Join Messages", style = nextcord.ButtonStyle.gray)
+                    self.outer = outer
+
+                class JoinMessagesView(nextcord.ui.View): #Join Messages Window --------------------------------------------
+                    def __init__(self, outer):
+                        super().__init__(timeout = None)
+                        self.outer = outer
                         
-    #                     server = Server_DEP(guild.id)
-    #                     if server.join_message != None: joinMessage = server.join_message
-    #                     else: joinMessage = ""
-    #                     self.joinMessageTextInput = nextcord.ui.TextInput(label = "Message ([member] = member)", style = nextcord.TextInputStyle.paragraph, max_length=1024, default_value = joinMessage, placeholder = "Hello There, [member]!")
-    #                     self.add_item(self.joinMessageTextInput)
+                        self.join_message_btn = self.JoinMessageButton(self)
+                        self.add_item(self.join_message_btn)
                         
-    #                 async def callback(self, interaction: Interaction):
-    #                     server = Server_DEP(interaction.guild.id)
-    #                     server.join_message = self.joinMessageTextInput.value  
-    #                     server.saveData()
+                        self.join_channel_btn = self.JoinChannelButton(self)
+                        self.add_item(self.join_channel_btn)
+
+                        self.cards_btn = self.CardsBtn(self)
+                        self.add_item(self.cards_btn)
+
+                        self.disable_btn = self.EnableDisableButton(self)
+                        self.add_item(self.disable_btn)
                         
-    #                     await self.outer.setup(interaction)                     
+                        self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 2)
+                        self.back_btn.callback = self.back_btn_callback
+                        self.add_item(self.back_btn)
+
+                    async def setup(self, interaction: Interaction):
+                        # Redirect to Activation Screen if needed
+                        server = Server(interaction.guild.id)
+                        if not server.join_message_profile.active: 
+                            await self.EnableDisableButton.EnableDisableView(self).setup(interaction)
+                            return
+                
+                        server = Server(interaction.guild.id)
                         
-    #             async def callback(self, interaction: Interaction):
-    #                 await interaction.response.send_modal(self.JoinMessageModal(interaction.guild, self.outer))                
+                        # Global Kill
+                        if not utils.feature_is_active(server = server, feature = "join_messages"):
+                            await ui_components.disabled_feature_override(self, interaction)
+                            return
+                        
+                        if server.join_message_profile.channel == UNSET_VALUE: channel_ui_text = "System Messages Channel"
+                        else: 
+                            channel = interaction.guild.get_channel(server.join_message_profile.channel)
+                            if channel: channel_ui_text = channel.mention
+                            else: channel_ui_text = "#unknown"
+
+                        if server.join_message_profile.allow_join_cards: cards_ui_text = "Enabled"
+                        else: cards_ui_text = "Disabled"
+
+                        description = f"""
+                        InfiniBot can welcome members of your server by sending a message when they join. Configure the message, where it's sent, and its contents.
+
+                        **Settings**
+                        - **Channel**: {channel_ui_text}
+                        - **Cards**: {cards_ui_text}
+                        - **Message**: 
+                        ```
+                        Title: {server.join_message_profile.embed["title"]}
+                        Description: {server.join_message_profile.embed["description"]}
+                        ```
+                        For more information, use: {UNSET_VALUE}
+                        """ # TODO add shortcut for help command.
+                        description = utils.standardize_str_indention(description)
+
+                        embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Messages", description = description, color = nextcord.Color.blue())
+                        await interaction.response.edit_message(embed = embed, view = self)
+
+                    class JoinMessageButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Join Message", style = nextcord.ButtonStyle.gray)
+                            self.outer = outer
+                            
+                        class JoinMessageModal(nextcord.ui.Modal): #Join Message Modal -----------------------------------------------------
+                            def __init__(self, guild: nextcord.Guild, outer):
+                                super().__init__(timeout = None, title = "Join Message")
+                                self.outer = outer
                                 
-    #         class JoinChannelButton(nextcord.ui.Button):
-    #             def __init__(self, outer):
-    #                 super().__init__(label = "Join Message Channel", style = nextcord.ButtonStyle.gray)
-    #                 self.outer = outer
-                                     
-    #             async def callback(self, interaction: Interaction):
-    #                 server = Server_DEP(interaction.guild.id)
-                        
-    #                 selectOptions = [nextcord.SelectOption(label = "No Join Messages", value = "__DISABLED__", description = "Don't show welcome messages", default = (server.join_channel == False)),
-    #                     nextcord.SelectOption(label = "System Messages Channel", value = "__NONE__", description = "Display in system messages channel", default = (server.join_channel == None))]
-    #                 for channel in interaction.guild.text_channels:
-    #                     if channel.category != None: categoryName = channel.category.name
-    #                     else: categoryName = None
-    #                     selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.join_channel != None and server.join_channel != False and server.join_channel.id == channel.id)))
-                    
-    #                 embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Messages Channel", description = "Select a channel to send join messages", color = nextcord.Color.blue())
-    #                 await ui_components.SelectView(embed, selectOptions, self.ui_components.SelectViewReturn, continueButtonLabel = "Confirm").setup(interaction)
-                      
-    #             async def ui_components.SelectViewReturn(self, interaction: Interaction, selection):
-    #                 if selection == None:
-    #                     await self.outer.setup(interaction)
-    #                     return
-                    
-    #                 if selection == "__NONE__": value = None
-    #                 elif selection == "__DISABLED__": value = False
-    #                 else: value = selection
-                    
-    #                 server = Server_DEP(interaction.guild.id)
-    #                 if server.setJoinChannelID(value):
-    #                     server.saveData()
-    #                     await self.outer.setup(interaction)
-                                      
-    #         class LeaveMessageButton(nextcord.ui.Button):
-    #             def __init__(self, outer):
-    #                 super().__init__(label = "Leave Message", style = nextcord.ButtonStyle.gray, row = 1)
-    #                 self.outer = outer
-                    
-    #             class leaveMessageModal(nextcord.ui.Modal): #Leave Message Modal -----------------------------------------------------
-    #                 def __init__(self, guild: nextcord.Guild, outer):
-    #                     super().__init__(timeout = None, title = "Leave Message")
-    #                     self.outer = outer
-                        
-    #                     server = Server_DEP(guild.id)
-    #                     if server.leave_message != None: leaveMessage = server.leave_message
-    #                     else: leaveMessage = ""
-    #                     self.leaveMessageTextInput = nextcord.ui.TextInput(label = "Message ([member] = member)", style = nextcord.TextInputStyle.paragraph, max_length=1024, default_value = leaveMessage, placeholder = "[member] left. They will be remembered.")
-    #                     self.add_item(self.leaveMessageTextInput)
-                        
-    #                 async def callback(self, interaction: Interaction):
-    #                     server = Server_DEP(interaction.guild.id)        
-    #                     server.leave_message = self.leaveMessageTextInput.value
-    #                     server.saveData()
-                        
-    #                     await self.outer.setup(interaction)                       
-                        
-    #             async def callback(self, interaction: Interaction):
-    #                 await interaction.response.send_modal(self.leaveMessageModal(interaction.guild, self.outer))                
+                                server = Server(guild.id)
                                 
-    #         class LeaveChannelButton(nextcord.ui.Button):
-    #             def __init__(self, outer):
-    #                 super().__init__(label = "Leave Message Channel", style = nextcord.ButtonStyle.gray, row = 1)
-    #                 self.outer = outer
-                    
-    #             async def callback(self, interaction: Interaction):
-    #                 server = Server_DEP(interaction.guild.id)
-                        
-    #                 selectOptions = [nextcord.SelectOption(label = "No Leave Messages", value = "__DISABLED__", description = "Don't show welcome messages", default = (server.leave_channel == False)),
-    #                     nextcord.SelectOption(label = "System Messages Channel", value = "__NONE__", description = "Display in system messages channel", default = (server.leave_channel == None))]
-    #                 for channel in interaction.guild.text_channels:
-    #                     if channel.category != None: categoryName = channel.category.name
-    #                     else: categoryName = None
-    #                     selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.leave_channel != None and server.leave_channel != False and server.leave_channel.id == channel.id)))
-                    
-    #                 embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Leave Messages Channel", description = "Select a channel to send leave messages", color = nextcord.Color.blue())
-    #                 await ui_components.SelectView(embed, selectOptions, self.ui_components.SelectViewReturn, continueButtonLabel = "Confirm").setup(interaction)
-                      
-    #             async def ui_components.SelectViewReturn(self, interaction: Interaction, selection):
-    #                 if selection == None:
-    #                     await self.outer.setup(interaction)
-    #                     return
-                    
-    #                 if selection == "__NONE__": value = None
-    #                 elif selection == "__DISABLED__": value = False
-    #                 else: value = selection
-                    
-    #                 server = Server_DEP(interaction.guild.id)
-    #                 if server.setLeaveChannelID(value):
-    #                     server.saveData()
-    #                     await self.outer.setup(interaction)
+                                self.join_message_title_input = nextcord.ui.TextInput(label = "Title", style = nextcord.TextInputStyle.short, max_length=256, 
+                                                                                      default_value = server.join_message_profile.embed["title"], placeholder = "@displayname just joined the server!")
+                                self.add_item(self.join_message_title_input)
+
+                                self.join_message_description_input = nextcord.ui.TextInput(label = "Description", style = nextcord.TextInputStyle.paragraph, max_length=1024, 
+                                                                                      default_value = server.join_message_profile.embed["description"], placeholder = "Welcome to the server, @member!")
+                                self.add_item(self.join_message_description_input)
+                                
+                            async def callback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                embed = server.join_message_profile.embed
+                                embed["title"] = self.join_message_title_input.value
+                                embed["description"] = self.join_message_description_input.value
+                                server.join_message_profile.embed = embed
+
+                                await self.outer.setup(interaction)                     
+                                
+                        async def callback(self, interaction: Interaction):
+                            await interaction.response.send_modal(self.JoinMessageModal(interaction.guild, self.outer))                
+                                        
+                    class JoinChannelButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Join Message Channel", style = nextcord.ButtonStyle.gray)
+                            self.outer = outer
+                                            
+                        async def callback(self, interaction: Interaction):
+                            server = Server(interaction.guild.id)
+                                
+                            select_options = [nextcord.SelectOption(label = "System Messages Channel", value = "__SYS__", description = "Display in system messages channel", default = (server.join_message_profile.channel == UNSET_VALUE))]
+                            for channel in interaction.guild.text_channels:
+                                if channel.category != None: category_name = channel.category.name
+                                else: category_name = None
+                                select_options.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = category_name, 
+                                                                            default = (server.join_message_profile.channel == channel.id)))
+                            
+                            description = """
+                            Choose a channel for InfiniBot to send join messages in.
+
+                            **What is the System Messages Channel?**
+                            In Discord's server settings, you can configure a System Messages Channel. If you choose this channel, InfiniBot will send join messages there.
+                            """
+                            description = utils.standardize_str_indention(description)
+
+                            embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Messages - Channel", description = description, color = nextcord.Color.blue())
+                            await ui_components.SelectView(embed, select_options, self.select_view_return, continueButtonLabel = "Confirm").setup(interaction)
+                            
+                        async def select_view_return(self, interaction: Interaction, selection):
+                            if selection == None:
+                                await self.outer.setup(interaction)
+                                return
+                            
+                            if selection == "__SYS__": value = UNSET_VALUE
+                            else: value = selection
+                            
+                            server = Server(interaction.guild.id)
+                            server.join_message_profile.channel = value
+                            await self.outer.setup(interaction)
+
+                    class CardsBtn(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Cards", style = nextcord.ButtonStyle.gray, row = 1)
+                            self.outer = outer
+                            
+                        class CardsView(nextcord.ui.View): # Join Cards
+                            def __init__(self, outer, interaction: Interaction):
+                                super().__init__(timeout = None)
+                                self.outer = outer
+                                
+                                server = Server(interaction.guild.id)
+                                
+                                if server.join_message_profile.allow_join_cards: button_label = "Disable"
+                                else: button_label = "Enable"
+                                
+                                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger)
+                                self.back_btn.callback = self.back_btn_callback
+                                self.add_item(self.back_btn)
+                                
+                                self.main_btn = nextcord.ui.Button(label = button_label, style = nextcord.ButtonStyle.green)
+                                self.main_btn.callback = self.main_btn_callback
+                                self.add_item(self.main_btn)
+                                
+                            async def setup(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                if server.join_message_profile.allow_join_cards: join_card_status = "on"
+                                else: join_card_status = "off"
+
+                                description = f"""
+                                Currently, cards are turned {join_card_status}.
+                                
+                                **What are cards?**
+                                If enabled, members can personalize a card for them to use when they join the server.
+                                Go to `/profile` to customize your join card.
+                                """
+                                description = utils.standardize_str_indention(description)
+                                embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Messages - Cards", description = description, color = nextcord.Color.blue())
+                                await interaction.response.edit_message(embed = embed, view = self)
+                                
+                            async def back_btn_callback(self, interaction: Interaction):
+                                await self.outer.setup(interaction)
+                            
+                            async def main_btn_callback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                server.join_message_profile.allow_join_cards = not server.join_message_profile.allow_join_cards
+                                
+                                await self.outer.setup(interaction)
+                            
+                        async def callback(self, interaction: Interaction):
+                            await self.CardsView(self.outer, interaction).setup(interaction)
+
+                    class EnableDisableButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Disable Join Messages", row = 1)
+                            self.outer = outer
+                            
+                        class EnableDisableView(nextcord.ui.View):
+                            def __init__(self, outer):
+                                super().__init__(timeout = None)
+                                self.outer = outer
+                                
+                                self.back_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
+                                self.back_btn.callback = self.back_btn_callback
+                                self.add_item(self.back_btn)
+                                
+                                self.action_btn = nextcord.ui.Button(label = "ACTION", style = nextcord.ButtonStyle.green)
+                                self.action_btn.callback = self.action_btn_callback
+                                self.add_item(self.action_btn)
+                                                
+                            async def setup(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                # Determine whether or not we are active or not.
+                                if server.join_message_profile.active:
+                                    # We *are* active. Give info for deactivation
+                                    embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Messages", 
+                                                            description = "Are you sure you want to disable join messages? You can re-enable this feature at any time.",
+                                                            color = nextcord.Color.blue())
+                                    self.action_btn.label = "Disable"
                                     
-    #         class JoinCardsButton(nextcord.ui.Button):
-    #             def __init__(self, outer):
-    #                 super().__init__(label = "Join Cards", style = nextcord.ButtonStyle.gray, row = 2)
-    #                 self.outer = outer
-                    
-    #             class JoinCardsView(nextcord.ui.View):
-    #                 def __init__(self, outer, interaction: Interaction):
-    #                     super().__init__(timeout = None)
-    #                     self.outer = outer
-                        
-    #                     server = Server_DEP(interaction.guild.id)
-                        
-    #                     if server.allow_join_cards_bool: buttonLabel = "Disable"
-    #                     else: buttonLabel = "Enable"
-                        
-    #                     del server #we don't need it anymore
-                        
-                        
-    #                     self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger)
-    #                     self.back_btn.callback = self.back_btn_callback
-    #                     self.add_item(self.back_btn)
-                        
-                        
-    #                     self.mainBtn = nextcord.ui.Button(label = buttonLabel, style = nextcord.ButtonStyle.green)
-    #                     self.mainBtn.callback = self.mainBtnCallback
-    #                     self.add_item(self.mainBtn)
-                        
-    #                 async def setup(self, interaction: Interaction):
-    #                     server = Server_DEP(interaction.guild.id)
-                        
-    #                     if server.allow_join_cards_bool: joinCards = "on"
-    #                     else: joinCards = "off"
+                                else:
+                                    # We are *not* active. Give info for activation
+                                    embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Messages",
+                                                            description = "Join messages are currently disabled. Do you want to enable them?",
+                                                            color = nextcord.Color.blue())
+                                    self.action_btn.label = "Enable"
+                                    
+                                await interaction.response.edit_message(embed = embed, view = self)
+                                
+                            async def back_btn_callback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                # Return either to join / leave messages or join messages
+                                if server.join_message_profile.active:
+                                    # Enabled. Put us in here.
+                                    await self.outer.setup(interaction)
+                                    
+                                else:
+                                    # Disabled. Put us in the level above (join / leave messages)
+                                    await self.outer.outer.setup(interaction)
+                                
+                            async def action_btn_callback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                server.join_message_profile.active = (not server.join_message_profile.active)
+
+                                # Return the user
+                                await self.back_btn_callback(interaction)
+                            
+                        async def callback(self, interaction: Interaction):
+                            await self.EnableDisableView(self.outer).setup(interaction)
                 
-    #                     embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Cards", description = f"Currently, join cards are turned {joinCards}.\n\n**What are join cards?**\nIf enabled, members can personalize their own join card which will be displayed after each join message.", color = nextcord.Color.blue())
-    #                     await interaction.response.edit_message(embed = embed, view = self)
+                    async def back_btn_callback(self, interaction: Interaction):
+                        await self.outer.setup(interaction)
+
+                async def callback(self, interaction: Interaction):
+                    await self.JoinMessagesView(self.outer).setup(interaction)
+
+            class LeaveMessagesButton(nextcord.ui.Button):
+                def __init__(self, outer):
+                    super().__init__(label = "Leave Messages", style = nextcord.ButtonStyle.gray)
+                    self.outer = outer
+
+                class LeaveMessagesView(nextcord.ui.View): #Leave Messages Window --------------------------------------------
+                    def __init__(self, outer):
+                        super().__init__(timeout = None)
+                        self.outer = outer
                         
-    #                 async def back_btn_callback(self, interaction: Interaction):
-    #                     await self.outer.setup(interaction)
-                    
-    #                 async def mainBtnCallback(self, interaction: Interaction):
-    #                     server = Server_DEP(interaction.guild.id)
+                        self.leave_message_btn = self.LeaveMessagesButton(self)
+                        self.add_item(self.leave_message_btn)
                         
-    #                     server.allow_join_cards_bool = not server.allow_join_cards_bool
+                        self.leave_channel_btn = self.LeaveChannelButton(self)
+                        self.add_item(self.leave_channel_btn)
+
+                        self.disable_btn = self.EnableDisableButton(self)
+                        self.add_item(self.disable_btn)
                         
-    #                     server.saveData()
+                        self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 2)
+                        self.back_btn.callback = self.back_btn_callback
+                        self.add_item(self.back_btn)
+
+                    async def setup(self, interaction: Interaction):
+                        # Redirect to Activation Screen if needed
+                        server = Server(interaction.guild.id)
+                        if not server.leave_message_profile.active: 
+                            await self.EnableDisableButton.EnableDisableView(self).setup(interaction)
+                            return
+                
+                        server = Server(interaction.guild.id)
                         
-    #                     await self.outer.setup(interaction)
-                    
-    #             async def callback(self, interaction: Interaction):
-    #                 await self.JoinCardsView(self.outer, interaction).setup(interaction)
+                        # Global Kill
+                        if not utils.feature_is_active(server = server, feature = "leave_messages"):
+                            await ui_components.disabled_feature_override(self, interaction)
+                            return
+                        
+                        if server.leave_message_profile.channel == UNSET_VALUE: channel_ui_text = "System Messages Channel"
+                        else: 
+                            channel = interaction.guild.get_channel(server.leave_message_profile.channel)
+                            if channel: channel_ui_text = channel.mention
+                            else: channel_ui_text = "#unknown"
+
+                        description = f"""
+                        InfiniBot can say farewell to members of your server by sending a message when they leave. Configure the message, where it's sent, and its contents.
+
+                        **Settings**
+                        - **Channel**: {channel_ui_text}
+                        - **Message**: 
+                        ```
+                        Title: {server.leave_message_profile.embed["title"]}
+                        Description: {server.leave_message_profile.embed["description"]}
+                        ```
+                        For more information, use: {UNSET_VALUE}
+                        """ # TODO add shortcut for help command.
+                        description = utils.standardize_str_indention(description)
+
+                        embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Messages", description = description, color = nextcord.Color.blue())
+                        await interaction.response.edit_message(embed = embed, view = self)
+
+                    class LeaveMessagesButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Leave Message", style = nextcord.ButtonStyle.gray)
+                            self.outer = outer
+                            
+                        class LeaveMessagesModal(nextcord.ui.Modal): #Leave Message Modal -----------------------------------------------------
+                            def __init__(self, guild: nextcord.Guild, outer):
+                                super().__init__(timeout = None, title = "Leave Message")
+                                self.outer = outer
+                                
+                                server = Server(guild.id)
+                                
+                                self.leave_message_title_input = nextcord.ui.TextInput(label = "Title", style = nextcord.TextInputStyle.short, max_length=256, 
+                                                                                      default_value = server.leave_message_profile.embed["title"], placeholder = "@displayname just left the server.")
+                                self.add_item(self.leave_message_title_input)
+
+                                self.leave_message_description_input = nextcord.ui.TextInput(label = "Description", style = nextcord.TextInputStyle.paragraph, max_length=1024, 
+                                                                                      default_value = server.leave_message_profile.embed["description"], placeholder = "@member left.")
+                                self.add_item(self.leave_message_description_input)
+                                
+                            async def callback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                embed = server.leave_message_profile.embed
+                                embed["title"] = self.leave_message_title_input.value
+                                embed["description"] = self.leave_message_description_input.value
+                                server.leave_message_profile.embed = embed
+
+                                await self.outer.setup(interaction)                     
+                                
+                        async def callback(self, interaction: Interaction):
+                            await interaction.response.send_modal(self.LeaveMessagesModal(interaction.guild, self.outer))                
+                                        
+                    class LeaveChannelButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Leave Message Channel", style = nextcord.ButtonStyle.gray)
+                            self.outer = outer
+                                            
+                        async def callback(self, interaction: Interaction):
+                            server = Server(interaction.guild.id)
+                                
+                            select_options = [nextcord.SelectOption(label = "System Messages Channel", value = "__SYS__", description = "Display in system messages channel", default = (server.leave_message_profile.channel == UNSET_VALUE))]
+                            for channel in interaction.guild.text_channels:
+                                if channel.category != None: category_name = channel.category.name
+                                else: category_name = None
+                                select_options.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = category_name, 
+                                                                            default = (server.leave_message_profile.channel == channel.id)))
+                            
+                            description = """
+                            Choose a channel for InfiniBot to send leave messages in.
+
+                            **What is the System Messages Channel?**
+                            In Discord's server settings, you can configure a System Messages Channel. If you choose this channel, InfiniBot will send leave messages there.
+                            """
+                            description = utils.standardize_str_indention(description)
+
+                            embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Leave Messages - Channel", description = description, color = nextcord.Color.blue())
+                            await ui_components.SelectView(embed, select_options, self.select_view_return, continueButtonLabel = "Confirm").setup(interaction)
+                            
+                        async def select_view_return(self, interaction: Interaction, selection):
+                            if selection == None:
+                                await self.outer.setup(interaction)
+                                return
+                            
+                            if selection == "__SYS__": value = UNSET_VALUE
+                            else: value = selection
+                            
+                            server = Server(interaction.guild.id)
+                            server.leave_message_profile.channel = value
+                            await self.outer.setup(interaction)
+
+                    class EnableDisableButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Disable Leave Messages", row = 1)
+                            self.outer = outer
+                            
+                        class EnableDisableView(nextcord.ui.View):
+                            def __init__(self, outer):
+                                super().__init__(timeout = None)
+                                self.outer = outer
+                                
+                                self.back_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
+                                self.back_btn.callback = self.back_btn_callback
+                                self.add_item(self.back_btn)
+                                
+                                self.action_btn = nextcord.ui.Button(label = "ACTION", style = nextcord.ButtonStyle.green)
+                                self.action_btn.callback = self.action_btn_callback
+                                self.add_item(self.action_btn)
+                                                
+                            async def setup(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                # Determine whether or not we are active or not.
+                                if server.leave_message_profile.active:
+                                    # We *are* active. Give info for deactivation
+                                    embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Leave Messages", 
+                                                            description = "Are you sure you want to disable leave messages? You can re-enable this feature at any time.",
+                                                            color = nextcord.Color.blue())
+                                    self.action_btn.label = "Disable"
+                                    
+                                else:
+                                    # We are *not* active. Give info for activation
+                                    embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Leave Messages",
+                                                            description = "Leave messages are currently disabled. Do you want to enable them?",
+                                                            color = nextcord.Color.blue())
+                                    self.action_btn.label = "Enable"
+                                    
+                                await interaction.response.edit_message(embed = embed, view = self)
+                                
+                            async def back_btn_callback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                # Return either to join / leave messages or leave messages
+                                if server.leave_message_profile.active:
+                                    # Enabled. Put us in here.
+                                    await self.outer.setup(interaction)
+                                    
+                                else:
+                                    # Disabled. Put us in the level above (join / leave messages)
+                                    await self.outer.outer.setup(interaction)
+                                
+                            async def action_btn_callback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                server.leave_message_profile.active = (not server.leave_message_profile.active)
+
+                                # Return the user
+                                await self.back_btn_callback(interaction)
+                            
+                        async def callback(self, interaction: Interaction):
+                            await self.EnableDisableView(self.outer).setup(interaction)
+                
+                    async def back_btn_callback(self, interaction: Interaction):
+                        await self.outer.setup(interaction)
+
+                async def callback(self, interaction: Interaction):
+                    await self.LeaveMessagesView(self.outer).setup(interaction)
+  
+            async def back_btn_callback(self, interaction: Interaction):
+                await self.outer.setup(interaction)
                                       
-    #     async def callback(self, interaction: Interaction):
-    #         await self.JoinLeaveMessagesView(self.outer).setup(interaction)
+        async def callback(self, interaction: Interaction):
+            await self.JoinLeaveMessagesView(self.outer).setup(interaction)
     
     # class BirthdaysButton(nextcord.ui.Button):
     #     def __init__(self, outer):
@@ -2502,9 +2770,9 @@ class Dashboard(nextcord.ui.View):
     #                     await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Members", description = "Every member in your server already has a birthday! Go invite someone!", color = nextcord.Color.red()), ephemeral = True)
     #                     return
                     
-    #                 await ui_components.SelectView(self.outer.embed, memberSelectOptions, self.ui_components.SelectViewReturn, placeholder = "Choose a Member", continueButtonLabel = "Next").setup(interaction)
+    #                 await ui_components.SelectView(self.outer.embed, memberSelectOptions, self.SelectViewReturn, placeholder = "Choose a Member", continueButtonLabel = "Next").setup(interaction)
                     
-    #             async def ui_components.SelectViewReturn(self, interaction: Interaction, selection):
+    #             async def SelectViewReturn(self, interaction: Interaction, selection):
     #                 if selection == None:
     #                     await self.outer.setup(interaction)
     #                     return
@@ -2555,9 +2823,9 @@ class Dashboard(nextcord.ui.View):
     #                     await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Members", description = "No members in your server have birthdays. Add some!", color = nextcord.Color.red()), ephemeral = True)
     #                     return
                     
-    #                 await ui_components.SelectView(self.outer.embed, memberSelectOptions, self.ui_components.SelectViewReturn, placeholder = "Choose a Member", continueButtonLabel = "Next").setup(interaction)
+    #                 await ui_components.SelectView(self.outer.embed, memberSelectOptions, self.SelectViewReturn, placeholder = "Choose a Member", continueButtonLabel = "Next").setup(interaction)
                     
-    #             async def ui_components.SelectViewReturn(self, interaction: Interaction, selection):
+    #             async def SelectViewReturn(self, interaction: Interaction, selection):
     #                 if selection == None:
     #                     await self.outer.setup(interaction)
     #                     return
@@ -2613,9 +2881,9 @@ class Dashboard(nextcord.ui.View):
     #                     await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Members", description = "No members in your server have birthdays. Add some!", color = nextcord.Color.red()), ephemeral = True)
     #                     return
                     
-    #                 await ui_components.SelectView(self.outer.embed, memberSelectOptions, self.ui_components.SelectViewReturn, placeholder = "Choose a Member", continueButtonLabel = "Delete").setup(interaction)
+    #                 await ui_components.SelectView(self.outer.embed, memberSelectOptions, self.SelectViewReturn, placeholder = "Choose a Member", continueButtonLabel = "Delete").setup(interaction)
                     
-    #             async def ui_components.SelectViewReturn(self, interaction: Interaction, selection):
+    #             async def SelectViewReturn(self, interaction: Interaction, selection):
     #                 if selection == None:
     #                     await self.outer.setup(interaction)
     #                     return
@@ -2675,9 +2943,9 @@ class Dashboard(nextcord.ui.View):
     #                     selectOptions.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.birthday_channel != None and server.birthday_channel.id == channel.id)))
                     
     #                 embed = nextcord.Embed(title = "Dashboard - Birthdays - Notification Channel", description = "Select a channel to send birthday messages.", color = nextcord.Color.blue())
-    #                 await ui_components.SelectView(embed, selectOptions, self.ui_components.SelectViewReturn, continueButtonLabel = "Confirm").setup(interaction)
+    #                 await ui_components.SelectView(embed, selectOptions, self.SelectViewReturn, continueButtonLabel = "Confirm").setup(interaction)
                       
-    #             async def ui_components.SelectViewReturn(self, interaction: Interaction, selection):
+    #             async def SelectViewReturn(self, interaction: Interaction, selection):
     #                 if selection == None:
     #                     await self.outer.setup(interaction)
     #                     return

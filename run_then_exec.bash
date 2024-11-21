@@ -2,4 +2,4 @@
 
 bash ./run.bash -d
 
-docker exec -it infinibot /bin/bash
+docker exec -it infinibot_container /bin/bash
