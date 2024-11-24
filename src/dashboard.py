@@ -37,8 +37,8 @@ class Dashboard(nextcord.ui.View):
         self.birthdays_btn = self.BirthdaysButton(self)
         self.add_item(self.birthdays_btn)
         
-        # self.defaultRolesBtn = self.DefaultRolesButton(self)
-        # self.add_item(self.defaultRolesBtn)
+        self.default_roles_btn = self.DefaultRolesButton(self)
+        self.add_item(self.default_roles_btn)
         
         # self.joinToCreateVCsButton = self.JoinToCreateVCsButton(self)
         # self.add_item(self.joinToCreateVCsButton)
@@ -1613,8 +1613,10 @@ class Dashboard(nextcord.ui.View):
                             role_id = level_reward.role_id
                             role = interaction.guild.get_role(role_id)
                             if role == None:
-                                logging.warning(f"Role {role_id} was not found in the guild {interaction.guild.id}. Deleting.")
-                                server.level_rewards.delete(role_id)
+                                # Check if shard is loaded
+                                if interaction.guild.shard_id in shards_loaded: # Shard loaded.
+                                    logging.warning(f"Role {role_id} was not found in the guild {interaction.guild.id} when checking level rewards (viewing). Deleting.")
+                                    server.level_rewards.delete(role_id)
                                 continue
 
                             level_rewards.append(f"{role.mention} - Level {level_reward.level}")
@@ -1646,7 +1648,7 @@ class Dashboard(nextcord.ui.View):
                             
                             if select_options == []:
                                 await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Roles", 
-                                                                                               description = "You've run out of roles to use! To fix this, either promote InfiniBot to the highest role, give InfiniBot Administrator, or add more roles to the server!", 
+                                                                                               description = "You've run out of roles to use! To fix this, ensure that infinibot can grant the roles you would like to set as level rewards. An easy way to do this is to promote InfiniBot to a Moderator role.", 
                                                                                                color = nextcord.Color.red()), ephemeral=True)
                                 return          
                                         
@@ -1708,7 +1710,7 @@ class Dashboard(nextcord.ui.View):
                                 role_id = level_reward.role_id
                                 role = interaction.guild.get_role(role_id)
                                 if role == None: # Should never happen because of earlier checks. But just in case...
-                                    logging.warning(f"Role {role_id} was not found in the guild {interaction.guild.id}. Ignoring...")
+                                    logging.warning(f"Role {role_id} was not found in the guild {interaction.guild.id} when checking level rewards (deletion). Ignoring...")
                                     continue
 
                                 all_level_reward_roles.append(role)
@@ -1752,7 +1754,7 @@ class Dashboard(nextcord.ui.View):
                                 self.add_item(self.yes_btn)
                                 
                             async def setup(self, interaction: Interaction):
-                                embed = nextcord.Embed(title = "Are you sure you want to do this?", description = "By choosing \"Yes\", you will delete all level rewards in the server.\nThis action cannot be undone.", color = nextcord.Color.blue())
+                                embed = nextcord.Embed(title = "Are you sure you want to do this?", description = "By choosing \"Yes\", you will delete all level rewards in the server (the actual roles will not be deleted).\n\nThis action cannot be undone.", color = nextcord.Color.blue())
                                 await interaction.response.edit_message(embed = embed, view = self)
                                 
                             async def no_btn_command(self, interaction: Interaction):
@@ -3274,100 +3276,191 @@ class Dashboard(nextcord.ui.View):
         async def callback(self, interaction: Interaction):
             view = self.BirthdaysView(self.outer)
             await view.setup(interaction)
-    
-    # class DefaultRolesButton(nextcord.ui.Button):
-    #     def __init__(self, outer):
-    #         super().__init__(label = "Default Roles", style = nextcord.ButtonStyle.gray, row = 1)
-    #         self.outer = outer
-    
-    #     class DefaultRolesView(nextcord.ui.View):
-    #         def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
-    #             super().__init__(timeout=None)
-    #             self.outer = outer
-    #             self.onboarding_modifier = onboarding_modifier
-    #             self.onboarding_embed = onboarding_embed
-                
-    #             self.cancelBtn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
-    #             self.cancelBtn.callback = self.cancelBtnCallback
-
-    #             self.updateBtn = self.UpdateButton(self.outer, self)
-                
-    #         async def setup(self, interaction: Interaction):                   
-    #             # Clean up
-    #             if not self.onboarding_modifier:
-    #                 for child in self.children: 
-    #                     del child 
-    #                     self.__init__(self.outer)
-                
-    #             embed = nextcord.Embed(title = "Dashboard - Default Roles", description = "Select the roles you would that InfiniBot will assign to any new members upon join.", color = nextcord.Color.blue())
-                
-    #             server = Server_DEP(interaction.guild.id)
-                
-    #             if not utils.enabled.DefaultRoles(server = server):
-    #                 self.add_item(self.cancelBtn)
-    #                 await ui_components.disabled_feature_override(self, interaction)
-    #                 return
-                
-    #             selectOptions = []
-    #             for role in interaction.guild.roles:
-    #                 if role.name == "@everyone": continue
-    #                 if not canAssignRole(role): continue
-    #                 if len(selectOptions) >= 25:
-    #                     embed.description += "\n\nNote: Only the first 25 roles of your server can be set as default roles."
-    #                     break
-                        
-    #                 selectOptions.append(nextcord.SelectOption(label = role.name, description = role.id, value = role.id, default = (role in server.default_roles)))
-                
-    #             if len(selectOptions) <= 5: maxOptions = len(selectOptions)
-    #             else: maxOptions = 5
-                
-    #             if self.onboarding_embed: embeds = [self.onboarding_embed, embed]
-    #             else: embeds = [embed]
-                
-    #             if selectOptions != []:
-    #                 self.roleSelect = nextcord.ui.Select(options = selectOptions, placeholder = "Choose", max_values = maxOptions, min_values = 0)
-    #                 self.add_item(self.roleSelect)
-    #                 self.add_item(self.cancelBtn)
-    #                 self.add_item(self.updateBtn)
-                    
-    #                 if self.onboarding_modifier: 
-    #                     self.onboarding_modifier(self)
-    #                     self.updateBtn.style = nextcord.ButtonStyle.gray
-    #                     self.updateBtn.label = "Save"
-    #                     self.updateBtn.go_back_to_dashboard = False
-                    
-    #                 await interaction.response.edit_message(embeds = embeds, view = self)
-                    
-    #             else:
-    #                 await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Roles", description = "You've run out of roles to use! To fix this, either promote InfiniBot to the highest role, give InfiniBot Administrator, or add more roles to the server!", color = nextcord.Color.red()), ephemeral=True)             
-                                            
-    #         async def cancelBtnCallback(self, interaction: Interaction):
-    #             await self.outer.setup(interaction)
-                
-    #         class UpdateButton(nextcord.ui.Button):
-    #             def __init__(self, outer, parent):
-    #                 super().__init__(label = "Update", style = nextcord.ButtonStyle.blurple)
-    #                 self.outer = outer     
-    #                 self.parent = parent
-    #                 self.go_back_to_dashboard = True                 
-                        
-    #             async def callback(self, interaction: Interaction):
-    #                 server = Server_DEP(interaction.guild.id)
-                    
-    #                 defaultRoles = []
-    #                 for roleID in self.parent.roleSelect.values:
-    #                     try: defaultRoles.append(interaction.guild.get_role(int(roleID)))
-    #                     except: return
-                    
-                    
-    #                 server.default_roles = defaultRoles
-    #                 server.saveData()
-                    
-    #                 if self.go_back_to_dashboard: await self.outer.setup(interaction)
+           
+    class DefaultRolesButton(nextcord.ui.Button):
+        def __init__(self, outer):
+            super().__init__(label = "Default Roles", style = nextcord.ButtonStyle.gray, row = 1)
+            self.outer = outer
             
-    #     async def callback(self, interaction: Interaction):
-    #         await self.DefaultRolesView(self.outer).setup(interaction)    
-    
+        class DefaultRolesView(nextcord.ui.View):
+            def __init__(self, outer):
+                super().__init__(timeout = None)
+                self.outer = outer
+                
+                self.add_role_btn = self.AddRoleButton(self)
+                self.add_item(self.add_role_btn)
+                
+                self.delete_role_btn = self.DeleteRoleButton(self)
+                self.add_item(self.delete_role_btn)
+                
+                self.delete_all_default_roles_btn = self.DeleteAllDefaultRolesBtn(self)
+                self.add_item(self.delete_all_default_roles_btn)
+                
+                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
+                self.back_btn.callback = self.back_btn_callback
+                self.add_item(self.back_btn)
+                
+            async def setup(self, interaction: Interaction):
+                if not utils.feature_is_active(server_id = interaction.guild.id, feature = "default_roles"): # server_id won't be used here, but it's required as an input
+                    await ui_components.disabled_feature_override(self, interaction)
+                    return
+                
+                description = """
+                InfiniBot can automatically assign default roles to members when they join the server. Use the buttons below to add or remove default roles.
+                """
+                description = utils.standardize_str_indention(description)
+                self.embed = nextcord.Embed(title = "Dashboard - Default Roles", 
+                                            description = description,
+                                            color = nextcord.Color.blue())
+                
+                server = Server(interaction.guild.id)
+                
+                default_roles = []
+                for default_role_id in server.default_roles.default_roles:
+                    role = interaction.guild.get_role(int(default_role_id))
+                    if role == None:
+                        # Check if shard is loaded
+                        if interaction.guild.shard_id in shards_loaded: # Shard loaded.
+                            logging.warning(f"Role {default_role_id} was not found in the guild {interaction.guild.id} when checking default roles (viewing). Deleting.")
+                            default_roles:list = server.default_roles.default_roles
+                            default_roles.remove(default_role_id)
+                            server.default_roles.default_roles = default_roles
+                        continue
+
+                    default_roles.append(f"{role.mention}")
+                        
+                if default_roles == []: default_roles.append("You don't have any default roles set up. Create one!")
+                self.embed.add_field(name = "Default Roles", value = "\n".join(default_roles))
+                try: await interaction.response.edit_message(embed = self.embed, view = self)
+                except: await interaction.edit_original_message(embed = self.embed, view = self)
+                
+            async def back_btn_callback(self, interaction: Interaction):
+                await self.outer.setup(interaction)
+                await interaction.edit_original_message(view = self.outer)
+                                                            
+            class AddRoleButton(nextcord.ui.Button):
+                def __init__(self, outer):
+                    super().__init__(label = "Add Role", style = nextcord.ButtonStyle.gray)
+                    self.outer = outer
+                                        
+                async def callback(self, interaction: Interaction):
+                    server = Server(interaction.guild.id)
+                    
+                    select_options = []
+                    for role in interaction.guild.roles:
+                        if role.name == "@everyone": continue
+                        if not utils.role_assignable_by_infinibot(role): continue
+                        if role.id not in server.default_roles.default_roles: 
+                            select_options.append(nextcord.SelectOption(label = role.name, description = role.id, value = role.id))
+                    
+                    if select_options == []:
+                        await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Roles", 
+                                                                                        description = "You've run out of roles to use! To fix this, ensure that infinibot can grant the roles you would like to set as default roles. An easy way to do this is to promote InfiniBot to a Moderator role.", 
+                                                                                        color = nextcord.Color.red()), ephemeral=True)
+                        return          
+                                
+                    description = """
+                    Select a role to add to the list of default roles. InfiniBot will assign this role to any new members upon join.
+
+                    **Don't See Your Role?**
+                    Ensure InfiniBot can grant the roles you would like to set as default roles. An easy way to do this is to promote InfiniBot to a Moderator role.
+                    """
+                    description = utils.standardize_str_indention(description)
+                    embed = nextcord.Embed(title = "Dashboard - Default Roles - Add Role",
+                                            description = description,
+                                            color = nextcord.Color.blue())
+                    await ui_components.SelectView(embed, select_options, self.select_view_callback, continueButtonLabel = "Add", placeholder = "Choose").setup(interaction)            
+                    
+                async def select_view_callback(self, interaction: Interaction, selection):
+                    if selection == None: # User cancelled
+                        await self.outer.setup(interaction) 
+                        return
+                    
+                    server = Server(interaction.guild.id)
+                    default_roles = server.default_roles.default_roles
+                    default_roles.append(int(selection))
+                    server.default_roles.default_roles = default_roles
+
+                    await self.outer.setup(interaction)
+            
+            class DeleteRoleButton(nextcord.ui.Button):
+                def __init__(self, outer):
+                    super().__init__(label = "Delete Role", style = nextcord.ButtonStyle.gray)
+                    self.outer = outer
+                                                                        
+                async def callback(self, interaction: Interaction):# Delete Level Reward Callback ————————————————————————————————————————————————————————————
+                    server = Server(interaction.guild.id)
+                    all_default_roles = []
+                    for default_role_id in server.default_roles.default_roles:
+                        role = interaction.guild.get_role(int(default_role_id))
+                        if role == None: # Should never happen because of earlier checks. But just in case...
+                            logging.warning(f"Role {default_role_id} was not found in the guild {interaction.guild.id} when checking default roles (deletion). Ignoring...")
+                            continue
+
+                        all_default_roles.append(role)
+                                                        
+                    select_options = [nextcord.SelectOption(label = role.name, description = role.id, value = role.id) for role in all_default_roles]
+                    
+                    if select_options == []:
+                        await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Roles", description = "You don't have any default roles set up!", color = nextcord.Color.red()), ephemeral=True)                     
+                    else:
+                        embed = nextcord.Embed(title = "Dashboard - Default Roles - Delete Role",
+                                                description = "Select a default role to delete. This does not delete the role. It just removes it from the list of default roles for InfiniBot to assign to new members.",
+                                                color = nextcord.Color.blue())
+                        await ui_components.SelectView(embed, select_options, self.select_view_callback, continueButtonLabel = "Delete", placeholder = "Choose").setup(interaction)
+            
+                async def select_view_callback(self, interaction: Interaction, selection):
+                    if selection == None: # User cancelled
+                        await self.outer.setup(interaction)
+                        return
+                    
+                    server = Server(interaction.guild.id)
+                    default_roles = server.default_roles.default_roles
+                    default_roles.remove(int(selection))
+                    server.default_roles.default_roles = default_roles
+                    
+                    await self.outer.setup(interaction)
+            
+            class DeleteAllDefaultRolesBtn(nextcord.ui.Button):
+                def __init__(self, outer):
+                    super().__init__(label = "Delete All Default Roles", style = nextcord.ButtonStyle.gray)
+                    self.outer = outer
+                    
+                class DeleteAllDefaultRolesView(nextcord.ui.View):
+                    def __init__(self, outer):
+                        super().__init__(timeout = None)
+                        self.outer = outer
+                        
+                        self.no_btn = nextcord.ui.Button(label = "No", style = nextcord.ButtonStyle.danger)
+                        self.no_btn.callback = self.no_btn_command
+                        self.add_item(self.no_btn)
+                        
+                        self.yes_btn = nextcord.ui.Button(label = "Yes", style = nextcord.ButtonStyle.green)
+                        self.yes_btn.callback = self.yes_btn_command
+                        self.add_item(self.yes_btn)
+                        
+                    async def setup(self, interaction: Interaction):
+                        embed = nextcord.Embed(title = "Are you sure you want to do this?", description = "By choosing \"Yes\", you will delete all default roles in the server (the actual roles will not be deleted).\n\nThis action cannot be undone.", color = nextcord.Color.blue())
+                        await interaction.response.edit_message(embed = embed, view = self)
+                        
+                    async def no_btn_command(self, interaction: Interaction):
+                        await self.outer.setup(interaction)
+                        
+                    async def yes_btn_command(self, interaction: Interaction):
+                        server = Server(interaction.guild.id)
+                        server.default_roles.default_roles = []
+                        await self.outer.setup(interaction)
+                        
+                    async def callback(self, interaction: Interaction):
+                        await self.DeleteAllLevelsView(self.outer).setup(interaction)
+                
+                async def callback(self, interaction: Interaction):
+                    await self.DeleteAllDefaultRolesView(self.outer).setup(interaction)
+            
+        async def callback(self, interaction: Interaction): #Filtered Words Button Callback ————————————————————————————————————————————————————————————
+            view = self.DefaultRolesView(self.outer)
+            await view.setup(interaction)           
+ 
     # class JoinToCreateVCsButton(nextcord.ui.Button):
     #     def __init__(self, outer):
     #         super().__init__(label = "Join-To-Create VCs", style = nextcord.ButtonStyle.gray, row = 1)
