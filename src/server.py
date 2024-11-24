@@ -257,18 +257,21 @@ class Server_TableManager:
 
         return Server_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
 
-    def channel_property(property_name:(int | UNSET_VALUE | None), accept_unset_value = True, accept_none_value = True, **kwargs):
+    def typed_property(property_name:(int | UNSET_VALUE | None), accept_unset_value = True, accept_none_value = True, enforce_numerical_values = False, **kwargs):
         """
-        Custom decorator for creating properties that are channels.
+        Custom decorator for creating properties that can be equal to None, UNSET_VALUE, integer, float, or string.
         Handles SQL retrieval, setting, cleaning, etc...
         Also has support for None and UNSET types.
 
         Args:
             property_name (str): The name of the column associated with the property. Also the name of the property.
+            accept_unset_value (bool): Whether to accept UNSET_VALUE. Default: True
+            accept_none_value (bool): Whether to accept None. Default: True
+            enforce_numerical_values (bool): Whether to enforce numerical values. Default: False
 
         Uses:
             ```
-            @ServerTableManager.channel_property("property_name")
+            @ServerTableManager.typed_property("property_name")
             def property_name(self): pass
             ```
         """
@@ -300,9 +303,13 @@ class Server_TableManager:
                 return json.dumps({'status': 'NONE', 'value': None})
             if isinstance(value, str):
                 if value.isdigit(): value = int(value)
+                elif enforce_numerical_values: raise TypeError('This variable has been modified to only accept numerical values.')
+                else: return json.dumps({'status': 'SET', 'value': value})
             if isinstance(value, int):
                 return json.dumps({'status': 'SET', 'value': value})
-            raise TypeError('Must be of type Int, None, or UNSET_VALUE')
+            if isinstance(value, float):
+                return json.dumps({'status': 'SET', 'value': value})
+            raise TypeError('Must be of type None, UNSET_VALUE, integer, or float. Strings are supported if enforce_numerical_values is False.')
 
         return Server_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier, **kwargs)
 
@@ -337,7 +344,7 @@ class Server_TableManager:
 
         return Server_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier, **kwargs)
 
-    def embed_property(property_name:(int | None), **kwargs):
+    def embed_property(property_name:(int | None), **kwargs): # IRREGULAR PROPERTY
         """
         Custom decorator for creating properties that are embeds. Stores any embed properties.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -824,7 +831,7 @@ class Server:
         @Server_TableManager.boolean_property("active")
         def active(self): pass
 
-        @Server_TableManager.channel_property("channel")
+        @Server_TableManager.typed_property("channel", enforce_numerical_values = True)
         def channel(self): pass
 
         @Server_TableManager.boolean_property("strike_system_active")
@@ -876,7 +883,7 @@ class Server:
         @Server_TableManager.boolean_property("active")
         def active(self): pass
 
-        @Server_TableManager.channel_property("channel", accept_none_value=False)
+        @Server_TableManager.typed_property("channel", accept_none_value=False, enforce_numerical_values = True)
         def channel(self): pass
 
     @property
@@ -890,7 +897,7 @@ class Server:
         @Server_TableManager.boolean_property("active")
         def active(self): pass
 
-        @Server_TableManager.channel_property("channel")
+        @Server_TableManager.typed_property("channel", enforce_numerical_values = True)
         def channel(self): pass
 
         @Server_TableManager.embed_property("level_up_embed")
@@ -916,7 +923,7 @@ class Server:
         @Server_TableManager.boolean_property("active")
         def active(self): pass
 
-        @Server_TableManager.channel_property("channel", accept_none_value=False)
+        @Server_TableManager.typed_property("channel", accept_none_value=False, enforce_numerical_values = True)
         def channel(self): pass
 
         @Server_TableManager.embed_property("embed")
@@ -936,7 +943,7 @@ class Server:
         @Server_TableManager.boolean_property("active")
         def active(self): pass
 
-        @Server_TableManager.channel_property("channel", accept_none_value=False)
+        @Server_TableManager.typed_property("channel", accept_none_value=False, enforce_numerical_values = True)
         def channel(self): pass
 
         @Server_TableManager.embed_property("embed")
@@ -950,13 +957,13 @@ class Server:
         def __init__(self, server_id):
             super().__init__(server_id, "birthdays_profile")
 
-        @Server_TableManager.channel_property("channel")
+        @Server_TableManager.typed_property("channel", enforce_numerical_values = True)
         def channel(self): pass
 
         @Server_TableManager.embed_property("embed")
         def embed(self): pass
                 
-        @Server_TableManager.string_property("runtime")
+        @Server_TableManager.typed_property("runtime")
         def runtime(self): pass
 
     @property
@@ -966,6 +973,9 @@ class Server:
     class InfinibotSettingsProfile(Server_TableManager):
         def __init__(self, server_id):
             super().__init__(server_id, "infinibot_settings_profile")
+
+        @Server_TableManager.boolean_property("delete_invites")
+        def delete_invites(self): pass
 
         @Server_TableManager.boolean_property("get_updates")
         def get_updates(self): pass

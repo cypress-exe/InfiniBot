@@ -2,6 +2,9 @@ from file_manager import JSONFile
 import logging
 
 
+shards_loaded = []
+bot_loaded = False
+
 feature_dependencies = {
     "dashboard": {"global_kill": "dashboard"},
     # ------------------------------------------------------------------------------------------------------
@@ -31,6 +34,8 @@ feature_dependencies = {
         "global_kill": "join_leave_messages",
         "server": "leave_message_profile.active",
     },
+    # ------------------------------------------------------------------------------------------------------
+    "birthdays": {"global_kill": "birthdays"},
 }
 
 

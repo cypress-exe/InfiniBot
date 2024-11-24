@@ -601,8 +601,8 @@ class TestServer(unittest.TestCase):
         # Using run_test_on_property
         self.run_test_on_property(server, "birthdays_profile", "channel", UNSET_VALUE, [1234567989, None, UNSET_VALUE])
         self.run_test_on_property(server, "birthdays_profile", "embed[title]", "Happy Birthday, @realname!", ["Title_Changed", None])
-        self.run_test_on_property(server, "birthdays_profile", "embed[description]", "@member just turned @age!", ["Description_Changed"])
-        self.run_test_on_property(server, "birthdays_profile", "runtime", "8:00", ["12:00", "8:00", "18:00", "0:00"])
+        self.run_test_on_property(server, "birthdays_profile", "embed[description]", "@member just turned [age]!", ["Description_Changed"])
+        self.run_test_on_property(server, "birthdays_profile", "runtime", UNSET_VALUE, ["12:00 MDT", "8:00 PDT", "18:00 UTC", "0:00 EST", UNSET_VALUE])
 
         server.remove_all_data()
 
@@ -612,6 +612,7 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_property
+        self.run_test_on_property(server, "infinibot_settings_profile", "delete_invites", False, [True, False])
         self.run_test_on_property(server, "infinibot_settings_profile", "get_updates", True, [False, True])
 
         server.remove_all_data()

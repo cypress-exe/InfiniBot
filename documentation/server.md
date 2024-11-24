@@ -100,11 +100,13 @@ Defines a regular property for booleans.
 ##### `string_property`
 Defines a regular property for strings.
 
-##### `channel_property`
-Defines a regular property for channel IDs with support for `None` and `UNSET_VALUE`.
+##### `typed_property`
+Defines a regular property for integers, floats, booleans, and strings with support for `None` and `UNSET_VALUE`.
+Set `enforce_numerical_values` to true to disable strings as valid inputs. Numerical strings will be automatically converted to integers.
 
 ##### `list_property`
-Defines a regular property for lists, with optional duplication control.
+Defines a regular property for lists.
+Set `accept_duplicate_values` to false to mark duplicate values as invalid input.
 
 ##### `embed_property`
 Defines an irregular property for embeds, supporting serialization and deserialization.

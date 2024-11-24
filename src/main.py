@@ -53,35 +53,25 @@ def create_environment():
 
   get_token()
 
+  # Setup config.json
+  if not os.path.exists("generated/configure/config.json"):
+    JSONFile("config").add_variable("log_level", "INFO")
+    JSONFile("config").add_variable("birthday_message_runtime_default_utc", "15:00")
+
   logging.info("To modify defaults, edit settings file in ./generated/configure")
   
 def configure_logging():
   setup_logging()
 
-  # Change logging level depending on args
-  if "--debug" in sys.argv:
-    change_logging_level("DEBUG")
-    logging.info(">> Launching in debug mode.")
+  # Change logging level depending on configurations
+  log_level = JSONFile("config")["log_level"]
+  if log_level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+    logging.warning("Invalid logging level in config.json. Defaulting to INFO.")
+    log_level = "INFO"
 
-  elif "--info" in sys.argv:
-    change_logging_level("INFO")
-    logging.info(">> Launching in info mode.")
+  change_logging_level(log_level)
 
-  elif "--warning" in sys.argv:
-    change_logging_level("WARNING")
-    logging.info(">> Launching in warning mode.")
-
-  elif "--error" in sys.argv:
-    change_logging_level("ERROR")
-    logging.info(">> Launching in error mode.")
-
-  elif "--critical" in sys.argv:
-    change_logging_level("CRITICAL")
-    logging.info(">> Launching in critical mode.")
-
-  else:
-    change_logging_level("INFO")
-    logging.info(">> Launching in default mode (INFO).")
+  logging.info(f"Logging level set to {log_level}")
 
 def check_internet_connection():
   def is_connected():

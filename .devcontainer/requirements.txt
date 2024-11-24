@@ -4,3 +4,4 @@ nextcord_ext_menus
 python_Levenshtein
 SQLAlchemy
 topggpy
+dateparser

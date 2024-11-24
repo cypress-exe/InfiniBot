@@ -64,13 +64,14 @@ CREATE TABLE IF NOT EXISTS leave_message_profile( -- #optimize
 CREATE TABLE IF NOT EXISTS birthdays_profile( -- #optimize
     server_id INT PRIMARY KEY,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    embed TEXT DEFAULT '{"title":"Happy Birthday, @realname!","description":"@member just turned @age!"}',
-    runtime TEXT DEFAULT "8:00"
+    embed TEXT DEFAULT '{"title":"Happy Birthday, @realname!","description":"@member just turned [age]!"}',
+    runtime TEXT DEFAULT '{"status": "UNSET", "value": null}'
 )
 
 -- Create infinibot_settings_profile Table (server table)
 CREATE TABLE IF NOT EXISTS infinibot_settings_profile( -- #optimize
     server_id INT PRIMARY KEY,
+    delete_invites BOOLEAN DEFAULT false,
     get_updates BOOLEAN DEFAULT true
 )
 

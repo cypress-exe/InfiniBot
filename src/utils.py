@@ -3,6 +3,7 @@ import nextcord
 import logging
 import datetime
 import math
+import dateparser
 
 from global_settings import get_global_kill_status, feature_dependencies
 
@@ -28,7 +29,7 @@ def format_var_to_pythonic_type(_type:str, value):
           return int(value)
   if _type.lower() == "text":
       if isinstance(value, str):
-          if value.startswith("'") and value.endswith("'"):
+          if value.startswith("'") and value.endswith("'") or value.startswith('"') and value.endswith('"'):
               return format_var_to_pythonic_type(_type, value[1:-1])
           else:
               return value
@@ -86,7 +87,121 @@ def standardize_dict_properties(defaultDict: dict, objectDict: dict, aliases: di
             continue
         
     return returnDict
+
+def standardize_str_indention(string: str):
+    # Split the string into lines
+    lines = string.split('\n')
+
+    # Remove the first level of indentation
+    for i in range(len(lines)):
+        lines[i] = lines[i].lstrip()
+
+    # Iterate through each line and remove unneeded spaces based on the indentation level
+    indent_level = 0
+    for i in range(len(lines)):
+        line = lines[i]
+        if len(line) == 0:
+            continue  # skip empty lines
+        cur_indent_level = len(line) - len(line.lstrip())
+        if cur_indent_level > indent_level:
+            # Indentation level increased
+            indent_level = cur_indent_level
+        elif cur_indent_level < indent_level:
+            # Indentation level decreased, go back to previous level
+            indent_level = cur_indent_level
+        # Remove the unneeded spaces
+        lines[i] = " " * indent_level + line.lstrip()
+
+    # Join the lines back into a string
+    return('\n'.join(lines))
+
+def calculate_utc_offset(user_date_str, user_time_str):
+    """
+    Calculate the UTC offset based on the provided date and time strings.
+
+    This function parses a wide variety of date and time formats using `dateparser`,
+    calculates the difference between the provided datetime and the current UTC time,
+    and snaps the offset to the nearest quarter-hour.
+
+    Args:
+        user_date_str (str): The date string (e.g., "11/24/2024", "November 24, 2024").
+        user_time_str (str): The time string (e.g., "15:30", "3:30 PM").
+
+    Returns:
+        float: The snapped UTC offset in hours (rounded to the nearest 15 minutes).
+
+    Raises:
+        ValueError: If the date or time string cannot be parsed.
+    """
+    # Parse the user-provided date and time
+    user_datetime = dateparser.parse(f"{user_date_str} {user_time_str}")
+
+    if not user_datetime:
+        raise ValueError("Invalid date or time format. Please provide a recognizable format.")
+
+    # Get the current UTC time
+    utc_now = datetime.datetime.now(datetime.timezone.utc)
+
+    # Calculate the UTC offset as a timedelta
+    offset = user_datetime - utc_now.replace(tzinfo=None)
+
+    # Convert timedelta to hours
+    offset_hours = offset.total_seconds() / 3600
+
+    # Snap to the nearest 15 minutes (0.25 hours)
+    snapped_offset = round(offset_hours * 4) / 4
+
+    # Return the calculated offset
+    return snapped_offset
+
+def conversion_local_time_and_utc_time(utc_offset, local_time_str=None, utc_time_str=None, return_entire_datetime=False):
+    """
+    Convert a given local time string to UTC time using a UTC offset.
+
+    Args:
+        utc_offset (float): The UTC offset in hours (e.g., -5.0 for EST).
+        time_str (str, optional): The time string to parse (e.g., "5:21 PM", "17:21").
+        utc_time_str (str, optional): The UTC time string to parse (e.g., "22:21", "5:21 PM").
+        return_entire_datetime (bool, optional): If True, returns a datetime object instead of just the time.
+
+    Returns:
+        time: A `datetime.time` object representing the time in UTC.
+
+    Raises:
+        ValueError: If neither local_time_str nor utc_time_str is provided.
+        ValueError: If both local_time_str and utc_time_str are provided.
+        ValueError: If the time string cannot be parsed.
+    """
+    if local_time_str == None and utc_time_str == None:
+        raise ValueError("Either local_time_str or utc_time_str must be provided.")
+    if local_time_str != None and utc_time_str != None:
+        raise ValueError("Either local_time_str and utc_time_str must be provided, but not both.")
     
+    working_time_str = local_time_str if local_time_str != None else utc_time_str
+
+    # Parse the time string into a datetime object
+    parsed_time = dateparser.parse(working_time_str)
+    if not parsed_time:
+        raise ValueError("Invalid time format. Please provide a recognizable time format.")
+
+    # Extract the time component
+    local_time = parsed_time.time()
+
+    # Convert local time to a datetime object for arithmetic
+    dummy_date = datetime.datetime(2000, 1, 1, local_time.hour, local_time.minute, local_time.second)
+
+    # Adjust the time to UTC by subtracting the UTC offset
+    if local_time_str != None: # Converting from local time to UTC time
+        utc_datetime = dummy_date - datetime.timedelta(hours=utc_offset)
+    else: # Converting from UTC time to local time
+        utc_datetime = dummy_date + datetime.timedelta(hours=utc_offset)
+
+    if return_entire_datetime:
+        return utc_datetime
+    else:
+        # Return only the time component
+        return utc_datetime.time()
+
 def get_discord_color_from_string(color: str):
     if color == None or color == "": return nextcord.Color.default()
         
@@ -126,33 +241,6 @@ def get_string_from_discord_color(color: nextcord.colour.Colour):
     if color == nextcord.Color.fuchsia(): return "Fuchsia"
     
     return None
-
-def standardize_str_indention(string: str):
-    # Split the string into lines
-    lines = string.split('\n')
-
-    # Remove the first level of indentation
-    for i in range(len(lines)):
-        lines[i] = lines[i].lstrip()
-
-    # Iterate through each line and remove unneeded spaces based on the indentation level
-    indent_level = 0
-    for i in range(len(lines)):
-        line = lines[i]
-        if len(line) == 0:
-            continue  # skip empty lines
-        cur_indent_level = len(line) - len(line.lstrip())
-        if cur_indent_level > indent_level:
-            # Indentation level increased
-            indent_level = cur_indent_level
-        elif cur_indent_level < indent_level:
-            # Indentation level decreased, go back to previous level
-            indent_level = cur_indent_level
-        # Remove the unneeded spaces
-        lines[i] = " " * indent_level + line.lstrip()
-
-    # Join the lines back into a string
-    return('\n'.join(lines))
 
 def feature_is_active(**kwargs):
     """
