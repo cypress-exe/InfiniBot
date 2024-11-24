@@ -40,8 +40,8 @@ class Dashboard(nextcord.ui.View):
         self.default_roles_btn = self.DefaultRolesButton(self)
         self.add_item(self.default_roles_btn)
         
-        # self.joinToCreateVCsButton = self.JoinToCreateVCsButton(self)
-        # self.add_item(self.joinToCreateVCsButton)
+        self.join_to_create_VCs_button = self.JoinToCreateVCsButton(self)
+        self.add_item(self.join_to_create_VCs_button)
         
         # self.bansButton = self.AutoBansButton(self)
         # self.add_item(self.bansButton)
@@ -3461,213 +3461,248 @@ class Dashboard(nextcord.ui.View):
             view = self.DefaultRolesView(self.outer)
             await view.setup(interaction)           
  
-    # class JoinToCreateVCsButton(nextcord.ui.Button):
-    #     def __init__(self, outer):
-    #         super().__init__(label = "Join-To-Create VCs", style = nextcord.ButtonStyle.gray, row = 1)
-    #         self.outer = outer
+    class JoinToCreateVCsButton(nextcord.ui.Button):
+        def __init__(self, outer):
+            super().__init__(label = "Join-To-Create VCs", style = nextcord.ButtonStyle.gray, row = 1)
+            self.outer = outer
                     
-    #     class JoinToCreateVCsView(nextcord.ui.View):
-    #         def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
-    #             super().__init__(timeout=None)
-    #             self.outer = outer
-    #             self.onboarding_modifier = onboarding_modifier
-    #             self.onboarding_embed = onboarding_embed
-                
-    #             #create buttons
-    #             self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger)
-    #             self.back_btn.callback = self.back_btn_callback
-    #             self.add_item(self.back_btn)
-                
-    #             self.configureBtn = self.ConfigureButton(self)
-    #             self.add_item(self.configureBtn)
-                
-    #         def getMessageEmbed(self, guild: nextcord.Guild):
-    #             server = Server_DEP(guild.id)
-    #             vcs = server.VCs
-    #             del server
-                    
-    #             if len(vcs) > 0:
-    #                 description = "**Join-To-Create VCs**\n" + "\n".join([f"• {item.channel.mention}" if item.active else f"• ⚠️ {item.channel.mention} ⚠️" for item in vcs])
-    #             else:
-    #                 description = "**Join-To-Create VCs**\nYou don't have any join-to-create VCs. Click Configure to make one!"
-                    
-    #             return nextcord.Embed(title = "Dashboard - Join-To-Create-VCs", description = f"You may select up to five voice channels that will have this feature.\n\n**What is it?**\nWhen a user joins one of these Voice Channels, they will be moved to a custom voice channel created just for them. When everyone leaves, the channel will be removed.\n\n{description}\n\nFor more information, use: {joinToCreateVoiceChannelsHelp.get_mention()}", color = nextcord.Color.blue())
-        
-    #         async def setup(self, interaction: Interaction):
-    #             if self.onboarding_modifier: self.onboarding_modifier(self)
-                
-    #             if not utils.enabled.JoinToCreateVCs(guild_id = interaction.guild.id):
-    #                 await ui_components.disabled_feature_override(self, interaction)
-    #                 return
-                
-    #             if self.onboarding_embed: embeds = [self.onboarding_embed, self.getMessageEmbed(interaction.guild)]
-    #             else: embeds = [self.getMessageEmbed(interaction.guild)]
-                
-    #             await interaction.response.edit_message(embeds = embeds, view = self)
-                    
-    #         async def back_btn_callback(self, interaction: Interaction):
-    #             await self.outer.setup(interaction)
-            
-    #         class ConfigureButton(nextcord.ui.Button):
-    #             def __init__(self, outer):
-    #                 super().__init__(label = "Configure", style = nextcord.ButtonStyle.blurple)
-    #                 self.outer = outer
-                    
-    #             class ConfigureView(nextcord.ui.View):
-    #                 def __init__(self, outer, guild: nextcord.Guild):
-    #                     super().__init__(timeout=None)
-    #                     self.outer = outer
-                        
-    #                     self.embed: nextcord.Embed = self.outer.getMessageEmbed(guild)
-    #                     dontSeeYourChannelMessage = """\n\n**Having Issues?**
-    #                     Make sure InfiniBot has the following permissions in your channel:
-    #                     • View Channel
-    #                     • Manage Channel
-    #                     • Connect
-    #                     • Move Members"""
-    #                     dontSeeYourChannelMessage = utils.standardize_str_indention(dontSeeYourChannelMessage)
-    #                     self.embed.description += dontSeeYourChannelMessage
-                        
-    #                     #get the vcs
-    #                     accessableVCs = [vc for vc in guild.voice_channels if (vc.permissions_for(guild.me).view_channel and vc.permissions_for(guild.me).connect and vc.permissions_for(guild.me).manage_channels)]
-                    
-    #                     server = Server_DEP(guild.id)
-    #                     vcs = [[vc, server.VCExists(vc.id)] for vc in accessableVCs]
-                        
-    #                     #Error message
-    #                     if False in [vc.active for vc in server.VCs]:
-    #                         self.embed.description += "\n\n**⚠️ There is a Problem with One or More of Your VCs ⚠️**\nMake sure that all join-to-create VCs have the following permissions:\n• View Channel\n• Manage Channel\n• Connect"
-                        
-    #                     del server
+        class JoinToCreateVCsView(nextcord.ui.View):
+            def __init__(self, outer, guild: nextcord.Guild, onboarding_modifier = None, onboarding_embed = None):
+                super().__init__(timeout=None)
+                self.outer = outer
+                self.guild = guild
+                self.onboarding_modifier = onboarding_modifier
+                self.onboarding_embed = onboarding_embed
 
-    #                     #create other buttons
-    #                     self.addBtn = self.AddButton(self, guild, vcs)
-    #                     self.add_item(self.addBtn)
+                server = Server(self.guild.id)
                         
-    #                     self.deleteBtn = self.DeleteButton(self, guild)
-    #                     self.add_item(self.deleteBtn)
-                        
-    #                     self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
-    #                     self.back_btn.callback = self.back_btn_callback
-    #                     self.add_item(self.back_btn)
-                        
-    #                 async def setup(self, interaction: Interaction):
-    #                     await interaction.response.edit_message(embed = self.embed, view = self)
-                       
-    #                 async def refresh(self, interaction: Interaction):
-    #                     self.__init__(self.outer, interaction.guild)
-    #                     await self.setup(interaction)
-                        
-    #                 async def back_btn_callback(self, interaction: Interaction):
-    #                     await self.outer.setup(interaction)
-                        
-    #                 class AddButton(nextcord.ui.Button):
-    #                     def __init__(self, outer, guild: nextcord.Guild, vcs:list[nextcord.VoiceChannel, bool]):
-    #                         self.outer = outer
-    #                         self.vcs = vcs
-                            
-    #                         server = Server_DEP(guild.id)
-                            
-    #                         #choose enabled / disabled
-    #                         if len(self.vcs) > 0 and len(server.VCs) < 5 and len([vc for vc in self.vcs if not vc[1]]) > 0: disabled = False
-    #                         else: disabled = True
-                            
-    #                         #choose button style
-    #                         server = Server_DEP(guild.id)
-    #                         if len(server.VCs) == 0 and not disabled: style = nextcord.ButtonStyle.blurple
-    #                         else: style = nextcord.ButtonStyle.gray
-           
-    #                         super().__init__(label = "Add Channel", style = style, disabled = disabled)
-                                                     
-    #                     async def callback(self, interaction: Interaction):
-    #                         selectOptions = [nextcord.SelectOption(label = vc[0].name, value = vc[0].id, description = (vc[0].category.name if vc[0].category else "")) for vc in [vc for vc in self.vcs if not vc[1]]]
-                            
-    #                         description = """Select a Voice Channel to be a Join-To-Create Voice Channel.
-                                
-    #                         **Don't See Your Channel?**
-    #                         Make sure InfiniBot has the following permissions in your channel:
-    #                         • View Channel
-    #                         • Manage Channel
-    #                         • Connect"""
-                        
-    #                         # On Mobile, extra spaces cause problems. We'll get rid of them here:
-    #                         description = utils.standardize_str_indention(description)
-                            
-    #                         embed = nextcord.Embed(title = "Dashboard - Join-To-Create-VCs - Add Channel", description = description, color = nextcord.Color.blue())
-    #                         view = ui_components.SelectView(embed,
-    #                                           options = selectOptions, 
-    #                                           returnCommand = self.selectCallback, 
-    #                                           continueButtonLabel = "Add", 
-    #                                           preserveOrder = True, 
-    #                                           placeholder = "Select a Voice Channel")
-                            
-    #                         await view.setup(interaction)
-                            
-    #                     async def selectCallback(self, interaction: Interaction, selection: str):
-    #                         if selection == None: 
-    #                             await self.outer.refresh(interaction) 
-    #                             return
-                            
-    #                         server = Server_DEP(interaction.guild.id)
-    #                         server.VCs.append(JoinToCreateVC(interaction.guild, None, id = selection))
-    #                         server.saveVCs()
-                            
-    #                         await self.outer.refresh(interaction)
-                            
-    #                 class DeleteButton(nextcord.ui.Button):
-    #                     def __init__(self, outer, guild: nextcord.Guild):
-    #                         self.outer = outer
-                            
-    #                         server = Server_DEP(guild.id)
-                            
-    #                         #choose enabled / disabled
-    #                         if len(server.VCs) > 0: disabled = False
-    #                         else: disabled = True
-           
-    #                         super().__init__(label = "Delete Channel", style = nextcord.ButtonStyle.gray, disabled = disabled)
-                                                        
-    #                     async def callback(self, interaction: Interaction):
-    #                         server = Server_DEP(interaction.guild.id)
-    #                         selectOptions = [nextcord.SelectOption(label = vc.channel.name, value = vc.id, description = (vc.channel.category.name if vc.channel.category else "")) for vc in server.VCs]
-                                        
-    #                         description = """Select a Join-To-Create Voice Channel to no longer be a Join-To-Create Voice Channel."""
-                        
-    #                         # On Mobile, extra spaces cause problems. We'll get rid of them here:
-    #                         description = utils.standardize_str_indention(description)
-                            
-    #                         embed = nextcord.Embed(title = "Dashboard - Join-To-Create-VCs - Delete Channel", description = description, color = nextcord.Color.blue())
-    #                         view = ui_components.SelectView(embed,
-    #                                           options = selectOptions, 
-    #                                           returnCommand = self.selectCallback, 
-    #                                           continueButtonLabel = "Delete", 
-    #                                           preserveOrder = True, 
-    #                                           placeholder = "Select a Voice Channel")
-                            
-    #                         await view.setup(interaction)
-                            
-    #                     async def selectCallback(self, interaction: Interaction, selection: str):
-    #                         if selection == None: 
-    #                             await self.outer.refresh(interaction)
-    #                             return
-                            
-    #                         selection = int(selection)
-                            
-    #                         server = Server_DEP(interaction.guild.id)
-                            
-    #                         for vc in list(server.VCs):
-    #                             if vc.id == selection:
-    #                                 server.VCs.remove(vc)
-    #                                 #we're not going to break to ensure that we delete every instance of this in case something glitched
-                            
-    #                         server.saveVCs()
-                            
-    #                         await self.outer.refresh(interaction)
-                                        
-    #             async def callback(self, interaction: Interaction):
-    #                 await self.ConfigureView(self.outer, interaction.guild).setup(interaction)                      
+                # Find all join-to-create VCs (log which ones have errors)
+                # This needs to be done here because the buttons need this info to determine
+                # whether or not to be disabled
+                self.join_to_create_vcs_with_error_info = []
+                for vc_id in server.join_to_create_vcs.channels:
+                    voice_channel = guild.get_channel(vc_id)
+                    
+                    error = False
+                    if not voice_channel: error = True; logging.warning(f"Join-to-create VC {vc_id} in guild {self.guild.id} was not found. Ignoring, but marking it as an error...")
+                    elif not voice_channel.permissions_for(self.guild.me).view_channel: error = True; logging.warning(f"Join-to-create VC {vc_id} in guild {self.guild.id} does not have view_channel permission for InfiniBot. Ignoring, but marking it as an error...")
+                    elif not voice_channel.permissions_for(self.guild.me).manage_channels: error = True; logging.warning(f"Join-to-create VC {vc_id} in guild {self.guild.id} does not have manage_channels permission for InfiniBot. Ignoring, but marking it as an error...")
+
+                    self.join_to_create_vcs_with_error_info.append([voice_channel, error])
+
+                self.add_btn = self.AddButton(self, guild, self.join_to_create_vcs_with_error_info)
+                self.add_item(self.add_btn)
+                
+                self.delete_btn = self.DeleteButton(self, guild)
+                self.add_item(self.delete_btn)
+                
+                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
+                self.back_btn.callback = self.back_btn_callback
+                self.add_item(self.back_btn)
         
-    #     async def callback(self, interaction: Interaction):
-    #         await self.JoinToCreateVCsView(self.outer).setup(interaction)
+            async def setup(self, interaction: Interaction):
+                if self.onboarding_modifier: self.onboarding_modifier(self)
+                
+                if not utils.feature_is_active(server_id = interaction.guild.id, feature = "join_to_create_vcs"): # server_id won't be used here, but it's required as an input
+                    await ui_components.disabled_feature_override(self, interaction)
+                    return
+                
+                # Get server data
+                server = Server(interaction.guild.id)
+                join_to_create_voice_channels:list = server.join_to_create_vcs.channels
+                    
+                
+                # Build UI
+                join_to_create_vcs_ui_text = "**Join-To-Create VCs**\n"
+
+                if len(join_to_create_voice_channels) > 0:
+                    vcs_ui_text_list = []
+                    for vc_id in join_to_create_voice_channels:
+                        voice_channel = interaction.guild.get_channel(vc_id)
+                        
+                        error = False
+                        if not voice_channel: 
+                            error = True
+                            reference = f"UNKNOWN CHANNEL ({vc_id})"
+                        else:
+                            reference = voice_channel.mention
+                            if not voice_channel.permissions_for(interaction.guild.me).view_channel: error = True
+                            elif not voice_channel.permissions_for(interaction.guild.me).manage_channels: error = True
+
+                        vcs_ui_text_list.append(f"• {reference}" if not error else f"• ⚠️ {reference} ⚠️")
+
+                    join_to_create_vcs_ui_text += "\n".join(vcs_ui_text_list)
+                else:
+                    join_to_create_vcs_ui_text += "You don't have any join-to-create VCs. Click Configure to make one!"
+
+                # Add an error message (if needed)
+                if True in [vc_info[1] for vc_info in self.join_to_create_vcs_with_error_info]:
+                    error_message = """
+                    **⚠️ There is a Problem with One or More of Your VCs ⚠️**
+                    Make sure that InfiniBot has the following permissions in all of your join-to-create VCs:
+                    • View Channel
+                    • Manage Channel
+                    • Move Members
+                    • Connect
+                    """
+                else:
+                    error_message = ""
+
+                # Build embed   
+                description = f"""
+                You may select up to ten voice channels that will have this feature.
+                
+                **What is it?**
+                When a user joins one of these Voice Channels, they will be moved to a custom voice channel created just for them. When everyone leaves, the channel will be removed.
+                
+                {join_to_create_vcs_ui_text}
+                {error_message}
+                For more information, use: {UNSET_VALUE}
+                """ # TODO add shortcut for help command
+                description = utils.standardize_str_indention(description)
+                embed = nextcord.Embed(title = "Dashboard - Join-To-Create-VCs", description = description, color = nextcord.Color.blue())
+                
+                if self.onboarding_embed: embeds = [self.onboarding_embed, embed]
+                else: embeds = [embed]
+                
+                await interaction.response.edit_message(embeds = embeds, view = self)
+                  
+            async def reload(self, interaction: Interaction):
+                self.__init__(self.outer, interaction.guild)
+                await self.setup(interaction)
+
+            class AddButton(nextcord.ui.Button):
+                def __init__(self, outer, guild: nextcord.Guild, join_to_create_vcs_with_error_info:list[nextcord.VoiceChannel, bool]):
+                    self.outer = outer
+                    self.join_to_create_vcs_with_error_info = join_to_create_vcs_with_error_info
+
+                    # Get a server to work with
+                    server = Server(guild.id)
+
+                    # Get the available vcs
+                    self.available_voice_channels:list[nextcord.VoiceChannel] = [] # Voice channels that are available (ie. not already a join-to-create VC and have the correct permissions)
+                    for voice_channel in guild.voice_channels:
+                        if voice_channel.id in server.join_to_create_vcs.channels: continue
+                        if not voice_channel.permissions_for(guild.me).view_channel: continue
+                        if not voice_channel.permissions_for(guild.me).manage_channels: continue
+                        if not voice_channel.permissions_for(guild.me).move_members: continue
+
+                        self.available_voice_channels.append(voice_channel)
+                    
+                    # Choose whether to be enabled or disabled
+                    disabled = False
+                    if len(server.join_to_create_vcs.channels) >= 10: disabled = True
+                    if len(self.available_voice_channels) == 0: disabled = True
+                    
+                    # Choose button style
+                    if len(server.join_to_create_vcs.channels) == 0 and not disabled: style = nextcord.ButtonStyle.blurple
+                    else: style = nextcord.ButtonStyle.gray
+    
+                    super().__init__(label = "Add Channel", style = style, disabled = disabled)
+                                                
+                async def callback(self, interaction: Interaction):
+                    select_options = []
+                    for voice_channel in self.available_voice_channels:
+                        select_options.append(
+                            nextcord.SelectOption(label = voice_channel.name, value = voice_channel.id,
+                                                    description = (voice_channel.category.name if voice_channel.category else None))
+                            )
+                    
+                    description = """Select a Voice Channel to be a Join-To-Create Voice Channel.
+                        
+                    **Don't See Your Channel?**
+                    Make sure that InfiniBot has the following permissions in all of your channels:
+                    • View Channel
+                    • Manage Channel
+                    • Move Members
+                    • Connect
+                    """
+                    description = utils.standardize_str_indention(description)
+                    
+                    embed = nextcord.Embed(title = "Dashboard - Join-To-Create-VCs - Add Channel", description = description, color = nextcord.Color.blue())
+                    view = ui_components.SelectView(embed,
+                                        options = select_options, 
+                                        returnCommand = self.select_callback, 
+                                        continueButtonLabel = "Add", 
+                                        preserveOrder = True, 
+                                        placeholder = "Select a Voice Channel")
+                    
+                    await view.setup(interaction)
+                    
+                async def select_callback(self, interaction: Interaction, selection: str):
+                    if selection == None: # User clicked "Cancel"
+                        await self.outer.reload(interaction) 
+                        return
+                    
+                    server = Server(interaction.guild.id)
+
+                    join_to_create_voice_channels = server.join_to_create_vcs.channels
+                    join_to_create_voice_channels.append(int(selection))
+                    server.join_to_create_vcs.channels = join_to_create_voice_channels
+                    
+                    await self.outer.reload(interaction)
+                    
+            class DeleteButton(nextcord.ui.Button):
+                def __init__(self, outer, guild: nextcord.Guild):
+                    self.outer = outer
+                    
+                    server = Server(guild.id)
+                    
+                    # Choose whether to be enabled or disabled
+                    disabled = True
+                    if len(server.join_to_create_vcs.channels) > 0: disabled = False
+    
+                    super().__init__(label = "Delete Channel", style = nextcord.ButtonStyle.gray, disabled = disabled)
+                                                
+                async def callback(self, interaction: Interaction):
+                    server = Server(interaction.guild.id)
+                    select_options = []
+                    for vc_id in server.join_to_create_vcs.channels:
+                        voice_channel = interaction.guild.get_channel(vc_id)
+                        if voice_channel:
+                            label = voice_channel.name
+                            description = (voice_channel.category.name if voice_channel.category else None)
+                        else:
+                            label =  "⚠️ UNKNOWN CHANNEL ⚠️"
+                            description = vc_id
+                        
+                        select_options.append(
+                            nextcord.SelectOption(label = label, value = vc_id, description = description)
+                        )
+                                
+                    description = """
+                    Select a Join-To-Create Voice Channel to delete. (Does not delete the Voice Channel, but removes it from Join-To-Create).
+                    """
+                    description = utils.standardize_str_indention(description)
+                    
+                    embed = nextcord.Embed(title = "Dashboard - Join-To-Create-VCs - Delete Channel", description = description, color = nextcord.Color.blue())
+                    view = ui_components.SelectView(embed,
+                                        options = select_options, 
+                                        returnCommand = self.select_callback, 
+                                        continueButtonLabel = "Delete", 
+                                        preserveOrder = True, 
+                                        placeholder = "Select a Voice Channel")
+                    
+                    await view.setup(interaction)
+                    
+                async def select_callback(self, interaction: Interaction, selection: str):
+                    if selection == None: # User clicked "Cancel"
+                        await self.outer.reload(interaction)
+                        return
+                    
+                    server = Server(interaction.guild.id)
+                
+                    join_to_create_voice_channels = server.join_to_create_vcs.channels
+                    join_to_create_voice_channels.remove(int(selection))
+                    server.join_to_create_vcs.channels = join_to_create_voice_channels
+                    
+                    await self.outer.reload(interaction)
+                   
+            async def back_btn_callback(self, interaction: Interaction):
+                await self.outer.setup(interaction)
+        
+        async def callback(self, interaction: Interaction):
+            await self.JoinToCreateVCsView(self.outer, interaction.guild).setup(interaction)
 
     # class AutoBansButton(nextcord.ui.Button):
     #     def __init__(self, outer):

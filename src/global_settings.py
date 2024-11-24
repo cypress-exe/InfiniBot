@@ -38,6 +38,8 @@ feature_dependencies = {
     "birthdays": {"global_kill": "birthdays"},
     # ------------------------------------------------------------------------------------------------------
     "default_roles": {"global_kill": "default_roles"},
+    # ------------------------------------------------------------------------------------------------------
+    "join_to_create_vcs" : {"global_kill": "join_to_create_vcs"},
 }
 
 
