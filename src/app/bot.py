@@ -1,12 +1,12 @@
+import logging
+import nextcord
 from nextcord import AuditLogAction, Interaction, SlashOption
 from nextcord.ext import commands
-import nextcord
-import logging
 
-from file_manager import JSONFile
+from app.dashboard import run_dashboard_command
+from config.global_settings import bot_loaded, shards_loaded
+from core.file_manager import JSONFile
 
-from dashboard import run_dashboard_command
-from global_settings import shards_loaded, bot_loaded
 
 
 # INIT BOT ==============================================================================================================================================================

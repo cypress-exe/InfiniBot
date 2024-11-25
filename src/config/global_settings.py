@@ -1,6 +1,6 @@
-from file_manager import JSONFile
 import logging
 
+from core.file_manager import JSONFile
 
 shards_loaded = []
 bot_loaded = False
@@ -95,8 +95,6 @@ class GlobalKillStatus(GlobalSetting):
             "birthdays": False,
             "default_roles": False,
             "join_to_create_vcs": False,
-            "auto_bans": False,
-            # "active_messages": False, Removed for now since I think it's being phased out in this update
             "reaction_roles": False,
             "embeds": False,
             "role_messages": False,

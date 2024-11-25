@@ -1,12 +1,11 @@
-import socket
-import time
+import logging
 import os
 import shutil
-import sys
+import socket
+import time
 
-from log_manager import setup_logging, change_logging_level
-from file_manager import JSONFile
-import logging
+from core.file_manager import JSONFile
+from core.log_manager import setup_logging, change_logging_level
 
 # Functions
 def create_environment():
@@ -56,6 +55,7 @@ def create_environment():
   # Setup config.json
   if not os.path.exists("generated/configure/config.json"):
     JSONFile("config").add_variable("log_level", "INFO")
+    JSONFile("config").add_variable("max_logs_to_keep", 10)
     JSONFile("config").add_variable("birthday_message_runtime_default_utc", "15:00")
 
   logging.info("To modify defaults, edit settings file in ./generated/configure")
@@ -108,5 +108,5 @@ if __name__ == "__main__":
   logging.info("Connection aquired!")
 
   logging.info("Starting InfiniBot...")
-  import bot
+  import app.bot as bot
   bot.run()

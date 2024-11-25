@@ -1,21 +1,18 @@
+import copy
+import datetime
+import json
+import logging
+
+import humanfriendly
+import nextcord
 from nextcord import Interaction
 from nextcord.ext import commands
-import nextcord
-import datetime
-import humanfriendly
-import copy
-import logging
-import json
 
-import ui_components as ui_components
-import utils as utils
-import help_commands as help_commands
-import views as views
-from custom_types import UNSET_VALUE
-from global_settings import shards_loaded
-from file_manager import JSONFile
-
-from server import Server
+from app.server import Server
+from components import help_commands, ui_components, utils
+from config.global_settings import shards_loaded
+from core.custom_types import UNSET_VALUE
+from core.file_manager import JSONFile
 
 
 class Dashboard(nextcord.ui.View):
@@ -408,7 +405,7 @@ class Dashboard(nextcord.ui.View):
                             embed = nextcord.Embed(title = "Admin Channel Set", description = f"Strikes will now be logged in this channel.\n\n**Ensure Admin-Only Access**\nThis channel lets members report incorrect strikes, so limit access to admins.", color =  nextcord.Color.green())
                             embed.set_footer(text = f"Action done by {interaction.user}")
                             discord_channel = interaction.guild.get_channel(server.profanity_moderation_profile.channel)
-                            await discord_channel.send(embed = embed, view = views.SupportAndInviteView())
+                            await discord_channel.send(embed = embed, view = ui_components.SupportAndInviteView())
 
                     class ManageStrikeSystemButton(nextcord.ui.Button):
                         def __init__(self, outer):
@@ -1236,7 +1233,7 @@ class Dashboard(nextcord.ui.View):
                     
                     embed = nextcord.Embed(title = "Log Channel Set", description = f"This channel will now be used for logging.\n\n**Notification Settings**\nSet notification settings for this channel to \"Nothing\". InfiniBot will constantly be sending log messages in this channel.", color =  nextcord.Color.green())
                     embed.set_footer(text = f"Action done by {interaction.user}")
-                    await interaction.guild.get_channel(server.logging_profile.channel).send(embed = embed, view = views.SupportAndInviteView())
+                    await interaction.guild.get_channel(server.logging_profile.channel).send(embed = embed, view = ui_components.SupportAndInviteView())
             
             class EnableDisableButton(nextcord.ui.Button):
                 def __init__(self, outer):

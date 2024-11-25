@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 
-import unittest
-import random
-import uuid
 import logging
 import os
+import random
+import uuid
 
-from custom_types import UNSET_VALUE
-from log_manager import setup_logging
+import unittest
 
-from database import Database
-from server import Server
-from file_manager import JSONFile
-from global_settings import get_global_kill_status, get_persistent_data
-from utils import feature_is_active
+import app.server as server
+from app.server import Server
 
-import server as server
+from components.utils import feature_is_active
+
+from config.global_settings import get_global_kill_status, get_persistent_data
+
+from core.custom_types import UNSET_VALUE
+from core.database import Database
+from core.file_manager import JSONFile
+from core.log_manager import setup_logging
+
 
 def hijack_database_url():
     logging.warning("Hijacking database url to use memory database")

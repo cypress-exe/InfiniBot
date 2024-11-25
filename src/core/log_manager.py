@@ -1,7 +1,9 @@
+import datetime
 import logging
 import os
 import shutil
-import datetime
+
+from core.file_manager import JSONFile
 
 def create_logging_folder():
     if not os.path.exists("./generated/logs"):
@@ -11,8 +13,8 @@ def create_logging_folder():
     test_folder_path = f"./generated/logs/{date}"
     os.makedirs(test_folder_path)
 
-    # Ensure no more than 10 files exist
-    if len(os.listdir("./generated/logs")) > 10:
+    # Ensure no more than JSONFile("config")["max_logs_to_keep"] files exist
+    while len(os.listdir("./generated/logs")) > JSONFile("config")["max_logs_to_keep"]:
         shutil.rmtree(f"./generated/logs/{os.listdir('./generated/logs')[0]}")
 
     return test_folder_path

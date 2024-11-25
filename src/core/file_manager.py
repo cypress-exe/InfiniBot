@@ -1,7 +1,6 @@
-import os
 import json
-
 import logging
+import os
 
 class JSONFile:
   def __init__(self, name):

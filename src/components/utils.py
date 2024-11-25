@@ -1,11 +1,12 @@
-from nextcord import Interaction
-import nextcord
-import logging
 import datetime
+import logging
 import math
-import dateparser
 
-from global_settings import get_global_kill_status, feature_dependencies
+import dateparser
+import nextcord
+from nextcord import Interaction
+
+from config.global_settings import feature_dependencies, get_global_kill_status
 
 
 def format_var_to_pythonic_type(_type:str, value):
@@ -255,7 +256,7 @@ def feature_is_active(**kwargs):
     Returns:
         bool: True if the feature is active for the server (or globally), False otherwise.
     """
-    from server import Server
+    from app.server import Server
 
     server:Server = kwargs.get("server")
     server_id:int = kwargs.get("server_id")
