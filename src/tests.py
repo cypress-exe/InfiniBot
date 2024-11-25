@@ -683,17 +683,6 @@ class TestServer(unittest.TestCase):
 
         server.remove_all_data()
 
-    def test_autobans(self):
-        server_id = random.randint(0, 1000000000)
-
-        server = Server(server_id)
-
-        # Using run_test_on_integrated_list_property
-        test = self.RunTestOnIntegratedListProperty(server, "autobans", ["member_id:int", "member_name:str"], [5, 20])
-        test.run(self)
-
-        server.remove_all_data()
-
     # MESSAGE LOGS
     def test_embeds(self):
         server_id = random.randint(0, 1000000000)
@@ -717,7 +706,6 @@ class TestServer(unittest.TestCase):
 
         server.remove_all_data()
 
-    
     def test_role_messages(self):
         server_id = random.randint(0, 1000000000)
 

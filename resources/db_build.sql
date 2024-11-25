@@ -129,15 +129,6 @@ CREATE TABLE IF NOT EXISTS birthdays(
     PRIMARY KEY (server_id, member_id)
 )
 
--- Create auto_bans Table (integrated list table)
-CREATE TABLE IF NOT EXISTS auto_bans(
-    server_id INT,
-    member_id INT,
-    member_name TEXT,
-    PRIMARY KEY (server_id, member_id)
-)
-
-
 
 -- START of MESSAGE LOGS
 -- Create embeds table (integrated list table)
