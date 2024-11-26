@@ -37,6 +37,17 @@ async def on_ready():
           shard_id = guild.shard_id
           logging.debug(f"Guild: {guild.name} (ID: {guild.id}) is on shard {shard_id}")
 
+    # Wait 3 seconds
+    import asyncio
+    await asyncio.sleep(3)
+
+    # Cause error
+    from app.server import Server
+    server = Server(1234)
+    server.logging_profile.active = False
+
+    
+
 @bot.event
 async def on_shard_ready(shard_id: int):
     """

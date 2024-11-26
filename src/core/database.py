@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 
@@ -10,6 +11,18 @@ from sqlalchemy.pool import QueuePool
 from components.utils import format_var_to_pythonic_type
 from core.custom_types import UNSET_VALUE
 
+
+class DatabaseContextManager:
+    def __enter__(self):
+        # Setup or initialization if needed
+        return self
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        if exc_type is not None:
+            if issubclass(exc_type, Exception):
+                logging.error("Uncaught exception in database: ", exc_info=(exc_type, exc_value, exc_traceback))
+            else:
+                logging.critical("Critical uncaught exception in database:", exc_info=(exc_type, exc_value, exc_traceback))
 
 class Database:
     """
@@ -72,6 +85,7 @@ class Database:
             if commit:
                 session.commit()
         except Exception as e:
+            logging.error(f"Error executing SQL query: {sql}", exc_info=True)
             session.rollback()
             raise Exception(e)
         finally:

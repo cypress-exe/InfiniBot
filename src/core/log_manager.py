@@ -48,13 +48,12 @@ def setup_logging(level=logging.INFO):
 
     # Hook up exception logging
     def exception_logger(exc_type, exc_value, exc_traceback):
-        logging.critical(
-            "Uncaught exception",
-            exc_info=(exc_type, exc_value, exc_traceback)
-        )
+        if issubclass(exc_type, Exception):
+            logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+        else:
+            logging.critical("Critical uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
 
         sys.__excepthook__(exc_type, exc_value, exc_traceback)
-        return
 
     sys.excepthook = exception_logger
 

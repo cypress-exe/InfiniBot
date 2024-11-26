@@ -4,7 +4,7 @@ from nextcord import Embed as NextcordEmbed
 
 from components.utils import format_var_to_pythonic_type
 from core.custom_types import UNSET_VALUE
-from core.database import Database
+from core.database import Database, DatabaseContextManager
 
 # Database Paths
 database_url = "sqlite:///./generated/files/database.db"
@@ -17,7 +17,8 @@ class DatabaseForInfiniBot(Database): # Alters Database to add InfiniBot-specifi
 database = None
 def init_database():
     global database
-    database = DatabaseForInfiniBot(database_url, database_build_file_path)
+    with DatabaseContextManager():
+        database = DatabaseForInfiniBot(database_url, database_build_file_path)
 
 init_database()
 
