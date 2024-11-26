@@ -9,7 +9,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
 
 from components.utils import format_var_to_pythonic_type
-from core.custom_types import UNSET_VALUE
+from modules.custom_types import UNSET_VALUE
 
 
 class DatabaseContextManager:

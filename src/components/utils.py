@@ -256,7 +256,7 @@ def feature_is_active(**kwargs):
     Returns:
         bool: True if the feature is active for the server (or globally), False otherwise.
     """
-    from app.server import Server
+    from config.server import Server
 
     server:Server = kwargs.get("server")
     server_id:int = kwargs.get("server_id")

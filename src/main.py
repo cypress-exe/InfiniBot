@@ -4,7 +4,7 @@ import shutil
 import socket
 import time
 
-from core.file_manager import JSONFile
+from config.file_manager import JSONFile
 from core.log_manager import setup_logging, change_logging_level
 
 # Functions
@@ -108,5 +108,5 @@ if __name__ == "__main__":
     logging.info("Connection aquired!")
 
     logging.info("Starting InfiniBot...")
-    import app.bot as bot
+    import core.bot as bot
     bot.run()

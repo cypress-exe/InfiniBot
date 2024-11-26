@@ -5,10 +5,10 @@ from nextcord import AuditLogAction, Interaction, SlashOption
 from nextcord.ext import commands
 import uuid
 
-from app.dashboard import run_dashboard_command
+from features.dashboard import run_dashboard_command
 from components import ui_components
 from config.global_settings import bot_loaded, shards_loaded
-from core.file_manager import JSONFile
+from config.file_manager import JSONFile
 
 
 # INIT BOT ==============================================================================================================================================================
@@ -42,7 +42,7 @@ async def on_ready():
     await asyncio.sleep(3)
 
     # Cause error
-    from app.server import Server
+    from config.server import Server
     server = Server(1234)
     server.logging_profile.active = False
 
@@ -95,7 +95,7 @@ async def on_application_command_error(interaction: Interaction, error):
         # If the response has already been sent or there's another issue, follow up instead
         if interaction.response.is_done():
             await interaction.followup.send(embed=embed, ephemeral=True, view=ui_components.SupportView())
-            
+
 # RUN BOT ==============================================================================================================================================================================
 def run():
     # Get token

@@ -7,12 +7,13 @@ import humanfriendly
 import nextcord
 from nextcord import Interaction
 
-from app.server import Server
-from components import help_commands, ui_components, utils
+from components import ui_components, utils
 from components.ui_components import CustomView, CustomModal
+from config.file_manager import JSONFile
 from config.global_settings import shards_loaded
-from core.custom_types import UNSET_VALUE
-from core.file_manager import JSONFile
+from config.server import Server
+from features import help_commands
+from modules.custom_types import UNSET_VALUE
 
 
 

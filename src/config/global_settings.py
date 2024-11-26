@@ -1,6 +1,6 @@
 import logging
 
-from core.file_manager import JSONFile
+from config.file_manager import JSONFile
 
 shards_loaded = []
 bot_loaded = False

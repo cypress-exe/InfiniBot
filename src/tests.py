@@ -7,17 +7,14 @@ import uuid
 
 import unittest
 
-import app.server as server
-from app.server import Server
-
 from components.utils import feature_is_active
-
+from config.file_manager import JSONFile
+import config.server as server
+from config.server import Server
 from config.global_settings import get_global_kill_status, get_persistent_data
-
-from core.custom_types import UNSET_VALUE
-from core.database import Database
-from core.file_manager import JSONFile
 from core.log_manager import setup_logging
+from modules.custom_types import UNSET_VALUE
+from modules.database import Database
 
 
 def hijack_database_url():

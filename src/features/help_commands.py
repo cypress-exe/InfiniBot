@@ -3,8 +3,8 @@ import json
 from nextcord import Embed as NextcordEmbed
 
 from components.utils import format_var_to_pythonic_type
-from core.custom_types import UNSET_VALUE
-from core.database import Database
+from modules.custom_types import UNSET_VALUE
+from modules.database import Database
 
 
 # NEEDS TO BE FIXED

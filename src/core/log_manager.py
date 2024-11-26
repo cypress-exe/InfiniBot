@@ -4,7 +4,7 @@ import os
 import shutil
 import sys
 
-from core.file_manager import JSONFile
+from config.file_manager import JSONFile
 
 def create_logging_folder():
     if not os.path.exists("./generated/logs"):
