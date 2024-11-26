@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Check if "-d" flag is passed
-deamonted_string=""
+daemon_arg=""
 for arg in "$@"; do
   if [ "$arg" == "-d" ]; then
-    deamonted_string="-d"
+    daemon_arg="-d"
     break
   fi
 done
 
 # Run the Docker container with optional detached_string mode
-docker-compose -f ./.devcontainer/docker-compose.yml up ${deamonted_string}
+docker-compose -f ./.devcontainer/docker-compose.yml up ${daemon_arg}
