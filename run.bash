@@ -3,10 +3,10 @@
 # Check if "-d" flag is passed
 daemon_arg=""
 for arg in "$@"; do
-  if [ "$arg" == "-d" ]; then
-    daemon_arg="-d"
-    break
-  fi
+    if [ "$arg" == "-d" ]; then
+        daemon_arg="-d"
+        break
+    fi
 done
 
 # Run the Docker container with optional detached_string mode
