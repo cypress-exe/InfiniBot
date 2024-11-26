@@ -2,6 +2,7 @@ import datetime
 import logging
 import os
 import shutil
+import sys
 
 from core.file_manager import JSONFile
 
@@ -20,7 +21,7 @@ def create_logging_folder():
     return test_folder_path
 
 
-def setup_logging(level = logging.INFO):
+def setup_logging(level=logging.INFO):
     test_folder_path = create_logging_folder()
     test_folder_path = os.path.abspath(test_folder_path)
 
@@ -45,26 +46,21 @@ def setup_logging(level = logging.INFO):
 
     logging.info("Created logging folder and logging file")
 
-def change_logging_level(level):
-    if level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+    # Hook up exception logging
+    def exception_logger(exc_type, exc_value, exc_traceback):
+        logging.critical(
+            "Uncaught exception",
+            exc_info=(exc_type, exc_value, exc_traceback)
+        )
+
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    sys.excepthook = exception_logger
+
+def change_logging_level(level:str):
+    if level.upper() not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
         raise ValueError("Invalid logging level")
     
-    if level == "DEBUG":
-        logging.getLogger().setLevel(logging.DEBUG)
-        logging.info("Changed logging level to DEBUG")
-
-    elif level == "INFO":
-        logging.getLogger().setLevel(logging.INFO)
-        logging.info("Changed logging level to INFO")
-
-    elif level == "WARNING":
-        logging.getLogger().setLevel(logging.WARNING)
-        logging.warning("Changed logging level to WARNING")
-
-    elif level == "ERROR":
-        logging.getLogger().setLevel(logging.ERROR)
-        logging.error("Changed logging level to ERROR")
-
-    elif level == "CRITICAL":
-        logging.getLogger().setLevel(logging.CRITICAL)
-        logging.critical("Changed logging level to CRITICAL")
+    logging.getLogger().setLevel(getattr(logging, level.upper()))
+    logging.info(f"Changed logging level to {level.upper()}")

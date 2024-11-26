@@ -1,4 +1,6 @@
 import copy
+import logging
+import uuid
 
 import nextcord
 from nextcord import Interaction
@@ -6,7 +8,7 @@ from nextcord import Interaction
 from config.global_settings import get_settings
 
 
-# "Disabled Feature" override
+# View overrides
 async def disabled_feature_override(self: nextcord.ui.View, interaction: Interaction):
     """Overrides a page if the feature was disabled
 
@@ -27,7 +29,7 @@ async def disabled_feature_override(self: nextcord.ui.View, interaction: Interac
         if isinstance(child, nextcord.ui.Button):
             if child.style == nextcord.ButtonStyle.danger or child.style == nextcord.ButtonStyle.red:
                 child.label = "Back"
-                continue;
+                continue
             else:
                 self.remove_item(child)
     
@@ -36,8 +38,86 @@ async def disabled_feature_override(self: nextcord.ui.View, interaction: Interac
     try: await interaction.response.edit_message(embed = embed, view = self)
     except: await interaction.response.send_message(embed = embed, view = self, ephemeral=True)
 
+async def infinibot_loading_override(self: nextcord.ui.View, interaction: Interaction):
+    """Overrides a page if the feature is still loading
+
+    ------
+    Parameters
+    ------
+    self: `nextcord.ui.View`
+        The current view.
+    interaction: `nextcord.Interaction`
+        An interaction.
+        
+    Returns
+    ------
+        `None`
+    """    
+    # Only allow the back button
+    for child in list(self.children):
+        if isinstance(child, nextcord.ui.Button):
+            if child.style == nextcord.ButtonStyle.danger or child.style == nextcord.ButtonStyle.red:
+                child.label = "Back"
+                continue
+            else:
+                self.remove_item(child)
+    
+    # Replace with error
+    embed = nextcord.Embed(title = "InfiniBot is still loading", 
+                           description = "InfiniBot has been recently restarted. It is still coming back online. Please try again in a few minutes.", 
+                           color = nextcord.Color.red())
+    try: await interaction.response.edit_message(embed = embed, view = self)
+    except: await interaction.response.send_message(embed = embed, view = self, ephemeral=True)
+
+
+# Views and Modals for everything
+class CustomView(nextcord.ui.View):
+    async def on_error(self, error: Exception, item, interaction):
+        """
+        Handles exceptions raised in the view's item callbacks.
+        """
+        # Generate a unique ID for the error
+        error_id = uuid.uuid4()
+
+        # Log the error with the unique ID
+        logging.error(f"Error ID: {error_id} - Exception in view interaction", exc_info=error)
+
+        # Inform the user about the error with the ID
+        embed = nextcord.Embed(
+            title = "Woops...",
+            description = f"An unexpected error occurred. If the issue persists, please report it to the support team.",
+            color = nextcord.Color.red()
+        )
+        embed.set_footer(text = f"View Interaction - Error ID: {error_id}")
+        await interaction.response.send_message(
+            embed=embed, ephemeral=True, view=SupportView()
+        )
+
+class CustomModal(nextcord.ui.Modal):
+    async def on_error(self, error: Exception, interaction):
+        """
+        Handles exceptions raised in the modal's execution.
+        """
+        # Generate a unique ID for the error
+        error_id = uuid.uuid4()
+
+        # Log the error with the unique ID
+        logging.error(f"Error ID: {error_id} - Exception in modal interaction", exc_info=error)
+
+        # Inform the user about the error with the ID
+        embed = nextcord.Embed(
+            title = "Woops...",
+            description = f"An unexpected error occurred. If the issue persists, please report it to the support team.",
+            color = nextcord.Color.red()
+        )
+        embed.set_footer(text = f"Modal Interaction - Error ID: {error_id}")
+        await interaction.response.send_message(
+            embed=embed, ephemeral=True, view=SupportView()
+        )
+
+
 # View for handling selects with pagnation if needed
-class SelectView(nextcord.ui.View):
+class SelectView(CustomView):
     """Creates a select view that has pages if needed.
 
     ------
@@ -201,6 +281,7 @@ class SelectView(nextcord.ui.View):
     async def continueButtonCallback(self, interaction: Interaction):
         if len(self.Select.values) == 0: return
         await self.returnCommand(interaction, self.Select.values[0])   
+
 
 # Common Add-On Views
 class SupportView(nextcord.ui.View):

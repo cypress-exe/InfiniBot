@@ -6,17 +6,18 @@ import logging
 import humanfriendly
 import nextcord
 from nextcord import Interaction
-from nextcord.ext import commands
 
 from app.server import Server
 from components import help_commands, ui_components, utils
+from components.ui_components import CustomView, CustomModal
 from config.global_settings import shards_loaded
 from core.custom_types import UNSET_VALUE
 from core.file_manager import JSONFile
 
 
-class Dashboard(nextcord.ui.View):
-    def __init__(self, interaction: Interaction):
+
+class Dashboard(CustomView):
+    def __init__(self):
         super().__init__(timeout = None)
         
         self.moderation_btn = self.ModerationButton(self)
@@ -40,21 +41,20 @@ class Dashboard(nextcord.ui.View):
         self.join_to_create_VCs_button = self.JoinToCreateVCsButton(self)
         self.add_item(self.join_to_create_VCs_button)
         
-        # self.bansButton = self.AutoBansButton(self)
-        # self.add_item(self.bansButton)
-        
-        # self.activeMessagesBtn = self.ActiveMessagesButton(self)
-        # self.add_item(self.activeMessagesBtn)
-        
         self.extra_features_btn = self.ExtraFeaturesButton(self)
         self.add_item(self.extra_features_btn)
 
     async def setup(self, interaction: Interaction):
         for child in self.children: del child
-        self.__init__(interaction)
+        self.__init__()
         
         if not utils.feature_is_active(guild_id = interaction.guild.id, feature = "dashboard"):
             await ui_components.disabled_feature_override(self, interaction)
+            return
+        
+        if not interaction.guild.shard_id in shards_loaded:
+            logging.warning(f"Dashboard:Shard {interaction.guild.shard_id} is not loaded. Forwarding to inactive screen for guild {interaction.guild.id}.")
+            await ui_components.infinibot_loading_override(self, interaction)
             return
         
         description = """Welcome to the InfiniBot Dashboard! Choose a feature to setup / edit:"""
@@ -69,11 +69,10 @@ class Dashboard(nextcord.ui.View):
 
     class ModerationButton(nextcord.ui.Button):
         def __init__(self, outer):
-            
             super().__init__(label = "Moderation", style = nextcord.ButtonStyle.gray)
             self.outer = outer 
           
-        class ModerationView(nextcord.ui.View):
+        class ModerationView(CustomView):
             def __init__(self, outer):
                 super().__init__(timeout = None)
                 self.outer = outer
@@ -116,7 +115,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Profanity", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
                     
-                class ProfaneModerationView(nextcord.ui.View):
+                class ProfaneModerationView(CustomView):
                     def __init__(self, outer, guild_id, onboarding_modifier = None, onboarding_embed = None):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -211,7 +210,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Filtered Words", style = nextcord.ButtonStyle.gray)
                             self.outer = outer           
                             
-                        class FilteredWordsView(nextcord.ui.View): #Filtered Words Window -----------------------------------------------------
+                        class FilteredWordsView(CustomView): #Filtered Words Window -----------------------------------------------------
                             def __init__(self, outer):
                                 super().__init__(timeout = None)
                                 self.outer = outer
@@ -256,7 +255,7 @@ class Dashboard(nextcord.ui.View):
                                     super().__init__(label = "Add Word", style = nextcord.ButtonStyle.gray)
                                     self.outer = outer
                                     
-                                class GetWordModal(nextcord.ui.Modal): #Add Word Modal -----------------------------------------------------
+                                class GetWordModal(CustomModal): #Add Word Modal -----------------------------------------------------
                                     def __init__(self, outer):
                                         super().__init__(title = "Add Word")
                                         self.outer = outer
@@ -323,7 +322,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Timeout Duration", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
                             
-                        class TimeoutDurationModal(nextcord.ui.Modal): #Timeout Duration Modal -----------------------------------------------------
+                        class TimeoutDurationModal(CustomModal): #Timeout Duration Modal -----------------------------------------------------
                             def __init__(self, outer, guild_id):
                                 super().__init__(title = "Timeout Duration")
                                 self.outer = outer
@@ -413,7 +412,7 @@ class Dashboard(nextcord.ui.View):
                             
                             self.outer = outer
                             
-                        class ManageStrikeSystemView(nextcord.ui.View):
+                        class ManageStrikeSystemView(CustomView):
                             def __init__(self, outer, guild_id:int):
                                 super().__init__(timeout = None)
                                 self.outer = outer
@@ -495,7 +494,7 @@ class Dashboard(nextcord.ui.View):
                                     super().__init__(label = "Manage Members", style = nextcord.ButtonStyle.gray)
                                     self.outer = outer
                                     
-                                class ManageMembersView(nextcord.ui.View):
+                                class ManageMembersView(CustomView):
                                     def __init__(self, outer):
                                         super().__init__(timeout=None)
                                         self.outer = outer
@@ -549,7 +548,7 @@ class Dashboard(nextcord.ui.View):
                                             super().__init__(label="Edit", style=nextcord.ButtonStyle.gray)
                                             self.outer = outer                      
                                         
-                                        class EditStrikesView(nextcord.ui.View):
+                                        class EditStrikesView(CustomView):
                                             def __init__(self, outer, guild: nextcord.Guild, user_selection):
                                                 super().__init__(timeout=None)
                                                 self.outer = outer
@@ -618,7 +617,7 @@ class Dashboard(nextcord.ui.View):
                                             super().__init__(label="Reset All Strikes", style=nextcord.ButtonStyle.gray)
                                             self.outer = outer
 
-                                        class ResetAllStrikesView(nextcord.ui.View):
+                                        class ResetAllStrikesView(CustomView):
                                             def __init__(self, outer):
                                                 super().__init__(timeout=None)
                                                 self.outer = outer
@@ -662,7 +661,7 @@ class Dashboard(nextcord.ui.View):
                                     super().__init__(label = "Maximum Strikes", style = nextcord.ButtonStyle.gray)
                                     self.outer = outer
                                     
-                                class MaxStrikesModal(nextcord.ui.Modal): #Max Strikes Modal -----------------------------------------------------
+                                class MaxStrikesModal(CustomModal): #Max Strikes Modal -----------------------------------------------------
                                     def __init__(self, outer, guild_id):
                                         super().__init__(title = "Maximum Strikes")
                                         self.outer = outer
@@ -694,7 +693,7 @@ class Dashboard(nextcord.ui.View):
                                     super().__init__(label = "Strike Expire Time", style = nextcord.ButtonStyle.gray)
                                     self.outer = outer
                                     
-                                class StrikeExpireTimeModal(nextcord.ui.Modal): #Strike Expire Time Modal -----------------------------------------------------
+                                class StrikeExpireTimeModal(CustomModal): #Strike Expire Time Modal -----------------------------------------------------
                                     def __init__(self, outer, guild_id):
                                         super().__init__(title = "Strike Expire Time")
                                         self.outer = outer
@@ -728,7 +727,7 @@ class Dashboard(nextcord.ui.View):
                                         super().__init__(label = "Enable Strike Expiring", row = 1)
                                     self.outer = outer
                                     
-                                class EnableDisableView(nextcord.ui.View):
+                                class EnableDisableView(CustomView):
                                     def __init__(self, outer):
                                         super().__init__(timeout = None)
                                         self.outer = outer
@@ -782,7 +781,7 @@ class Dashboard(nextcord.ui.View):
 
                                     self.outer = outer
                                     
-                                class EnableDisableView(nextcord.ui.View):
+                                class EnableDisableView(CustomView):
                                     def __init__(self, outer):
                                         super().__init__(timeout = None)
                                         self.outer = outer
@@ -847,7 +846,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Disable Profanity Moderation", row = 1)
                             self.outer = outer
                             
-                        class EnableDisableView(nextcord.ui.View):
+                        class EnableDisableView(CustomView):
                             def __init__(self, outer):
                                 super().__init__(timeout = None)
                                 self.outer = outer
@@ -912,7 +911,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Spam", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
                     
-                class SpamModerationView(nextcord.ui.View):
+                class SpamModerationView(CustomView):
                     def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -977,7 +976,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Timeout Duration", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
                             
-                        class TimeoutDurationModal(nextcord.ui.Modal): #Timeout Duration Modal -----------------------------------------------------
+                        class TimeoutDurationModal(CustomModal): #Timeout Duration Modal -----------------------------------------------------
                             def __init__(self, outer, guild_id):
                                 super().__init__(title = "Timeout Duration")
                                 self.outer = outer
@@ -1011,7 +1010,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Messages Threshold", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
                             
-                        class MessagesThresholdModal(nextcord.ui.Modal): #Timeout Duration Modal -----------------------------------------------------
+                        class MessagesThresholdModal(CustomModal): #Timeout Duration Modal -----------------------------------------------------
                             def __init__(self, outer, guild_id):
                                 super().__init__(title = "Message Threshold")
                                 self.outer = outer
@@ -1042,7 +1041,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Disable Spam Moderation", row = 1)
                             self.outer = outer
                             
-                        class EnableDisableView(nextcord.ui.View):
+                        class EnableDisableView(CustomView):
                             def __init__(self, outer):
                                 super().__init__(timeout = None)
                                 self.outer = outer
@@ -1111,7 +1110,7 @@ class Dashboard(nextcord.ui.View):
             super().__init__(label = "Logging", style = nextcord.ButtonStyle.gray)
             self.outer = outer
             
-        class LoggingView(nextcord.ui.View): #Logging Window -----------------------------------------------------
+        class LoggingView(CustomView): #Logging Window -----------------------------------------------------
             def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
                 super().__init__(timeout = None)
                 self.outer = outer
@@ -1240,7 +1239,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Disable Logging")
                     self.outer = outer
                     
-                class EnableDisableView(nextcord.ui.View):
+                class EnableDisableView(CustomView):
                     def __init__(self, outer):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -1304,7 +1303,7 @@ class Dashboard(nextcord.ui.View):
             super().__init__(label = "Leveling", style = nextcord.ButtonStyle.gray)
             self.outer = outer
             
-        class LevelingView(nextcord.ui.View):
+        class LevelingView(CustomView):
             def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
                 super().__init__(timeout = None)
                 self.outer = outer
@@ -1394,7 +1393,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Manage Members", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
                     
-                class MembersView(nextcord.ui.View):#Members View Window -----------------------------------------------------
+                class MembersView(CustomView):#Members View Window -----------------------------------------------------
                     def __init__(self, outer):
                         super().__init__(timeout=None)
                         self.outer = outer
@@ -1456,7 +1455,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Edit", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
                                                         
-                        class LevelModal(nextcord.ui.Modal):
+                        class LevelModal(CustomModal):
                             def __init__(self, outer, member_id, default_level):
                                 super().__init__(title = "Choose Level")
                                 self.outer = outer
@@ -1538,7 +1537,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Reset", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
                             
-                        class DeleteAllLevelsView(nextcord.ui.View):
+                        class DeleteAllLevelsView(CustomView):
                             def __init__(self, outer):
                                 super().__init__(timeout = None)
                                 self.outer = outer
@@ -1576,7 +1575,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Level Rewards", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
                     
-                class LevelRewardsView(nextcord.ui.View): # Level Rewards Window -----------------------------------------------------
+                class LevelRewardsView(CustomView): # Level Rewards Window -----------------------------------------------------
                     def __init__(self, outer):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -1610,10 +1609,8 @@ class Dashboard(nextcord.ui.View):
                             role_id = level_reward.role_id
                             role = interaction.guild.get_role(role_id)
                             if role == None:
-                                # Check if shard is loaded
-                                if interaction.guild.shard_id in shards_loaded: # Shard loaded.
-                                    logging.warning(f"Role {role_id} was not found in the guild {interaction.guild.id} when checking level rewards (viewing). Deleting.")
-                                    server.level_rewards.delete(role_id)
+                                logging.warning(f"Role {role_id} was not found in the guild {interaction.guild.id} when checking level rewards (viewing). Deleting.")
+                                server.level_rewards.delete(role_id)
                                 continue
 
                             level_rewards.append(f"{role.mention} - Level {level_reward.level}")
@@ -1668,7 +1665,7 @@ class Dashboard(nextcord.ui.View):
                             
                             await interaction.response.send_modal(self.LevelModal(self.outer, selection))
                                                 
-                        class LevelModal(nextcord.ui.Modal):
+                        class LevelModal(CustomModal):
                             def __init__(self, outer, role_id):
                                 super().__init__(title = "Choose Level")
                                 self.outer = outer
@@ -1737,7 +1734,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Delete All Level Rewards", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
                             
-                        class DeleteAllLevelsView(nextcord.ui.View):
+                        class DeleteAllLevelsView(CustomView):
                             def __init__(self, outer):
                                 super().__init__(timeout = None)
                                 self.outer = outer
@@ -1823,7 +1820,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Level-Up Message", style = nextcord.ButtonStyle.gray, row  = 1)
                     self.outer = outer
                     
-                class LevelingMessageModal(nextcord.ui.Modal): #Leveling Message Modal -----------------------------------------------------
+                class LevelingMessageModal(CustomModal): #Leveling Message Modal -----------------------------------------------------
                     def __init__(self, guild: nextcord.Guild, outer):
                         super().__init__(timeout = None, title = "Level-Up Message")
                         self.outer = outer
@@ -1858,7 +1855,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Advanced", style = nextcord.ButtonStyle.gray, row  = 2)
                     self.outer = outer
 
-                class AdvancedView(nextcord.ui.View):
+                class AdvancedView(CustomView):
                     def __init__(self, outer):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -1904,7 +1901,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Points Lost Per Day", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
                             
-                        class PointsLostPerDayModal(nextcord.ui.Modal): #Leveling Message Modal -----------------------------------------------------
+                        class PointsLostPerDayModal(CustomModal): #Leveling Message Modal -----------------------------------------------------
                             def __init__(self, guild: nextcord.Guild, outer):
                                 super().__init__(timeout = None, title = "Points Lost Per Day")
                                 self.outer = outer
@@ -1942,7 +1939,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Level-Up Cards", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
                             
-                        class LevelCardsView(nextcord.ui.View):
+                        class LevelCardsView(CustomView):
                             def __init__(self, outer, interaction: Interaction):
                                 super().__init__(timeout = None)
                                 self.outer = outer
@@ -1987,7 +1984,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Exempt Channels", style = nextcord.ButtonStyle.gray, row = 1)
                             self.outer = outer
                             
-                        class ExemptChannelsView(nextcord.ui.View):
+                        class ExemptChannelsView(CustomView):
                             def __init__(self, outer, interaction: Interaction):
                                 super().__init__(timeout = None)
                                 self.outer = outer 
@@ -2127,7 +2124,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Disable Leveling", row = 2)
                     self.outer = outer
                     
-                class EnableDisableView(nextcord.ui.View):
+                class EnableDisableView(CustomView):
                     def __init__(self, outer):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -2192,7 +2189,7 @@ class Dashboard(nextcord.ui.View):
             super().__init__(label = "Join / Leave Messages", style = nextcord.ButtonStyle.gray)
             self.outer = outer
             
-        class JoinLeaveMessagesView(nextcord.ui.View):
+        class JoinLeaveMessagesView(CustomView):
             def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
                 super().__init__(timeout = None)
                 self.outer = outer
@@ -2238,7 +2235,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Join Messages", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
 
-                class JoinMessagesView(nextcord.ui.View): #Join Messages Window --------------------------------------------
+                class JoinMessagesView(CustomView): #Join Messages Window --------------------------------------------
                     def __init__(self, outer):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -2305,7 +2302,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Join Message", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
                             
-                        class JoinMessageModal(nextcord.ui.Modal): #Join Message Modal -----------------------------------------------------
+                        class JoinMessageModal(CustomModal): #Join Message Modal -----------------------------------------------------
                             def __init__(self, guild: nextcord.Guild, outer):
                                 super().__init__(timeout = None, title = "Join Message")
                                 self.outer = outer
@@ -2380,7 +2377,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Cards", style = nextcord.ButtonStyle.gray, row = 1)
                             self.outer = outer
                             
-                        class CardsView(nextcord.ui.View): # Join Cards
+                        class CardsView(CustomView): # Join Cards
                             def __init__(self, outer, interaction: Interaction):
                                 super().__init__(timeout = None)
                                 self.outer = outer
@@ -2433,7 +2430,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Disable Join Messages", row = 1)
                             self.outer = outer
                             
-                        class EnableDisableView(nextcord.ui.View):
+                        class EnableDisableView(CustomView):
                             def __init__(self, outer):
                                 super().__init__(timeout = None)
                                 self.outer = outer
@@ -2500,7 +2497,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Leave Messages", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
 
-                class LeaveMessagesView(nextcord.ui.View): #Leave Messages Window --------------------------------------------
+                class LeaveMessagesView(CustomView): #Leave Messages Window --------------------------------------------
                     def __init__(self, outer):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -2560,7 +2557,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Leave Message", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
                             
-                        class LeaveMessagesModal(nextcord.ui.Modal): #Leave Message Modal -----------------------------------------------------
+                        class LeaveMessagesModal(CustomModal): #Leave Message Modal -----------------------------------------------------
                             def __init__(self, guild: nextcord.Guild, outer):
                                 super().__init__(timeout = None, title = "Leave Message")
                                 self.outer = outer
@@ -2635,7 +2632,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Disable Leave Messages", row = 1)
                             self.outer = outer
                             
-                        class EnableDisableView(nextcord.ui.View):
+                        class EnableDisableView(CustomView):
                             def __init__(self, outer):
                                 super().__init__(timeout = None)
                                 self.outer = outer
@@ -2708,7 +2705,7 @@ class Dashboard(nextcord.ui.View):
             super().__init__(label = "Birthdays", style = nextcord.ButtonStyle.gray, row = 1)
             self.outer = outer 
             
-        class BirthdaysView(nextcord.ui.View): #Birthdays Window -----------------------------------------------------
+        class BirthdaysView(CustomView): #Birthdays Window -----------------------------------------------------
             def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
                 super().__init__(timeout = None)
                 self.outer = outer
@@ -2795,7 +2792,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Configure Birthdays", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
 
-                class ConfigureBirthdaysView(nextcord.ui.View):
+                class ConfigureBirthdaysView(CustomView):
                     def __init__(self, outer):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -2825,10 +2822,9 @@ class Dashboard(nextcord.ui.View):
                                 member_id = bday.member_id
                                 member = interaction.guild.get_member(member_id)
                                 
-                                if interaction.guild.shard_id in shards_loaded: # Shard loaded.
-                                    if member == None: # Member left. Delete their birthday
-                                        server.birthdays.delete(member_id)
-                                        continue
+                                if member == None: # Member left. Delete their birthday
+                                    server.birthdays.delete(member_id)
+                                    continue
                                 
                                 member_mention = member.mention if member != None else "#unknown"
 
@@ -2882,7 +2878,7 @@ class Dashboard(nextcord.ui.View):
                             
                             await interaction.response.send_modal(self.InfoModal(self.outer, selection))          
                                             
-                        class InfoModal(nextcord.ui.Modal):            
+                        class InfoModal(CustomModal):            
                             def __init__(self, outer, member_id):
                                 super().__init__(title = "Add Birthday", timeout = None)
                                 self.outer = outer
@@ -2934,7 +2930,7 @@ class Dashboard(nextcord.ui.View):
                             
                             await interaction.response.send_modal(self.InfoModal(self.outer, selection, interaction.guild.id))          
                                             
-                        class InfoModal(nextcord.ui.Modal):            
+                        class InfoModal(CustomModal):            
                             def __init__(self, outer, member_id, guild_id):
                                 super().__init__(title = "Add Birthday", timeout = None)
                                 self.outer = outer
@@ -2997,7 +2993,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Delete All", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
                             
-                        class DeleteAllStrikesView(nextcord.ui.View):
+                        class DeleteAllStrikesView(CustomView):
                             def __init__(self, outer):
                                 super().__init__(timeout = None)
                                 self.outer = outer
@@ -3077,7 +3073,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Update Message Time", style = nextcord.ButtonStyle.gray, row = 1)
                     self.outer = outer
 
-                class UpdateMessageTimeView(nextcord.ui.View):
+                class UpdateMessageTimeView(CustomView):
                     def __init__(self, outer):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -3111,7 +3107,7 @@ class Dashboard(nextcord.ui.View):
                             super().__init__(label = "Continue", style = nextcord.ButtonStyle.green)
                             self.outer = outer
                     
-                        class PinpointTimezoneModal(nextcord.ui.Modal):
+                        class PinpointTimezoneModal(CustomModal):
                             def __init__(self, outer):
                                 super().__init__(title = "Pinpoint Timezone", timeout = None)
                                 self.outer = outer
@@ -3139,7 +3135,7 @@ class Dashboard(nextcord.ui.View):
                                 
                                 await self.NextView(self.outer, self.utc_offset).setup(interaction)
 
-                            class NextView(nextcord.ui.View):
+                            class NextView(CustomView):
                                 def __init__(self, outer, utc_offset):
                                     super().__init__(timeout = None)
                                     self.outer = outer
@@ -3189,7 +3185,7 @@ class Dashboard(nextcord.ui.View):
                                     async def callback(self, interaction: Interaction):
                                         await interaction.response.send_modal(self.UpdateMessageTimeModal(self.outer, interaction.guild.id, self.utc_offset))
                                 
-                                    class UpdateMessageTimeModal(nextcord.ui.Modal):
+                                    class UpdateMessageTimeModal(CustomModal):
                                         def __init__(self, outer, guild_id, utc_offset):
                                             super().__init__(title = "Update Message Time", timeout = None)
                                             self.outer = outer
@@ -3239,7 +3235,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Edit Message", style = nextcord.ButtonStyle.gray, row = 1)
                     self.outer = outer
                     
-                class EditMessageModal(nextcord.ui.Modal):
+                class EditMessageModal(CustomModal):
                     def __init__(self, guild: nextcord.Guild, outer):
                         super().__init__(timeout = None, title = "Birthday Message")
                         self.outer = outer
@@ -3279,7 +3275,7 @@ class Dashboard(nextcord.ui.View):
             super().__init__(label = "Default Roles", style = nextcord.ButtonStyle.gray, row = 1)
             self.outer = outer
             
-        class DefaultRolesView(nextcord.ui.View):
+        class DefaultRolesView(CustomView):
             def __init__(self, outer):
                 super().__init__(timeout = None)
                 self.outer = outer
@@ -3316,12 +3312,10 @@ class Dashboard(nextcord.ui.View):
                 for default_role_id in server.default_roles.default_roles:
                     role = interaction.guild.get_role(int(default_role_id))
                     if role == None:
-                        # Check if shard is loaded
-                        if interaction.guild.shard_id in shards_loaded: # Shard loaded.
-                            logging.warning(f"Role {default_role_id} was not found in the guild {interaction.guild.id} when checking default roles (viewing). Deleting.")
-                            default_roles:list = server.default_roles.default_roles
-                            default_roles.remove(default_role_id)
-                            server.default_roles.default_roles = default_roles
+                        logging.warning(f"Role {default_role_id} was not found in the guild {interaction.guild.id} when checking default roles (viewing). Deleting.")
+                        default_roles:list = server.default_roles.default_roles
+                        default_roles.remove(default_role_id)
+                        server.default_roles.default_roles = default_roles
                         continue
 
                     default_roles.append(f"{role.mention}")
@@ -3423,7 +3417,7 @@ class Dashboard(nextcord.ui.View):
                     super().__init__(label = "Delete All Default Roles", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
                     
-                class DeleteAllDefaultRolesView(nextcord.ui.View):
+                class DeleteAllDefaultRolesView(CustomView):
                     def __init__(self, outer):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -3463,7 +3457,7 @@ class Dashboard(nextcord.ui.View):
             super().__init__(label = "Join-To-Create VCs", style = nextcord.ButtonStyle.gray, row = 1)
             self.outer = outer
                     
-        class JoinToCreateVCsView(nextcord.ui.View):
+        class JoinToCreateVCsView(CustomView):
             def __init__(self, outer, guild: nextcord.Guild, onboarding_modifier = None, onboarding_embed = None):
                 super().__init__(timeout=None)
                 self.outer = outer
@@ -3706,7 +3700,7 @@ class Dashboard(nextcord.ui.View):
             super().__init__(label = "Extra Features", style = nextcord.ButtonStyle.gray, row = 2)
             self.outer = outer
             
-        class ExtraFeaturesButton(nextcord.ui.View):
+        class ExtraFeaturesButton(CustomView):
             def __init__(self, outer):
                 super().__init__(timeout = None)
                 self.outer = outer
@@ -3760,7 +3754,7 @@ class Dashboard(nextcord.ui.View):
                     self.name = name
                     self.path = path
                     
-                class ChooseView(nextcord.ui.View):
+                class ChooseView(CustomView):
                     def __init__(self, outer, name, guild_id, path):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -3818,5 +3812,5 @@ class Dashboard(nextcord.ui.View):
 
 async def run_dashboard_command(interaction: Interaction):
     if await utils.user_has_config_permissions(interaction):
-        view = Dashboard(interaction)
+        view = Dashboard()
         await view.setup(interaction)
