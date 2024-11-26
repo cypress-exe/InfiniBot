@@ -56,6 +56,11 @@ async def on_shard_ready(shard_id: int):
     #         await admin_channel.send(f"Shard {shard_id} is ready.")
 
 
+# SLASH COMMANDS ==============================================================================================================================================================
+@bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", dm_permission=False)
+async def dashboard(interaction: Interaction):
+  await run_dashboard_command(interaction)
+
 # ERROR HANDLING ==============================================================================================================================================================
 @bot.event
 async def on_application_command_error(interaction: Interaction, error):
@@ -80,10 +85,7 @@ async def on_application_command_error(interaction: Interaction, error):
         if interaction.response.is_done():
             await interaction.followup.send(embed=embed, ephemeral=True, view=ui_components.SupportView())
             
-# SLASH COMMANDS ==============================================================================================================================================================
-@bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", dm_permission=False)
-async def dashboard(interaction: Interaction):
-  await run_dashboard_command(interaction)
+# CALLBACKS ==============================================================================================================================================================
 
 
 # RUN BOT ==============================================================================================================================================================================

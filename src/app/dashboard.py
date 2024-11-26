@@ -301,7 +301,7 @@ class Dashboard(CustomView):
                                     embed: nextcord.Embed = copy.copy(self.outer.embed)
                                     embed.description = "Remove Filtered Words"
                                     embed.clear_fields()
-                                    await ui_components.SelectView(embed, filtered_words_select_options, self.selection_callback, continueButtonLabel = "Delete").setup(interaction)
+                                    await ui_components.SelectView(embed, filtered_words_select_options, self.selection_callback, continue_button_label = "Delete").setup(interaction)
                                     
                                 async def selection_callback(self, interaction: Interaction, selection):
                                     if selection != None:
@@ -385,7 +385,7 @@ class Dashboard(CustomView):
                             embed = nextcord.Embed(title = title, 
                                                    description = description, 
                                                    color = nextcord.Color.blue())
-                            await ui_components.SelectView(embed, select_options, self.select_view_callback, continueButtonLabel = "Confirm", cancelButtonLabel = ("Back" if self.skipped else "Cancel")).setup(interaction)
+                            await ui_components.SelectView(embed, select_options, self.select_view_callback, continue_button_label = "Confirm", cancel_button_label = ("Back" if self.skipped else "Cancel")).setup(interaction)
                             
                         async def select_view_callback(self, interaction: Interaction, selection):
                             if selection == None:
@@ -603,7 +603,7 @@ class Dashboard(CustomView):
                                             embed = self.outer.embed.copy()
                                             embed.description = "Choose a Member:"
                                             await ui_components.SelectView(
-                                                embed, member_select_options, self.member_select_view_callback, placeholder="Choose a Member", continueButtonLabel="Next", preserveOrder=True
+                                                embed, member_select_options, self.member_select_view_callback, placeholder="Choose a Member", continue_button_label="Next", preserve_order=True
                                             ).setup(interaction)
 
                                         async def member_select_view_callback(self, interaction: Interaction, selection):
@@ -1217,8 +1217,8 @@ class Dashboard(CustomView):
                     await ui_components.SelectView(embed, 
                                      select_options, 
                                      self.select_view_callback, 
-                                     continueButtonLabel = "Confirm", 
-                                     cancelButtonLabel = ("Back" if self.skipped else "Cancel")).setup(interaction)
+                                     continue_button_label = "Confirm", 
+                                     cancel_button_label = ("Back" if self.skipped else "Cancel")).setup(interaction)
                     
                 async def select_view_callback(self, interaction: Interaction, selection):
                     if selection == None:
@@ -1513,7 +1513,7 @@ class Dashboard(CustomView):
                             
                             embed: nextcord.Embed = copy.copy(self.outer.embed)
                             embed.description = "Choose a Member"
-                            await ui_components.SelectView(embed, member_select_options, self.select_view_callback, continueButtonLabel = "Next", placeholder = "Choose", preserveOrder = True).setup(interaction)
+                            await ui_components.SelectView(embed, member_select_options, self.select_view_callback, continue_button_label = "Next", placeholder = "Choose", preserve_order = True).setup(interaction)
                         
                         async def select_view_callback(self, interaction: Interaction, selection):       
                             if selection == None:
@@ -1656,7 +1656,7 @@ class Dashboard(CustomView):
                             embed = nextcord.Embed(title = "Dashboard - Leveling - Level Rewards - Add",
                                                     description = description,
                                                     color = nextcord.Color.blue())
-                            await ui_components.SelectView(embed, select_options, self.select_view_callback, continueButtonLabel = "Next", placeholder = "Choose").setup(interaction)            
+                            await ui_components.SelectView(embed, select_options, self.select_view_callback, continue_button_label = "Next", placeholder = "Choose").setup(interaction)            
                             
                         async def select_view_callback(self, interaction: Interaction, selection):
                             if selection == None: 
@@ -1717,7 +1717,7 @@ class Dashboard(CustomView):
                                 embed = nextcord.Embed(title = "Dashboard - Leveling - Level Rewards - Delete",
                                                        description = "Select a level reward to delete. This does not delete the role.",
                                                        color = nextcord.Color.blue())
-                                await ui_components.SelectView(embed, select_options, self.select_view_callback, continueButtonLabel = "Delete", placeholder = "Choose").setup(interaction)
+                                await ui_components.SelectView(embed, select_options, self.select_view_callback, continue_button_label = "Delete", placeholder = "Choose").setup(interaction)
                    
                         async def select_view_callback(self, interaction: Interaction, selection):
                             if selection == None:
@@ -2062,7 +2062,7 @@ class Dashboard(CustomView):
                                     """
                                     description = utils.standardize_str_indention(description)
                                     embed = nextcord.Embed(title = "Dashboard - Leveling - Exempt Channels - Add", description = description, color = nextcord.Color.blue())
-                                    await ui_components.SelectView(embed, options, self.select_callback, placeholder = "Choose a Channel", continueButtonLabel = "Add Channel").setup(interaction)
+                                    await ui_components.SelectView(embed, options, self.select_callback, placeholder = "Choose a Channel", continue_button_label = "Add Channel").setup(interaction)
                     
                                 async def select_callback(self, interaction: Interaction, choice):
                                     if choice != None:
@@ -2099,7 +2099,7 @@ class Dashboard(CustomView):
                                         options.append(nextcord.SelectOption(label = label, value = channel.id, description = channel_category))
                                     
                                     embed = nextcord.Embed(title = "Dashboard - Leveling - Exempt Channels - Delete", description = "Choose a Channel to Remove from Exempt Channels", color = nextcord.Color.blue())
-                                    await ui_components.SelectView(embed, options, self.select_callback, placeholder = "Choose a Channel", continueButtonLabel = "Delete Channel").setup(interaction)
+                                    await ui_components.SelectView(embed, options, self.select_callback, placeholder = "Choose a Channel", continue_button_label = "Delete Channel").setup(interaction)
                     
                                 async def select_callback(self, interaction: Interaction, choice):
                                     if choice != None:
@@ -2358,7 +2358,7 @@ class Dashboard(CustomView):
                             description = utils.standardize_str_indention(description)
 
                             embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Messages - Channel", description = description, color = nextcord.Color.blue())
-                            await ui_components.SelectView(embed, select_options, self.select_view_return, continueButtonLabel = "Confirm").setup(interaction)
+                            await ui_components.SelectView(embed, select_options, self.select_view_return, continue_button_label = "Confirm").setup(interaction)
                             
                         async def select_view_return(self, interaction: Interaction, selection):
                             if selection == None:
@@ -2613,7 +2613,7 @@ class Dashboard(CustomView):
                             description = utils.standardize_str_indention(description)
 
                             embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Leave Messages - Channel", description = description, color = nextcord.Color.blue())
-                            await ui_components.SelectView(embed, select_options, self.select_view_return, continueButtonLabel = "Confirm").setup(interaction)
+                            await ui_components.SelectView(embed, select_options, self.select_view_return, continue_button_label = "Confirm").setup(interaction)
                             
                         async def select_view_return(self, interaction: Interaction, selection):
                             if selection == None:
@@ -2869,7 +2869,7 @@ class Dashboard(CustomView):
                                 await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Members", description = "Every member in your server already has a birthday! Go invite someone!", color = nextcord.Color.red()), ephemeral = True)
                                 return
                             
-                            await ui_components.SelectView(self.outer.embed, member_select_options, self.select_view_return, placeholder = "Choose a Member", continueButtonLabel = "Next").setup(interaction)
+                            await ui_components.SelectView(self.outer.embed, member_select_options, self.select_view_return, placeholder = "Choose a Member", continue_button_label = "Next").setup(interaction)
                             
                         async def select_view_return(self, interaction: Interaction, selection):
                             if selection == None: # User clicked "Cancel"
@@ -2921,7 +2921,7 @@ class Dashboard(CustomView):
                                 await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Members", description = "No members in your server have birthdays. Add some!", color = nextcord.Color.red()), ephemeral = True)
                                 return
                             
-                            await ui_components.SelectView(self.outer.embed, member_select_options, self.select_view_return, placeholder = "Choose a Member", continueButtonLabel = "Next").setup(interaction)
+                            await ui_components.SelectView(self.outer.embed, member_select_options, self.select_view_return, placeholder = "Choose a Member", continue_button_label = "Next").setup(interaction)
                             
                         async def select_view_return(self, interaction: Interaction, selection):
                             if selection == None: # User clicked "Cancel"
@@ -2976,7 +2976,7 @@ class Dashboard(CustomView):
                                 await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Members", description = "No members in your server have birthdays. Add some!", color = nextcord.Color.red()), ephemeral = True)
                                 return
                             
-                            await ui_components.SelectView(self.outer.embed, member_select_options, self.select_view_return, placeholder = "Choose a Member", continueButtonLabel = "Delete").setup(interaction)
+                            await ui_components.SelectView(self.outer.embed, member_select_options, self.select_view_return, placeholder = "Choose a Member", continue_button_label = "Delete").setup(interaction)
                             
                         async def select_view_return(self, interaction: Interaction, selection):
                             if selection == None: # User clicked "Cancel"
@@ -3053,7 +3053,7 @@ class Dashboard(CustomView):
                     """
                     description = utils.standardize_str_indention(description)
                     embed = nextcord.Embed(title = "Dashboard - Birthdays - Notification Channel", description = description, color = nextcord.Color.blue())
-                    await ui_components.SelectView(embed, select_options, self.select_view_return, continueButtonLabel = "Confirm").setup(interaction)
+                    await ui_components.SelectView(embed, select_options, self.select_view_return, continue_button_label = "Confirm").setup(interaction)
                       
                 async def select_view_return(self, interaction: Interaction, selection):
                     if selection == None: # User clicked "Cancel"
@@ -3360,7 +3360,7 @@ class Dashboard(CustomView):
                     embed = nextcord.Embed(title = "Dashboard - Default Roles - Add Role",
                                             description = description,
                                             color = nextcord.Color.blue())
-                    await ui_components.SelectView(embed, select_options, self.select_view_callback, continueButtonLabel = "Add", placeholder = "Choose").setup(interaction)            
+                    await ui_components.SelectView(embed, select_options, self.select_view_callback, continue_button_label = "Add", placeholder = "Choose").setup(interaction)            
                     
                 async def select_view_callback(self, interaction: Interaction, selection):
                     if selection == None: # User cancelled
@@ -3398,7 +3398,7 @@ class Dashboard(CustomView):
                         embed = nextcord.Embed(title = "Dashboard - Default Roles - Delete Role",
                                                 description = "Select a default role to delete. This does not delete the role. It just removes it from the list of default roles for InfiniBot to assign to new members.",
                                                 color = nextcord.Color.blue())
-                        await ui_components.SelectView(embed, select_options, self.select_view_callback, continueButtonLabel = "Delete", placeholder = "Choose").setup(interaction)
+                        await ui_components.SelectView(embed, select_options, self.select_view_callback, continue_button_label = "Delete", placeholder = "Choose").setup(interaction)
             
                 async def select_view_callback(self, interaction: Interaction, selection):
                     if selection == None: # User cancelled
@@ -3613,9 +3613,9 @@ class Dashboard(CustomView):
                     embed = nextcord.Embed(title = "Dashboard - Join-To-Create-VCs - Add Channel", description = description, color = nextcord.Color.blue())
                     view = ui_components.SelectView(embed,
                                         options = select_options, 
-                                        returnCommand = self.select_callback, 
-                                        continueButtonLabel = "Add", 
-                                        preserveOrder = True, 
+                                        return_command = self.select_callback, 
+                                        continue_button_label = "Add", 
+                                        preserve_order = True, 
                                         placeholder = "Select a Voice Channel")
                     
                     await view.setup(interaction)
@@ -3669,9 +3669,9 @@ class Dashboard(CustomView):
                     embed = nextcord.Embed(title = "Dashboard - Join-To-Create-VCs - Delete Channel", description = description, color = nextcord.Color.blue())
                     view = ui_components.SelectView(embed,
                                         options = select_options, 
-                                        returnCommand = self.select_callback, 
-                                        continueButtonLabel = "Delete", 
-                                        preserveOrder = True, 
+                                        return_command = self.select_callback, 
+                                        continue_button_label = "Delete", 
+                                        preserve_order = True, 
                                         placeholder = "Select a Voice Channel")
                     
                     await view.setup(interaction)

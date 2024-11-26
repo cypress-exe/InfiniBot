@@ -127,18 +127,18 @@ class SelectView(CustomView):
         The embed
     options: `list[nextcord.SelectOption]`
         Options of the Select
-    returnCommand: `def(interaction, str | None)`
+    return_command: `def(interaction, str | None)`
         Command to call when finished. Returns a value if the user selected something. Returns None if the user canceled.
         
     Optional Parameters
     ------
     placeholder: optional [`str`]
         Placeholder for the Select. Defaults to None.
-    continueButtonLabel: optional [`str`]
+    continue_button_label: optional [`str`]
         Continue Button Label. Defaults to "Continue".
-    cancelButtonLabel: optional [`str`]
+    cancel_button_label: optional [`str`]
         Cancel Button Label. Defaults to "Cancel".
-    preserveOrder: optional [`bool`]
+    preserve_order: optional [`bool`]
         Preserves the order of options. Defaults to "False", where the options will be alphabetized.
         
     Raises
@@ -153,17 +153,17 @@ class SelectView(CustomView):
         
     def __init__(self, embed: nextcord.Embed, 
                  options: list[nextcord.SelectOption], 
-                 returnCommand, 
+                 return_command, 
                  placeholder: str = None, 
-                 continueButtonLabel = "Continue", 
-                 cancelButtonLabel = "Cancel", 
-                 preserveOrder = False):
+                 continue_button_label = "Continue", 
+                 cancel_button_label = "Cancel", 
+                 preserve_order = False):
         
         super().__init__()
         self.page = 0
         self.embed = embed
         self.options = options
-        self.returnCommand = returnCommand
+        self.return_command = return_command
         
         # Confirm objects
         if self.options == None or self.options == []:
@@ -186,61 +186,61 @@ class SelectView(CustomView):
         self.options = confirmed_options
         
         # Alphabetize options
-        if not preserveOrder:
+        if not preserve_order:
             # For some reason, this is how we have to do it to sort and get all "__" values at the top.
             self.options = sorted(self.options, key=lambda option: [not(isinstance(option.value, str) and option.value.startswith("__")), option.label.lower()])
         
         
         # Parse options into different pages
-        self.selectOptions = [[]]
+        self.select_options = [[]]
         xindex = 0
         yindex = 0
         for option in self.options:
             if yindex == 25:    # <--------------------------- Change the Threshold HERE!!!!
                 # Create new page
-                self.selectOptions.append([])
+                self.select_options.append([])
                 xindex += 1
                 yindex = 0
             # Add to current page
-            self.selectOptions[xindex].append(option)
+            self.select_options[xindex].append(option)
             yindex += 1
             
         del xindex, yindex
         
         # Add select menu
-        self.Select = nextcord.ui.Select(options = [nextcord.SelectOption(label = "PLACEHOLDER!!!")], placeholder=placeholder)
-        self.add_item(self.Select)
+        self.select = nextcord.ui.Select(options = [nextcord.SelectOption(label = "PLACEHOLDER!!!")], placeholder=placeholder)
+        self.add_item(self.select)
         
         # Add buttons
-        self.backButton = nextcord.ui.Button(emoji = "◀️", style = nextcord.ButtonStyle.gray, row = 1, disabled = True)
-        self.backButton.callback = self.back
+        self.back_btn = nextcord.ui.Button(emoji = "◀️", style = nextcord.ButtonStyle.gray, row = 1, disabled = True)
+        self.back_btn.callback = self.back
         
-        self.nextButton = nextcord.ui.Button(emoji = "▶️", style = nextcord.ButtonStyle.gray, row = 1)
-        self.nextButton.callback = self.next
+        self.next_btn = nextcord.ui.Button(emoji = "▶️", style = nextcord.ButtonStyle.gray, row = 1)
+        self.next_btn.callback = self.next
         
-        if len(self.selectOptions) > 1: # If we need pages
-            self.add_item(self.backButton)
-            self.add_item(self.nextButton)
+        if len(self.select_options) > 1: # If we need pages
+            self.add_item(self.back_btn)
+            self.add_item(self.next_btn)
         
-        self.cancelButton = nextcord.ui.Button(label = cancelButtonLabel, style = nextcord.ButtonStyle.danger, row = 2)
-        self.cancelButton.callback = self.cancelButtonCallback
-        self.add_item(self.cancelButton)
+        self.cancel_btn = nextcord.ui.Button(label = cancel_button_label, style = nextcord.ButtonStyle.danger, row = 2)
+        self.cancel_btn.callback = self.cancelButtonCallback
+        self.add_item(self.cancel_btn)
         
-        self.continueButton = nextcord.ui.Button(label = continueButtonLabel, style = nextcord.ButtonStyle.blurple, row = 2)
-        self.continueButton.callback = self.continueButtonCallback
-        self.add_item(self.continueButton)
+        self.continue_btn = nextcord.ui.Button(label = continue_button_label, style = nextcord.ButtonStyle.blurple, row = 2)
+        self.continue_btn.callback = self.continueButtonCallback
+        self.add_item(self.continue_btn)
         
     async def setup(self, interaction):
         await self.setPage(interaction, 0)
         
     async def setPage(self, interaction: Interaction, page: int):
-        if page >= len(self.selectOptions): raise IndexError("Page (int) was out of bounds of self.selectOptions (list[nextcord.SelectOption]).")
+        if page >= len(self.select_options): raise IndexError("Page (int) was out of bounds of self.selectOptions (list[nextcord.SelectOption]).")
         
         embed = copy.copy(self.embed)
-        if len(self.selectOptions) > 1: # If we don't need pages, don't bother the user with pages.
-            embed.description += f"\n\n**Page {page + 1} of {len(self.selectOptions)}**\n{self.selectOptions[page][0].label} → {self.selectOptions[page][-1].label}"
+        if len(self.select_options) > 1: # If we don't need pages, don't bother the user with pages.
+            embed.description += f"\n\n**Page {page + 1} of {len(self.select_options)}**\n{self.select_options[page][0].label} → {self.select_options[page][-1].label}"
         
-        self.Select.options = self.selectOptions[page]
+        self.select.options = self.select_options[page]
 
         if interaction != None: 
             await interaction.response.edit_message(embed = embed, view = self) 
@@ -254,33 +254,33 @@ class SelectView(CustomView):
         if self.page == 0: return
         
         #check to see if the back button *will* become unusable...
-        self.backButton.disabled = False
-        self.nextButton.disabled = False
-        if self.page - 1 == 0: self.backButton.disabled = True
-        else: self.nextButton.disabled = False
+        self.back_btn.disabled = False
+        self.next_btn.disabled = False
+        if self.page - 1 == 0: self.back_btn.disabled = True
+        else: self.next_btn.disabled = False
         
         #set the page
         await self.setPage(interaction, self.page - 1)
         
     async def next(self, interaction: Interaction):
-        if self.page == (len(self.selectOptions) - 1): return
+        if self.page == (len(self.select_options) - 1): return
         
         #check to see if the next button *will* become unusable...
-        self.backButton.disabled = False
-        self.nextButton.disabled = False
-        if self.page + 1 == (len(self.selectOptions) - 1): self.nextButton.disabled = True
-        else: self.backButton.disabled = False
+        self.back_btn.disabled = False
+        self.next_btn.disabled = False
+        if self.page + 1 == (len(self.select_options) - 1): self.next_btn.disabled = True
+        else: self.back_btn.disabled = False
         
         #set the page
         await self.setPage(interaction, self.page + 1)
         
     
     async def cancelButtonCallback(self, interaction: Interaction):
-        await self.returnCommand(interaction, None)
+        await self.return_command(interaction, None)
     
     async def continueButtonCallback(self, interaction: Interaction):
-        if len(self.Select.values) == 0: return
-        await self.returnCommand(interaction, self.Select.values[0])   
+        if len(self.select.values) == 0: return
+        await self.return_command(interaction, self.select.values[0])   
 
 
 # Common Add-On Views
