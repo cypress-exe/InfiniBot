@@ -19,8 +19,8 @@ intents.voice_states = True
 intents.reactions = True
 
 bot = commands.AutoShardedBot(intents = intents, 
-                              allowed_mentions = nextcord.AllowedMentions(everyone = True), 
-                              help_command=None)
+                            allowed_mentions = nextcord.AllowedMentions(everyone = True), 
+                            help_command=None)
 
 
 @bot.event
@@ -70,7 +70,7 @@ async def on_shard_ready(shard_id: int):
 # SLASH COMMANDS ==============================================================================================================================================================
 @bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", dm_permission=False)
 async def dashboard(interaction: Interaction):
-  await run_dashboard_command(interaction)
+    await run_dashboard_command(interaction)
 
 # ERROR HANDLING ==============================================================================================================================================================
 @bot.event
@@ -96,16 +96,13 @@ async def on_application_command_error(interaction: Interaction, error):
         if interaction.response.is_done():
             await interaction.followup.send(embed=embed, ephemeral=True, view=ui_components.SupportView())
             
-# CALLBACKS ==============================================================================================================================================================
-
-
 # RUN BOT ==============================================================================================================================================================================
 def run():
-  # Get token
-  token = JSONFile("TOKEN")["discord_auth_token"]
-  logging.info(f"Running bot with token: {token[:5]}*******...")
-  bot.run(token)
+    # Get token
+    token = JSONFile("TOKEN")["discord_auth_token"]
+    logging.info(f"Running bot with token: {token[:5]}*******...")
+    bot.run(token)
 
 
 if __name__ == "__main__":
-  raise Exception("This file is not intended to be run directly. Please run the main.py file instead.")
+    raise Exception("This file is not intended to be run directly. Please run the main.py file instead.")

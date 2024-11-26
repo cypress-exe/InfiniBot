@@ -9,104 +9,104 @@ from core.log_manager import setup_logging, change_logging_level
 
 # Functions
 def create_environment():
-  def create_folder(folder_path):
-    os.makedirs(folder_path, exist_ok=True)
-    logging.info("Created folder: " + folder_path)
-  
-  def copy_file(source_path, destination_path):
-    if not os.path.exists(destination_path):
-      shutil.copy(source_path, destination_path)
-      logging.info("Copied file: " + source_path + " to " + destination_path)
-
-  def get_token():
-    # Check token
-    logging.info("Checking token...")
-    try:
-      # Ensure token config file exists
-      if not os.path.exists("generated/configure/TOKEN.json"):
-        JSONFile("TOKEN").add_variable("discord_auth_token", None)
-        JSONFile("TOKEN").add_variable("topgg_auth_token", None)
-
-        raise Exception("Token config file generated in ./generated/configure/TOKEN.json. Please configure your token!!!")
-      else:
-        # Add default values for objects if they don't exist
-        if "discord_auth_token" not in JSONFile("TOKEN"): JSONFile("TOKEN").add_variable("discord_auth_token", None)
-        if "topgg_auth_token" not in JSONFile("TOKEN"): JSONFile("TOKEN").add_variable("topgg_auth_token", None)
-
-        # Ensure token is not None
-        if JSONFile("TOKEN")["discord_auth_token"] == None:
-          raise Exception("Token not set!!! Please configure your token in ./generated/configure/TOKEN.json")
-        else:
-          logging.info("Token found! Continuing...")
-    except Exception as e:
-      print("FATAL ERROR: " + str(e))
-      print("Exiting...")
-      exit()
-  
-  create_folder("generated")
-  create_folder("generated/files")
-  create_folder("generated/backups")
-  create_folder("generated/configure")
+    def create_folder(folder_path):
+        os.makedirs(folder_path, exist_ok=True)
+        logging.info("Created folder: " + folder_path)
     
-  copy_file("defaults/default_profane_words.txt", "generated/configure/default_profane_words.txt")
+    def copy_file(source_path, destination_path):
+        if not os.path.exists(destination_path):
+            shutil.copy(source_path, destination_path)
+            logging.info("Copied file: " + source_path + " to " + destination_path)
 
-  get_token()
+    def get_token():
+        # Check token
+        logging.info("Checking token...")
+        try:
+            # Ensure token config file exists
+            if not os.path.exists("generated/configure/TOKEN.json"):
+                JSONFile("TOKEN").add_variable("discord_auth_token", None)
+                JSONFile("TOKEN").add_variable("topgg_auth_token", None)
 
-  # Setup config.json
-  if not os.path.exists("generated/configure/config.json"):
-    JSONFile("config").add_variable("log_level", "INFO")
-    JSONFile("config").add_variable("max_logs_to_keep", 10)
-    JSONFile("config").add_variable("birthday_message_runtime_default_utc", "15:00")
+                raise Exception("Token config file generated in ./generated/configure/TOKEN.json. Please configure your token!!!")
+            else:
+                # Add default values for objects if they don't exist
+                if "discord_auth_token" not in JSONFile("TOKEN"): JSONFile("TOKEN").add_variable("discord_auth_token", None)
+                if "topgg_auth_token" not in JSONFile("TOKEN"): JSONFile("TOKEN").add_variable("topgg_auth_token", None)
 
-  logging.info("To modify defaults, edit settings file in ./generated/configure")
-  
+                # Ensure token is not None
+                if JSONFile("TOKEN")["discord_auth_token"] == None:
+                    raise Exception("Token not set!!! Please configure your token in ./generated/configure/TOKEN.json")
+                else:
+                    logging.info("Token found! Continuing...")
+        except Exception as e:
+            print("FATAL ERROR: " + str(e))
+            print("Exiting...")
+            exit()
+    
+    create_folder("generated")
+    create_folder("generated/files")
+    create_folder("generated/backups")
+    create_folder("generated/configure")
+        
+    copy_file("defaults/default_profane_words.txt", "generated/configure/default_profane_words.txt")
+
+    get_token()
+
+    # Setup config.json
+    if not os.path.exists("generated/configure/config.json"):
+        JSONFile("config").add_variable("log_level", "INFO")
+        JSONFile("config").add_variable("max_logs_to_keep", 10)
+        JSONFile("config").add_variable("birthday_message_runtime_default_utc", "15:00")
+
+    logging.info("To modify defaults, edit settings file in ./generated/configure")
+    
 def configure_logging():
-  setup_logging()
+    setup_logging()
 
-  # Change logging level depending on configurations
-  log_level = JSONFile("config")["log_level"]
-  if log_level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
-    logging.warning("Invalid logging level in config.json. Defaulting to INFO.")
-    log_level = "INFO"
+    # Change logging level depending on configurations
+    log_level = JSONFile("config")["log_level"]
+    if log_level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
+        logging.warning("Invalid logging level in config.json. Defaulting to INFO.")
+        log_level = "INFO"
 
-  change_logging_level(log_level)
+    change_logging_level(log_level)
 
-  logging.info(f"Logging level set to {log_level}")
+    logging.info(f"Logging level set to {log_level}")
 
 def check_internet_connection():
-  def is_connected():
-    try:
-      host = socket.gethostbyname("google.com")
-      s = socket.create_connection((host, 80), timeout = 2)
-      s.close()
-      return True
-    except:
-      pass
-    return False
+    def is_connected():
+        try:
+            host = socket.gethostbyname("google.com")
+            s = socket.create_connection((host, 80), timeout = 2)
+            s.close()
+            return True
+        except:
+            pass
+        return False
 
 
-  # Get Internet
-  while True:
-    if is_connected():
-      break
-    else:
-      logging.info("Fatal Error: No Connection. Retrying in 2 seconds...")
-      time.sleep(2)
+    # Get Internet
+    while True:
+        if is_connected():
+            break
+        else:
+            logging.info("Fatal Error: No Connection. Retrying in 2 seconds...")
+            time.sleep(2)
 
 
 if __name__ == "__main__":
-  logging.info("Creating Environment...")
-  create_environment()
-  logging.info("Environment created!")
+    logging.info("Creating Environment...")
+    create_environment()
+    logging.info("Environment created!")
 
-  logging.info("Initializing Logging...")
-  configure_logging()
-  logging.info("Logging initialized!")
+    logging.info("Initializing Logging...")
+    configure_logging()
+    logging.info("Logging initialized!")
 
-  logging.info("Checking Internet Connection...")
-  check_internet_connection()
-  logging.info("Connection aquired!")
+    logging.info("Checking Internet Connection...")
+    check_internet_connection()
+    logging.info("Connection aquired!")
 
-  logging.info("Starting InfiniBot...")
-  import app.bot as bot
-  bot.run()
+    logging.info("Starting InfiniBot...")
+    import app.bot as bot
+    bot.run()
