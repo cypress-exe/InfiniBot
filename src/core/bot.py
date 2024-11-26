@@ -37,15 +37,6 @@ async def on_ready():
           shard_id = guild.shard_id
           logging.debug(f"Guild: {guild.name} (ID: {guild.id}) is on shard {shard_id}")
 
-    # Wait 3 seconds
-    import asyncio
-    await asyncio.sleep(3)
-
-    # Cause error
-    from config.server import Server
-    server = Server(1234)
-    server.logging_profile.active = False
-
     
 
 @bot.event
@@ -95,7 +86,7 @@ async def on_application_command_error(interaction: Interaction, error):
         # If the response has already been sent or there's another issue, follow up instead
         if interaction.response.is_done():
             await interaction.followup.send(embed=embed, ephemeral=True, view=ui_components.SupportView())
-
+ 
 # RUN BOT ==============================================================================================================================================================================
 def run():
     # Get token
