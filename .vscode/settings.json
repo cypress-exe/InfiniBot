@@ -1,0 +1,11 @@
+{
+  "editor.tabSize": 4,
+  "editor.defaultFormatter": "ms-python.autopep8",
+  "editor.autoIndent": "brackets",
+  "editor.indentSize": "tabSize",
+  "editor.detectIndentation": true,
+  "editor.insertSpaces": true,
+  "autopep8.args": [
+    "--indent-size=4"
+  ]
+}

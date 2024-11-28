@@ -3473,7 +3473,7 @@ async def getChannel(guild: nextcord.Guild):
     if not guild or guild.unavailable: return None
     
     if guild.system_channel: 
-        if await checkTextChannelPermissions(guild.system_channel, True, customChannelName = f"System Channel ({guild.system_channel.name})"):
+        if await checkTextChannelPermissions(guild.system_channel, True, custom_channel_name = f"System Channel ({guild.system_channel.name})"):
             return guild.system_channel
         else:
             return None
@@ -3693,7 +3693,7 @@ def timedeltaToEnglish(td: datetime.timedelta):
     else:
         return ", ".join(parts[:-1]) + f", and {parts[-1]}"
 
-async def checkTextChannelPermissions(channel: nextcord.TextChannel, autoWarn: bool, customChannelName: str = None):
+async def checkTextChannelPermissions(channel: nextcord.TextChannel, autoWarn: bool, custom_channel_name: str = None):
     """|coro|
     
     Ensure that InfiniBot has permissions to send messages and embeds in a channel.
@@ -3708,8 +3708,8 @@ async def checkTextChannelPermissions(channel: nextcord.TextChannel, autoWarn: b
         
     Optional Parameters
     ------
-    customChannelName: optional [`str`]
-        If warning the owner, customChannelName specifies a specific name for the channel instead of the default channel name. Defaults to None.
+    custom_channel_name: optional [`str`]
+        If warning the owner, custom_channel_name specifies a specific name for the channel instead of the default channel name. Defaults to None.
 
     Returns
     ------
@@ -3726,7 +3726,7 @@ async def checkTextChannelPermissions(channel: nextcord.TextChannel, autoWarn: b
     if channel.guild.me == None:
         return False
     
-    channelName = (customChannelName if customChannelName else channel.name)
+    channelName = (custom_channel_name if custom_channel_name else channel.name)
     
     if channel.permissions_for(channel.guild.me).view_channel:
         if channel.permissions_for(channel.guild.me).send_messages:
@@ -4173,7 +4173,7 @@ async def checkProfanity(server: Server_DEP, message: nextcord.Message):
         
         # Send message to admin channel (if enabled)
         if server.admin_channel != None:
-            if server.admin_channel and await checkTextChannelPermissions(server.admin_channel, True, customChannelName = f"Admin Channel (#{server.admin_channel.name})"):
+            if server.admin_channel and await checkTextChannelPermissions(server.admin_channel, True, custom_channel_name = f"Admin Channel (#{server.admin_channel.name})"):
                 view = IncorrectButton()
 
                 timeout_message = (f" was timed out for {server.profanity_timeout_time} and" if (strikes == 0 and server.max_strikes != 0) else "")
@@ -5788,7 +5788,7 @@ async def on_member_join(member: nextcord.Member):
                 channel = None #if we set channel to none here, all other processes will be jumped
         
         #double check permissions
-        if channel and not await checkTextChannelPermissions(channel, True, customChannelName = f"Join Message Channel (#{channel.name})"): #double check permissions
+        if channel and not await checkTextChannelPermissions(channel, True, custom_channel_name = f"Join Message Channel (#{channel.name})"): #double check permissions
             channel = None
             
             
@@ -5872,7 +5872,7 @@ async def on_member_remove(member: nextcord.Member):
                 channel = None #if we set channel to none here, all other processes will be jumped
         
         #double check permissions
-        if channel and not await checkTextChannelPermissions(channel, True, customChannelName = f"Leave Message Channel (#{channel.name})"): #double check permissions
+        if channel and not await checkTextChannelPermissions(channel, True, custom_channel_name = f"Leave Message Channel (#{channel.name})"): #double check permissions
             channel = None
             
             
@@ -6185,7 +6185,7 @@ async def trigger_edit_log(guild: nextcord.Guild, originalMessage: nextcord.Mess
     # Check that the original message is still cached
     if not originalMessage:
         # The message is no longer retrievable
-        if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"):
+        if logChannel and await checkTextChannelPermissions(logChannel, True, custom_channel_name = f"Log Message Channel (#{logChannel.name})"):
             # Configure the embed
             Embed.add_field(name = "Contents Unretrievable", value = "The original message is unretrievable because the message was created too long ago.")
             
@@ -6264,7 +6264,7 @@ async def trigger_edit_log(guild: nextcord.Guild, originalMessage: nextcord.Mess
                 
     # Send Message
     message = None
-    if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"):
+    if logChannel and await checkTextChannelPermissions(logChannel, True, custom_channel_name = f"Log Message Channel (#{logChannel.name})"):
         message = await logChannel.send(embed = Embed)
     
     # Do the other stuff after sending the message
@@ -6483,7 +6483,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
 
         #actually send the embed
         view = ShowMoreButton()
-        if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"): 
+        if logChannel and await checkTextChannelPermissions(logChannel, True, custom_channel_name = f"Log Message Channel (#{logChannel.name})"): 
             logMessage = await logChannel.send(view = view, embeds = ([embed] + (embeds[0:8] if len(embeds) >= 10 else embeds)))
             if message and message.attachments != []:
                 await files_computation(message, logChannel, logMessage)
@@ -6513,7 +6513,7 @@ async def on_member_update(before: nextcord.Member, after: nextcord.Member):
             if after.nick != None: embed.add_field(name = "After", value = after.nick, inline = True)
             else: embed.add_field(name = "After", value = "None", inline = True)
             
-            if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"): 
+            if logChannel and await checkTextChannelPermissions(logChannel, True, custom_channel_name = f"Log Message Channel (#{logChannel.name})"): 
                 await logChannel.send(embed = embed)
             
             
@@ -6562,7 +6562,7 @@ async def on_member_update(before: nextcord.Member, after: nextcord.Member):
             if len(deletedRoles) > 0:
                 embed.add_field(name = "Removed", value = "\n".join(deletedRoles), inline = False)
 
-            if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"): 
+            if logChannel and await checkTextChannelPermissions(logChannel, True, custom_channel_name = f"Log Message Channel (#{logChannel.name})"): 
                 await logChannel.send(embed = embed)
             
     if before.communication_disabled_until != after.communication_disabled_until:
@@ -6583,13 +6583,13 @@ async def on_member_update(before: nextcord.Member, after: nextcord.Member):
                 if entry.reason != None:
                     embed.add_field(name = "Reason", value = entry.reason)
                 
-                if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"): 
+                if logChannel and await checkTextChannelPermissions(logChannel, True, custom_channel_name = f"Log Message Channel (#{logChannel.name})"): 
                     await logChannel.send(embed = embed)
                 
             elif after.communication_disabled_until == None: #their timeout was removed manually
                 embed = nextcord.Embed(title = "Timeout Revoked", description = f"{user} revoked {after}'s timeout", color = nextcord.Color.orange(), timestamp = datetime.datetime.now())
                 
-                if logChannel and await checkTextChannelPermissions(logChannel, True, customChannelName = f"Log Message Channel (#{logChannel.name})"): 
+                if logChannel and await checkTextChannelPermissions(logChannel, True, custom_channel_name = f"Log Message Channel (#{logChannel.name})"): 
                     await logChannel.send(embed = embed)
 
 async def memberRemove(guild: nextcord.Guild, member: nextcord.Member):
@@ -6622,7 +6622,7 @@ async def memberRemove(guild: nextcord.Guild, member: nextcord.Member):
         else:
             return
         
-        if channel and await checkTextChannelPermissions(channel, True, customChannelName = f"Log Message Channel (#{channel.name})"):
+        if channel and await checkTextChannelPermissions(channel, True, custom_channel_name = f"Log Message Channel (#{channel.name})"):
             await channel.send(embed = embed)
 #END of logging bot functionality: -------------------------------------------------------------------------------------------------------------------------------------------------------
 

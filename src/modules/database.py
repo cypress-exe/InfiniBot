@@ -100,7 +100,7 @@ class Database:
             build_file_path (str): Path to the build file.
         """
         build_file_path = os.path.abspath(build_file_path)
-        print(build_file_path)
+        logging.info(f"Building database from file: {build_file_path}")
         if not os.path.exists(build_file_path):
             raise FileNotFoundError("Database build file not found.")
 

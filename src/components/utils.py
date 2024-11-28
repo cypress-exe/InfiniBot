@@ -1,12 +1,64 @@
 import datetime
 import logging
+import inspect
 import math
+import sys
+import traceback
+import uuid
 
 import dateparser
 import nextcord
 from nextcord import Interaction
 
 from config.global_settings import feature_dependencies, get_global_kill_status
+
+
+def log_class_exceptions_dec(cls):
+    for name, member in cls.__dict__.items():
+        # Skip nested classes
+        if isinstance(member, type):
+            continue
+        
+        # Wrap methods that are callable and not magic methods
+        if callable(member) and not name.startswith("__"):
+            setattr(cls, name, log_func_exceptions_dec(member))
+    return cls
+
+def log_func_exceptions_dec(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            # Capture the complete stack trace
+            stack = inspect.stack()
+            
+            # Extract relevant frames starting from the second one onward
+            relevant_frames = stack[1:]  # Skips the current wrapper frame
+            
+            # Format the frames into a readable traceback-like structure
+            formatted_frames = []
+            for frame in relevant_frames:
+                frame_info = (
+                    f"  File \"{frame.filename}\", line {frame.lineno}, in {frame.function}\n"
+                    f"    {''.join(frame.code_context or '').strip()}"
+                )
+                formatted_frames.append(frame_info)
+
+            # Invert frame order
+            formatted_frames = formatted_frames[::-1]
+            
+            # Join all frames and format the exception message
+            detailed_traceback = "\n".join(formatted_frames)
+            full_message = (
+                f"Unhandled exception in {func.__name__}:\n"
+                f"{detailed_traceback}\n"
+                f"{traceback.format_exc()}"  # Append Python's default traceback
+            )
+            
+            # Log the detailed traceback
+            logging.error(full_message)
+            raise  # Re-raise the original exception to propagate it
+    return wrapper
 
 
 def format_var_to_pythonic_type(_type:str, value):
@@ -36,15 +88,15 @@ def format_var_to_pythonic_type(_type:str, value):
               return value
   return value
 
-def standardize_dict_properties(defaultDict: dict, objectDict: dict, aliases: dict = {}):
+def standardize_dict_properties(default_dict: dict, object_dict: dict, aliases: dict = {}):
     """A recursive function that makes sure that two dictionaries have the same properties.
 
     ------
     Parameters
     ------
-    defaultDict: `dict`
+    default_dict: `dict`
         A dictionary containing all the properties and their default values.
-    objectDict: `dict`
+    object_dict: `dict`
         The dictionary that will be edited.
         
     Optional Parameters
@@ -59,35 +111,35 @@ def standardize_dict_properties(defaultDict: dict, objectDict: dict, aliases: di
     """
 
 
-    # cloning defaultDict as returnDict
-    returnDict = dict(defaultDict)
+    # cloning default_dict as returnDict
+    return_dict = dict(default_dict)
     
     # checking for aliases and changing the dictionary to account for them
-    objectDict = {aliases.get(k, k): v for k, v in objectDict.items()}
+    object_dict = {aliases.get(k, k): v for k, v in object_dict.items()}
     
     # for each key:
-    for key in returnDict.keys():
+    for key in return_dict.keys():
         # for each key in returnDict
            
-        if key in objectDict.keys():
+        if key in object_dict.keys():
             # the key was in our objectdict. Now we just have to set it.
             # We have to check this recursively if this is a dictionary, and set this to be the returned value from the recursive function.
             
-            if type(objectDict[key]) == dict:
+            if type(object_dict[key]) == dict:
                 # this is a dictionary. 
                 # Now, we have to run this recursively to make sure that all values inside the dictionary are updated
-                returnDict[key] = standardize_dict_properties(returnDict[key], objectDict[key], aliases = aliases)
+                return_dict[key] = standardize_dict_properties(return_dict[key], object_dict[key], aliases = aliases)
             else:
                 # this is not a dictionary. It's just a regular value
                 # putting this value into returnDict
-                returnDict[key] = objectDict[key]
+                return_dict[key] = object_dict[key]
         else:
-            # the key was not in the objectDict, but it was in the defaultDict.
+            # the key was not in the object_dict, but it was in the default_dict.
             # but, because the key was already added (as the default), we don't need to worry at all.
-            # lower dictionaries that may be attached to this are also not a concern, seeing how it never existed on the objectDict, so the defaults are fine.
+            # lower dictionaries that may be attached to this are also not a concern, seeing how it never existed on the object_dict, so the defaults are fine.
             continue
         
-    return returnDict
+    return return_dict
 
 def standardize_str_indention(string: str):
     # Split the string into lines
@@ -203,6 +255,10 @@ def conversion_local_time_and_utc_time(utc_offset, local_time_str=None, utc_time
         # Return only the time component
         return utc_datetime.time()
 
+def get_uuid_for_logging():
+    return str(uuid.uuid4())
+
+
 def get_discord_color_from_string(color: str):
     if color == None or color == "": return nextcord.Color.default()
         
@@ -291,6 +347,7 @@ def feature_is_active(**kwargs):
     global_kill_statuses = get_global_kill_status()
     for key in global_kill_keys:
         if global_kill_statuses[key]:
+            logging.debug(f"Determined that feature {feature} is globally killed. Key: {key}")
             return False
 
     # Check if feature is enabled in the server
@@ -306,8 +363,10 @@ def feature_is_active(**kwargs):
             raise ValueError(f"Error: {__name__} received an invalid type when checking if the feature is enabled in the server. Type: {type(attr)}")
         
         if not attr:
+            logging.debug(f"Determined that feature {feature} is disabled in the server. Key: {key}")
             return False
 
+    logging.debug(f"Determined that feature {feature} is enabled in the server. Key: {key}")
     return True
 
 def convert_score_and_level(score: int = None, level: int = None):
@@ -355,6 +414,7 @@ def role_assignable_by_infinibot(role: nextcord.Role):
     
     return role.is_assignable()
 
+
 async def user_has_config_permissions(interaction: Interaction, notify = True):
     """|coro|
     
@@ -386,7 +446,7 @@ async def user_has_config_permissions(interaction: Interaction, notify = True):
     if notify: await interaction.response.send_message(embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.\n\nType `/help infinibot_mod` for more information.", color = nextcord.Color.red()), ephemeral = True)
     return False
 
-async def check_text_channel_permissions(channel: nextcord.TextChannel, autoWarn: bool, customChannelName: str = None):
+async def check_text_channel_permissions(channel: nextcord.TextChannel, auto_warn: bool, custom_channel_name: str = None):
     """|coro|
     
     Ensure that InfiniBot has permissions to send messages and embeds in a channel.
@@ -396,13 +456,13 @@ async def check_text_channel_permissions(channel: nextcord.TextChannel, autoWarn
     ------
     channel: `nextcord.TextChannel`
         The channel to check.
-    autoWarn: `bool`
+    auto_warn: `bool`
         Whether or not to warn the guild's owner if InfiniBot does NOT have the required permissions.
         
     Optional Parameters
     ------
-    customChannelName: optional [`str`]
-        If warning the owner, customChannelName specifies a specific name for the channel instead of the default channel name. Defaults to None.
+    custom_channel_name: optional [`str`]
+        If warning the owner, custom_channel_name specifies a specific name for the channel instead of the default channel name. Defaults to None.
 
     Returns
     ------
@@ -419,17 +479,17 @@ async def check_text_channel_permissions(channel: nextcord.TextChannel, autoWarn
     if channel.guild.me == None:
         return False
     
-    channelName = (customChannelName if customChannelName else channel.name)
+    channelName = (custom_channel_name if custom_channel_name else channel.name)
     
     if channel.permissions_for(channel.guild.me).view_channel:
         if channel.permissions_for(channel.guild.me).send_messages:
             if channel.permissions_for(channel.guild.me).embed_links:
                 return True
-            elif autoWarn:
+            elif auto_warn:
                 await send_error_message_to_server_owner(channel.guild, "Embed Links", channel = channelName, administrator = False)
-        elif autoWarn:
+        elif auto_warn:
             await send_error_message_to_server_owner(channel.guild, "Send Messages and/or Embed Links", channel = channelName, administrator = False)
-    elif autoWarn:
+    elif auto_warn:
         await send_error_message_to_server_owner(channel.guild, "View Channels", channel = channelName, administrator = False)
 
     return False
@@ -467,7 +527,7 @@ async def send_error_message_to_server_owner(guild: nextcord.Guild, permission, 
         logging.warning("No guild found for send_error_message_to_server_owner")
         return
     
-    logging.debug(f"send_error_message_to_server_owner({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
+    logging.info(f"Sending error message to server owner (guild_id: {guild.id}). ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
     member = guild.owner
     
     # if member == None: return
@@ -505,3 +565,77 @@ async def send_error_message_to_server_owner(guild: nextcord.Guild, permission, 
             await dm.send(embed = embed)
     except:
         return
+    
+async def check_server_for_infinibot_mod_role(guild: nextcord.Guild):
+    """|coro|
+    
+    Check to see if InfiniBot Mod role exists. If not, create it.
+
+    ------
+    Parameters
+    ------
+    guild: `nextcord.Guild`
+        The guild in which to check.
+        
+    Returns
+    ------
+    `bool`
+        True if the role was created. False if it already existed, another script was running, or failed.
+    """
+    
+    if not guild:
+        logging.warning("No guild found for check_server_for_infinibot_mod_role")
+        return False
+    
+    roles = guild.roles
+    for x in range(0, len(roles)): roles[x] = roles[x].name
+
+    if not "Infinibot Mod" in roles:
+        try:
+            await guild.create_role(name = "Infinibot Mod")
+            return True
+        except nextcord.errors.Forbidden:
+            await send_error_message_to_server_owner(guild, None, 
+                                                     message = "InfiniBot is missing the **Manage Roles** permission which prevents it from creating the role *InfiniBot Mod*. Please give InfiniBot this permission.", 
+                                                     administrator=False)
+            return False
+    else:
+        return False
+
+async def timeout(member: nextcord.Member, seconds: int, reason: str = None):
+    """|coro|
+    
+    Handles the timing out of a member.
+
+    ------
+    Parameters
+    ------
+    member: `nextcord.Member`
+        The member to time out.
+    seconds: `int`
+        The timeout time in seconds.
+        
+    Optional Parameters
+    ------
+    reason: optional [`str`]
+        The reason that appears in the audit log. Defaults to None.
+
+    Returns
+    ------
+    optional [`True` | `False`]
+        True if the timeout was successful, False if there was an issue.
+    """
+    # Check permissions
+    if not member.guild.me.guild_permissions.moderate_members:
+        await send_error_message_to_server_owner(member.guild, None, 
+                                                 message = "InfiniBot is missing the **Moderate Members** permission which prevents it from timing out members.", 
+                                                 administrator=False)
+        return False
+
+    try:
+        if seconds == 0: await member.edit(timeout=None, reason = reason)
+        else: await member.edit(timeout=nextcord.utils.utcnow()+datetime.timedelta(seconds=seconds), reason = reason)
+        return True
+    except Exception as e:
+        logging.error(f"Error timing out member {member.id} in guild {member.guild.id}: {e}", exc_info=True)
+        return False

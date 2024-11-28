@@ -2,7 +2,7 @@ import json
 
 from nextcord import Embed as NextcordEmbed
 
-from components.utils import format_var_to_pythonic_type
+from components.utils import format_var_to_pythonic_type, log_class_exceptions_dec
 from modules.custom_types import UNSET_VALUE
 from modules.database import Database, DatabaseContextManager
 
@@ -22,6 +22,7 @@ def init_database():
 
 init_database()
 
+@log_class_exceptions_dec
 class Server_TableManager:
     def __init__(self, server_id:int, table_name:str):
         self.server_id = server_id
@@ -433,6 +434,7 @@ class Server_TableManager:
 
         return Server_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier, **kwargs)
 
+@log_class_exceptions_dec
 class IntegratedList_TableManager:
     """
     Manages a list that contains complex keyed data. (Limit 2 complex keys). Primarily used for lists within SQL.

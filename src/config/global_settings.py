@@ -1,9 +1,11 @@
 import logging
+from nextcord.ext import commands
 
 from config.file_manager import JSONFile
 
 shards_loaded = []
 bot_loaded = False
+discord_bot:commands.AutoShardedBot = None
 
 feature_dependencies = {
     "dashboard": {"global_kill": "dashboard"},
@@ -123,26 +125,36 @@ class PeristentData(GlobalSetting):
 
         super().__init__("persistent_data", variable_list)
 
-class Settings(GlobalSetting):
-    '''This class is used to store and access special channel ids for InfiniBot. Stored in special_channel_ids.json. '''
+class Configs(GlobalSetting):
+    '''This class is used to store and access special channel ids for InfiniBot. Stored in config.json. '''
     def __init__(self):
         variable_list = {
-            "dev_guilds": [],
-            "dev_ids": [],
-            "infinibot_guild_id": 0,
-            "issue_report_channel_id": 0,
-            "submission_channel_id": 0,
-            "updates_channel_id": 0,
-            "infinibot_updates_role_id": 0,
-            "support_server_invite_link": "https://example.com",
-            "topgg_link": "https://example.com",
-            "topgg_vote_link": "https://example.com",
-            "topgg_review_link": "https://example.com",
-            "bot_invite_link": "https://example.com",
-            "support_email": "unset_email@example.com"
+            "logging": {
+                "log_level": "INFO",
+                "max_logs_to_keep": 10
+            },
+            "dev": {
+                "guilds": [],
+                "ids": [],
+            },
+            "support_server": {
+                "issue_report_channel_id": 0,
+                "submission_channel_id": 0,
+                "updates_channel_id": 0,
+                "infinibot_updates_role_id": 0,
+            },
+            "links": {
+                "support_server_invite_link": "https://example.com",
+                "topgg_link": "https://example.com",
+                "topgg_vote_link": "https://example.com",
+                "topgg_review_link": "https://example.com",
+                "bot_invite_link": "https://example.com",
+                "support_email": "unset_email@example.com"
+            },
+            "birthday_message_runtime_default_utc": "15:00"
         }
 
-        super().__init__("settings", variable_list)
+        super().__init__("config", variable_list)
 
 def get_global_kill_status():
     return GlobalKillStatus()
@@ -150,5 +162,5 @@ def get_global_kill_status():
 def get_persistent_data():
     return PeristentData()
 
-def get_settings():
-    return Settings()
+def get_configs():
+    return Configs()

@@ -4,7 +4,7 @@ import os
 import shutil
 import sys
 
-from config.file_manager import JSONFile
+from config.global_settings import get_configs
 
 def create_logging_folder():
     if not os.path.exists("./generated/logs"):
@@ -14,14 +14,15 @@ def create_logging_folder():
     test_folder_path = f"./generated/logs/{date}"
     os.makedirs(test_folder_path)
 
-    # Ensure no more than JSONFile("config")["max_logs_to_keep"] files exist
-    while len(os.listdir("./generated/logs")) > JSONFile("config")["max_logs_to_keep"]:
+    # Ensure no more than max_logs_to_keep files exist
+    while len(os.listdir("./generated/logs")) > get_configs()["logging"]["max_logs_to_keep"]:
         shutil.rmtree(f"./generated/logs/{os.listdir('./generated/logs')[0]}")
 
     return test_folder_path
 
 
 def setup_logging(level=logging.INFO):
+    # Create logging folder
     test_folder_path = create_logging_folder()
     test_folder_path = os.path.abspath(test_folder_path)
 
@@ -32,7 +33,11 @@ def setup_logging(level=logging.INFO):
     # Set up file handler
     log_file_path = os.path.join(test_folder_path, "logfile.log")
     file_handler = logging.FileHandler(log_file_path)
-    formatter = logging.Formatter("{asctime} - {levelname} - {message}", style="{", datefmt="%Y-%m-%d %H:%M:%S")
+    formatter = logging.Formatter(
+        "{asctime} - {levelname} - {funcName} - {message}", 
+        style="{", 
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
     file_handler.setFormatter(formatter)
     logging.root.addHandler(file_handler)
 

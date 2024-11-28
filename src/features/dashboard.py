@@ -9,8 +9,7 @@ from nextcord import Interaction
 
 from components import ui_components, utils
 from components.ui_components import CustomView, CustomModal
-from config.file_manager import JSONFile
-from config.global_settings import shards_loaded
+from config.global_settings import shards_loaded, get_configs
 from config.server import Server
 from features import help_commands
 from modules.custom_types import UNSET_VALUE
@@ -2750,7 +2749,7 @@ class Dashboard(CustomView):
                     if birthday_channel: birthday_channel_ui_text = birthday_channel.mention
                     else: birthday_channel_ui_text = "#unknown"
 
-                if server.birthdays_profile.runtime == UNSET_VALUE: server.birthdays_profile.runtime = JSONFile("config")["birthday_message_runtime_default_utc"]
+                if server.birthdays_profile.runtime == UNSET_VALUE: server.birthdays_profile.runtime = get_configs()["birthday_message_runtime_default_utc"]
                 try:
                     hour, minute = server.birthdays_profile.runtime.split(":")
                     epoch_time = datetime.datetime(2000, 1, 1, int(hour), int(minute), 0, tzinfo = datetime.timezone.utc).timestamp()

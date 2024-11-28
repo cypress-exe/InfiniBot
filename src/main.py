@@ -5,6 +5,7 @@ import socket
 import time
 
 from config.file_manager import JSONFile
+from config.global_settings import get_configs
 from core.log_manager import setup_logging, change_logging_level
 
 # Functions
@@ -41,6 +42,8 @@ def create_environment():
         except Exception as e:
             print("FATAL ERROR: " + str(e))
             print("Exiting...")
+            logging.critical("FATAL ERROR: " + str(e))
+            logging.critical("Exiting...")
             exit()
     
     create_folder("generated")
@@ -52,19 +55,13 @@ def create_environment():
 
     get_token()
 
-    # Setup config.json
-    if not os.path.exists("generated/configure/config.json"):
-        JSONFile("config").add_variable("log_level", "INFO")
-        JSONFile("config").add_variable("max_logs_to_keep", 10)
-        JSONFile("config").add_variable("birthday_message_runtime_default_utc", "15:00")
-
     logging.info("To modify defaults, edit settings file in ./generated/configure")
     
 def configure_logging():
     setup_logging()
 
     # Change logging level depending on configurations
-    log_level = JSONFile("config")["log_level"]
+    log_level = get_configs()["logging"]["log_level"]
     if log_level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
         logging.warning("Invalid logging level in config.json. Defaulting to INFO.")
         log_level = "INFO"

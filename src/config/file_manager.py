@@ -36,6 +36,16 @@ class JSONFile:
         with open(self.path, "w") as file:
             file.write(json.dumps(data, indent=2))
 
+    def _update_nested(self, data, keys, value):
+        """Recursively updates a nested dictionary."""
+        if len(keys) > 1:
+            key = keys.pop(0)
+            if key not in data or not isinstance(data[key], dict):
+                data[key] = {}
+            self._update_nested(data[key], keys, value)
+        else:
+            data[keys[0]] = value
+
     def __contains__(self, key):
         data = self._get_data()
         return key in data
@@ -50,11 +60,11 @@ class JSONFile:
 
     def __setitem__(self, key, value):
         data = self._get_data()
-
-        if key not in self:
-                raise KeyError(f"{key} does not exist in {self.file_name}. Use add_variable() method instead.")
-
-        data[key] = value
+        if isinstance(key, str) and '.' in key:
+            keys = key.split('.')
+            self._update_nested(data, keys, value)
+        else:
+            data[key] = value
         self._set_data(data)
 
     def __delitem__(self, key):

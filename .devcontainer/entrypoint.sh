@@ -1,3 +1,3 @@
 #!/bin/bash
 
-exec python3 ./src/main.py
+exec python3 -OO ./src/main.py

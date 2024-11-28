@@ -1,4 +1,4 @@
 # Default profane words for InfiniBot
-apple
-orange
-grape
+apple*
+orange*
+grape*
