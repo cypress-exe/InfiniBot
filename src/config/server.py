@@ -872,8 +872,11 @@ class Server:
         @Server_TableManager.boolean_property("active")
         def active(self): pass
 
-        @Server_TableManager.integer_property("messages_threshold")
-        def messages_threshold(self): pass
+        @Server_TableManager.integer_property("score_threshold")
+        def score_threshold(self): pass
+
+        @Server_TableManager.integer_property("time_threshold_seconds")
+        def time_threshold_seconds(self): pass
 
         @Server_TableManager.integer_property("timeout_seconds")
         def timeout_seconds(self): pass

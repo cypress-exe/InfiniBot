@@ -935,8 +935,11 @@ class Dashboard(CustomView):
                         self.timeout_duration_btn = self.TimeoutDurationButton(self)
                         self.add_item(self.timeout_duration_btn)
                         
-                        self.message_threshold_btn = self.MessagesThresholdButton(self)
-                        self.add_item(self.message_threshold_btn)
+                        self.score_threshold_btn = self.ScoreThresholdButton(self)
+                        self.add_item(self.score_threshold_btn)
+
+                        self.time_threshold_btn = self.TimeThresholdButton(self)
+                        self.add_item(self.time_threshold_btn)
                         
                         self.disable_btn = self.EnableDisableButton(self)
                         self.add_item(self.disable_btn)
@@ -961,13 +964,22 @@ class Dashboard(CustomView):
                             return
                         
                         timeout_time = humanfriendly.format_timespan(server.spam_moderation_profile.timeout_seconds)
+                        time_threshold = humanfriendly.format_timespan(server.spam_moderation_profile.time_threshold_seconds)
 
                         description = f"""
                         InfiniBot helps you moderate spam in your server. Customize the options below to suit your server's requirements.
                         
                         **Settings**
                         - **Timeout Duration:** {timeout_time}
-                        - **Messages Threshold:** {server.spam_moderation_profile.messages_threshold} messages
+                        - **Spam Score Threshold:** {server.spam_moderation_profile.score_threshold}
+                        - **Time Threshold:** {time_threshold}
+
+                        **What is Spam Score**
+                        InfiniBot uses a spam score system to determine if a message is spam. The higher the score, the more likely the user is participating in spam.
+                        Increase this value if InfiniBot is misclassifying messages as spam often. Decrease it if InfiniBot is not detecting spam enough.
+
+                        **What is Time Threshold**
+                        InfiniBot will disregard messages outside of the time threshold when determining spam scores. To disable this feature, set the time threshold to 0.
                         
                         For more information, use: {UNSET_VALUE}""" # TODO add shortcut for help command
                         
@@ -1019,18 +1031,18 @@ class Dashboard(CustomView):
                         async def callback(self, interaction: Interaction):
                             await interaction.response.send_modal(self.TimeoutDurationModal(self.outer, interaction.guild.id))
                          
-                    class MessagesThresholdButton(nextcord.ui.Button):
+                    class ScoreThresholdButton(nextcord.ui.Button):
                         def __init__(self, outer):
-                            super().__init__(label = "Messages Threshold", style = nextcord.ButtonStyle.gray)
+                            super().__init__(label = "Spam Score Threshold", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
                             
-                        class MessagesThresholdModal(CustomModal): #Timeout Duration Modal -----------------------------------------------------
+                        class ScoreThresholdModal(CustomModal):
                             def __init__(self, outer, guild_id):
-                                super().__init__(title = "Message Threshold")
+                                super().__init__(title = "Spam Score Threshold")
                                 self.outer = outer
                                 server = Server(guild_id)
                                 
-                                self.input = nextcord.ui.TextInput(label = "Message Threshold (# of messages)", default_value = server.spam_moderation_profile.messages_threshold, placeholder = "This Field is Required", max_length=2)
+                                self.input = nextcord.ui.TextInput(label = "Spam Score Threshold", default_value = server.spam_moderation_profile.score_threshold, placeholder = "This Field is Required", max_length=5)
                                 self.add_item(self.input)
                                 
                             async def callback(self, interaction: Interaction):
@@ -1038,17 +1050,54 @@ class Dashboard(CustomView):
                                     return
                                 
                                 try:
-                                    if int(self.input.value) <= 1: raise Exception
+                                    if int(self.input.value) <= 0: raise Exception
                                 except:
-                                    await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The messages threshold needs to be a number greater than 1.", color = nextcord.Color.red()), ephemeral=True)
+                                    await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The spam score threshold needs to be a number greater than 0.", color = nextcord.Color.red()), ephemeral=True)
                                     return
                                 
                                 server = Server(interaction.guild.id)
-                                server.spam_moderation_profile.messages_threshold = int(self.input.value)
+                                server.spam_moderation_profile.score_threshold = int(self.input.value)
                                 await self.outer.setup(interaction)
                                 
                         async def callback(self, interaction: Interaction):
-                            await interaction.response.send_modal(self.MessagesThresholdModal(self.outer, interaction.guild.id))
+                            await interaction.response.send_modal(self.ScoreThresholdModal(self.outer, interaction.guild.id))
+
+                    class TimeThresholdButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Time Threshold", style = nextcord.ButtonStyle.gray)
+                            self.outer = outer
+                            
+                        class TimeThresholdModal(CustomModal):
+                            def __init__(self, outer, guild_id):
+                                super().__init__(title = "Time Threshold")
+                                self.outer = outer
+                                server = Server(guild_id)
+                                time_threshold = humanfriendly.format_timespan(server.spam_moderation_profile.time_threshold_seconds)
+                                
+                                self.input = nextcord.ui.TextInput(label = "Time Threshold (how close messages must be)", default_value = time_threshold, placeholder = "This Field is Required", max_length=50)
+                                self.add_item(self.input)
+                                
+                            async def callback(self, interaction: Interaction):
+                                format_error_embed = nextcord.Embed(title = "Format Error", description = "You formatted that wrong. The timeout threshold needs to be formated like this: 10 seconds, 20 minutes, 1 hour and 20 minutes, 1 day, etc...", color = nextcord.Color.red())
+                                if self.input.value == "" or self.input.value == None:
+                                    await interaction.response.send_message(embed = format_error_embed, ephemeral=True)
+                                    return
+                                
+                                try:
+                                    if self.input.value != "0": 
+                                        response_in_seconds = humanfriendly.parse_timespan(self.input.value)
+                                    else:
+                                        response_in_seconds = 0
+                                except:
+                                    await interaction.response.send_message(embed = format_error_embed, ephemeral=True)
+                                    return
+                                
+                                server = Server(interaction.guild.id)
+                                server.spam_moderation_profile.time_threshold_seconds = response_in_seconds
+                                await self.outer.setup(interaction)
+                                
+                        async def callback(self, interaction: Interaction):
+                            await interaction.response.send_modal(self.TimeThresholdModal(self.outer, interaction.guild.id))
 
                     class EnableDisableButton(nextcord.ui.Button):
                         def __init__(self, outer):

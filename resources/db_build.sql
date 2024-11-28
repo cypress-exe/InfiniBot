@@ -20,7 +20,8 @@ CREATE TABLE IF NOT EXISTS profanity_moderation_profile( -- #optimize
 CREATE TABLE IF NOT EXISTS spam_moderation_profile( -- #optimize
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
-    messages_threshold INT DEFAULT 5,
+    score_threshold INT DEFAULT 100,
+    time_threshold_seconds INT DEFAULT 60,
     timeout_seconds INT DEFAULT 60,
     delete_invites BOOLEAN DEFAULT false
 );

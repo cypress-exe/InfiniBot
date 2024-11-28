@@ -1,11 +1,14 @@
+from collections import defaultdict
 import datetime
 import humanfriendly
 import logging
 import re
+from typing import List
 
 import nextcord
 
 from components import utils, ui_components
+from config.global_settings import get_configs
 from config.server import Server
 from core import log_manager
 from modules.custom_types import UNSET_VALUE
@@ -350,10 +353,175 @@ async def check_and_trigger_profanity_moderation_for_message(bot: nextcord.clien
             embed.set_footer(text = f"Member ID: {str(message.author.id)}")
             
             await admin_channel.send(view = view, embed = embed)
+
+
+
+def check_repeated_words_percentage(text, threshold=0.8):
+    words = re.findall(r'\w+', text.lower())  # Convert text to lowercase and extract words
+    counts = defaultdict(lambda: 0)  # Dictionary to store word counts
     
+    # Remove symbols from the words
+    words = [re.sub(r'\W+', '', word) for word in words]
+
+    # Iterate over the words and count their occurrences
+    last_words = []
+    for word in words:
+        if word not in last_words:
+            counts[word] += 0.5
+        else:
+            counts[word] += 1
+        last_words.insert(0, word)
+        if len(last_words) >= 5:
+            last_words.pop(3)
+        
+    # Calculate the total number of words and the number of repeated words
+    total_words = len(words)
+    if total_words == 0: return False
+    repeated_words = sum(count for count in counts.values() if count > 0.5)
+
+    # Calculate the percentage of repeated words
+    repeated_percentage = repeated_words / total_words
+
+    # Check if the percentage exceeds the threshold
+    return repeated_percentage >= threshold
+
+def levenshtein_distance(s1, s2):
+    # ChatGPT :)
+    # Create a matrix to store the distances
+    len_s1, len_s2 = len(s1), len(s2)
+    matrix = [[0] * (len_s2 + 1) for _ in range(len_s1 + 1)]
+
+    # Initialize the matrix
+    for i in range(len_s1 + 1):
+        matrix[i][0] = i
+    for j in range(len_s2 + 1):
+        matrix[0][j] = j
+
+    # Fill the matrix with the Levenshtein distance
+    for i in range(1, len_s1 + 1):
+        for j in range(1, len_s2 + 1):
+            cost = 0 if s1[i - 1] == s2[j - 1] else 1
+            matrix[i][j] = min(matrix[i - 1][j] + 1,  # Deletion
+                               matrix[i][j - 1] + 1,  # Insertion
+                               matrix[i - 1][j - 1] + cost)  # Substitution
+
+    return matrix[len_s1][len_s2]
+
+def get_percent_similar(s1, s2):
+    # Calculate the Levenshtein distance
+    lev_dist = levenshtein_distance(s1, s2)
+    
+    # Find the maximum possible distance (length of the longer string)
+    max_distance = max(len(s1), len(s2))
+    
+    # Calculate the ratio of Levenshtein distance to maximum distance
+    ratio = lev_dist / max_distance
+    
+    return 1 - ratio
+
+def compare_attachments(attachments_1: List[nextcord.Attachment], attachments_2: List[nextcord.Attachment]):
+        # quick optimizations
+        if not attachments_1 or not attachments_2:
+            return False
+        if attachments_1 == attachments_2:
+            return True
+
+        for attachment_1 in attachments_1:
+            for attachment_2 in attachments_2:
+                if (
+                    attachment_1.url == attachment_2.url
+                    or (
+                        attachment_1.filename == attachment_2.filename
+                        and attachment_1.width == attachment_2.width
+                        and attachment_1.height == attachment_2.height
+                        and attachment_1.size == attachment_2.size
+                    )
+                ):
+                    return True
+        return False
 
 async def check_and_trigger_spam_moderation_for_message(message: nextcord.Message, server: Server):
-    return
+    max_messages_to_check = get_configs()["spam_moderation"]["max_messages_to_check"]    # The MAXIMUM messages InfiniBot will try to check for spam
+    message_chars_to_check_repetition = get_configs()["spam_moderation"]["message_chars_to_check_repetition"]    # A message requires these many characters before it is checked for repetition
+
+    # If Spam is Enabled
+    if not utils.feature_is_active(server = server, feature = "spam_moderation"): return
+
+    # Check if InfiniBot can view the audit log
+    if not message.guild.me.guild_permissions.view_audit_log:
+        await utils.send_error_message_to_server_owner(message.guild, "View Audit Log", channel=message.channel.name)
+        return
+
+    # Configure limit (the most messages that we're willing to check)
+    if server.spam_moderation_profile.score_threshold < max_messages_to_check:
+        limit = server.spam_moderation_profile.score_threshold + 1 # Add one because of the existing message
+    else:
+        limit = max_messages_to_check
+
+    # Get previous messages
+    previous_messages = await message.channel.history(limit=limit).flatten()
+    
+    # Loop through each previous message and test it
+    spam_score = 0
+    for _message in previous_messages:
+        if spam_score >= server.spam_moderation_profile.score_threshold:
+            break
+        
+        
+        message_time = _message.created_at
+        time_now = datetime.datetime.now(datetime.timezone.utc)
+        time_difference = time_now - message_time
+        time_difference_in_seconds = time_difference.total_seconds()
+
+        if server.spam_moderation_profile.time_threshold_seconds == 0:
+            within_time_window = True
+        else:
+            within_time_window = time_difference_in_seconds <= server.spam_moderation_profile.time_threshold_seconds
+
+        score_addition = 0
+        if within_time_window:
+            if _message.content == message.content:
+                score_addition += 25 # Weighted more
+            else:
+                similarity = get_percent_similar(_message.content, message.content)
+                if similarity >= 0.6:
+                    score_addition += similarity * 20
+
+            if len(_message.content) < 10:
+                score_addition += 7
+
+            # Check word count percentage
+            if _message.content and len(_message.content) >= message_chars_to_check_repetition and check_repeated_words_percentage(_message.content):
+                score_addition += 25
+            
+            # Check message attachments
+            if compare_attachments(_message.attachments, message.attachments):
+                score_addition += 40
+
+            spam_score += score_addition * (server.spam_moderation_profile.time_threshold_seconds - time_difference_in_seconds)
+
+        else:
+            break # If this message is outside of the time threshold window, previous ones will be too. Break out of the loop.
+
+    # Punnish the member (if needed)
+    if spam_score >= server.spam_moderation_profile.score_threshold:
+        try:
+            # Time them out
+            await utils.timeout(message.author, server.spam_moderation_profile.timeout_seconds, reason=f"Spam Moderation: User exceeded spam message limit of {server.spam_moderation_profile.score_threshold}.")
+            
+            # Send them a message (if they want it)
+            # if Member(message.author.id).dms_enabled: # TODO
+            if True:
+                timeout_time_ui_text = humanfriendly.format_timespan(server.spam_moderation_profile.timeout_seconds)
+                await message.author.send(
+                    embed=nextcord.Embed(
+                        title="Spam Timeout",
+                        description=f"You were flagged for spamming in \"{message.guild.name}\". You have been timed out for {timeout_time_ui_text}.\n\nPlease contact the admins if you think this is a mistake.",
+                        color=nextcord.Color.red(),
+                    )
+                )
+        except nextcord.errors.Forbidden:
+            await utils.send_error_message_to_server_owner(message.guild, "Timeout Members", guild_permission=True)
 
 
 async def check_and_run_moderation_commands(bot: nextcord.client, message: nextcord.Message):
@@ -365,7 +533,7 @@ async def check_and_run_moderation_commands(bot: nextcord.client, message: nextc
     
     server = Server(message.guild.id)
 
-    with log_manager.LogIfFailure(feature="check_message_for_profanity"):
+    with log_manager.LogIfFailure(feature="check_and_trigger_profanity_moderation_for_message"):
         message_is_profane = await check_and_trigger_profanity_moderation_for_message(bot, server, message, skip_admin_check=True)
         if message_is_profane: return
 
@@ -376,4 +544,5 @@ async def check_and_run_moderation_commands(bot: nextcord.client, message: nextc
             return
 
     # Check spam
-    await check_and_trigger_spam_moderation_for_message(message, server)
+    with log_manager.LogIfFailure(feature="check_and_trigger_spam_moderation_for_message"):
+        await check_and_trigger_spam_moderation_for_message(message, server)

@@ -150,6 +150,10 @@ class Configs(GlobalSetting):
                 "bot_invite_link": "https://example.com",
                 "support_email": "unset_email@example.com"
             },
+            "spam_moderation": {
+                "max_messages_to_check": 11,
+                "message_chars_to_check_repetition": 140,
+            },
             "birthday_message_runtime_default_utc": "15:00"
         }
 

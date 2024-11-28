@@ -533,7 +533,8 @@ class TestServer(unittest.TestCase):
 
         # Using run_test_on_property
         self.run_test_on_property(server, "spam_moderation_profile", "active", False, [True, False])
-        self.run_test_on_property(server, "spam_moderation_profile", "messages_threshold", 5, [12, 0])
+        self.run_test_on_property(server, "spam_moderation_profile", "score_threshold", 100, [12, 1500, 0])
+        self.run_test_on_property(server, "spam_moderation_profile", "time_threshold_seconds", 60, [500, 0])
         self.run_test_on_property(server, "spam_moderation_profile", "timeout_seconds", 60, [140, 0])
         self.run_test_on_property(server, "spam_moderation_profile", "delete_invites", False, [True, False])
 
