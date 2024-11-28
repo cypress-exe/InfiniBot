@@ -7,8 +7,8 @@ from nextcord.ext import commands
 from components import ui_components, utils
 from config.server import Server
 import config.global_settings as global_settings
-from config.global_settings import discord_bot
 from config.file_manager import JSONFile
+from core import log_manager
 from features.admin_commands import check_and_run_admin_commands
 from features.dashboard import run_dashboard_command
 from features.dm_commands import check_and_run_dm_commands
@@ -22,27 +22,26 @@ intents.members = True
 intents.voice_states = True
 intents.reactions = True
 
-discord_bot = commands.AutoShardedBot(intents = intents, 
+bot = commands.AutoShardedBot(intents = intents, 
                             allowed_mentions = nextcord.AllowedMentions(everyone = True), 
                             help_command=None)
 
-
-@discord_bot.event
+@bot.event
 async def on_ready():
-    await discord_bot.wait_until_ready()
-    logging.info(f"Logged in as: {discord_bot.user.name} with all shards ready.")
+    await bot.wait_until_ready()
+    logging.info(f"Logged in as: {bot.user.name} with all shards ready.")
 
     global_settings.bot_loaded = True
 
     # Print which guilds are on which shard
     if logging.getLevelName(logging.getLogger().getEffectiveLevel()) == "DEBUG":
-      for guild in discord_bot.guilds:
+      for guild in bot.guilds:
           shard_id = guild.shard_id
           logging.debug(f"Guild: {guild.name} (ID: {guild.id}) is on shard {shard_id}")
 
     
 
-@discord_bot.event
+@bot.event
 async def on_shard_ready(shard_id: int):
     """
     Triggered when a specific shard becomes ready.
@@ -61,20 +60,20 @@ async def on_shard_ready(shard_id: int):
 
 
 # SLASH COMMANDS ==============================================================================================================================================================
-@discord_bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", dm_permission=False)
+@bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", dm_permission=False)
 async def dashboard(interaction: Interaction):
     await run_dashboard_command(interaction)
 
-@discord_bot.slash_command(name = "create_infinibot_mod_role", description = "Manually trigger InfiniBot to create the Infinibot Mod role", dm_permission=False)
+@bot.slash_command(name = "create_infinibot_mod_role", description = "Manually trigger InfiniBot to create the Infinibot Mod role", dm_permission=False)
 async def create_infinibot_mod_role(interaction: Interaction):
     await utils.check_server_for_infinibot_mod_role(interaction)
 
 # ERROR HANDLING ==============================================================================================================================================================
-@discord_bot.event
+@bot.event
 async def on_application_command_error(interaction: Interaction, error):
     """Handles errors in application commands."""
     # Generate a unique ID for the error
-    error_id = utils.get_uuid_for_logging()
+    error_id = log_manager.get_uuid_for_logging()
 
     # Log the error with the unique ID
     logging.error(f"Error ID: {error_id} - Unhandled exception in application command", exc_info=error)
@@ -94,14 +93,13 @@ async def on_application_command_error(interaction: Interaction, error):
             await interaction.followup.send(embed=embed, ephemeral=True, view=ui_components.SupportView())
             
 # CALLBACKS ==============================================================================================================================================================
-@utils.log_func_exceptions_dec
-@discord_bot.event
+@bot.event
 async def on_message(message: nextcord.Message):
     if message == None: return
       
     # DM Commands ---------------------------------------------
     if message.guild == None:
-        await check_and_run_dm_commands(message)
+        await check_and_run_dm_commands(bot, message)
         await check_and_run_admin_commands(message)
         return
 
@@ -113,7 +111,7 @@ async def on_message(message: nextcord.Message):
         return
 
     # Moderation
-    message_is_profane = await check_and_run_moderation_commands(message)
+    message_is_profane = await check_and_run_moderation_commands(bot, message)
     
     # if not message_is_profane:
     #     # Give levels
@@ -122,14 +120,14 @@ async def on_message(message: nextcord.Message):
 
 
     # Continue with the Rest of the bot commands
-    await discord_bot.process_commands(message)
+    await bot.process_commands(message)
 
 # RUN BOT ==============================================================================================================================================================================
 def run():
     # Get token
     token = JSONFile("TOKEN")["discord_auth_token"]
     logging.info(f"Running bot with token: {token[:5]}*******...")
-    discord_bot.run(token)
+    bot.run(token)
 
 
 if __name__ == "__main__":

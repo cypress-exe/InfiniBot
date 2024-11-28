@@ -1,10 +1,33 @@
+from contextlib import ContextDecorator
 import datetime
 import logging
 import os
 import shutil
 import sys
+import uuid
 
 from config.global_settings import get_configs
+
+
+class LogIfFailure(ContextDecorator):
+    def __init__(self, feature=None, suppress=True):
+        self.error_id = None
+        self.feature = feature
+        self.suppress = suppress
+
+    def __enter__(self):
+        # Generate a new UUID when entering the context
+        self.error_id = str(uuid.uuid4())
+        return self.error_id  # Return the error ID so it can be used outside the with block
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if exc_type:
+            # If an error occurs, log it and include the UUID
+            logging.error(f"Error occurred {f"in feature: {self.feature}" if self.feature else ""} with ID {self.error_id}: {exc_value}", 
+                          exc_info=(exc_type, exc_value, traceback))
+
+        return self.suppress
+
 
 def create_logging_folder():
     if not os.path.exists("./generated/logs"):
@@ -20,6 +43,8 @@ def create_logging_folder():
 
     return test_folder_path
 
+def get_uuid_for_logging():
+    return str(uuid.uuid4())
 
 def setup_logging(level=logging.INFO):
     # Create logging folder

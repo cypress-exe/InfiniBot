@@ -6,8 +6,8 @@ import re
 import nextcord
 
 from components import utils, ui_components
-from config.global_settings import discord_bot
 from config.server import Server
+from core import log_manager
 from modules.custom_types import UNSET_VALUE
 
 
@@ -33,7 +33,7 @@ class IncorrectButtonView(nextcord.ui.View):
         # Or it's been so long that the strike has expired.
         
         server = Server(interaction.guild.id)
-        strike_count = server.moderation_strikes[member.id].strikes
+        strike_count = server.moderation_strikes[member.id].strikes if member.id in server.moderation_strikes else 0
         if strike_count != 0:
             # We'll just refund a strike.
             update_strikes_for_member(guild.id, member.id, -1)
@@ -51,7 +51,7 @@ class IncorrectButtonView(nextcord.ui.View):
             delta_seconds = (current_time - message_time).seconds
             if delta_seconds <= server.profanity_moderation_profile.timeout_seconds:
                 # We can revoke the timeout
-                await utils.timeout(member = member, time = 0, reason = "Revoking Profanity Moderation Timeout")
+                await utils.timeout(member = member, seconds = 0, reason = "Revoking Profanity Moderation Timeout")
                 
                 embed.title += " - Marked As Incorrect"
                 embed.color = nextcord.Color.dark_green()
@@ -72,17 +72,28 @@ class IncorrectButtonView(nextcord.ui.View):
     self.stop()
 
 def str_is_profane(message: str, database: list[str]):
-    # Normalize both message and database to lowercase
-    words = [x.lower() for x in message.split()]
-    database = set(x.lower().replace('*', '.*') for x in database)  # Convert wildcards to regex patterns
-    
-    # Create a single regex pattern from the database
-    pattern = re.compile('|'.join(database))
-    
-    # Check each word against the pattern
-    for word in words:
-        if pattern.search(word):
-            return word  # Return the first profane word found
+    def generate_regex_pattern(word: str):
+        word = word.replace("*", ".")
+
+        if not word.startswith("\""):
+            word = r"\w*" + word
+        else:
+            word = r"\b" + word[1:]
+
+        if not word.endswith("\""):
+            word = word + r"\w*"
+        else:
+            word = word[:-1] + r"\b"
+
+        return word
+
+    regex_patterns = [re.compile(generate_regex_pattern(pattern)) for pattern in database]
+
+    # Check the pattern
+    for pattern in regex_patterns:
+        match = pattern.search(message)
+        if match:
+            return match
 
     return None
 
@@ -114,12 +125,11 @@ def update_strikes_for_member(guild_id:int, member_id:int, amount:int):
 
     if server.profanity_moderation_profile.strike_system_active:
         if member_id in server.moderation_strikes:
-            strike_data = server.moderation_strikes[member_id]
-            strike_data.strikes += amount
-            strike_data.last_strike = datetime.datetime.now()
-            updated_strike_count = strike_data.strikes
+            old_strikes = server.moderation_strikes[member_id].strikes
+            server.moderation_strikes.edit(member_id=member_id, strikes=old_strikes + amount, last_strike=datetime.datetime.now())
+            updated_strike_count = server.moderation_strikes[member_id].strikes
 
-            if strike_data.strikes <= 0:
+            if updated_strike_count <= 0:
                 server.moderation_strikes.delete(member_id)
                 updated_strike_count = 0
                 
@@ -130,7 +140,7 @@ def update_strikes_for_member(guild_id:int, member_id:int, amount:int):
 
     return updated_strike_count
 
-async def grant_and_punnish_strike(guild_id, member: nextcord.Member, amount: int, server = None, strike_data = None):
+async def grant_and_punnish_strike(bot: nextcord.client, guild_id: int, member: nextcord.Member, amount: int, server = None, strike_data = None):
     """|coro|
     
     Handle giving or taking a strike to/from a member.
@@ -165,7 +175,7 @@ async def grant_and_punnish_strike(guild_id, member: nextcord.Member, amount: in
 
     if timeout:
         # Check Permissions
-        guild = discord_bot.get_guild(guild_id)
+        guild = bot.get_guild(guild_id)
         if not guild:
             logging.warning(f"Guild not found for guild_id: {guild_id}. Skipping timeout.")
             return False
@@ -177,29 +187,41 @@ async def grant_and_punnish_strike(guild_id, member: nextcord.Member, amount: in
         reason = (f"Profanity Moderation: User exceeded strike limit of {server.profanity_moderation_profile.max_strikes}." 
                   if (server.profanity_moderation_profile.strike_system_active) else "Profanity Moderation")
         
-        if await utils.timeout(member, server.profanity_moderation_profile.timeout_seconds, reason = reason):
+        timeout_response = await utils.timeout(member, server.profanity_moderation_profile.timeout_seconds, reason = reason)
+        if timeout_response.startswith("Success"):
             # The user was successfully timed out. Remove the strike
-            server.moderation_strikes.delete(member.id)
+            if member.id in server.moderation_strikes: server.moderation_strikes.delete(member.id)
+            return True
+
+        elif timeout_response == "Failure Forbidden":
+            message = f"Failed to timeout {member.mention} for profanity moderation. Missing permissions."
+            embed = nextcord.Embed(title = "Failed to Timeout", description = message, color = nextcord.Color.red())
+
+            admin_channel = bot.get_channel(server.profanity_moderation_profile.channel)
+            await admin_channel.send(embed = embed)
+            return False
         
         else:
-            uuid = utils.get_uuid_for_logging()
+            uuid = log_manager.get_uuid_for_logging()
             message = f"Failed to timeout {member.mention} for profanity moderation."
             embed = nextcord.Embed(title = "Failed to Timeout", description = message, color = nextcord.Color.red())
             embed.set_footer(text = f"Error ID: {uuid}")
 
-            admin_channel = discord_bot.get_channel(server.profanity_moderation_profile.channel)
+            admin_channel = bot.get_channel(server.profanity_moderation_profile.channel)
             await admin_channel.send(embed = embed)
 
             logging.error(f"Error ID: {uuid} - Failed to timeout user ({member.id}) for profanity moderation.")
+            return False
 
-    return False
+    else:
+        return True
 
-async def check_message_for_profanity(server: Server, message: nextcord.Message, skip_admin_check=False):
+async def check_and_trigger_profanity_moderation_for_message(bot: nextcord.client, server: Server, message: nextcord.Message, skip_admin_check=False):
     # Checks
     if not utils.feature_is_active(server = server, feature = "profanity_moderation"): return
     if message.channel.type != nextcord.ChannelType.stage_voice and message.channel.is_nsfw():
-        logging.debug(f"Skipped profanity check for NSFW channel: {message.channel}") 
-        return # Don't check profanity in NSFW channels or stage channels
+        logging.debug(f"Skipped profanity check for NSFW / stage channel: {message.channel}") 
+        return
 
     if not isinstance(message.author, nextcord.Member): 
         logging.warning(f"Tried to check profanity for a non-member: {message.author}")
@@ -218,142 +240,140 @@ async def check_message_for_profanity(server: Server, message: nextcord.Message,
         return
     
     # Check for profanity -------------------------------------------------------------------
-    result = str_is_profane(msg, server.profanity_moderation_profile.filtered_words)
-    if result != None:
-        # If they are in violation and need to be punished...
-        # Give them a strike (and perhaps a timeout)
-        action_successful = await grant_and_punnish_strike(message.guild.id, message.author, 1)
-        
-        timed_out = False if message.author.timed_out_until == None else True
+    profane_word = str_is_profane(msg, server.profanity_moderation_profile.filtered_words)
+    if profane_word == None: 
+        return # No profanity found. Nothing to do.
+    
+    # Grant a strike (and maybe timeout)
+    action_successful = await grant_and_punnish_strike(bot, message.guild.id, message.author, 1)
+    
+    timed_out = False if message.author.communication_disabled_until == None else True
 
-        if action_successful:
-            # DM them (if they want)
-            # memberSettings = Member(message.author.id) # TODO When member settings are implemented
-            # if memberSettings.dms_enabled:
-            if True:
-                try:
-                    # Check if they were timed out, or if it's just a strike
-                    if timed_out:
-                        # They were timed out. Tell them.
-                        # Format the seconds in a human readable way
-                        description = f"""
-                        You were flagged for profanity.
-                        
-                        **Server:** {message.guild.name}
-                        **Word:** {result}
-                        **Message:** {message.content}
-                        
-                        You were timed out for {humanfriendly.format_timespan(server.profanity_moderation_profile.timeout_seconds)}.
-                        """
-                        description = utils.standardize_str_indention(description)
-                        embed = nextcord.Embed(title = "Profanity Log", description = description, color = nextcord.Color.red(), timestamp = datetime.datetime.now())
-                        embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
-                        await message.author.send(embed = embed)
-                        
-                    else:
-                        # It was just a strike. Tell them.
-                        current_strikes = server.moderation_strikes[message.author.id].strikes
-                        description = f"""
-                        You were flagged for profanity.
-                        
-                        **Server:** {message.guild.name}
-                        **Word:** {result}
-                        **Message:** {message.content}
-                        
-                        You are now at strike {current_strikes} / {server.profanity_moderation_profile.max_strikes}.
-                        """
-                        description = utils.standardize_str_indention(description)
-                        embed = nextcord.Embed(title = "Profanity Log", description = description, color = nextcord.Color.red(), timestamp = datetime.datetime.now())
-                        embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
-                        await message.author.send(embed = embed)
-                        
-                except nextcord.Forbidden:
-                    pass #the user has dms turned off. It's not a big deal, they just don't get notified.
-                except Exception as e:
-                    logging.error(f"Error sending profanity DM to {message.author}: {e}", exc_info=True)
-            
-            # Send message in channel where bad word was sent.
-            if await utils.check_text_channel_permissions(message.channel, True):
-                description = f"""
-                {message.author.mention} was flagged for profanity. The message was automatically deleted.
-                
-                Contact a server admin for more info.
-                """
-                description = utils.standardize_str_indention(description)
-                embed = nextcord.Embed(title = "Profanity Detected", description = description, color = nextcord.Color.dark_red())
-                await message.channel.send(embed = embed, view = ui_components.InviteView(), delete_after = 10.0)
-            
-            # Send message to admin channel (if enabled)
-            if server.profanity_moderation_profile.channel != UNSET_VALUE:
-                admin_channel = message.guild.get_channel(server.profanity_moderation_profile.channel)
-                if admin_channel == None: 
-                    logging.warning(f"Could not find admin channel for server {message.guild.name} ({message.guild.id})")
-                elif await utils.check_text_channel_permissions(admin_channel, True, custom_channel_name = f"Admin Channel (#{admin_channel.name})"):
-                    view = IncorrectButtonView()
-
+    if action_successful:
+        # Notify the user that they were timed out via DM
+        # memberSettings = Member(message.author.id) # TODO When member settings are implemented
+        # if memberSettings.dms_enabled:
+        if True:
+            try:
+                # Check if they were timed out, or if it's just a strike
+                if timed_out:
                     description = f"""
-                    {message.author.mention} was flagged for profanity.
+                    You were flagged for profanity.
                     
-                    **Word:** {result}
+                    **Server:** {message.guild.name}
+                    **Word:** {profane_word}
                     **Message:** {message.content}
-                    **Channel**: {message.channel.mention}
                     
-                    This message was automatically deleted.
+                    You were timed out for {humanfriendly.format_timespan(server.profanity_moderation_profile.timeout_seconds)}.
+                    """
+                else:
+                    # It was just a strike. Tell them.
+                    current_strikes = server.moderation_strikes[message.author.id].strikes
+                    description = f"""
+                    You were flagged for profanity.
+                    
+                    **Server:** {message.guild.name}
+                    **Word:** {profane_word}
+                    **Message:** {message.content}
+                    
+                    You are now at strike {current_strikes} / {server.profanity_moderation_profile.max_strikes}.
                     """
 
-                    if timed_out:
-                        description += f"""
-                        {message.author.mention} was timed out for {humanfriendly.format_timespan(server.profanity_moderation_profile.timeout_seconds)}.
-                        """
-
-                    if server.profanity_moderation_profile.strike_system_active:
-                        description += f"""
-                        {message.author.mention} is now at strike {action_successful} / {server.profanity_moderation_profile.max_strikes}.
-                        """
-
-                    description = utils.standardize_str_indention(description)
+                description = utils.standardize_str_indention(description)
+                embed = nextcord.Embed(title = "Profanity Log", description = description, color = nextcord.Color.red(), timestamp = datetime.datetime.now())
+                embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
+                await message.author.send(embed = embed)
                     
-                    embed = nextcord.Embed(title = "Profanity Detected", description = description, color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
-                    embed.set_footer(text = f"Member ID: {str(message.author.id)}")
-                    
-                    await admin_channel.send(view = view, embed = embed)
+            except nextcord.Forbidden:
+                pass #the user has dms turned off. It's not a big deal, they just don't get notified.
+            except Exception as e:
+                logging.error(f"Error sending profanity DM to {message.author}: {e}", exc_info=True)
+
+    # Delete the message
+    message_deleted = False
+    try:
+        await message.delete()
+        message_deleted = True
+    except nextcord.errors.Forbidden:
+        await utils.send_error_message_to_server_owner(message.guild, "Manage Messages", channel = message.channel.name)
+    except Exception as e:
+        logging.error(f"Error deleting message after profanity check: {e}", exc_info=True)
+
+    # Send message in channel where profane word was sent.
+    if await utils.check_text_channel_permissions(message.channel, True):
+        description = f"""
+        {message.author.mention} was flagged for profanity. {"The message was automatically deleted." if message_deleted else "There was an error deleting the message."}
         
-        # Delete the message
-        try:
-            await message.delete()
-        except nextcord.errors.Forbidden:
-            await utils.send_error_message_to_server_owner(message.guild, "Manage Messages", channel = message.channel.name)
-        except Exception as e:
-            logging.error(f"Error deleting message after profanity check: {e}", exc_info=True)
+        Contact a server admin for more info.
+        """
+        description = utils.standardize_str_indention(description)
+        embed = nextcord.Embed(title = "Profanity Detected", description = description, color = nextcord.Color.dark_red())
+        await message.channel.send(embed = embed, view = ui_components.InviteView(), delete_after = 10.0)
+    
+    # Send message to admin channel (if enabled)
+    if server.profanity_moderation_profile.channel != UNSET_VALUE:
+        admin_channel = message.guild.get_channel(server.profanity_moderation_profile.channel)
+        if admin_channel == None: 
+            description = f"InfiniBot couln't find your server's admin channel (Moderation -> Profanity -> Admin Channel). It was either deleted, or the bot does not have permission to view it. Please go to the Moderation -> Profanity page of the `/dashboard` and configure the admin channel."
+            await utils.send_error_message_to_server_owner(message.guild, None, message=description)
+        elif await utils.check_text_channel_permissions(admin_channel, True, custom_channel_name = f"Admin Channel (#{admin_channel.name})"):
+            view = IncorrectButtonView()
 
+            description = f"""
+            {message.author.mention} was flagged for profanity.
+            
+            **Word:** {profane_word}
+            **Message:** {message.content}
+            **Channel**: {message.channel.mention}
+            
+            {"The message was automatically deleted." if message_deleted else "There was an error deleting the message."}
+            """
 
+            if timed_out:
+                description += f"""
+                {message.author.mention} was timed out for {humanfriendly.format_timespan(server.profanity_moderation_profile.timeout_seconds)}.
+                """
 
+            if server.profanity_moderation_profile.strike_system_active:
+                if message.author.id in server.moderation_strikes:
+                    current_strikes = server.moderation_strikes[message.author.id].strikes
+                else:
+                    current_strikes = 0
 
+                description += f"""
+                {message.author.mention} is now at strike {current_strikes} / {server.profanity_moderation_profile.max_strikes}.
+                """
 
-async def check_message_for_spam(message):
+            description = utils.standardize_str_indention(description)
+            
+            embed = nextcord.Embed(title = "Profanity Detected", description = description, color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
+            embed.set_footer(text = f"Member ID: {str(message.author.id)}")
+            
+            await admin_channel.send(view = view, embed = embed)
+    
+
+async def check_and_trigger_spam_moderation_for_message(message: nextcord.Message, server: Server):
     return
 
 
-async def check_and_run_moderation_commands(message: nextcord.Message):
+async def check_and_run_moderation_commands(bot: nextcord.client, message: nextcord.Message):
     if message.guild == None: return # Guild not loaded yet.
 
-    # if message.author.guild_permissions.administrator: # Don't check profanity for admins
-    #     logging.debug(f"Skipped profanity check for admin in {__name__}: {message.author}")
-    #     return
+    if message.author.guild_permissions.administrator: # Don't check profanity for admins
+        logging.debug(f"Skipped profanity check for admin in {__name__}: {message.author}")
+        return
     
     server = Server(message.guild.id)
 
-    logging.info(server.moderation_strikes[message.author.id].strikes)
-    server.moderation_strikes.edit(message.author.id, strikes=0)
+    with log_manager.LogIfFailure(feature="check_message_for_profanity"):
+        message_is_profane = await check_and_trigger_profanity_moderation_for_message(bot, server, message, skip_admin_check=True)
+        if message_is_profane: return
 
-    message_is_profane = await check_message_for_profanity(server, message, skip_admin_check=True)
-        
+    # Check Invites
+    if server.infinibot_settings_profile.delete_invites:
+        if "discord.gg/" in message.content.lower(): 
+            await message.delete()
+            return
 
-    # # Other Things
-    # if not message_is_profane:
-    #     # Check Invites
-    #     if server.delete_invites_enabled and not message.author.guild_permissions.administrator:
-    #         if "discord.gg/" in message.content.lower(): await message.delete()
-    #     # Check spam
-    #     if utils.enabled.SpamModeration(server = server) and not message.author.guild_permissions.administrator:
-    #         await checkSpam(message, server)
+    # Check spam
+    await check_and_trigger_spam_moderation_for_message(message, server)

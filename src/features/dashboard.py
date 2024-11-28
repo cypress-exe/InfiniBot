@@ -229,7 +229,21 @@ class Dashboard(CustomView):
                                 server = Server(interaction.guild.id)
 
                                 description = """
-                                    InfiniBot will automatically filter messages for profane words and their variants (English only). You can add or delete words to be filtered here:
+                                    InfiniBot will automatically filter messages for profane words. You can add or delete words to be filtered here:
+
+                                    **Customization**
+                                    - Starting / ending a word with a quote will make InfiniBot match the exact start / end.
+                                    ```
+                                    "apple → matches apple, apples, apple's, but not pineapple
+                                    apple" → matches apple, pineapple, but not apples or apple's
+                                    "apple" → matches only apple
+                                    ```
+                                    - Adding a "*" will make InfiniBot match any character at that point in the word.
+                                    ```
+                                    fruit* → matches fruity, fruits, grapefruit!, but not fruities
+                                    or**ge → matches orange, oreige, or!nge, but not orage or orang!e
+                                    ```
+                                    ​
                                 """
                                 description = utils.standardize_str_indention(description)
                                 

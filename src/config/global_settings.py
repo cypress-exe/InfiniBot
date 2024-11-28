@@ -5,7 +5,6 @@ from config.file_manager import JSONFile
 
 shards_loaded = []
 bot_loaded = False
-discord_bot:commands.AutoShardedBot = None
 
 feature_dependencies = {
     "dashboard": {"global_kill": "dashboard"},

@@ -6,7 +6,7 @@ import nextcord
 from nextcord import Interaction
 
 from config.global_settings import get_configs
-from components.utils import get_uuid_for_logging
+from core.log_manager import get_uuid_for_logging
 
 
 # View overrides

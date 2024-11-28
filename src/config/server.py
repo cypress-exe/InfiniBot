@@ -2,7 +2,7 @@ import json
 
 from nextcord import Embed as NextcordEmbed
 
-from components.utils import format_var_to_pythonic_type, log_class_exceptions_dec
+from components.utils import format_var_to_pythonic_type
 from modules.custom_types import UNSET_VALUE
 from modules.database import Database, DatabaseContextManager
 
@@ -22,7 +22,6 @@ def init_database():
 
 init_database()
 
-@log_class_exceptions_dec
 class Server_TableManager:
     def __init__(self, server_id:int, table_name:str):
         self.server_id = server_id
@@ -434,7 +433,6 @@ class Server_TableManager:
 
         return Server_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier, **kwargs)
 
-@log_class_exceptions_dec
 class IntegratedList_TableManager:
     """
     Manages a list that contains complex keyed data. (Limit 2 complex keys). Primarily used for lists within SQL.
@@ -689,7 +687,7 @@ class IntegratedList_TableManager:
         query = f"INSERT INTO {self.table_name} ({', '.join(data_dict.keys())}) VALUES ({placeholders})"
         database.execute_query(query, values, commit=True)
 
-    def edit(self, secondary_key_value, **kwargs):
+    def edit(self, *args, **kwargs):
         """
         Edit an existing entry in the list.
 
@@ -701,6 +699,14 @@ class IntegratedList_TableManager:
             ValueError: If the entry does not exist or no arguments are given.
             KeyError: If the primary key is being updated incorrectly or any provided keys are not found in the table.
         """
+        if len(args) >= 1:
+            secondary_key_value = args[0]
+        else:
+            # Check kwargs
+            if self.secondary_key_sql_name not in kwargs.keys():
+                raise KeyError(f"Secondary key \"{self.secondary_key_sql_name}\" not found in arguments.")
+            secondary_key_value = kwargs[self.secondary_key_sql_name]
+            
         if not self._check_entry_existence(secondary_key_value):
             raise ValueError(f"{self.primary_key_value}, {secondary_key_value} does not exist in database.")
         

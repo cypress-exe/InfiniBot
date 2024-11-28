@@ -1,9 +1,6 @@
 import datetime
 import logging
-import inspect
 import math
-import sys
-import traceback
 import uuid
 
 import dateparser
@@ -11,54 +8,6 @@ import nextcord
 from nextcord import Interaction
 
 from config.global_settings import feature_dependencies, get_global_kill_status
-
-
-def log_class_exceptions_dec(cls):
-    for name, member in cls.__dict__.items():
-        # Skip nested classes
-        if isinstance(member, type):
-            continue
-        
-        # Wrap methods that are callable and not magic methods
-        if callable(member) and not name.startswith("__"):
-            setattr(cls, name, log_func_exceptions_dec(member))
-    return cls
-
-def log_func_exceptions_dec(func):
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            # Capture the complete stack trace
-            stack = inspect.stack()
-            
-            # Extract relevant frames starting from the second one onward
-            relevant_frames = stack[1:]  # Skips the current wrapper frame
-            
-            # Format the frames into a readable traceback-like structure
-            formatted_frames = []
-            for frame in relevant_frames:
-                frame_info = (
-                    f"  File \"{frame.filename}\", line {frame.lineno}, in {frame.function}\n"
-                    f"    {''.join(frame.code_context or '').strip()}"
-                )
-                formatted_frames.append(frame_info)
-
-            # Invert frame order
-            formatted_frames = formatted_frames[::-1]
-            
-            # Join all frames and format the exception message
-            detailed_traceback = "\n".join(formatted_frames)
-            full_message = (
-                f"Unhandled exception in {func.__name__}:\n"
-                f"{detailed_traceback}\n"
-                f"{traceback.format_exc()}"  # Append Python's default traceback
-            )
-            
-            # Log the detailed traceback
-            logging.error(full_message)
-            raise  # Re-raise the original exception to propagate it
-    return wrapper
 
 
 def format_var_to_pythonic_type(_type:str, value):
@@ -255,9 +204,6 @@ def conversion_local_time_and_utc_time(utc_offset, local_time_str=None, utc_time
         # Return only the time component
         return utc_datetime.time()
 
-def get_uuid_for_logging():
-    return str(uuid.uuid4())
-
 
 def get_discord_color_from_string(color: str):
     if color == None or color == "": return nextcord.Color.default()
@@ -279,7 +225,7 @@ def get_discord_color_from_string(color: str):
     
     return nextcord.Color.default()
 
-def get_string_from_discord_color(color: nextcord.colour.Colour):
+def get_string_frolm_discord_color(color: nextcord.colour.Colour):
     if color == None or color == nextcord.Color.default(): return None
         
     if color == nextcord.Color.red(): return "Red"
@@ -623,19 +569,25 @@ async def timeout(member: nextcord.Member, seconds: int, reason: str = None):
     Returns
     ------
     optional [`True` | `False`]
-        True if the timeout was successful, False if there was an issue.
+        - "Success revoked" - If the member was successfully un-timed out
+        - "Success granted" - If the member was successfully timed out
+        - "Failure Forbidden" - If the member could not be timed out due to missing permissions
+        - "Failure Unknown" - If the member could not be timed out due to an error
     """
     # Check permissions
     if not member.guild.me.guild_permissions.moderate_members:
         await send_error_message_to_server_owner(member.guild, None, 
                                                  message = "InfiniBot is missing the **Moderate Members** permission which prevents it from timing out members.", 
                                                  administrator=False)
-        return False
+        return "Success revoked"
 
     try:
         if seconds == 0: await member.edit(timeout=None, reason = reason)
         else: await member.edit(timeout=nextcord.utils.utcnow()+datetime.timedelta(seconds=seconds), reason = reason)
-        return True
+        return "Success granted"
+    except nextcord.errors.Forbidden:
+        logging.debug(f"Missing permissions to timeout member {member.id} in guild {member.guild.id}")
+        return "Failure Forbidden"
     except Exception as e:
         logging.error(f"Error timing out member {member.id} in guild {member.guild.id}: {e}", exc_info=True)
-        return False
+        return "Failure Unknown"
