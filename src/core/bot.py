@@ -62,11 +62,11 @@ async def on_shard_ready(shard_id: int):
 async def view(interaction: Interaction):
     pass
 
-@bot.slash_command(name = "set", description = "Requires Infinibot Mod", dm_permission=False, guild_ids=[968872260557488158])
+@bot.slash_command(name = "set", description = "Requires Infinibot Mod", dm_permission=False)
 async def set(interaction: Interaction):
     pass
 
-@bot.slash_command(name = "create", description = "Requires Infinibot Mod", dm_permission=False, guild_ids=[968872260557488158])
+@bot.slash_command(name = "create", description = "Requires Infinibot Mod", dm_permission=False)
 async def create(interaction: Interaction):
     pass
 
