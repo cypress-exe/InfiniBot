@@ -361,10 +361,35 @@ def role_assignable_by_infinibot(role: nextcord.Role):
     return role.is_assignable()
 
 
+async def check_and_warn_if_channel_is_text_channel(interaction: Interaction):
+    """|coro|
+    
+    Check to see if the channel that this `Interaction` was used in was a `Text Channel`.
+    Notifies the user if this was not a `Text Channel`. Recommened to immediately return if this function returns False.
+
+    ------
+    Parameters
+    ------
+    interaction: `nextcord.Interaction`
+        The interaction.
+
+    Returns
+    ------
+    `bool`
+        Whether or not this is a text channel.
+    """    
+    
+    if type(interaction.channel) == nextcord.TextChannel:
+        return True
+    else:
+        await interaction.response.send_message(embed = nextcord.Embed(title = "You can't use that here!", description = "You can only use this command in text channels.", color = nextcord.Color.red()), ephemeral=True)
+        return False
+
 async def user_has_config_permissions(interaction: Interaction, notify = True):
     """|coro|
     
-    Determins if an interaction can be continued if it is protected by InfiniBot Mod.
+    Determines if an interaction can be continued if it is protected by InfiniBot Mod. NOT SILENT!!!
+    InfiniBot WILL warn the user if they do not have the required permissions.
 
     ------
     Parameters
@@ -526,7 +551,7 @@ async def check_server_for_infinibot_mod_role(guild: nextcord.Guild):
     Returns
     ------
     `bool`
-        True if the role was created. False if it already existed, another script was running, or failed.
+        True if the role was created. False if it already existed, or the process failed.
     """
     
     if not guild:

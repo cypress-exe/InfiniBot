@@ -1,6 +1,8 @@
 import json
+import logging
 
 from nextcord import Embed as NextcordEmbed
+from nextcord import Guild as NextcordGuild
 
 from components.utils import format_var_to_pythonic_type
 from modules.custom_types import UNSET_VALUE
@@ -795,8 +797,8 @@ class IntegratedList_TableManager:
 
 
 class Server:
-    def __init__(self, server_id:int):
-        self.server_id = server_id
+    def __init__(self, server_id:int):    
+        self.server_id = self._format_server_id(server_id)
 
         self._profanity_moderation_profile = None
         self._spam_moderation_profile = None
@@ -822,6 +824,20 @@ class Server:
 
     def __str__(self):
         return str(self.server_id)
+
+    def _format_server_id(self, server_id):
+        if isinstance(server_id, NextcordGuild):
+            logging.warning(f"Server ID {server_id} is an instance of nextcord.Guild. Implicitly converting to guild_id. This is not recommended.")
+            server_id = server_id.id
+        else:
+            if not isinstance(server_id, int):
+                try:
+                    logging.warning(f"Server ID {server_id} is not an integer. Implicitly converting to integer. This is not recommended.")
+                    server_id = int(server_id)
+                except ValueError:
+                    raise ValueError(f"Server ID {server_id} is not an integer.")
+                
+        return server_id
 
     def remove_all_data(self):
         '''Removes all data relating to this server from the database.'''

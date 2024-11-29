@@ -1,14 +1,16 @@
+import asyncio
 from collections import defaultdict
 import datetime
 import humanfriendly
 import logging
+import math
 import re
 from typing import List
 
 import nextcord
 
 from components import utils, ui_components
-from config.global_settings import get_configs
+from config.global_settings import get_configs, get_global_kill_status
 from config.server import Server
 from core import log_manager
 from modules.custom_types import UNSET_VALUE
@@ -74,8 +76,123 @@ class IncorrectButtonView(nextcord.ui.View):
     
     self.stop()
 
+
+async def check_profanity_moderation_enabled_and_warn_if_not(interaction: nextcord.Interaction):
+    """Runs a check whether moderation is active. NOT SILENT!"""
+    server = Server(interaction.guild.id)
+    if utils.feature_is_active(server = server, feature = "profanity_moderation"):
+        return True
+    else:
+        if get_global_kill_status()["profanity_moderation"]:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Moderation Tools Disabled", description = "Moderation has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+            return False
+        else:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Moderation Tools Disabled", description = "Moderation has been turned off. Go to the `/dashboard` to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
+            return False
+
+# Confirm that a nickname is not in violation of profanity
+async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: nextcord.Guild, before: nextcord.Member, after: nextcord.Member):
+    """Check to ensure that the edited nickname is in compliance with moderation"""
+    
+    member = after
+    nickname = after.nick
+    
+    if nickname == None: return
+    if member.guild_permissions.administrator: return
+    
+    server = Server(guild.id)
+    
+    if not utils.feature_is_active(server = server, feature = "profanity_moderation"): return
+
+    profane_word = str_is_profane(nickname, server.profanity_moderation_profile.filtered_words)
+    if profane_word != None:
+        
+        # Get the audit log
+        entry = list(await guild.audit_logs(limit=1).flatten())[0]
+        # Confirm that this entry is fresh (within 1 second)
+        entry_is_fresh = True
+        if (datetime.datetime.now(datetime.timezone.utc) - entry.created_at).seconds > 1: entry_is_fresh = False
+        user = entry.user
+        
+        if entry_is_fresh and user.id == member.id:
+            # User is the one who edited their nickname. Give them a strike
+            timeout_successful = await grant_and_punish_strike(bot, guild.id, member, 1)
+            if not timeout_successful: return
+
+            if server.profanity_moderation_profile.strike_system_active:
+                if member.id in server.moderation_strikes:
+                    strikes = server.moderation_strikes[member.id].strikes
+                else:
+                    strikes = 0
+            else:
+                strikes = 0
+
+        # Wait a second for other processes
+        await asyncio.sleep(1)
+
+        # They are in violation. Let's try to change their nickname back
+        nickname_removed = False
+        try:
+            await member.edit(nick = None)
+            nickname_removed = True
+        except nextcord.errors.Forbidden:
+            # Make sure the bot should have been able to do this
+            if after.top_role.position < after.guild.me.top_role.position:
+                # InfiniBot should have been able to do this. Warn the server owner.
+                await utils.send_error_message_to_server_owner(guild = guild, permission = "Manage Nicknames", guild_permission = True)
+
+        if entry_is_fresh and user.id == member.id:
+            # DM them
+            timeout_time = humanfriendly.format_timespan(server.profanity_moderation_profile.timeout_seconds)
+            if strikes == 0: strikes_info = f"\n\nYou were timed out for {timeout_time}"
+            else: strikes_info = f"\n\nYou are now at strike {strikes} / {server.profanity_moderation_profile.max_strikes}"
+            
+            embed = nextcord.Embed(title = "Profanity Detected", description = f"You were flagged for your nickname.\n\n**Server**: {guild.name}\n**Nickname:** {nickname}{strikes_info}", color = nextcord.Color.dark_red())
+            embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
+            await member.send(embed = embed)
+            
+            # Send a message to the admin channel
+            admin_channel_id = server.profanity_moderation_profile.channel
+            if admin_channel_id == UNSET_VALUE: return
+            admin_channel = guild.get_channel(admin_channel_id)
+            if admin_channel == None: return
+            if not await utils.check_text_channel_permissions(admin_channel, True, custom_channel_name = f"Admin Channel (#{admin_channel.name})"): return
+
+
+            description = f"""
+            {member.mention} was flagged for their nickname of \"{nickname}\".
+
+            {f"{member.mention} was timed out for {timeout_time}" if strikes == 0 else f"{member.mention} is now at strike {strikes} / {server.profanity_moderation_profile.max_strikes}"}
+
+            {"InfiniBot automatically reverted their nickname to their original name." if nickname_removed else "InfiniBot could not revert their nickname due to lack of permissions."}
+            """
+            description = utils.standardize_str_indention(description)
+            embed =  nextcord.Embed(title = "Profanity Detected", description = description, color = nextcord.Color.dark_red())
+            embed.set_footer(text = f"Member ID: {str(member.id)}")
+            await admin_channel.send(embed = embed, view = IncorrectButtonView())
+        else:
+            # User is not the one who edited their nickname
+
+            # Send a message to the admin channel
+            admin_channel_id = server.profanity_moderation_profile.channel
+            if admin_channel_id == UNSET_VALUE: return
+            admin_channel = guild.get_channel(admin_channel_id)
+            if admin_channel == None: return
+            if not await utils.check_text_channel_permissions(admin_channel, True, custom_channel_name = f"Admin Channel (#{admin_channel.name})"): return
+
+            description = f"""
+            {user.mention} edited {member.mention}'s nickname to \"{nickname}\". It was flagged for profanity.
+
+            {"InfiniBot automatically reverted their nickname to their original name." if nickname_removed else "InfiniBot could not revert their nickname due to lack of permissions."}
+            """
+            description = utils.standardize_str_indention(description)
+            embed =  nextcord.Embed(title = "Profanity Detected", description = description, color = nextcord.Color.dark_red())
+            embed.set_footer(text = f"Member ID: {str(member.id)}")
+            await admin_channel.send(embed = embed)
+
 def str_is_profane(message: str, database: list[str]):
     def generate_regex_pattern(word: str):
+        word = word.lower()
         word = word.replace("*", ".")
 
         if not word.startswith("\""):
@@ -92,6 +209,7 @@ def str_is_profane(message: str, database: list[str]):
 
     regex_patterns = [re.compile(generate_regex_pattern(pattern)) for pattern in database]
 
+    message = message.lower()
     # Check the pattern
     for pattern in regex_patterns:
         match = pattern.search(message)
@@ -143,7 +261,7 @@ def update_strikes_for_member(guild_id:int, member_id:int, amount:int):
 
     return updated_strike_count
 
-async def grant_and_punnish_strike(bot: nextcord.client, guild_id: int, member: nextcord.Member, amount: int, server = None, strike_data = None):
+async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: nextcord.Member, amount: int, server = None, strike_data = None):
     """|coro|
     
     Handle giving or taking a strike to/from a member.
@@ -223,16 +341,16 @@ async def check_and_trigger_profanity_moderation_for_message(bot: nextcord.clien
     # Checks
     if not utils.feature_is_active(server = server, feature = "profanity_moderation"): return
     if message.channel.type != nextcord.ChannelType.stage_voice and message.channel.is_nsfw():
-        logging.debug(f"Skipped profanity check for NSFW / stage channel: {message.channel}") 
+        logging.debug(f"Skipped profanity check for NSFW / stage channel: {message.channel}. Guild ID: {message.guild.id}") 
         return
 
     if not isinstance(message.author, nextcord.Member): 
-        logging.warning(f"Tried to check profanity for a non-member: {message.author}")
+        logging.warning(f"Tried to check profanity for a non-member: {message.author}. Guild ID: {message.guild.id}")
         return
     
     if not skip_admin_check:
         if message.author.guild_permissions.administrator: # Don't check profanity for admins
-            logging.debug(f"Skipped profanity check for admin: {message.author}")
+            logging.debug(f"Skipped profanity check for admin: {message.author}. Guild ID: {message.guild.id}")
             return
         
     # Message Content
@@ -248,7 +366,7 @@ async def check_and_trigger_profanity_moderation_for_message(bot: nextcord.clien
         return # No profanity found. Nothing to do.
     
     # Grant a strike (and maybe timeout)
-    action_successful = await grant_and_punnish_strike(bot, message.guild.id, message.author, 1)
+    action_successful = await grant_and_punish_strike(bot, message.guild.id, message.author, 1)
     
     timed_out = False if message.author.communication_disabled_until == None else True
 
@@ -440,6 +558,19 @@ def compare_attachments(attachments_1: List[nextcord.Attachment], attachments_2:
                     return True
         return False
 
+def normalized_exponential_decay(x, k=5):
+    """
+    Exponentially decay the input x (0 to 1) normalized to the range [0, 1].
+    
+    Parameters:
+        x (float): Input value between 0 and 1.
+        k (float): Decay rate (higher values decay faster).
+    
+    Returns:
+        float: The normalized exponentially decayed value.
+    """
+    return (1 - math.exp(-k * x)) / (1 - math.exp(-k))
+
 async def check_and_trigger_spam_moderation_for_message(message: nextcord.Message, server: Server):
     max_messages_to_check = get_configs()["spam_moderation"]["max_messages_to_check"]    # The MAXIMUM messages InfiniBot will try to check for spam
     message_chars_to_check_repetition = get_configs()["spam_moderation"]["message_chars_to_check_repetition"]    # A message requires these many characters before it is checked for repetition
@@ -480,25 +611,37 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
 
         score_addition = 0
         if within_time_window:
-            if _message.content == message.content:
-                score_addition += 25 # Weighted more
-            else:
-                similarity = get_percent_similar(_message.content, message.content)
-                if similarity >= 0.6:
-                    score_addition += similarity * 20
+            if _message.author.bot: continue
+            if _message.author.id != message.author.id: continue
+
+            if _message.id != message.id: # If it's not the same message
+                if _message.content == message.content:
+                    score_addition += 25 # Weighted more
+                else:
+                    similarity = get_percent_similar(_message.content, message.content)
+                    if similarity >= 0.6:
+                        score_addition += similarity * 20
 
             if len(_message.content) < 10:
-                score_addition += 7
+                impact = 1 if _message.id == message.id else 0.5
+                score_addition += 7 * impact
 
             # Check word count percentage
             if _message.content and len(_message.content) >= message_chars_to_check_repetition and check_repeated_words_percentage(_message.content):
-                score_addition += 25
+                impact = 1 if _message.id == message.id else 0.1
+                score_addition += 0.25 * len(_message.content) * impact
             
             # Check message attachments
             if compare_attachments(_message.attachments, message.attachments):
-                score_addition += 40
+                score_addition += 30
 
-            spam_score += score_addition * (server.spam_moderation_profile.time_threshold_seconds - time_difference_in_seconds)
+            # Cap score_addition at 50
+            if score_addition > 50:
+                score_addition = 50
+
+            impact = 1 if _message.id == message.id else normalized_exponential_decay(x=1-(time_difference_in_seconds / server.spam_moderation_profile.time_threshold_seconds), k=10) # Exponential decay
+            spam_score += score_addition * impact
+            logging.debug(f"{spam_score=}")
 
         else:
             break # If this message is outside of the time threshold window, previous ones will be too. Break out of the loop.
@@ -535,14 +678,51 @@ async def check_and_run_moderation_commands(bot: nextcord.client, message: nextc
 
     with log_manager.LogIfFailure(feature="check_and_trigger_profanity_moderation_for_message"):
         message_is_profane = await check_and_trigger_profanity_moderation_for_message(bot, server, message, skip_admin_check=True)
-        if message_is_profane: return
+        if message_is_profane: return True
 
     # Check Invites
     if server.infinibot_settings_profile.delete_invites:
         if "discord.gg/" in message.content.lower(): 
             await message.delete()
-            return
+            return True
 
     # Check spam
     with log_manager.LogIfFailure(feature="check_and_trigger_spam_moderation_for_message"):
         await check_and_trigger_spam_moderation_for_message(message, server)
+        return True
+    
+async def run_my_strikes_command(interaction: nextcord.Interaction):
+    if not await check_profanity_moderation_enabled_and_warn_if_not(interaction): return
+
+    server = Server(interaction.guild.id)
+    if interaction.user.id in server.moderation_strikes:
+        strike = server.moderation_strikes[interaction.user.id]
+    else:
+        strike = 0
+
+    await interaction.response.send_message(embed = nextcord.Embed(title = f"My Strikes", description = f"You are at {str(strike)} strike(s)", 
+                                                                   color =  nextcord.Color.blue()), ephemeral = True)
+
+async def run_view_member_strikes_command(interaction: nextcord.Interaction, member: nextcord.Member):
+    if await utils.user_has_config_permissions(interaction):
+        server = Server(interaction.guild.id)
+        if not await check_profanity_moderation_enabled_and_warn_if_not(interaction): return
+
+        server = Server(interaction.guild.id)
+        if member.id in server.moderation_strikes:
+            strike = server.moderation_strikes[member.id]
+        else:
+            strike = 0
+
+        embed = nextcord.Embed(title = f"View Member Strikes", description = f"{member.mention} is at {str(strike)} strike(s).", color =  nextcord.Color.blue())
+        await interaction.response.send_message(embed = embed, ephemeral = True)
+
+async def run_set_admin_channel_command(interaction: nextcord.Interaction):
+   if await utils.user_has_config_permissions(interaction) and await utils.check_and_warn_if_channel_is_text_channel(interaction):
+        server = Server(interaction.guild.id)
+
+        server.profanity_moderation_profile.channel = interaction.channel.id
+
+        embed = nextcord.Embed(title = "Admin Channel Set", description = f"Moderation updates and alerts will now be logged in this channel.\n\n**Ensure Admin-Only Access**\nThis channel lets members report incorrect strikes, so limit access to admins.", color =  nextcord.Color.green())
+        embed.set_footer(text = f"Action done by {interaction.user}")
+        await interaction.response.send_message(embed = embed, view = ui_components.SupportAndInviteView())

@@ -1,7 +1,7 @@
 import datetime
 import logging
 import nextcord
-from nextcord import AuditLogAction, Interaction, SlashOption
+from nextcord import Interaction, SlashOption
 from nextcord.ext import commands
 
 from components import ui_components, utils
@@ -9,10 +9,8 @@ from config.server import Server
 import config.global_settings as global_settings
 from config.file_manager import JSONFile
 from core import log_manager
-from features.admin_commands import check_and_run_admin_commands
-from features.dashboard import run_dashboard_command
-from features.dm_commands import check_and_run_dm_commands
-from features.moderation import check_and_run_moderation_commands
+from core.log_manager import LogIfFailure
+from features import action_logging, admin_commands, dashboard, dm_commands, moderation
 
 
 # INIT BOT ==============================================================================================================================================================
@@ -60,13 +58,56 @@ async def on_shard_ready(shard_id: int):
 
 
 # SLASH COMMANDS ==============================================================================================================================================================
-@bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", dm_permission=False)
-async def dashboard(interaction: Interaction):
-    await run_dashboard_command(interaction)
+@bot.slash_command(name = "view", description = "Requires Infinibot Mod", dm_permission=False)
+async def view(interaction: Interaction):
+    pass
 
-@bot.slash_command(name = "create_infinibot_mod_role", description = "Manually trigger InfiniBot to create the Infinibot Mod role", dm_permission=False)
+@bot.slash_command(name = "set", description = "Requires Infinibot Mod", dm_permission=False, guild_ids=[968872260557488158])
+async def set(interaction: Interaction):
+    pass
+
+@bot.slash_command(name = "create", description = "Requires Infinibot Mod", dm_permission=False, guild_ids=[968872260557488158])
+async def create(interaction: Interaction):
+    pass
+
+# COMMANDS ================================================================================================================================================================
+@bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", dm_permission=False)
+async def dashboard_command(interaction: Interaction):
+    await dashboard.run_dashboard_command(interaction)
+
+@create.subcommand(name = "infinibot_mod_role", description = "Manually trigger InfiniBot to create the Infinibot Mod role")
 async def create_infinibot_mod_role(interaction: Interaction):
-    await utils.check_server_for_infinibot_mod_role(interaction)
+    role_created = await utils.check_server_for_infinibot_mod_role(interaction.guild)
+
+    if role_created:
+        embed = nextcord.Embed(title = "InfiniBot Mod role created!", 
+                               description="InfiniBot Mod role has been created. Assign the role to yourself and your admins to unlock all of InfiniBot's features.",
+                               color = nextcord.Colour.green())
+        await interaction.response.send_message(embed = embed, ephemeral = True)
+    else:
+        embed = nextcord.Embed(title = "Error creating InfiniBot Mod role.",
+                               description="InfiniBot Mod role either already exists or could not be created. Please try again, or contact the support team if the issue persists.",
+                               color = nextcord.Colour.red())
+        await interaction.response.send_message(embed = embed, ephemeral = True, view=ui_components.SupportView())
+
+
+@view.subcommand(name = "my_strikes", description = "View your strikes")
+async def my_strikes(interaction: Interaction):
+    await moderation.run_my_strikes_command(interaction)
+
+@view.subcommand(name = "member_strikes", description = "View another member's strikes. (Requires Infinibot Mod)")
+async def view_member_strikes(interaction: Interaction, member: nextcord.Member):
+    await moderation.run_view_member_strikes_command(interaction, member)
+
+@set.subcommand(name = "admin_channel", description = "Use this channel to log strikes. Channel should only be viewable by admins. (Requires Infinibot Mod)")
+async def set_admin_channel(interaction: Interaction):
+    await moderation.run_set_admin_channel_command(interaction)
+
+
+
+@set.subcommand(name = "log_channel", description = "Use this channel for logging. Channel should only be viewable by admins. (Requires Infinibot Mod)")
+async def set_log_channel(interaction: Interaction):
+    await action_logging.run_set_log_channel_command(interaction)
 
 # ERROR HANDLING ==============================================================================================================================================================
 @bot.event
@@ -99,8 +140,8 @@ async def on_message(message: nextcord.Message):
       
     # DM Commands ---------------------------------------------
     if message.guild == None:
-        await check_and_run_dm_commands(bot, message)
-        await check_and_run_admin_commands(message)
+        await dm_commands.check_and_run_dm_commands(bot, message)
+        await admin_commands.check_and_run_admin_commands(message)
         return
 
     # Moderation
@@ -111,16 +152,107 @@ async def on_message(message: nextcord.Message):
         return
 
     # Moderation
-    message_is_profane = await check_and_run_moderation_commands(bot, message)
+    message_is_bad = await moderation.check_and_run_moderation_commands(bot, message)
     
-    # if not message_is_profane:
+    # if not message_is_bad:
     #     # Give levels
     #     if utils.enabled.Leveling(server = server): await giveLevels(message)
-    #     await check_and_run_admin_commands(message)
+    #     await admin_commands.check_and_run_admin_commands(message)
 
 
     # Continue with the Rest of the bot commands
     await bot.process_commands(message)
+
+@bot.event
+async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent):
+    guild = None
+    for _guild in bot.guilds:
+        if _guild.id == payload.guild_id:
+            guild = _guild
+            break
+    if guild == None: return
+
+    # Find the channel
+    channel = None
+    for channel in guild.channels:
+        if channel.id == payload.channel_id:
+            channel = channel
+            break
+    if channel == None: return
+    
+    if not channel.permissions_for(guild.me).read_message_history:
+        await utils.send_error_message_to_server_owner(guild, "View Message History", channel = f"one or more channels (including #{channel.name})")
+        return
+    
+    # If we have it, grab the before message
+    before_message = payload.cached_message
+    
+    # Find the message
+    after_message = None
+    try:
+        history = await channel.history().flatten()
+        for message in history:
+            if history.index(message) > 500: return # Only check the last 500 messages
+            if int(message.id) == int(payload.message_id):
+                after_message: nextcord.Message = message
+                break
+    except:
+        return
+    
+    # Punish profanity (if any)
+    with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
+        await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), after_message)
+            
+    # Log the message
+    with LogIfFailure(feature="action_logging.log_raw_message_edit"):
+        await action_logging.log_raw_message_edit(guild, before_message, after_message)
+
+@bot.event
+async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
+    # Find the message (CSI Time!)
+    message = None
+    guild = None
+    for _guild in bot.guilds:
+        if _guild.id == payload.guild_id:
+            guild = _guild
+            break
+    if guild == None: return
+
+    channel = None
+    for _channel in guild.channels:
+        if _channel.id == payload.channel_id:
+            channel = _channel
+            break
+    
+    if channel == None: return
+
+    message = payload.cached_message
+
+    # Log the message
+    with LogIfFailure(feature="action_logging.log_raw_message_delete"):
+        await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id)
+
+@bot.event
+async def on_member_update(before: nextcord.Member, after: nextcord.Member):
+        # Log the update
+    with LogIfFailure(feature="action_logging.log_member_update"):
+        await action_logging.log_member_update(before, after)
+    
+    # Check profanity
+    if before.nick != after.nick:
+        with LogIfFailure(feature="moderation.check_and_punish_nickname_for_profanity"):
+            if after.nick != None: await moderation.check_and_punish_nickname_for_profanity(bot, after.guild, before, after)
+
+@bot.event
+async def on_member_remove(member: nextcord.Member):
+    # Log the removal
+    with LogIfFailure(feature="action_logging.log_member_removal"):
+        await action_logging.log_member_removal(member.guild, member)
+
+@bot.event
+async def on_guild_channel_delete(channel: nextcord.abc.GuildChannel):
+    # TODO Delete message info from channels that are deleted.
+    pass
 
 # RUN BOT ==============================================================================================================================================================================
 def run():

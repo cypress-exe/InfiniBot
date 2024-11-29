@@ -415,7 +415,7 @@ class Dashboard(CustomView):
                             await self.outer.setup(interaction)
                                 
                             #send a message to the new admin channel
-                            embed = nextcord.Embed(title = "Admin Channel Set", description = f"Strikes will now be logged in this channel.\n\n**Ensure Admin-Only Access**\nThis channel lets members report incorrect strikes, so limit access to admins.", color =  nextcord.Color.green())
+                            embed = nextcord.Embed(title = "Admin Channel Set", description = f"Moderation updates and alerts will now be logged in this channel.\n\n**Ensure Admin-Only Access**\nThis channel lets members report incorrect strikes, so limit access to admins.", color =  nextcord.Color.green())
                             embed.set_footer(text = f"Action done by {interaction.user}")
                             discord_channel = interaction.guild.get_channel(server.profanity_moderation_profile.channel)
                             await discord_channel.send(embed = embed, view = ui_components.SupportAndInviteView())

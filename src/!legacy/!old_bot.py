@@ -4186,7 +4186,7 @@ async def checkProfanity(server: Server_DEP, message: nextcord.Message):
 
             
         # Delete the message
-        auto_deleted_message_time = datetime.datetime.utcnow()
+        auto_deleted_message_time = datetime.datetime.now(datetime.timezone.utc)
         
         try:
             await message.delete()
@@ -4284,7 +4284,7 @@ async def checkSpam(message: nextcord.Message, server: Server_DEP):
         
         # Check message content and attachments
         if _message.content == message.content or compareAttachments(_message.attachments, message.attachments):
-            timeNow = datetime.datetime.utcnow() - datetime.timedelta(seconds = 2 * server.messages_threshold) # ======= Time Threshold =========
+            timeNow = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(seconds = 2 * server.messages_threshold) # ======= Time Threshold =========
             timeNow = timeNow.replace(tzinfo=datetime.timezone.utc)  # Make timeNow offset-aware
             
             # If the message is within the time threshold window, add that message.
@@ -6354,7 +6354,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
     time.sleep(1) #we need this time delay for some other features
 
     if auto_deleted_message_time != None: #see if this is InfiniBot's doing
-        if ((datetime.datetime.utcnow() - auto_deleted_message_time).seconds <= 5):
+        if ((datetime.datetime.now(datetime.timezone.utc) - auto_deleted_message_time).seconds <= 5):
             return
     
     #find the message (CSI Time!)
@@ -6405,7 +6405,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
         
         #log whether or not the audit log is fresh enough to be accurate (within 5 seconds)
         if entry:
-            freshAuditLog = (entry.created_at.month == datetime.datetime.utcnow().month and entry.created_at.day == datetime.datetime.utcnow().day and entry.created_at.hour == datetime.datetime.utcnow().hour and ((datetime.datetime.utcnow().minute - entry.created_at.minute) <= 5))
+            freshAuditLog = (entry.created_at.month == datetime.datetime.now(datetime.timezone.utc).month and entry.created_at.day == datetime.datetime.now(datetime.timezone.utc).day and entry.created_at.hour == datetime.datetime.now(datetime.timezone.utc).hour and ((datetime.datetime.now(datetime.timezone.utc).minute - entry.created_at.minute) <= 5))
         else:
             freshAuditLog = False
         
