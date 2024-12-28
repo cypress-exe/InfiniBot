@@ -58,20 +58,24 @@ async def on_shard_ready(shard_id: int):
 
 
 # SLASH COMMANDS ==============================================================================================================================================================
-@bot.slash_command(name = "view", description = "Requires Infinibot Mod", dm_permission=False)
+@bot.slash_command(name = "view", description = "Requires Infinibot Mod", integration_types=[nextcord.IntegrationType.guild_install])
 async def view(interaction: Interaction):
     pass
 
-@bot.slash_command(name = "set", description = "Requires Infinibot Mod", dm_permission=False)
+@bot.slash_command(name = "set", description = "Requires Infinibot Mod", integration_types=[nextcord.IntegrationType.guild_install])
 async def set(interaction: Interaction):
     pass
 
-@bot.slash_command(name = "create", description = "Requires Infinibot Mod", dm_permission=False)
+@bot.slash_command(name = "create", description = "Requires Infinibot Mod", integration_types=[nextcord.IntegrationType.guild_install])
 async def create(interaction: Interaction):
     pass
 
+@bot.slash_command(name = "help", description="Help with the InfiniBot.")
+async def help(interaction: Interaction):
+    pass
+
 # COMMANDS ================================================================================================================================================================
-@bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", dm_permission=False)
+@bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", integration_types=[nextcord.IntegrationType.guild_install])
 async def dashboard_command(interaction: Interaction):
     await dashboard.run_dashboard_command(interaction)
 
@@ -183,6 +187,9 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent):
     if not channel.permissions_for(guild.me).read_message_history:
         await utils.send_error_message_to_server_owner(guild, "View Message History", channel = f"one or more channels (including #{channel.name})")
         return
+    if not guild.me.guild_permissions.view_audit_log:
+        await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
+        return
     
     # If we have it, grab the before message
     before_message = payload.cached_message
@@ -190,9 +197,7 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent):
     # Find the message
     after_message = None
     try:
-        history = await channel.history().flatten()
-        for message in history:
-            if history.index(message) > 500: return # Only check the last 500 messages
+        async for message in channel.history(limit=500):
             if int(message.id) == int(payload.message_id):
                 after_message: nextcord.Message = message
                 break
@@ -234,7 +239,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
 
 @bot.event
 async def on_member_update(before: nextcord.Member, after: nextcord.Member):
-        # Log the update
+    # Log the update
     with LogIfFailure(feature="action_logging.log_member_update"):
         await action_logging.log_member_update(before, after)
     

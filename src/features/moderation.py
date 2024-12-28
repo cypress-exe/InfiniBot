@@ -106,9 +106,13 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
 
     profane_word = str_is_profane(nickname, server.profanity_moderation_profile.filtered_words)
     if profane_word != None:
-        
         # Get the audit log
-        entry = list(await guild.audit_logs(limit=1).flatten())[0]
+        if not guild.me.guild_permissions.view_audit_log:
+            await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission=True)
+            return
+        entry = await anext(guild.audit_logs(limit=1, action=nextcord.AuditLogAction.member_update), None)
+        if entry == None: return
+
         # Confirm that this entry is fresh (within 1 second)
         entry_is_fresh = True
         if (datetime.datetime.now(datetime.timezone.utc) - entry.created_at).seconds > 1: entry_is_fresh = False
@@ -214,7 +218,7 @@ def str_is_profane(message: str, database: list[str]):
     for pattern in regex_patterns:
         match = pattern.search(message)
         if match:
-            return match
+            return match.group(0)
 
     return None
 
@@ -406,9 +410,10 @@ async def check_and_trigger_profanity_moderation_for_message(bot: nextcord.clien
                 await message.author.send(embed = embed)
                     
             except nextcord.Forbidden:
-                pass #the user has dms turned off. It's not a big deal, they just don't get notified.
+                pass # The user has dms turned off. It's not a big deal, they just don't get notified.
             except Exception as e:
                 logging.error(f"Error sending profanity DM to {message.author}: {e}", exc_info=True)
+                logging.info(f"Extra info for above error: {message.author.id=} {message.guild.id=} {timed_out=}")
 
     # Delete the message
     message_deleted = False
@@ -590,11 +595,11 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
         limit = max_messages_to_check
 
     # Get previous messages
-    previous_messages = await message.channel.history(limit=limit).flatten()
+    previous_messages = message.channel.history(limit=limit)
     
     # Loop through each previous message and test it
     spam_score = 0
-    for _message in previous_messages:
+    async for _message in previous_messages:
         if spam_score >= server.spam_moderation_profile.score_threshold:
             break
         
