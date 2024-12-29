@@ -9,9 +9,10 @@ import unittest
 
 from components.utils import feature_is_active
 from config.file_manager import JSONFile
-import config.server as server
+from config.member import Member
 from config.server import Server
 from config.global_settings import get_global_kill_status, get_persistent_data
+import core.db_manager as db_manager
 from core.log_manager import setup_logging
 from modules.custom_types import UNSET_VALUE
 from modules.database import Database
@@ -19,8 +20,8 @@ from modules.database import Database
 
 def hijack_database_url():
     logging.warning("Hijacking database url to use memory database")
-    server.database_url = "sqlite:///"
-    server.init_database()
+    db_manager.database_url = "sqlite:///"
+    db_manager.init_database()
 
 # Database Tests
 class TestDatabase(unittest.TestCase):
@@ -717,6 +718,75 @@ class TestServer(unittest.TestCase):
         test.run(self)
 
         server.remove_all_data()
+
+class TestMember(unittest.TestCase):
+    def __init__(self, methodName:str = ...) -> None:
+        super().__init__(methodName)
+
+    def test_member_creation(self):
+        logging.info("Testing Member...")
+
+        member = Member(123456789)
+        self.assertEqual(member.member_id, 123456789)
+
+        member.remove_all_data()
+
+    def run_test_on_property(self, primary_member_instance:Member, property_name:str, default_value, test_values):
+        logging.debug(f'Testing property "{property_name}". Default value: {default_value}, test values: {test_values}')
+        
+        def get_property(member, property_name):
+            """Fetches the property from Member, handling itemized properties."""
+            split_property_name = property_name.split("[")
+            if len(split_property_name) == 2:
+                item_name = split_property_name[1][:-1]  # Remove trailing "]"
+                return getattr(member, split_property_name[0])[item_name]
+            return getattr(member, property_name)
+
+        def set_property(member, property_name, value):
+            """Sets the property with Member, handling itemized properties."""
+            split_property_name = property_name.split("[")
+            if len(split_property_name) == 2:
+                item_name = split_property_name[1][:-1]  # Remove trailing "]"
+                prop = getattr(member, split_property_name[0])
+                prop[item_name] = value
+                setattr(member, split_property_name[0], prop)
+            else:
+                setattr(member, property_name, value)
+
+        # Check the default value
+        self.assertEqual(get_property(primary_member_instance, property_name), default_value, msg=f"Default value for \"{property_name}\" is claimed to be \"{default_value}\", but is \"{get_property(primary_member_instance, property_name)}\".")
+
+        # Ensure test_values is a list
+        if not isinstance(test_values, list):
+            test_values = [test_values]
+
+        # Check each test value
+        for test_value in test_values:
+            set_property(primary_member_instance, property_name, test_value)
+            self.assertEqual(get_property(primary_member_instance, property_name), test_value)
+
+            # Create a new server instance and verify the property value is consistent
+            new_member_instance = Member(primary_member_instance.member_id)
+            self.assertEqual(get_property(new_member_instance, property_name), test_value)
+            del new_member_instance
+
+    def test_member_profile(self):
+        member_id = random.randint(0, 1000000000)
+
+        member = Member(member_id)
+
+        # Using run_test_on_property
+        self.run_test_on_property(member, "level_up_card_enabled", False, [True, False])
+        self.run_test_on_property(member, "join_card_enabled", False, [True, False])
+        self.run_test_on_property(member, "level_up_card_embed[title]", "Yum... Levels", ["Title_Changed", None])
+        self.run_test_on_property(member, "level_up_card_embed[description]", "I am level [level]!", ["Description_Changed"])
+        self.run_test_on_property(member, "level_up_card_embed[color]", "Purple", ["Red", "Green", "White", None])
+        self.run_test_on_property(member, "join_card_embed[title]", "About Me", ["Title_Changed", None])
+        self.run_test_on_property(member, "join_card_embed[description]", "I am human", ["Description_Changed"])
+        self.run_test_on_property(member, "join_card_embed[color]", "Green", ["Red", "Purple", "White", None])
+        self.run_test_on_property(member, "direct_messages_enabled", True, [False, True])
+
+        member.remove_all_data()
 
 class TestFileManager(unittest.TestCase):
     def test_json_file(self):

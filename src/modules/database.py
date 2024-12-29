@@ -1,3 +1,4 @@
+import atexit
 import logging
 import os
 import re
@@ -5,7 +6,7 @@ import re
 from typing import Any, Generator
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 from sqlalchemy.pool import QueuePool
 
 from components.utils import format_var_to_pythonic_type
@@ -62,6 +63,18 @@ class Database:
 
         self.build_database(db_build_file_path) # Database must be valid at initialization
         self.index_tables() # Index tables at runtime
+        atexit.register(self.cleanup)  # Ensure cleanup at program exit
+
+    def cleanup(self):
+        """
+        Dispose of the database engine and free resources.
+        """
+        if self.engine:
+            self.engine.dispose()
+            logging.info("Database engine disposed.")
+
+    def __del__(self):
+        self.cleanup()
 
     def execute_query(self, sql: str, args: dict = {}, commit: bool = False, multiple_values: bool = False):
         """
@@ -78,19 +91,20 @@ class Database:
                 multiple_values = False: Query result(s) simplified to a single value.
                 multiple_values = True: All query results wrapped in a list.
         """
-        session = self.Session()
-        try:
-            result = session.execute(text(sql), args)
-            data = result.fetchall() if result.returns_rows else None
-            if commit:
-                session.commit()
-        except Exception as e:
-            logging.error(f"Error executing SQL query: {sql}", exc_info=True)
-            session.rollback()
-            raise Exception(e)
-        finally:
-            session.close()
-        return data if multiple_values else self.get_query_first_value(data)
+        # Use scoped_session if self.Session isn't already a scoped_session
+        session_factory = scoped_session(self.Session) if not isinstance(self.Session, scoped_session) else self.Session
+
+        with session_factory() as session:
+            try:
+                result = session.execute(text(sql), args)
+                data = result.fetchall() if result.returns_rows else None
+                if commit:
+                    session.commit()
+            except Exception as e:
+                logging.error(f"Error executing SQL query: {sql}", exc_info=True)
+                session.rollback()
+                raise Exception(e)
+            return data if multiple_values else self.get_query_first_value(data)
     
     def build_database(self, build_file_path: str) -> None:
         """

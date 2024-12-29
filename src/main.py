@@ -104,6 +104,11 @@ if __name__ == "__main__":
     check_internet_connection()
     logging.info("Connection aquired!")
 
+    logging.info("Starting Database...")
+    import core.db_manager as db_manager
+    db_manager.init_database()
+    logging.info("Database started!")
+
     logging.info("Starting InfiniBot...")
     import core.bot as bot
     bot.run()

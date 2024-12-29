@@ -1,39 +1,39 @@
-# Documentation for `Server_TableManager` and `IntegratedList_TableManager`
+# Documentation for `Simple_TableManager` and `IntegratedList_TableManager`
 
-This document provides an overview of the `Server_TableManager` and `IntegratedList_TableManager` classes, their purposes, properties, and methods. These classes facilitate interaction with SQL tables for managing server-related data.
+This document provides an overview of the `Simple_TableManager` and `IntegratedList_TableManager` classes, their purposes, properties, and methods. These classes facilitate interaction with SQL tables for managing data linked by a primary key.
 
 ---
 
-## `Server_TableManager`
-The `Server_TableManager` class provides an abstraction for managing individual entries in a specific SQL table corresponding to a server.
+## `Simple_TableManager`
+The `Simple_TableManager` class provides an abstraction for managing individual entries in a specific SQL table keyed by a primary key.
 
 ### Constructor
 ```python
-Server_TableManager(server_id: int, table_name: str)
+Simple_TableManager(primary_id: int, table_name: str)
 ```
 #### Parameters:
-- `server_id` (int): The ID of the server the table entry corresponds to.
+- `primary_id` (int): The primary ID that the table entry corresponds to.
 - `table_name` (str): The name of the SQL table.
 
 ---
 
 ### Properties
 
-#### `server_id`
+#### `primary_id`
 - **Type**: `int`
-- The ID of the server this manager interacts with.
+- The ID that this manager interacts with.
 
 #### `table_name`
 - **Type**: `str`
 - The name of the SQL table this manager interacts with.
 
-#### `id_sql_name`
+#### `primary_id_sql_name`
 - **Type**: `str`
 - The name of the primary key column in the SQL table.
 
 #### `_entry_exists_in_table`
 - **Type**: `bool`
-- Indicates whether the entry exists in the table for the specified server ID.
+- Indicates whether the entry exists in the table for the specified ID.
 
 ---
 
@@ -56,20 +56,20 @@ Returns:
 - A dictionary mapping column names to their default values.
 
 #### `_ensure_existence`
-Ensures the server entry exists in the table. Creates the entry if it does not exist.
+Ensures an entry with the primary_id exists in the table. Creates the entry if it does not exist.
 
 #### `_init_regular_entry`
-Creates a new entry for the server.
+Creates a new entry for with the primary_id.
 - **Parameters**:
   - `table` (str): The table name.
-  - `server_id` (int): The server ID.
+  - `primary_id` (int): The primary ID.
 
 #### `_get_variable`
 Retrieves a variable from the SQL table.
 - **Parameters**:
   - `table` (str): The table name.
   - `column` (str): The column name.
-  - `server_id` (int): The server ID.
+  - `primary_id` (int): The primary ID.
 
 #### `_set_variable`
 Updates a variable in the SQL table.
@@ -110,13 +110,31 @@ Set `accept_duplicate_values` to false to mark duplicate values as invalid input
 
 ##### `embed_property`
 Defines an irregular property for embeds, supporting serialization and deserialization.
+- Custom Properties:
+  - Add / Edit property:
+    ```python
+    embed = this.profile.embed_property
+    embed["color"] = "Blue"
+    this.profile.embed_property = embed 
+    ```
+  - Remove property:
+    ```python
+    embed = this.profile.embed_property
+    embed.["color"] = None
+    this.profile.embed_property = embed 
+    ```
+  - Convert to Discord embed:
+    ```python
+    embed:nextcord.Embed = this.profile.embed_property.to_embed()
+    ```
+---
 
 #### Editing Regular Properties
 
 When working with regular properties, editing follows an intutive, pythonic structure.
 
 ```python
-server.profile.active = True
+this.profile.active = True
 ```
 
 #### Editing Irregular Properties
@@ -124,9 +142,9 @@ server.profile.active = True
 When working with some properties, editing must follow a specific pattern due to the hierarchical structure of these properties and the inability to automatically save hierarchical elements. Here's how you can edit irregular properties:
 
 ```python
-prop = server.profile.irregular_property
+prop = this.profile.irregular_property
 prop["subproperty"] = "Hello world"
-server.profile.irregular_property = prop
+this.profile.irregular_property = prop
 ```
 
 **Key Points:**
@@ -284,8 +302,3 @@ table_manager.delete(secondary_key_value)
 
 - `__str__()`:
   - Returns a string representation of all entries.
-
----
-
-### Summary
-Both `Server_TableManager` and `IntegratedList_TableManager` provide structured and efficient ways to interact with SQL tables in Python, enabling streamlined management of server-related data and lists with complex keys. Use these classes to simplify and abstract database operations in your application.

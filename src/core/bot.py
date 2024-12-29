@@ -10,7 +10,7 @@ import config.global_settings as global_settings
 from config.file_manager import JSONFile
 from core import log_manager
 from core.log_manager import LogIfFailure
-from features import action_logging, admin_commands, dashboard, dm_commands, moderation
+from features import action_logging, admin_commands, dashboard, dm_commands, moderation, profile
 
 
 # INIT BOT ==============================================================================================================================================================
@@ -37,8 +37,6 @@ async def on_ready():
           shard_id = guild.shard_id
           logging.debug(f"Guild: {guild.name} (ID: {guild.id}) is on shard {shard_id}")
 
-    
-
 @bot.event
 async def on_shard_ready(shard_id: int):
     """
@@ -56,6 +54,10 @@ async def on_shard_ready(shard_id: int):
     #     if admin_channel:
     #         await admin_channel.send(f"Shard {shard_id} is ready.")
 
+@bot.event
+async def on_close():
+    global_settings.bot_loaded = False
+    logging.fatal("InfiniBot is shutting down...")
 
 # SLASH COMMANDS ==============================================================================================================================================================
 @bot.slash_command(name = "view", description = "Requires Infinibot Mod", integration_types=[nextcord.IntegrationType.guild_install])
@@ -78,6 +80,10 @@ async def help(interaction: Interaction):
 @bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", integration_types=[nextcord.IntegrationType.guild_install])
 async def dashboard_command(interaction: Interaction):
     await dashboard.run_dashboard_command(interaction)
+
+@bot.slash_command(name = "profile", description = "Configure Your Profile In InfiniBot", integration_types=[nextcord.IntegrationType.guild_install])
+async def profile_command(interaction: Interaction):
+    await profile.run_profile_command(interaction)
 
 @create.subcommand(name = "infinibot_mod_role", description = "Manually trigger InfiniBot to create the Infinibot Mod role")
 async def create_infinibot_mod_role(interaction: Interaction):

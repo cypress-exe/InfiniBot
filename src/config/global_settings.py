@@ -8,6 +8,7 @@ bot_loaded = False
 
 feature_dependencies = {
     "dashboard": {"global_kill": "dashboard"},
+    "profile": {"global_kill": "profile"},
     # ------------------------------------------------------------------------------------------------------
     "profanity_moderation": {
         "global_kill": "profanity_moderation",
@@ -41,6 +42,7 @@ feature_dependencies = {
     "default_roles": {"global_kill": "default_roles"},
     # ------------------------------------------------------------------------------------------------------
     "join_to_create_vcs" : {"global_kill": "join_to_create_vcs"},
+    
 }
 
 
