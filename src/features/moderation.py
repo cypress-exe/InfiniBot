@@ -11,6 +11,7 @@ import nextcord
 
 from components import utils, ui_components
 from config.global_settings import get_configs, get_global_kill_status
+from config.member import Member
 from config.server import Server
 from core import log_manager
 from modules.custom_types import UNSET_VALUE
@@ -376,9 +377,8 @@ async def check_and_trigger_profanity_moderation_for_message(bot: nextcord.clien
 
     if action_successful:
         # Notify the user that they were timed out via DM
-        # memberSettings = Member(message.author.id) # TODO When member settings are implemented
-        # if memberSettings.dms_enabled:
-        if True:
+        member_settings = Member(message.author.id)
+        if member_settings.direct_messages_enabled:
             try:
                 # Check if they were timed out, or if it's just a strike
                 if timed_out:
@@ -658,8 +658,7 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
             await utils.timeout(message.author, server.spam_moderation_profile.timeout_seconds, reason=f"Spam Moderation: User exceeded spam message limit of {server.spam_moderation_profile.score_threshold}.")
             
             # Send them a message (if they want it)
-            # if Member(message.author.id).dms_enabled: # TODO
-            if True:
+            if Member(message.author.id).direct_messages_enabled:
                 timeout_time_ui_text = humanfriendly.format_timespan(server.spam_moderation_profile.timeout_seconds)
                 await message.author.send(
                     embed=nextcord.Embed(

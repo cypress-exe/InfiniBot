@@ -1,14 +1,13 @@
 import datetime
 import logging
 import math
-import uuid
 
 import dateparser
 import nextcord
 from nextcord import Interaction
 
 from config.global_settings import feature_dependencies, get_global_kill_status
-
+from config.member import Member
 
 def format_var_to_pythonic_type(_type:str, value):
   """
@@ -501,10 +500,12 @@ async def send_error_message_to_server_owner(guild: nextcord.Guild, permission, 
     logging.info(f"Sending error message to server owner (guild_id: {guild.id}). ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
     member = guild.owner
     
-    # if member == None: return
-    # member_settings = Member(member.id) # TODO get this working when members are working
-    # if not member_settings.dms_enabled: return
+    # Make sure the member has DMs enabled in their profile settings for InfiniBot
+    if member == None: return
+    member_settings = Member(member.id)
+    if not member_settings.direct_messages_enabled: return
     
+    # UI stuff
     if channel != None:
         channels = channel
     else:
