@@ -1,13 +1,12 @@
 import datetime
 import logging
-import math
 
 import dateparser
 import nextcord
 from nextcord import Interaction
 
 from config.global_settings import feature_dependencies, get_global_kill_status
-from config.member import Member
+
 
 def format_var_to_pythonic_type(_type:str, value):
   """
@@ -244,6 +243,54 @@ def get_string_frolm_discord_color(color: nextcord.colour.Colour):
     
     return None
 
+def replace_placeholders_in_embed(embed: nextcord.Embed, replacements: dict, member: nextcord.Member, guild: nextcord.Guild):
+    # Add more replacements
+    replacements["@displayname"] = member.display_name
+    replacements["@mention"] = member.mention
+    replacements["@username"] = member.name
+    replacements["@server"] = guild.name
+
+    # Replace placeholders with values
+    for key, value in replacements.items():
+        if embed.title:
+            embed.title = embed.title.replace(key, value)
+        if embed.description:
+            embed.description = embed.description.replace(key, value)
+        if embed.footer and embed.footer.text:
+            embed.footer.text = embed.footer.text.replace(key, value)
+        if embed.url:
+            embed.url = embed.url.replace(key, value)
+        
+        for field in embed.fields:
+            field.name = field.name.replace(key, value)
+            field.value = field.value.replace(key, value)
+    
+    # Optimization: Skip channel replacement if no "#" in the embed
+    embed_content = (
+        (embed.title or "") +
+        (embed.description or "") +
+        (embed.footer.text if embed.footer and embed.footer.text else "") +
+        "".join(field.name + field.value for field in embed.fields)
+    )
+    if "#" in embed_content:
+        # Replace channel names with mentions
+        for channel in guild.text_channels:
+            channel_placeholder = f"#{channel.name}"
+            channel_mention = channel.mention
+            
+            if embed.title:
+                embed.title = embed.title.replace(channel_placeholder, channel_mention)
+            if embed.description:
+                embed.description = embed.description.replace(channel_placeholder, channel_mention)
+            if embed.footer and embed.footer.text:
+                embed.footer.text = embed.footer.text.replace(channel_placeholder, channel_mention)
+            
+            for field in embed.fields:
+                field.name = field.name.replace(channel_placeholder, channel_mention)
+                field.value = field.value.replace(channel_placeholder, channel_mention)
+    
+    return embed
+
 def feature_is_active(**kwargs):
     """
     Checks if a feature is active for a server (or globally).
@@ -313,32 +360,6 @@ def feature_is_active(**kwargs):
 
     logging.debug(f"Determined that feature {feature} is enabled in the server. Key: {key}")
     return True
-
-def convert_score_and_level(score: int = None, level: int = None):
-    if score != None: # CALCULATING LEVEL
-        score /= 10
-        if score == 0: return 0
-        return(math.floor(score ** 0.65)) # levels are calculated by x^0.65
-    
-    elif level != None: # CALCULATING SCORE
-        if level == 0: return 0
-    
-        score = level**(1/0.65)
-        score *= 10
-        score = math.floor(score)
-        
-        for _ in range(0, 100):
-            if convert_score_and_level(score=score) == level:
-                return score
-            elif convert_score_and_level(score=score) > level:
-                score -= 1
-            else:
-                score += 1
-        
-        return(score) #levels are calculated by x^0.65
-    
-    else:
-        raise ValueError(f"Error: {__name__} received no score or level.")
 
 def role_assignable_by_infinibot(role: nextcord.Role):
     """Determins if InfiniBot can assign a role.
@@ -449,18 +470,18 @@ async def check_text_channel_permissions(channel: nextcord.TextChannel, auto_war
     if channel.guild.me == None:
         return False
     
-    channelName = (custom_channel_name if custom_channel_name else channel.name)
+    channel_name = (custom_channel_name if custom_channel_name else channel.name)
     
     if channel.permissions_for(channel.guild.me).view_channel:
         if channel.permissions_for(channel.guild.me).send_messages:
             if channel.permissions_for(channel.guild.me).embed_links:
                 return True
             elif auto_warn:
-                await send_error_message_to_server_owner(channel.guild, "Embed Links", channel = channelName, administrator = False)
+                await send_error_message_to_server_owner(channel.guild, "Embed Links", channel = channel_name, administrator = False)
         elif auto_warn:
-            await send_error_message_to_server_owner(channel.guild, "Send Messages and/or Embed Links", channel = channelName, administrator = False)
+            await send_error_message_to_server_owner(channel.guild, "Send Messages and/or Embed Links", channel = channel_name, administrator = False)
     elif auto_warn:
-        await send_error_message_to_server_owner(channel.guild, "View Channels", channel = channelName, administrator = False)
+        await send_error_message_to_server_owner(channel.guild, "View Channels", channel = channel_name, administrator = False)
 
     return False
 
@@ -501,6 +522,7 @@ async def send_error_message_to_server_owner(guild: nextcord.Guild, permission, 
     member = guild.owner
     
     # Make sure the member has DMs enabled in their profile settings for InfiniBot
+    from config.member import Member # Avoids cyclic import
     if member == None: return
     member_settings = Member(member.id)
     if not member_settings.direct_messages_enabled: return
@@ -512,17 +534,17 @@ async def send_error_message_to_server_owner(guild: nextcord.Guild, permission, 
         channels = "one or more channels"
         
     if guild_permission:
-        inChannels = ""
+        in_channels = ""
     else:
-        inChannels = f" in {channels}"
+        in_channels = f" in {channels}"
         
     
     
     if message == None:
         if permission != None: 
-            embed = nextcord.Embed(title = f"Missing Permissions in in \"{guild.name}\" Server", description = f"InfiniBot is missing the **{permission}** permission{inChannels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.", color = nextcord.Color.red())
+            embed = nextcord.Embed(title = f"Missing Permissions in in \"{guild.name}\" Server", description = f"InfiniBot is missing the **{permission}** permission{in_channels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.", color = nextcord.Color.red())
         else:
-            embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"InfiniBot is missing a permission{inChannels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.", color = nextcord.Color.red())
+            embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"InfiniBot is missing a permission{in_channels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.", color = nextcord.Color.red())
     else:
         embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"{message}", color = nextcord.Color.red())
 

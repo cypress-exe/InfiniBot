@@ -75,6 +75,11 @@ async def should_log(guild: nextcord.Guild):
     else:
         return True, log_channel
 
+def entry_is_fresh(entry: nextcord.AuditLogEntry):
+    return (entry.created_at.month == datetime.datetime.now(datetime.timezone.utc).month 
+                            and entry.created_at.day == datetime.datetime.now(datetime.timezone.utc).day 
+                            and entry.created_at.hour == datetime.datetime.now(datetime.timezone.utc).hour 
+                            and ((datetime.datetime.now(datetime.timezone.utc).minute - entry.created_at.minute) <= 5))
 
 async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Message, edited_message: nextcord.Message, user: nextcord.Member = None):
     if not user: user = edited_message.author
@@ -309,13 +314,8 @@ async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, ch
         return
     
     # Log whether or not the audit log is fresh enough to be accurate (within 5 seconds)
-    if entry:
-        fresh_audit_log = (entry.created_at.month == datetime.datetime.now(datetime.timezone.utc).month 
-                            and entry.created_at.day == datetime.datetime.now(datetime.timezone.utc).day 
-                            and entry.created_at.hour == datetime.datetime.now(datetime.timezone.utc).hour 
-                            and ((datetime.datetime.now(datetime.timezone.utc).minute - entry.created_at.minute) <= 5))
-    else:
-        fresh_audit_log = False
+    if entry: fresh_audit_log = entry_is_fresh(entry)
+    else: fresh_audit_log = False
     
     if entry and fresh_audit_log:
         # We prioritize the author of the message if we know it, but if we don't we use this
@@ -382,6 +382,9 @@ async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, ch
     if message and message.attachments != []:              
         embed.add_field(name = "Files", value = f"This message contained one or more files. (Attached Below)\n→ Please wait as InfiniBot processes these files and Discord uploads them", inline = False)
         
+    if fresh_audit_log and entry.reason != None:
+            embed.add_field(name = "Reason", value = entry.reason, inline = False)
+
     # The Profile
     if deleter:
         embed.set_author(name = deleter.name, icon_url = deleter.display_avatar.url)  
@@ -404,14 +407,20 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member):
     if not guild.me.guild_permissions.view_audit_log:
         await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
         return
+    
+    # Wait 1 second for the audit log to catch up
+    await asyncio.sleep(1)
 
     # Get audit log entry
     entry = await anext(
-        guild.audit_logs(limit=1, action=nextcord.AuditLogAction.member_update),
+        guild.audit_logs(limit=1),
         None
     )
-    if entry == None: 
-        logging.warning("No audit log entry found for member update.")
+
+    fresh_audit_log = entry_is_fresh(entry)
+    
+    if entry == None:
+        # No audit log entry
         return
 
     # Nickname change --------------------------------------------------------------
@@ -425,7 +434,9 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member):
 
         if after.nick != None: embed.add_field(name = "After", value = after.nick, inline = True)
         else: embed.add_field(name = "After", value = "None", inline = True)
-        
+
+        if fresh_audit_log and entry.reason != None:
+            embed.add_field(name = "Reason", value = entry.reason, inline = False)
 
         await log_channel.send(embed = embed)
 
@@ -461,13 +472,21 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member):
                 if added_roles[0].id == guild.premium_subscriber_role.id: return # Do not log when a user gets the boost role
         
         user = entry.user
-        embed = nextcord.Embed(title = "Roles Modified", description = f"{user} modified {after}'s roles.", color = nextcord.Color.blue(), timestamp = datetime.datetime.now())
+        if fresh_audit_log:
+            description = f"{user.mention} modified {after.mention}'s roles."
+        else:
+            description = f"Someone modified {after.mention}'s roles."
+
+        embed = nextcord.Embed(title = "Roles Modified", description = description, color = nextcord.Color.blue(), timestamp = datetime.datetime.now())
 
         if len(added_roles) > 0:
             embed.add_field(name = "Added", value = "\n".join(added_roles), inline = True)
 
         if len(deleted_roles) > 0:
             embed.add_field(name = "Removed", value = "\n".join(deleted_roles), inline = False)
+
+        if fresh_audit_log and entry.reason != None:
+            embed.add_field(name = "Reason", value = entry.reason, inline = False)
 
         await log_channel.send(embed = embed)
             
@@ -485,7 +504,8 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member):
             # Display
             timeout_time_ui_text = humanfriendly.format_timespan(rounded_timeout_time)
             embed = nextcord.Embed(title = "Member Timed-Out", description = f"{user.mention} timed out {after.mention} for about {timeout_time_ui_text}", color = nextcord.Color.orange(), timestamp = datetime.datetime.now())
-            if entry.reason != None:
+            
+            if fresh_audit_log and entry.reason != None:
                 embed.add_field(name = "Reason", value = entry.reason)
             
             await log_channel.send(embed = embed)

@@ -157,7 +157,7 @@ class Simple_TableManager:
 
         return decorator
     
-    def integer_property(property_name:int, **kwargs):
+    def integer_property(property_name:int, accept_none_value = True, **kwargs):
         """
         Custom decorator for creating properties that are integers.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -175,7 +175,10 @@ class Simple_TableManager:
         data_structure = kwargs["data_structure"] if "data_structure" in kwargs else None
 
         def setter_modifier(value):
-            if value == None: return None
+            if value == None: 
+                if not accept_none_value:
+                    raise TypeError('This property has been modified to not accept None values.')
+                return None
             if isinstance(value, str):
                 if value.isdigit(): value = int(value)
             if isinstance(value, int):
@@ -239,7 +242,7 @@ class Simple_TableManager:
 
         return Simple_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
 
-    def string_property(property_name:str, **kwargs):
+    def string_property(property_name:str, accept_none_value = False, **kwargs):
         """
         Custom decorator for creating properties that are strings.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -255,6 +258,10 @@ class Simple_TableManager:
         """
 
         def setter_modifier(value):
+            if value == None: 
+                if not accept_none_value:
+                    raise TypeError('This property has been modified to not accept None values.')
+                return None
             if not isinstance(value, str):
                 try:
                     value = str(value)

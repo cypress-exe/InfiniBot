@@ -9,9 +9,9 @@ from nextcord import Interaction
 
 from components import ui_components, utils
 from components.ui_components import CustomView, CustomModal
-from config.global_settings import shards_loaded, get_configs
+from config.global_settings import ShardLoadedStatus, get_configs
 from config.server import Server
-from features import help_commands
+from features import help_commands, leveling
 from modules.custom_types import UNSET_VALUE
 
 
@@ -52,10 +52,11 @@ class Dashboard(CustomView):
             await ui_components.disabled_feature_override(self, interaction)
             return
         
-        if not interaction.guild.shard_id in shards_loaded:
-            logging.warning(f"Dashboard:Shard {interaction.guild.shard_id} is not loaded. Forwarding to inactive screen for guild {interaction.guild.id}.")
-            await ui_components.infinibot_loading_override(self, interaction)
-            return
+        with ShardLoadedStatus() as shards_loaded:
+            if not interaction.guild.shard_id in shards_loaded:
+                logging.warning(f"Dashboard: Shard {interaction.guild.shard_id} is not loaded. Forwarding to inactive screen for guild {interaction.guild.id}.")
+                await ui_components.infinibot_loading_override(self, interaction)
+                return
         
         description = """Welcome to the InfiniBot Dashboard! Choose a feature to setup / edit:"""
         
@@ -1472,40 +1473,8 @@ class Dashboard(CustomView):
                         self.add_item(self.back_btn)
                         
                     async def setup(self, interaction: Interaction):
-                        server = Server(interaction.guild.id)
-                        
-                        self.ranked_members = []
-                        
-                        for member in interaction.guild.members: 
-                            if member.bot: continue
-                            
-                            if member.id in server.member_levels: score = server.member_levels[member.id].score
-                            else: score = 0
-
-                            self.ranked_members.append([member, score])
-                        
-                        
-                        # Sort
-                        self.ranked_members = sorted(self.ranked_members, key=lambda x: (-x[1], x[0].name))
-
-
-                        self.embed = nextcord.Embed(title = "Dashboard - Leveling - Manage Members", color = nextcord.Color.blue())
-                        
-                        rank, lastScore = 1, 0
-                        for index, member in enumerate(self.ranked_members): 
-                            if index < 20:
-                                level = utils.convert_score_and_level(score = member[1])
-                                if member[0].nick != None: member_name = f"{member[0]} ({member[0].nick})"
-                                else: member_name = f"{member[0]}"
-                                
-                                if member[1] < lastScore:
-                                    rank += 1
-                                lastScore = member[1]
-                            
-                                self.embed.add_field(name = f"**#{rank} {member_name}**", value = f"Level: {str(level)}, Score: {str(member[1])}", inline = False)
-                            else:
-                                self.embed.add_field(name = f"+ {str(len(self.ranked_members) - 20)} more", value = f"To see a specific member's level, type */level [member]*", inline = False)
-                                break
+                        embed = nextcord.Embed(title = "Dashboard - Leveling - Manage Members", color = nextcord.Color.blue())
+                        self.embed, self.ranked_members = leveling.add_leaderboard_ranking_to_embed(interaction.guild, embed, include_ranked_members=True)
                         
                         await interaction.response.edit_message(embed = self.embed, view = self)
                         
@@ -1536,21 +1505,19 @@ class Dashboard(CustomView):
                                 
                                 member_id = self.member_id
                                 level = int(self.input.value)
-                                score = utils.convert_score_and_level(level = level)
+                                points = leveling.get_points_from_level(level)
                                 
                                 if member_id == None: return # Bad parameters
                                 
                                 # Save
                                 server = Server(interaction.guild.id)
                                 if member_id in server.member_levels:
-                                    if score == 0: # Delete member record
+                                    if points == 0: # Delete member record
                                         server.member_levels.delete(member_id)
                                     else: # Edit member record
-                                        member_info = server.member_levels[member_id]
-                                        member_info.score = score
-                                        server.member_levels[member_id] = member_info
+                                        server.member_levels.edit(member_id = member_id, points = points)
                                 else: # Add member record
-                                    server.member_levels.add(member_id = member_id, score = score)
+                                    server.member_levels.add(member_id = member_id, points = points)
                                     
 
                                 await self.outer.setup(interaction)
@@ -1561,18 +1528,18 @@ class Dashboard(CustomView):
                                     if _member.id == int(member_id):
                                         discord_member = _member
                                 
-                                # TODO Check their level rewards
-                                # await checkForLevelsAndLevelRewards(interaction.guild, discord_member, silent = True)  
+                                # Check their level rewards
+                                await leveling.process_level_change(interaction.guild, discord_member, silent = True)
                                                        
                         async def callback(self, interaction: Interaction): # Edit Levels Callback ————————————————————————————————————————————————————————————
                             member_select_options:list[nextcord.SelectOption] = []
                             for data in self.outer.ranked_members:
-                                level = utils.convert_score_and_level(score = data[1])
+                                level = leveling.get_level_from_points(data[1])
                                 member = data[0]
                                 if member.nick != None: member_name = f"{member} ({member.nick})"
                                 else: member_name = f"{member}"
                             
-                                member_select_options.append(nextcord.SelectOption(label = f"{member_name} - Level {str(level)}, Score - {str(data[1])}", value = data[0].id))
+                                member_select_options.append(nextcord.SelectOption(label = f"{member_name} - Level {str(level)}, Points - {str(data[1])}", value = data[0].id))
                             
                             embed: nextcord.Embed = copy.copy(self.outer.embed)
                             embed.description = "Choose a Member"
@@ -1587,11 +1554,11 @@ class Dashboard(CustomView):
                             server = Server(interaction.guild.id)
                             if member_id in server.member_levels:
                                 member_info = server.member_levels[member_id]
-                                score = member_info.score
+                                points = member_info.points
                             else: 
-                                score = 0
+                                points = 0
 
-                            level = utils.convert_score_and_level(score=score)
+                            level = leveling.get_level_from_points(points)
                                     
                             await interaction.response.send_modal(self.LevelModal(self.outer, selection, level))
                     
@@ -1748,12 +1715,7 @@ class Dashboard(CustomView):
                                 
                                 discord_role = interaction.guild.get_role(int(self.role_id))
                                 
-                                await interaction.followup.send(embed = nextcord.Embed(title = "Level Reward Created", description = f"{discord_role.mention} is now assigned to level {str(level)}.\n\nInfiniBot will revoke this role from anyone who is below level {str(level)}.", color = nextcord.Color.green()), ephemeral=True)                  
-
-                                # TODO Update the Level Rewards for Everyone in the Server
-                                for member in interaction.guild.members:
-                                    #await checkForLevelsAndLevelRewards(interaction.guild, member, silent = True)
-                                    pass
+                                await interaction.followup.send(embed = nextcord.Embed(title = "Level Reward Created", description = f"{discord_role.mention} is now assigned to level {str(level)}.\n\nInfiniBot will revoke this role from anyone who is below level {str(level)}. The initial process to resynchronize everyone's roles will take up to 24 hours.", color = nextcord.Color.green()), ephemeral=True)                  
                     
                     class DeleteLevelRewardButton(nextcord.ui.Button):
                         def __init__(self, outer):
@@ -1925,6 +1887,9 @@ class Dashboard(CustomView):
 
                         self.points_lost_per_day_btn = self.PointsLostPerDayButton(self)
                         self.add_item(self.points_lost_per_day_btn)
+
+                        self.max_points_per_message = self.MaxPointsPerMessageButton(self)
+                        self.add_item(self.max_points_per_message)
                         
                         self.level_cards_btn = self.LevelCardsButton(self)
                         self.add_item(self.level_cards_btn)
@@ -1939,17 +1904,22 @@ class Dashboard(CustomView):
                     async def setup(self, interaction: Interaction):
                         server = Server(interaction.guild.id)
 
-                        allow_level_up_cards = "Yes" if server.leveling_profile.allow_leveling_cards else "No"
+                        points_lost_per_day_ui_text = server.leveling_profile.points_lost_per_day if server.leveling_profile.points_lost_per_day != 0 else "DISABLED"
+                        max_points_per_message_ui_text = server.leveling_profile.max_points_per_message if server.leveling_profile.max_points_per_message else "DISABLED"
+                        allow_level_up_cards_ui_text = "Yes" if server.leveling_profile.allow_leveling_cards else "No"
+
                         
                         description = f"""
                         **Advanced Features**
                         - **Points Lost Per Day:** Automatically removes points from all members at midnight.
+                        - **Max Points Per Message:** Caps each message to a certain amount of points.
                         - **Custom Level-Up Cards:** Adds personalized cards to level-up messages.
                         - **Exempt Channels:** Prevents points from being granted in exempted channels.
 
                         **Settings**
-                        - **Points Lost Per Day:** {server.leveling_profile.points_lost_per_day}  
-                        - **Level-Up Cards:** {allow_level_up_cards}
+                        - **Points Lost Per Day:** {points_lost_per_day_ui_text}
+                        - **Max Points Per Message:** {max_points_per_message_ui_text}
+                        - **Level-Up Cards:** {allow_level_up_cards_ui_text}
                         """
                         description = utils.standardize_str_indention(description)
 
@@ -1971,14 +1941,15 @@ class Dashboard(CustomView):
                                 
                                 server = Server(guild.id)
                                 
-                                self.pointsLostPerDayTextInput = nextcord.ui.TextInput(label = "Points (must be a number, blank = DISABLED)", style = nextcord.TextInputStyle.short, 
-                                                                                    max_length=3, default_value = server.leveling_profile.points_lost_per_day, required = False)
-                                self.add_item(self.pointsLostPerDayTextInput)
+                                self.points_lost_per_day_text_input = nextcord.ui.TextInput(label = "Points (must be a number, blank = DISABLED)", style = nextcord.TextInputStyle.short, 
+                                                                                    max_length=3, default_value = server.leveling_profile.points_lost_per_day, required = False,
+                                                                                    placeholder="DISABLED")
+                                self.add_item(self.points_lost_per_day_text_input)
                                 
                             async def callback(self, interaction: Interaction):
                                 server = Server(interaction.guild.id)
                                 
-                                value:str = self.pointsLostPerDayTextInput.value
+                                value:str = self.points_lost_per_day_text_input.value
                                 if not (value == None or value == "" or value == "0"):
                                     if not value.isnumeric() or int(value) < 0:
                                         await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "\"Points\" must be a positive number.", color = nextcord.Color.red()), ephemeral = True)
@@ -1989,17 +1960,56 @@ class Dashboard(CustomView):
                                     await interaction.followup.send(embed = nextcord.Embed(title = "Points Lost Per Day Set", description = f"Every day at midnight, everyone will loose {value} points.", color = nextcord.Color.green()), ephemeral = True)
                                 
                                 else:
-                                    server.leveling_profile.points_lost_per_day = None
+                                    server.leveling_profile.points_lost_per_day = 0
                                 
                                     await self.outer.setup(interaction)
                                     await interaction.followup.send(embed = nextcord.Embed(title = "Points Lost Per Day Disabled", description = f"InfiniBot will not take points from anyone at midnight.", color = nextcord.Color.green()), ephemeral = True)
                                         
                         async def callback(self, interaction: Interaction):
                             await interaction.response.send_modal(self.PointsLostPerDayModal(interaction.guild, self.outer))       
-               
+
+                    class MaxPointsPerMessageButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Max Points Per Message", style = nextcord.ButtonStyle.gray)
+                            self.outer = outer
+                            
+                        class MaxPointsPerMessageModal(CustomModal): #Leveling Message Modal -----------------------------------------------------
+                            def __init__(self, guild: nextcord.Guild, outer):
+                                super().__init__(timeout = None, title = "Max Points Per Message")
+                                self.outer = outer
+                                
+                                server = Server(guild.id)
+                                
+                                self.text_input = nextcord.ui.TextInput(label = "Points (must be a number, blank = DISABLED)", style = nextcord.TextInputStyle.short, 
+                                                                                    max_length=3, default_value = server.leveling_profile.max_points_per_message, required = False,
+                                                                                    placeholder="DISABLED")
+                                self.add_item(self.text_input)
+                                
+                            async def callback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                value:str = self.text_input.value
+                                if not (value == None or value == "" or value == "0"):
+                                    if not value.isnumeric() or int(value) < 0:
+                                        await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "\"Points\" must be a positive number.", color = nextcord.Color.red()), ephemeral = True)
+                                        return
+                                    server.leveling_profile.max_points_per_message = int(value)
+                                
+                                    await self.outer.setup(interaction)
+                                    await interaction.followup.send(embed = nextcord.Embed(title = "Max Points Per Message Set", description = f"Every message will be capped to {value} xp points.", color = nextcord.Color.green()), ephemeral = True)
+                                
+                                else:
+                                    server.leveling_profile.max_points_per_message = None
+                                
+                                    await self.outer.setup(interaction)
+                                    await interaction.followup.send(embed = nextcord.Embed(title = "Max Points Per Message Disabled", description = f"InfiniBot will not cap xp points per message.", color = nextcord.Color.green()), ephemeral = True)
+                                        
+                        async def callback(self, interaction: Interaction):
+                            await interaction.response.send_modal(self.MaxPointsPerMessageModal(interaction.guild, self.outer))       
+
                     class LevelCardsButton(nextcord.ui.Button):
                         def __init__(self, outer):
-                            super().__init__(label = "Level-Up Cards", style = nextcord.ButtonStyle.gray)
+                            super().__init__(label = "Level-Up Cards", style = nextcord.ButtonStyle.gray, row = 1)
                             self.outer = outer
                             
                         class LevelCardsView(CustomView):
@@ -2377,7 +2387,7 @@ class Dashboard(CustomView):
                                 self.add_item(self.join_message_title_input)
 
                                 self.join_message_description_input = nextcord.ui.TextInput(label = "Description", style = nextcord.TextInputStyle.paragraph, max_length=1024, 
-                                                                                      default_value = server.join_message_profile.embed["description"], placeholder = "Welcome to the server, @member!")
+                                                                                      default_value = server.join_message_profile.embed["description"], placeholder = "Welcome to the server, @mention!")
                                 self.add_item(self.join_message_description_input)
                                 
                             async def callback(self, interaction: Interaction):
@@ -2632,7 +2642,7 @@ class Dashboard(CustomView):
                                 self.add_item(self.leave_message_title_input)
 
                                 self.leave_message_description_input = nextcord.ui.TextInput(label = "Description", style = nextcord.TextInputStyle.paragraph, max_length=1024, 
-                                                                                      default_value = server.leave_message_profile.embed["description"], placeholder = "@member left.")
+                                                                                      default_value = server.leave_message_profile.embed["description"], placeholder = "@mention left.")
                                 self.add_item(self.leave_message_description_input)
                                 
                             async def callback(self, interaction: Interaction):
@@ -3310,7 +3320,7 @@ class Dashboard(CustomView):
                         self.add_item(self.join_message_title_input)
 
                         self.join_message_description_input = nextcord.ui.TextInput(label = "Description", style = nextcord.TextInputStyle.paragraph, max_length=1024, 
-                                                                                default_value = server.birthdays_profile.embed["description"], placeholder = "@member just turned [age]!")
+                                                                                default_value = server.birthdays_profile.embed["description"], placeholder = "@mention just turned [age]!")
                         self.add_item(self.join_message_description_input)
                         
                     async def callback(self, interaction: Interaction):

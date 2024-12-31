@@ -561,8 +561,9 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "leveling_profile", "active", False, [True, False])
         self.run_test_on_property(server, "leveling_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE, 0, None])
         self.run_test_on_property(server, "leveling_profile", "level_up_embed[title]", "Congratulations, @displayname!", ["Title_Changed", None])
-        self.run_test_on_property(server, "leveling_profile", "level_up_embed[description]", "Congrats @member! You reached level [level]!", ["Description_Changed"])
-        self.run_test_on_property(server, "leveling_profile", "points_lost_per_day", 0, [12, 5, 0, 1])
+        self.run_test_on_property(server, "leveling_profile", "level_up_embed[description]", "Congrats @mention! You reached level [level]!", ["Description_Changed"])
+        self.run_test_on_property(server, "leveling_profile", "points_lost_per_day", 0, [12, 0, 1])
+        self.run_test_on_property(server, "leveling_profile", "max_points_per_message", 40, [200, None, 0, 20, 500])
         self.run_test_on_property(server, "leveling_profile", "exempt_channels", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]])
         self.run_test_on_property(server, "leveling_profile", "allow_leveling_cards", True, [False, True])
 
@@ -577,7 +578,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "join_message_profile", "active", False, [True, False])
         self.run_test_on_property(server, "join_message_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE])
         self.run_test_on_property(server, "join_message_profile", "embed[title]", "@displayname just joined the server!", ["Title_Changed", None])
-        self.run_test_on_property(server, "join_message_profile", "embed[description]", "Welcome to the server, @member!", ["Description_Changed"])
+        self.run_test_on_property(server, "join_message_profile", "embed[description]", "Welcome to the server, @mention!", ["Description_Changed"])
         self.run_test_on_property(server, "join_message_profile", "allow_join_cards", True, [False, True])
 
         server.remove_all_data()
@@ -591,7 +592,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "leave_message_profile", "active", False, [True, False])
         self.run_test_on_property(server, "leave_message_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE])
         self.run_test_on_property(server, "leave_message_profile", "embed[title]", "@displayname just left the server.", ["Title_Changed", None])
-        self.run_test_on_property(server, "leave_message_profile", "embed[description]", "@member left.", ["Description_Changed"])
+        self.run_test_on_property(server, "leave_message_profile", "embed[description]", "@mention left.", ["Description_Changed"])
 
         server.remove_all_data()
 
@@ -602,8 +603,8 @@ class TestServer(unittest.TestCase):
 
         # Using run_test_on_property
         self.run_test_on_property(server, "birthdays_profile", "channel", UNSET_VALUE, [1234567989, None, UNSET_VALUE])
-        self.run_test_on_property(server, "birthdays_profile", "embed[title]", "Happy Birthday, @realname!", ["Title_Changed", None])
-        self.run_test_on_property(server, "birthdays_profile", "embed[description]", "@member just turned [age]!", ["Description_Changed"])
+        self.run_test_on_property(server, "birthdays_profile", "embed[title]", "Happy Birthday, [realname]!", ["Title_Changed", None])
+        self.run_test_on_property(server, "birthdays_profile", "embed[description]", "@mention just turned [age]!", ["Description_Changed"])
         self.run_test_on_property(server, "birthdays_profile", "runtime", UNSET_VALUE, ["12:00 MDT", "8:00 PDT", "18:00 UTC", "0:00 EST", UNSET_VALUE])
 
         server.remove_all_data()
@@ -658,7 +659,7 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_integrated_list_property
-        test = self.RunTestOnIntegratedListProperty(server, "member_levels", ["member_id:int", "score:int"], [5, 20])
+        test = self.RunTestOnIntegratedListProperty(server, "member_levels", ["member_id:int", "points:int"], [5, 20])
         test.run(self)
         
         server.remove_all_data()

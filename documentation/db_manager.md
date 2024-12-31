@@ -90,6 +90,7 @@ Defines a custom property for handling SQL data.
 
 ##### `integer_property`
 Defines a regular property for integers.
+Set `accept_none_value` to false to mark none values as invalid input.
 
 ##### `float_property`
 Defines a regular property for floats.
@@ -99,10 +100,13 @@ Defines a regular property for booleans.
 
 ##### `string_property`
 Defines a regular property for strings.
+Set `accept_none_value` to true to mark none values as valid input.
 
 ##### `typed_property`
 Defines a regular property for integers, floats, booleans, and strings with support for `None` and `UNSET_VALUE`.
-Set `enforce_numerical_values` to true to disable strings as valid inputs. Numerical strings will be automatically converted to integers.
+Set `accept_none_value` to false to mark none values as invalid input.
+Set `accept_unset_value` to false to mark UNSET values as invalid input.
+Set `enforce_numerical_values` to true to disable strings as valid input. Numerical strings will be automatically converted to integers.
 
 ##### `list_property`
 Defines a regular property for lists.

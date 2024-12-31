@@ -1,4 +1,3 @@
-import datetime
 import logging
 import nextcord
 from nextcord import Interaction, SlashOption
@@ -10,7 +9,8 @@ import config.global_settings as global_settings
 from config.file_manager import JSONFile
 from core import log_manager
 from core.log_manager import LogIfFailure
-from features import action_logging, admin_commands, dashboard, dm_commands, moderation, profile
+from core.scheduling import start_scheduler, get_scheduler
+from features import action_logging, admin_commands, dashboard, dm_commands, leveling, moderation, profile
 
 
 # INIT BOT ==============================================================================================================================================================
@@ -27,15 +27,17 @@ bot = commands.AutoShardedBot(intents = intents,
 @bot.event
 async def on_ready():
     await bot.wait_until_ready()
-    logging.info(f"Logged in as: {bot.user.name} with all shards ready.")
+    logging.info(f"============================== Logged in as: {bot.user.name} with all shards ready. ==============================")
 
-    global_settings.bot_loaded = True
+    global_settings.set_bot_load_status(True)
+    start_scheduler()
 
     # Print which guilds are on which shard
     if logging.getLevelName(logging.getLogger().getEffectiveLevel()) == "DEBUG":
       for guild in bot.guilds:
           shard_id = guild.shard_id
           logging.debug(f"Guild: {guild.name} (ID: {guild.id}) is on shard {shard_id}")
+
 
 @bot.event
 async def on_shard_ready(shard_id: int):
@@ -45,7 +47,8 @@ async def on_shard_ready(shard_id: int):
     """
     logging.info(f"Shard {shard_id} is ready.")
 
-    global_settings.shards_loaded.append(shard_id)
+    with global_settings.ShardLoadedStatus() as shards_loaded:
+        shards_loaded.append(shard_id)
 
     # Optional: Perform shard-specific tasks, such as notifying a server or channel
     # Example:
@@ -56,7 +59,8 @@ async def on_shard_ready(shard_id: int):
 
 @bot.event
 async def on_close():
-    global_settings.bot_loaded = False
+    global_settings.set_bot_load_status(False)
+    get_scheduler().shutdown()
     logging.fatal("InfiniBot is shutting down...")
 
 # SLASH COMMANDS ==============================================================================================================================================================
@@ -113,11 +117,24 @@ async def view_member_strikes(interaction: Interaction, member: nextcord.Member)
 async def set_admin_channel(interaction: Interaction):
     await moderation.run_set_admin_channel_command(interaction)
 
-
-
 @set.subcommand(name = "log_channel", description = "Use this channel for logging. Channel should only be viewable by admins. (Requires Infinibot Mod)")
 async def set_log_channel(interaction: Interaction):
     await action_logging.run_set_log_channel_command(interaction)
+
+
+@bot.slash_command(name = "leaderboard", description = "Get your level and the level of everyone on the server.", integration_types=[nextcord.IntegrationType.guild_install])
+async def leaderboard(interaction: Interaction):
+    await leveling.run_leaderboard_command(interaction)
+
+@view.subcommand(name = "level", description = "View your or someone else's level.")
+async def view_level(interaction: Interaction, member: nextcord.Member = SlashOption(description="The member to view the level of.", required=False)):
+    await leveling.run_view_level_command(interaction, member)
+
+@set.subcommand(name = "level", description = "Set levels for any individual (Requires Infinibot Mod)")
+async def set_level(interaction: Interaction, 
+                    member: nextcord.Member = SlashOption(description="The member to set the level of.", required=True), 
+                    level: int = SlashOption(description="The level to set.", required=True)):
+    await leveling.run_set_level_command(interaction, member, level)
 
 # ERROR HANDLING ==============================================================================================================================================================
 @bot.event
@@ -162,12 +179,11 @@ async def on_message(message: nextcord.Message):
         return
 
     # Moderation
-    message_is_bad = await moderation.check_and_run_moderation_commands(bot, message)
+    message_is_flagged_for_moderation = await moderation.check_and_run_moderation_commands(bot, message)
     
-    # if not message_is_bad:
-    #     # Give levels
-    #     if utils.enabled.Leveling(server = server): await giveLevels(message)
-    #     await admin_commands.check_and_run_admin_commands(message)
+    if not message_is_flagged_for_moderation:
+        await leveling.grant_xp_for_message(message)
+        await admin_commands.check_and_run_admin_commands(message)
 
 
     # Continue with the Rest of the bot commands

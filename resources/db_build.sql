@@ -38,8 +38,9 @@ CREATE TABLE IF NOT EXISTS leveling_profile( -- #optimize
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    level_up_embed TEXT DEFAULT '{"title":"Congratulations, @displayname!","description":"Congrats @member! You reached level [level]!"}',
+    level_up_embed TEXT DEFAULT '{"title":"Congratulations, @displayname!","description":"Congrats @mention! You reached level [level]!"}',
     points_lost_per_day INT DEFAULT 0,
+    max_points_per_message INT DEFAULT 40,
     exempt_channels TEXT DEFAULT '[]',
     allow_leveling_cards BOOLEAN DEFAULT true
 );
@@ -49,7 +50,7 @@ CREATE TABLE IF NOT EXISTS join_message_profile( -- #optimize
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    embed TEXT DEFAULT '{"title":"@displayname just joined the server!","description":"Welcome to the server, @member!"}',
+    embed TEXT DEFAULT '{"title":"@displayname just joined the server!","description":"Welcome to the server, @mention!"}',
     allow_join_cards BOOLEAN DEFAULT true
 );
 
@@ -58,14 +59,14 @@ CREATE TABLE IF NOT EXISTS leave_message_profile( -- #optimize
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    embed TEXT DEFAULT '{"title":"@displayname just left the server.","description":"@member left."}'
+    embed TEXT DEFAULT '{"title":"@displayname just left the server.","description":"@mention left."}'
 );
 
 -- Create birthdays_profile Table (simple table)
 CREATE TABLE IF NOT EXISTS birthdays_profile( -- #optimize
     server_id INT PRIMARY KEY,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    embed TEXT DEFAULT '{"title":"Happy Birthday, @realname!","description":"@member just turned [age]!"}',
+    embed TEXT DEFAULT '{"title":"Happy Birthday, [realname]!","description":"@mention just turned [age]!"}',
     runtime TEXT DEFAULT '{"status": "UNSET", "value": null}'
 )
 
@@ -119,7 +120,7 @@ CREATE TABLE IF NOT EXISTS moderation_strikes(
 CREATE TABLE IF NOT EXISTS member_levels(
     server_id INT,
     member_id INT,
-    score INT,
+    points INT,
     PRIMARY KEY (server_id, member_id)
 )
 

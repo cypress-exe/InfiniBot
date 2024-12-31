@@ -150,8 +150,11 @@ class Server:
         @Server_Simple_TableManager.embed_property("level_up_embed")
         def level_up_embed(self): pass
 
-        @Server_Simple_TableManager.integer_property("points_lost_per_day")
+        @Server_Simple_TableManager.integer_property("points_lost_per_day", accept_none_value=False)
         def points_lost_per_day(self): pass
+
+        @Server_Simple_TableManager.integer_property("max_points_per_message")
+        def max_points_per_message(self): pass
 
         @Server_Simple_TableManager.list_property("exempt_channels")
         def exempt_channels(self): pass
