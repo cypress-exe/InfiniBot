@@ -6,6 +6,9 @@ from config.file_manager import JSONFile
 shards_loaded = []
 bot_loaded = False
 
+# Feature dependencies are used to determine if a feature should be enabled or disabled.
+# The bot will check if the dependency is enabled or disabled, and if it is disabled, the
+# feature will be disabled as well.
 feature_dependencies = {
     "dashboard": {"global_kill": "dashboard"},
     "profile": {"global_kill": "profile"},
@@ -116,7 +119,7 @@ class GlobalKillStatus(GlobalSetting):
         logging.warning("Clearing global_kill_status.json")
         super().reset()
 
-class PeristentData(GlobalSetting):
+class PersistentData(GlobalSetting):
     '''This class is used to store persistent data. It is used to store persistent data in the JSON file. '''
     def __init__(self):
         variable_list = {
@@ -162,24 +165,60 @@ class Configs(GlobalSetting):
 
         super().__init__("config", variable_list)
 
-def get_global_kill_status():
+def get_global_kill_status() -> GlobalKillStatus:
+    """
+    Retrieve the global kill status.
+
+    :return: An instance representing the global kill status.
+    :rtype: GlobalKillStatus
+    """
+
     return GlobalKillStatus()
 
-def get_persistent_data():
-    return PeristentData()
+def get_persistent_data() -> PersistentData:
+    """
+    Retrieve the persistent data.
 
-def get_configs():
+    :return: An instance representing the persistent data.
+    :rtype: PersistentData
+    """
+    return PersistentData()
+
+def get_configs() -> Configs:
+    """
+    Retrieve the config.
+
+    :return: An instance representing the config.
+    :rtype: Configs
+    """
     return Configs()
 
 
-def get_bot_load_status():
+def get_bot_load_status() -> bool:
+    """
+    Retrieve the bot load status.
+
+    :return: Whether the bot is loaded.
+    :rtype: bool
+    """
     return bot_loaded
 
-def set_bot_load_status(status):
+def set_bot_load_status(status: bool) -> None:
+    """
+    Set the bot load status.
+
+    :param status: Whether the bot is loaded.
+    :type status: bool
+    :return: None
+    :rtype: None
+    """
     global bot_loaded
     bot_loaded = status
 
 class ShardLoadedStatus: # Context manager
+    """
+    Context manager for managing a list of loaded shards.
+    """
     def __init__(self):
         global shards_loaded
         self.shards_loaded: list = shards_loaded

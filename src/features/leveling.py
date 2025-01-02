@@ -12,19 +12,43 @@ from config.server import Server
 from features.moderation import get_percent_similar
 from modules.custom_types import UNSET_VALUE
 
-def compress_string(input_string):
+def compress_string(input_string: str) -> str:
+    """
+    Remove all non-alphanumeric characters and spaces from a given string.
+
+    :param input_string: The string to compress.
+    :type input_string: str
+    :return: The compressed string.
+    :rtype: str
+    """
     # Remove all non-alphanumeric characters and spaces
     compressed = re.sub(r'[^a-zA-Z0-9]', '', input_string)
     return compressed
 
-def get_level_from_points(points: int):
+def get_level_from_points(points: int) -> int:
+    """
+    Get the level from a given number of points.
+
+    :param points: The number of points to calculate the level from.
+    :type points: int
+    :return: The level calculated from the given points.
+    :rtype: int
+    """
     if points <= 0: return 0
 
     points /= 10
     if points == 0: return 0
     return(math.floor(points ** 0.65)) #levels are calculated by x^0.65
 
-def get_points_from_level(level: int):
+def get_points_from_level(level: int) -> int:
+    """
+    Get the number of points from a given level.
+
+    :param level: The level to calculate the points from.
+    :type level: int
+    :return: The number of points calculated from the given level.
+    :rtype: int
+    """
     if level <= 0: return 0
     
     points = level**(1/0.65)
@@ -41,7 +65,19 @@ def get_points_from_level(level: int):
     
     return(points) #levels are calculated by x^0.65
 
-def add_leaderboard_ranking_to_embed(guild: nextcord.Guild, embed: nextcord.Embed, include_ranked_members=False):
+def add_leaderboard_ranking_to_embed(guild: nextcord.Guild, embed: nextcord.Embed, include_ranked_members: bool = False) -> nextcord.Embed:
+    """
+    Add a leaderboard ranking to an embed.
+
+    :param guild: The guild to get the leaderboard from.
+    :type guild: nextcord.Guild
+    :param embed: The embed to add the leaderboard to.
+    :type embed: nextcord.Embed
+    :param include_ranked_members: Whether or not to include the ranked members in the embed. Defaults to False.
+    :type include_ranked_members: bool, optional
+    :return: The embed with the leaderboard added.
+    :rtype: nextcord.Embed
+    """
     ranked_members:list[list[nextcord.Member, int]] = []
     server = Server(guild.id)
                         
@@ -90,7 +126,17 @@ def add_leaderboard_ranking_to_embed(guild: nextcord.Guild, embed: nextcord.Embe
         return embed, ranked_members
     return embed
 
-async def midnight_action_leveling(bot: nextcord.Client):
+async def midnight_action_leveling(bot: nextcord.Client) -> None:
+    """
+    |coro|
+
+    The midnight action for leveling.
+
+    :param bot: The bot instance.
+    :type bot: nextcord.Client
+    :return: None
+    :rtype: None
+    """
     logging.info("MIDNIGHT ACTION: Leveling ----------------------------------------------------------------")
     if get_global_kill_status()["leveling"]:
         logging.warning("Skipping leveling because of global kill status.")
@@ -142,8 +188,19 @@ async def midnight_action_leveling(bot: nextcord.Client):
             logging.error(f"ERROR When checking levels (server): {err}")
             continue
 
-async def check_leveling_enabled_and_warn_if_not(interaction: Interaction, server: Server):
-    """Determins whether or not leveling is enabled for the server. NOT SILENT!"""
+async def check_leveling_enabled_and_warn_if_not(interaction: Interaction, server: Server) -> bool:
+    """
+    |coro|
+
+    Determines whether or not leveling is enabled for the server. NOT SILENT!
+
+    :param interaction: The interaction object from the Discord event.
+    :type interaction: Interaction
+    :param server: The server object where leveling is being checked.
+    :type server: Server
+    :return: Whether or not leveling is enabled.
+    :rtype: bool
+    """
     if utils.feature_is_active(server = server, feature = "leveling"):
         return True
     else:
@@ -154,8 +211,17 @@ async def check_leveling_enabled_and_warn_if_not(interaction: Interaction, serve
             await interaction.response.send_message(embed = nextcord.Embed(title = "Leveling Disabled", description = "Leveling has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
             return False
 
-async def grant_xp_for_message(message: nextcord.Message):
-    """Manages the distribution of xp (and also levels and level rewards, but indirect). Simply requires a message."""
+async def grant_xp_for_message(message: nextcord.Message) -> None:
+    """
+    |coro|
+
+    Manages the distribution of xp (and also levels and level rewards, but indirect). Simply requires a message.
+
+    :param message: The message that triggered the xp distribution.
+    :type message: nextcord.Message
+    :return: None
+    :rtype: None
+    """
     MESSAGES_TO_CHECK_FOR_SPAM = 5
 
     # Confirm that leveling is enabled
@@ -224,8 +290,23 @@ async def grant_xp_for_message(message: nextcord.Message):
     if original_level != current_level: # Ensure that the level has changed (optimization)
         await process_level_change(message.guild, message.author, levelup_announce = True)
   
-async def process_level_change(guild: nextcord.Guild, member: nextcord.Member, levelup_announce: bool = False, silent = False):
-    """Handles the distribution of levels and level rewards"""
+async def process_level_change(guild: nextcord.Guild, member: nextcord.Member, levelup_announce: bool = False, silent = False) -> None:
+    """
+    |coro|
+
+    Handles the distribution of levels and level rewards.
+
+    :param guild: The guild object where the level change is happening.
+    :type guild: nextcord.Guild
+    :param member: The member object whose level is being changed.
+    :type member: nextcord.Member
+    :param levelup_announce: Whether or not to announce the level-up in the leveling channel.
+    :type levelup_announce: bool
+    :param silent: Whether or not to show the level-up message.
+    :type silent: bool
+    :return: None
+    :rtype: None
+    """
     server = Server(guild.id)
 
     # Get points
@@ -315,11 +396,39 @@ async def process_level_change(guild: nextcord.Guild, member: nextcord.Member, l
                                 pass
   
 def handle_member_removal(member: nextcord.Member):
+    """
+    Handles the removal of a member from the server by performing cleanup tasks
+    such as deleting member level information.
+
+    :param member: The member being removed.
+    :type member: nextcord.Member
+    :return: None
+    :rtype: None
+    """
+    server = Server(member.guild.id)
+    if member.id in server.member_levels:
+        server.member_levels.delete(member.id)
     server = Server(member.guild.id)
     if member.id in server.member_levels:
         server.member_levels.delete(member.id)
 
 async def run_leaderboard_command(interaction: Interaction):
+    """
+    Executes the leaderboard command, displaying the level leaderboard for the server.
+
+    :param interaction: The interaction object from the Discord event.
+    :type interaction: Interaction
+
+    :return: None
+    :rtype: None
+    """
+    server = Server(interaction.guild.id)
+    if not await check_leveling_enabled_and_warn_if_not(interaction, server): return
+    
+    embed = nextcord.Embed(title="Leaderboard", color=nextcord.Color.blue())
+    embed = add_leaderboard_ranking_to_embed(interaction.guild, embed)
+    
+    await interaction.response.send_message(embed=embed, view=ui_components.InviteView())
     server = Server(interaction.guild.id)
     if not await check_leveling_enabled_and_warn_if_not(interaction, server): return
     
@@ -329,6 +438,19 @@ async def run_leaderboard_command(interaction: Interaction):
     await interaction.response.send_message(embed = embed, view = ui_components.InviteView())
     
 async def run_view_level_command(interaction: Interaction, member: nextcord.Member):
+    """
+    |coro|
+
+    Executes the command to view the level of another member.
+
+    :param interaction: The interaction object from the Discord event.
+    :type interaction: Interaction
+    :param member: The member whose level is to be viewed.
+    :type member: nextcord.Member
+
+    :return: None
+    :rtype: None
+    """
     server = Server(interaction.guild.id)
     if not await check_leveling_enabled_and_warn_if_not(interaction, server): return
 
@@ -350,6 +472,21 @@ async def run_view_level_command(interaction: Interaction, member: nextcord.Memb
     await interaction.response.send_message(embed = nextcord.Embed(title = "View Level", description = description, color = nextcord.Color.blue()), ephemeral=True, view = ui_components.InviteView())
 
 async def run_set_level_command(interaction: Interaction, member: nextcord.Member, new_level: int):
+    """
+    |coro|
+
+    Executes the command to set a new level for a specified member.
+
+    :param interaction: The interaction object from the Discord event.
+    :type interaction: Interaction
+    :param member: The member whose level is to be set.
+    :type member: nextcord.Member
+    :param new_level: The new level to set for the member.
+    :type new_level: int
+
+    :return: None
+    :rtype: None
+    """
     server = Server(interaction.guild.id)
     if not await check_leveling_enabled_and_warn_if_not(interaction, server): return
 

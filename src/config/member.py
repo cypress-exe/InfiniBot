@@ -10,6 +10,15 @@ class Member_Simple_TableManager(Simple_TableManager):
         self.member_id = self.primary_id
 
 class Member(Member_Simple_TableManager):
+    """
+    Represents a member in the database.
+
+    :param member_id: The ID of the member to represent
+    :type member_id: int or nextcord.Member
+
+    :return: The Member object
+    :rtype: Member
+    """
     def __init__(self, member_id:int):    
         super().__init__(self._format_member_id(member_id), "member_profile")
 

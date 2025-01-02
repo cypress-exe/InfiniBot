@@ -19,63 +19,69 @@ from modules.custom_types import UNSET_VALUE
 
 # Profanity Moderation ----------------------------------------------------------------------------------------------------------
 class IncorrectButtonView(nextcord.ui.View):
-  def __init__(self):
-    super().__init__(timeout = None)
+    """
+    Handle the event when the "Mark As Incorrect" button is pressed.
+
+    This method updates the button label to "Marked as Incorrect" and disables it.
+    It also processes the necessary actions to either refund a strike or revoke a timeout.
+    """
+    def __init__(self):
+        super().__init__(timeout = None)
   
-  @nextcord.ui.button(label = 'Mark As Incorrect', style = nextcord.ButtonStyle.blurple, custom_id = "mark_as_incorrect")
-  async def event(self, button:nextcord.ui.Button, interaction: nextcord.Interaction):
-    embed = interaction.message.embeds[0]
-    id = embed.footer.text.split(" ")[-1]
-    guild = interaction.guild
-    member = guild.get_member(int(id))
-    
-    if member != None:
-        button.label = "Marked as Incorrect"
-        button.disabled = True
+    @nextcord.ui.button(label = 'Mark As Incorrect', style = nextcord.ButtonStyle.blurple, custom_id = "mark_as_incorrect")
+    async def event(self, button:nextcord.ui.Button, interaction: nextcord.Interaction):
+        embed = interaction.message.embeds[0]
+        id = embed.footer.text.split(" ")[-1]
+        guild = interaction.guild
+        member = guild.get_member(int(id))
         
-        # We either need to refund a strike, or revoke a timeout.
-        # If the user is at 0 strikes now, this says one of two things:
-        # They were timed out
-        # Or it's been so long that the strike has expired.
-        
-        server = Server(interaction.guild.id)
-        strike_count = server.moderation_strikes[member.id].strikes if member.id in server.moderation_strikes else 0
-        if strike_count != 0:
-            # We'll just refund a strike.
-            update_strikes_for_member(guild.id, member.id, -1)
+        if member != None:
+            button.label = "Marked as Incorrect"
+            button.disabled = True
             
-            embed.title += " - Marked As Incorrect"
-            embed.color = nextcord.Color.dark_green()
-            await interaction.response.edit_message(embed = embed, view=self)
-            return
+            # We either need to refund a strike, or revoke a timeout.
+            # If the user is at 0 strikes now, this says one of two things:
+            # They were timed out
+            # Or it's been so long that the strike has expired.
             
-        else:
-            # Uh, oh. We need to do some thinking...
-            # Has it been past the time that the timeout would have been?
-            current_time = datetime.datetime.now(datetime.timezone.utc)
-            message_time = interaction.message.created_at
-            delta_seconds = (current_time - message_time).seconds
-            if delta_seconds <= server.profanity_moderation_profile.timeout_seconds:
-                # We can revoke the timeout
-                await utils.timeout(member = member, seconds = 0, reason = "Revoking Profanity Moderation Timeout")
+            server = Server(interaction.guild.id)
+            strike_count = server.moderation_strikes[member.id].strikes if member.id in server.moderation_strikes else 0
+            if strike_count != 0:
+                # We'll just refund a strike.
+                update_strikes_for_member(guild.id, member.id, -1)
                 
                 embed.title += " - Marked As Incorrect"
                 embed.color = nextcord.Color.dark_green()
                 await interaction.response.edit_message(embed = embed, view=self)
                 return
-            
+                
             else:
-                button.label = "No Available Actions"
-                await interaction.response.edit_message(view=self)
+                # Uh, oh. We need to do some thinking...
+                # Has it been past the time that the timeout would have been?
+                current_time = datetime.datetime.now(datetime.timezone.utc)
+                message_time = interaction.message.created_at
+                delta_seconds = (current_time - message_time).seconds
+                if delta_seconds <= server.profanity_moderation_profile.timeout_seconds:
+                    # We can revoke the timeout
+                    await utils.timeout(member = member, seconds = 0, reason = "Revoking Profanity Moderation Timeout")
+                    
+                    embed.title += " - Marked As Incorrect"
+                    embed.color = nextcord.Color.dark_green()
+                    await interaction.response.edit_message(embed = embed, view=self)
+                    return
+                
+                else:
+                    button.label = "No Available Actions"
+                    await interaction.response.edit_message(view=self)
 
-                await interaction.followup.send(embed = nextcord.Embed(title = "No Available Actions", description = f"No actions available. Previous punishments have expired.", color =  nextcord.Color.red()), ephemeral = True)
-                return
+                    await interaction.followup.send(embed = nextcord.Embed(title = "No Available Actions", description = f"No actions available. Previous punishments have expired.", color =  nextcord.Color.red()), ephemeral = True)
+                    return
 
-    else:
-        button.label = "Member no longer exists"
-        button.disabled = True
-    
-    self.stop()
+        else:
+            button.label = "Member no longer exists"
+            button.disabled = True
+        
+        self.stop()
 
 
 async def check_profanity_moderation_enabled_and_warn_if_not(interaction: nextcord.Interaction) -> bool:
@@ -853,7 +859,7 @@ async def check_and_run_moderation_commands(bot: nextcord.Client, message: nextc
     
     return False
     
-async def run_my_strikes_command(interaction: nextcord.Interaction):
+async def run_my_strikes_command(interaction: nextcord.Interaction) -> None:
     """
     Runs the command to view the strikes of the user who invoked it.
 
@@ -875,7 +881,7 @@ async def run_my_strikes_command(interaction: nextcord.Interaction):
     await interaction.response.send_message(embed = nextcord.Embed(title = f"My Strikes", description = f"You are at {str(strike)} strike(s)", 
                                                                    color =  nextcord.Color.blue()), ephemeral = True)
 
-async def run_view_member_strikes_command(interaction: nextcord.Interaction, member: nextcord.Member):
+async def run_view_member_strikes_command(interaction: nextcord.Interaction, member: nextcord.Member) -> None:
     """
     Runs the command to view the strikes of a specified member.
 
@@ -901,7 +907,7 @@ async def run_view_member_strikes_command(interaction: nextcord.Interaction, mem
         embed = nextcord.Embed(title = f"View Member Strikes", description = f"{member.mention} is at {str(strike)} strike(s).", color =  nextcord.Color.blue())
         await interaction.response.send_message(embed = embed, ephemeral = True)
 
-async def run_set_admin_channel_command(interaction: nextcord.Interaction):
+async def run_set_admin_channel_command(interaction: nextcord.Interaction) -> None:
     """
     Runs the command to set the admin channel for moderation updates and alerts.
 

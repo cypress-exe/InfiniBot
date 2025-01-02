@@ -10,21 +10,17 @@ from core.log_manager import get_uuid_for_logging
 
 
 # View overrides
-async def disabled_feature_override(self: nextcord.ui.View, interaction: Interaction):
-    """Overrides a page if the feature was disabled
+async def disabled_feature_override(self: nextcord.ui.View, interaction: Interaction) -> None:
+    """
+    Overrides a page if the feature was disabled.
 
-    ------
-    Parameters
-    ------
-    self: `nextcord.ui.View`
-        The current view.
-    interaction: `nextcord.Interaction`
-        An interaction.
-        
-    Returns
-    ------
-        `None`
-    """    
+    :param self: The current view.
+    :type self: nextcord.ui.View
+    :param interaction: An interaction.
+    :type interaction: nextcord.Interaction
+    :return: None
+    :rtype: None
+    """
     # Only allow the back button
     for child in list(self.children):
         if isinstance(child, nextcord.ui.Button):
@@ -39,21 +35,17 @@ async def disabled_feature_override(self: nextcord.ui.View, interaction: Interac
     try: await interaction.response.edit_message(embed = embed, view = self)
     except: await interaction.response.send_message(embed = embed, view = self, ephemeral=True)
 
-async def infinibot_loading_override(self: nextcord.ui.View, interaction: Interaction):
-    """Overrides a page if the feature is still loading
+async def infinibot_loading_override(self: nextcord.ui.View, interaction: Interaction) -> None:
+    """
+    Overrides a page if the feature is still loading
 
-    ------
-    Parameters
-    ------
-    self: `nextcord.ui.View`
-        The current view.
-    interaction: `nextcord.Interaction`
-        An interaction.
-        
-    Returns
-    ------
-        `None`
-    """    
+    :param self: The current view.
+    :type self: nextcord.ui.View
+    :param interaction: An interaction.
+    :type interaction: nextcord.Interaction
+    :return: None
+    :rtype: None
+    """
     # Only allow the back button
     for child in list(self.children):
         if isinstance(child, nextcord.ui.Button):
@@ -73,9 +65,28 @@ async def infinibot_loading_override(self: nextcord.ui.View, interaction: Intera
 
 # Views and Modals for everything
 class CustomView(nextcord.ui.View):
-    async def on_error(self, error: Exception, item, interaction):
+    """
+    A custom view that handles exceptions raised in the view's item callbacks.
+
+    It logs the exception with a unique ID and informs the user about the error with the ID.
+
+    To use this class, simply subclass it and add your items to the view.
+
+    :return: None
+    :rtype: None
+    """
+    async def on_error(self, error: Exception, item, interaction: Interaction) -> None:
         """
         Handles exceptions raised in the view's item callbacks.
+
+        :param error: The exception that was raised.
+        :type error: Exception
+        :param item: The item that was interacted with.
+        :type item: nextcord.ui.Item
+        :param interaction: The interaction that occurred.
+        :type interaction: Interaction
+        :return: None
+        :rtype: None
         """
         # Generate a unique ID for the error
         error_id = get_uuid_for_logging()
@@ -95,9 +106,24 @@ class CustomView(nextcord.ui.View):
         )
 
 class CustomModal(nextcord.ui.Modal):
-    async def on_error(self, error: Exception, interaction):
+    """
+    A custom modal that handles exceptions raised in the modal's execution.
+
+    To use this class, simply subclass it and add your items to the modal.
+
+    :return: None
+    :rtype: None
+    """
+    async def on_error(self, error: Exception, interaction: Interaction) -> None:
         """
         Handles exceptions raised in the modal's execution.
+
+        :param error: The exception that was raised.
+        :type error: Exception
+        :param interaction: The interaction that occurred.
+        :type interaction: Interaction
+        :return: None
+        :rtype: None
         """
         # Generate a unique ID for the error
         error_id = get_uuid_for_logging()
@@ -119,38 +145,46 @@ class CustomModal(nextcord.ui.Modal):
 
 # View for handling selects with pagnation if needed
 class SelectView(CustomView):
-    """Creates a select view that has pages if needed.
+    """
+    Creates a select view that has pages if needed.
 
-    ------
-    Parameters
-    ------
-    embed: `nextcord.Embed`
-        The embed
-    options: `list[nextcord.SelectOption]`
-        Options of the Select
-    return_command: `def(interaction, str | None)`
-        Command to call when finished. Returns a value if the user selected something. Returns None if the user canceled.
-        
-    Optional Parameters
-    ------
-    placeholder: optional [`str`]
-        Placeholder for the Select. Defaults to None.
-    continue_button_label: optional [`str`]
-        Continue Button Label. Defaults to "Continue".
-    cancel_button_label: optional [`str`]
-        Cancel Button Label. Defaults to "Cancel".
-    preserve_order: optional [`bool`]
-        Preserves the order of options. Defaults to "False", where the options will be alphabetized.
-        
-    Raises
-    ------
-    `ValueError`
-        If the arguments are incorrect.
-        
+    :param embed: The embed
+    :type embed: nextcord.Embed
+    :param options: Options of the Select
+    :type options: list[nextcord.SelectOption]
+    :param return_command: Command to call when finished. Returns a value if the user selected something.
+                          Returns None if the user canceled.
+    :type return_command: callable[[Interaction, str | None], None]
+    :param placeholder: Placeholder for the Select. Defaults to None.
+    :type placeholder: str | None
+    :param continue_button_label: Continue Button Label. Defaults to "Continue".
+    :type continue_button_label: str
+    :param cancel_button_label: Cancel Button Label. Defaults to "Cancel".
+    :type cancel_button_label: str
+    :param preserve_order: Preserves the order of options. Defaults to False, where the options will be alphabetized.
+    :type preserve_order: bool
+
+    :raises ValueError: If the arguments are incorrect.
+
     Setup
     ------
     Call `await ~setup(nextcord.Interaction)` to begin setup.
     """
+    def __init__(self, embed: nextcord.Embed, 
+                 options: list[nextcord.SelectOption], 
+                 return_command, 
+                 placeholder: str = None, 
+                 continue_button_label = "Continue", 
+                 cancel_button_label = "Cancel", 
+                 preserve_order = False) -> None:
+        
+        super().__init__()
+        self.page = 0
+        self.embed = embed
+        self.options = options
+        self.return_command = return_command
+        
+        # Confirm objects
         
     def __init__(self, embed: nextcord.Embed, 
                  options: list[nextcord.SelectOption], 

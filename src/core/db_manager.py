@@ -11,23 +11,84 @@ database_url = "sqlite:///./generated/files/database.db"
 database_build_file_path = "./resources/db_build.sql"
 
 class DatabaseForInfiniBot(Database): # Alters Database to add InfiniBot-specific functions
-    def get_all_entries(self):
+    """
+    Retrieves all entries from the database.
+    """
+
+    def get_all_entries(self) -> list:
+        """
+        An alias for `get_unique_entries_for_database()`. Returns all unique entries for the database.
+
+        :return: A list of unique entries from the database.
+        :rtype: list
+        """
         return self.get_unique_entries_for_database()
 
 database = None
-def init_database():
+def init_database() -> None:
+    """
+    Initialize the database for InfiniBot.
+
+    This function sets up the database by creating an instance of `DatabaseForInfiniBot`
+    using the specified URL and build file path. The `database` variable is set
+    to this instance, and the database context is managed using `DatabaseContextManager`.
+
+    :return: None
+    :rtype: None
+    """
     global database
     with DatabaseContextManager():
         database = DatabaseForInfiniBot(database_url, database_build_file_path)
 
-def get_database():
+def get_database() -> DatabaseForInfiniBot:
+    """
+    Retrieve the current database instance.
+
+    This function returns the current instance of `DatabaseForInfiniBot`.
+    If the database has not been initialized yet, this function will
+    return `None`.
+
+    :return: The current database instance or `None` if not initialized.
+    :rtype: DatabaseForInfiniBot
+    """
     return database
 
-def cleanup_database():
+def cleanup_database() -> None:
+    """
+    Clean up the database.
+
+    This function closes the database engine and disposes of all its resources.
+    It should be called when the bot is shutting down to ensure a clean exit.
+
+    :return: None
+    :rtype: None
+    """
     global database
     database.cleanup()
 
 class Simple_TableManager:
+    """
+    A class for managing entries in a SQL table.
+
+    :param primary_id: The primary ID of the entry.
+    :type primary_id: int
+    :param table_name: The name of the SQL table.
+    :type table_name: str
+
+    :var database: The database instance.
+    :type database: DatabaseForInfiniBot
+    :var primary_id: The primary ID of the entry.
+    :type primary_id: int
+    :var table_name: The name of the SQL table.
+    :type table_name: str
+    :var primary_id_sql_name: The name of the primary key column in the SQL table.
+    :type primary_id_sql_name: str
+    :var _entry_exists_in_table: A flag indicating whether the entry exists in the table.
+    :type _entry_exists_in_table: bool
+
+    :return: The string representation of the manager with column names and their types.
+    :rtype: str
+    """
     def __init__(self, primary_id:int, table_name:str):
         self.database = get_database()
         self.primary_id = primary_id

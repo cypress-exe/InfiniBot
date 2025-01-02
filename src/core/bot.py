@@ -25,7 +25,16 @@ bot = commands.AutoShardedBot(intents = intents,
                             help_command=None)
 
 @bot.event
-async def on_ready():
+async def on_ready() -> None:
+    """
+    This function is triggered when the bot becomes ready and all shards are ready.
+    It waits for the bot to be fully ready, logs the bot's username, sets bot load status,
+    starts the scheduler, and optionally logs which guilds are on which shard.
+
+    :return: None
+    :rtype: None
+    """
+
     await bot.wait_until_ready()
     logging.info(f"============================== Logged in as: {bot.user.name} with all shards ready. ==============================")
 
@@ -40,10 +49,15 @@ async def on_ready():
 
 
 @bot.event
-async def on_shard_ready(shard_id: int):
+async def on_shard_ready(shard_id: int) -> None:
     """
-    Triggered when a specific shard becomes ready.
-    Logs the readiness of each shard and performs any necessary actions.
+    Triggered when a specific shard becomes ready. Logs the readiness of each shard
+    and performs any necessary actions.
+    
+    :param shard_id: The ID of the shard that is ready.
+    :type shard_id: int
+    :return: None
+    :rtype: None
     """
     logging.info(f"Shard {shard_id} is ready.")
 
@@ -58,7 +72,13 @@ async def on_shard_ready(shard_id: int):
     #         await admin_channel.send(f"Shard {shard_id} is ready.")
 
 @bot.event
-async def on_close():
+async def on_close() -> None:
+    """
+    Triggered when the bot's connection is about to be closed.
+
+    :return: None
+    :rtype: None
+    """
     global_settings.set_bot_load_status(False)
     get_scheduler().shutdown()
     logging.fatal("InfiniBot is shutting down...")
@@ -138,8 +158,17 @@ async def set_level(interaction: Interaction,
 
 # ERROR HANDLING ==============================================================================================================================================================
 @bot.event
-async def on_application_command_error(interaction: Interaction, error):
-    """Handles errors in application commands."""
+async def on_application_command_error(interaction: Interaction, error) -> None:
+    """
+    Handles errors in application commands.
+
+    :param interaction: The interaction in which the error occurred.
+    :type interaction: :class:`~nextcord.Interaction`
+    :param error: The error that occurred during the command execution.
+    :type error: :class:`Exception`
+    :return: None
+    :rtype: None
+    """
     # Generate a unique ID for the error
     error_id = log_manager.get_uuid_for_logging()
 
@@ -162,7 +191,29 @@ async def on_application_command_error(interaction: Interaction, error):
             
 # CALLBACKS ==============================================================================================================================================================
 @bot.event
-async def on_message(message: nextcord.Message):
+async def on_message(message: nextcord.Message) -> None:
+    """
+    Handles incoming messages.
+
+    :param message: The message that was sent.
+    :type message: nextcord.Message
+    :return: None
+    :rtype: None
+    """
+    if message == None: return
+      
+    # DM Commands ---------------------------------------------
+    if message.guild == None:
+        with LogIfFailure(feature="dm_commands.check_and_run_dm_commands"):
+            await dm_commands.check_and_run_dm_commands(bot, message)
+        
+        with LogIfFailure(feature="admin_commands.check_and_run_admin_commands"):
+            await admin_commands.check_and_run_admin_commands(message)
+
+        return
+
+    # Moderation
+    # await checkForExpiration(server) # TODO - Check for Expiration of Strikes (Do this as a midnight action)
     if message == None: return
       
     # DM Commands ---------------------------------------------
@@ -199,7 +250,15 @@ async def on_message(message: nextcord.Message):
     await bot.process_commands(message)
 
 @bot.event
-async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent):
+async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
+    """
+    Handles raw message edit events.
+
+    :param payload: The raw message edit event.
+    :type payload: nextcord.RawMessageUpdateEvent
+    :return: None
+    :rtype: None
+    """
     guild = None
     for _guild in bot.guilds:
         if _guild.id == payload.guild_id:
@@ -244,7 +303,15 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent):
         await action_logging.log_raw_message_edit(guild, before_message, after_message)
 
 @bot.event
-async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
+async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None:
+    """
+    Handles raw message delete events.
+
+    :param payload: The raw message delete event.
+    :type payload: nextcord.RawMessageDeleteEvent
+    :return: None
+    :rtype: None
+    """
     # Find the message (CSI Time!)
     message = None
     guild = None
@@ -269,7 +336,18 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent):
         await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id)
 
 @bot.event
-async def on_member_update(before: nextcord.Member, after: nextcord.Member):
+async def on_member_update(before: nextcord.Member, after: nextcord.Member) -> None:
+    """
+    Handles member update events.
+
+    :param before: The member before the update.
+    :type before: nextcord.Member
+    :param after: The member after the update.
+    :type after: nextcord.Member
+    :return: None
+    :rtype: None
+    """
+    
     # Log the update
     with LogIfFailure(feature="action_logging.log_member_update"):
         await action_logging.log_member_update(before, after)
@@ -280,13 +358,29 @@ async def on_member_update(before: nextcord.Member, after: nextcord.Member):
             if after.nick != None: await moderation.check_and_punish_nickname_for_profanity(bot, after.guild, before, after)
 
 @bot.event
-async def on_member_join(member: nextcord.Member):
+async def on_member_join(member: nextcord.Member) -> None:
+    """
+    Handles member join events.
+
+    :param member: The member that joined.
+    :type member: nextcord.Member
+    :return: None
+    :rtype: None
+    """
     # Trigger the welcome message
     with LogIfFailure(feature="join_leave_messages.trigger_join_message"):
         await join_leave_messages.trigger_join_message(member)
 
 @bot.event
-async def on_member_remove(member: nextcord.Member):
+async def on_member_remove(member: nextcord.Member) -> None:
+    """
+    Handles member removal events.
+
+    :param member: The member that was removed.
+    :type member: nextcord.Member
+    :return: None
+    :rtype: None
+    """
     # Trigger the farewell message
     with LogIfFailure(feature="join_leave_messages.trigger_leave_message"):
         await join_leave_messages.trigger_leave_message(member)
@@ -300,12 +394,26 @@ async def on_member_remove(member: nextcord.Member):
         await action_logging.log_member_removal(member.guild, member)
 
 @bot.event
-async def on_guild_channel_delete(channel: nextcord.abc.GuildChannel):
+async def on_guild_channel_delete(channel: nextcord.abc.GuildChannel) -> None:
+    """
+    Handles guild channel deletion events.
+
+    :param channel: The channel that was deleted.
+    :type channel: nextcord.abc.GuildChannel
+    :return: None
+    :rtype: None
+    """
     # TODO Delete message info from channels that are deleted.
     pass
 
 # RUN BOT ==============================================================================================================================================================================
-def run():
+def run() -> None:
+    """
+    Runs the bot.
+
+    :return: None
+    :rtype: None
+    """
     # Get token
     token = JSONFile("TOKEN")["discord_auth_token"]
     logging.info(f"Running bot with token: {token[:5]}*******...")

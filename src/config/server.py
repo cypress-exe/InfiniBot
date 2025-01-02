@@ -15,6 +15,14 @@ class Server_IntegratedList_TableManager(IntegratedList_TableManager):
         self.server_id = self.primary_key_value
 
 class Server:
+    """
+    Represents a server configuration.
+
+    :param server_id: The ID of the server to manage.
+    :type server_id: int
+    :return: An instance of the Server object.
+    :rtype: Server
+    """
     def __init__(self, server_id:int):    
         self.server_id = self._format_server_id(server_id)
 

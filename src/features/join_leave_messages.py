@@ -7,7 +7,18 @@ from config.server import Server
 from modules.custom_types import UNSET_VALUE
 
 
-async def trigger_join_message(member: nextcord.Member):
+async def trigger_join_message(member: nextcord.Member) -> None:
+    """
+    |coro|
+
+    Trigger the join message functionality.
+    
+    :param member: The member that has joined. This is a required parameter.
+    :type member: nextcord.Member
+    :return: None
+    :rtype: None
+    """
+    
     server = Server(member.guild.id)
 
     if utils.feature_is_active(server = server, feature = "join_messages"): # Check if join messages are enabled
@@ -43,7 +54,17 @@ async def trigger_join_message(member: nextcord.Member):
         
         await channel.send(embeds = embeds)
             
-async def trigger_leave_message(member: nextcord.Member):
+async def trigger_leave_message(member: nextcord.Member) -> None:
+    """
+    |coro|
+
+    Trigger the leave message functionality.
+    
+    :param member: The member that has left. This is a required parameter.
+    :type member: nextcord.Member
+    :return: None
+    :rtype: None
+    """
     if member == None: return
     if member.guild == None: return
     if member.guild.id == None: return

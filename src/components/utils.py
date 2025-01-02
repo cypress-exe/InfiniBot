@@ -1,5 +1,6 @@
 import datetime
 import logging
+from typing import Any
 
 import dateparser
 import nextcord
@@ -8,55 +9,46 @@ from nextcord import Interaction
 from config.global_settings import feature_dependencies, get_global_kill_status
 
 
-def format_var_to_pythonic_type(_type:str, value):
-  """
-  Format a variable based on its type.
-
-  Args:
-      _type (str): Data type of the variable.
-      value (any): Value to format.
-
-  Returns:
-      any: Formatted value.
-  """
-  if _type.lower() == "boolean" or _type.lower() == "bool":
-      if isinstance(value, int):
-          return bool(value)
-      if isinstance(value, str):
-          return value.lower() == "true"
-  if _type.lower() == "integer" or _type.lower() == "int":
-      if isinstance(value, str):
-          return int(value)
-  if _type.lower() == "text":
-      if isinstance(value, str):
-          if value.startswith("'") and value.endswith("'") or value.startswith('"') and value.endswith('"'):
-              return format_var_to_pythonic_type(_type, value[1:-1])
-          else:
-              return value
-  return value
-
-def standardize_dict_properties(default_dict: dict, object_dict: dict, aliases: dict = {}):
-    """A recursive function that makes sure that two dictionaries have the same properties.
-
-    ------
-    Parameters
-    ------
-    default_dict: `dict`
-        A dictionary containing all the properties and their default values.
-    object_dict: `dict`
-        The dictionary that will be edited.
-        
-    Optional Parameters
-    ------
-    aliases: optional [`dict`]
-        A dictionary of aliases (for backwards compatibility) (ex: {'old':'new'}).
-        
-    Returns
-    ------
-    `dict`
-        The object dictionary after having its properties standardized.
+def format_var_to_pythonic_type(_type: str, value: Any) -> Any:
     """
+    Format a variable based on its type.
 
+    :param _type: Data type of the variable.
+    :type _type: str
+    :param value: Value to format.
+    :type value: Any
+    :return: Formatted value.
+    :rtype: Any
+    """
+    if _type.lower() == "boolean" or _type.lower() == "bool":
+        if isinstance(value, int):
+            return bool(value)
+        if isinstance(value, str):
+            return value.lower() == "true"
+    if _type.lower() == "integer" or _type.lower() == "int":
+        if isinstance(value, str):
+            return int(value)
+    if _type.lower() == "text":
+        if isinstance(value, str):
+            if value.startswith("'") and value.endswith("'") or value.startswith('"') and value.endswith('"'):
+                return format_var_to_pythonic_type(_type, value[1:-1])
+            else:
+                return value
+    return value
+
+def standardize_dict_properties(default_dict: dict, object_dict: dict, aliases: dict = {}) -> dict:
+    """
+    A recursive function that makes sure that two dictionaries have the same properties.
+
+    :param default_dict: A dictionary containing all the properties and their default values.
+    :type default_dict: dict
+    :param object_dict: The dictionary that will be edited.
+    :type object_dict: dict
+    :param aliases: A dictionary of aliases (for backwards compatibility) (ex: {'old':'new'}).
+    :type aliases: dict
+    :return: The object dictionary after having its properties standardized.
+    :rtype: dict
+    """
 
     # cloning default_dict as returnDict
     return_dict = dict(default_dict)
@@ -88,7 +80,18 @@ def standardize_dict_properties(default_dict: dict, object_dict: dict, aliases: 
         
     return return_dict
 
-def standardize_str_indention(string: str):
+def standardize_str_indention(string: str) -> str:
+    """
+    Standardize the indentation level of a given string.
+
+    This function takes a string and standardizes the indentation level.
+    This is useful for strings that have been formatted with inconsistent indentation levels.
+
+    :param string: The string to standardize the indentation level for.
+    :type string: str
+    :return: The string with standardized indentation level.
+    :rtype: str
+    """
     # Split the string into lines
     lines = string.split('\n')
 
@@ -115,7 +118,7 @@ def standardize_str_indention(string: str):
     # Join the lines back into a string
     return('\n'.join(lines))
 
-def calculate_utc_offset(user_date_str, user_time_str):
+def calculate_utc_offset(user_date_str: str, user_time_str: str) -> float:
     """
     Calculate the UTC offset based on the provided date and time strings.
 
@@ -123,15 +126,13 @@ def calculate_utc_offset(user_date_str, user_time_str):
     calculates the difference between the provided datetime and the current UTC time,
     and snaps the offset to the nearest quarter-hour.
 
-    Args:
-        user_date_str (str): The date string (e.g., "11/24/2024", "November 24, 2024").
-        user_time_str (str): The time string (e.g., "15:30", "3:30 PM").
-
-    Returns:
-        float: The snapped UTC offset in hours (rounded to the nearest 15 minutes).
-
-    Raises:
-        ValueError: If the date or time string cannot be parsed.
+    :param user_date_str: The date string (e.g., "11/24/2024", "November 24, 2024").
+    :type user_date_str: str
+    :param user_time_str: The time string (e.g., "15:30", "3:30 PM").
+    :type user_time_str: str
+    :return: The snapped UTC offset in hours (rounded to the nearest 15 minutes).
+    :rtype: float
+    :raises ValueError: If the date or time string cannot be parsed.
     """
     # Parse the user-provided date and time
     user_datetime = dateparser.parse(f"{user_date_str} {user_time_str}")
@@ -154,23 +155,25 @@ def calculate_utc_offset(user_date_str, user_time_str):
     # Return the calculated offset
     return snapped_offset
 
-def conversion_local_time_and_utc_time(utc_offset, local_time_str=None, utc_time_str=None, return_entire_datetime=False):
+def conversion_local_time_and_utc_time(
+    utc_offset: float, local_time_str: str = None, utc_time_str: str = None, return_entire_datetime: bool = False
+) -> datetime.datetime | datetime.time:
     """
     Convert a given local time string to UTC time using a UTC offset.
 
-    Args:
-        utc_offset (float): The UTC offset in hours (e.g., -5.0 for EST).
-        time_str (str, optional): The time string to parse (e.g., "5:21 PM", "17:21").
-        utc_time_str (str, optional): The UTC time string to parse (e.g., "22:21", "5:21 PM").
-        return_entire_datetime (bool, optional): If True, returns a datetime object instead of just the time.
-
-    Returns:
-        time: A `datetime.time` object representing the time in UTC.
-
-    Raises:
-        ValueError: If neither local_time_str nor utc_time_str is provided.
-        ValueError: If both local_time_str and utc_time_str are provided.
-        ValueError: If the time string cannot be parsed.
+    :param utc_offset: The UTC offset in hours (e.g., -5.0 for EST).
+    :type utc_offset: float
+    :param local_time_str: The time string to parse (e.g., "5:21 PM", "17:21").
+    :type local_time_str: str | None
+    :param utc_time_str: The UTC time string to parse (e.g., "22:21", "5:21 PM").
+    :type utc_time_str: str | None
+    :param return_entire_datetime: If True, returns a datetime object instead of just the time.
+    :type return_entire_datetime: bool
+    :return: A `datetime.time` object representing the time in UTC or a `datetime.datetime` object if
+        `return_entire_datetime` is True.
+    :raises ValueError: If neither local_time_str nor utc_time_str is provided.
+    :raises ValueError: If both local_time_str and utc_time_str are provided.
+    :raises ValueError: If the time string cannot be parsed.
     """
     if local_time_str == None and utc_time_str == None:
         raise ValueError("Either local_time_str or utc_time_str must be provided.")
@@ -203,7 +206,15 @@ def conversion_local_time_and_utc_time(utc_offset, local_time_str=None, utc_time
         return utc_datetime.time()
 
 
-def get_discord_color_from_string(color: str):
+def get_discord_color_from_string(color: str) -> nextcord.Color:
+    """
+    Returns a nextcord.Color object based on the given string. If the string is empty or None, returns the default color.
+    
+    :param color: A string representing the color to be generated.
+    :type color: str
+    :return: A nextcord.Color object representing the color.
+    :rtype: nextcord.Color
+    """
     if color == None or color == "": return nextcord.Color.default()
 
     color = color.lower()
@@ -225,7 +236,15 @@ def get_discord_color_from_string(color: str):
     
     return nextcord.Color.default()
 
-def get_string_from_discord_color(color: nextcord.colour.Colour):
+def get_string_from_discord_color(color: nextcord.colour.Colour) -> str | None:
+    """
+    Returns a string representing the color based on the given nextcord.Color object. If the color is the default color, returns None.
+    
+    :param color: A nextcord.Color object representing the color to be generated.
+    :type color: nextcord.colour.Colour
+    :return: A string representing the color, or None if the color is the default color.
+    :rtype: str | None
+    """
     if color == None or color == nextcord.Color.default(): return None
         
     if color == nextcord.Color.red(): return "Red"
@@ -245,7 +264,29 @@ def get_string_from_discord_color(color: nextcord.colour.Colour):
     
     return None
 
-def replace_placeholders_in_embed(embed: nextcord.Embed, member: nextcord.Member, guild: nextcord.Guild, custom_replacements:dict={}, skip_channel_replacement=False):
+def replace_placeholders_in_embed(
+    embed: nextcord.Embed, 
+    member: nextcord.Member, 
+    guild: nextcord.Guild, 
+    custom_replacements: dict = {}, 
+    skip_channel_replacement: bool = False
+) -> nextcord.Embed:
+    """
+    Replaces placeholders in an embed with values from a member and a guild.
+
+    :param embed: The embed to replace placeholders in.
+    :type embed: nextcord.Embed
+    :param member: The member to use for placeholder replacement.
+    :type member: nextcord.Member
+    :param guild: The guild to use for placeholder replacement.
+    :type guild: nextcord.Guild
+    :param custom_replacements: A dictionary of custom placeholder replacements.
+    :type custom_replacements: dict
+    :param skip_channel_replacement: Whether to skip replacing channel mentions.
+    :type skip_channel_replacement: bool
+    :return: The modified embed with replaced placeholders.
+    :rtype: nextcord.Embed
+    """
     replacements = custom_replacements
 
     # Add default replacements
@@ -296,18 +337,21 @@ def replace_placeholders_in_embed(embed: nextcord.Embed, member: nextcord.Member
     
     return embed
 
-def feature_is_active(**kwargs):
+def feature_is_active(**kwargs) -> bool:
     """
     Checks if a feature is active for a server (or globally).
 
-    Args:
-        server (Server, optional): The server object to check the feature for.
-        server_id (int, optional): The ID of the server to check the feature for.
-        guild_id (in, optional): The ID of the guild to check the feature for.
-        feature (str): The name of the feature to check.
+    :param server: The server object to check the feature for.
+    :type server: Server
+    :param server_id: The ID of the server to check the feature for.
+    :type server_id: int
+    :param guild_id: The ID of the guild to check the feature for.
+    :type guild_id: int
+    :param feature: The name of the feature to check.
+    :type feature: str
 
-    Returns:
-        bool: True if the feature is active for the server (or globally), False otherwise.
+    :return: True if the feature is active for the server (or globally), False otherwise.
+    :rtype: bool
     """
     from config.server import Server
 
@@ -366,43 +410,33 @@ def feature_is_active(**kwargs):
     logging.debug(f"Determined that feature {feature} is enabled in the server. Key: {key}")
     return True
 
-def role_assignable_by_infinibot(role: nextcord.Role):
-    """Determins if InfiniBot can assign a role.
+def role_assignable_by_infinibot(role: nextcord.Role) -> bool:
+    """
+    Determines if InfiniBot can assign a role.
 
-    ------
-    Parameters
-    ------
-    role: `nextcord.Role`
-        The role to check
-
-    Returns
-    ------
-    `bool`
-        True if assignable, False if not.
-    """    
+    :param role: The role to check.
+    :type role: nextcord.Role
+    :return: True if the role is assignable by InfiniBot, False otherwise.
+    :rtype: bool
+    """
     if role.is_default(): return False
     if role.is_integration(): return False
     
     return role.is_assignable()
 
 
-async def check_and_warn_if_channel_is_text_channel(interaction: Interaction):
-    """|coro|
+async def check_and_warn_if_channel_is_text_channel(interaction: Interaction) -> bool:
+    """
+    |coro|
     
-    Check to see if the channel that this `Interaction` was used in was a `Text Channel`.
-    Notifies the user if this was not a `Text Channel`. Recommened to immediately return if this function returns False.
+    Checks if the channel in which the interaction was used is a text channel.
+    Notifies the user if it is not a text channel.
 
-    ------
-    Parameters
-    ------
-    interaction: `nextcord.Interaction`
-        The interaction.
-
-    Returns
-    ------
-    `bool`
-        Whether or not this is a text channel.
-    """    
+    :param interaction: The interaction object from the Discord event.
+    :type interaction: nextcord.Interaction
+    :return: True if the channel is a text channel, False otherwise.
+    :rtype: bool
+    """
     
     if type(interaction.channel) == nextcord.TextChannel:
         return True
@@ -410,26 +444,22 @@ async def check_and_warn_if_channel_is_text_channel(interaction: Interaction):
         await interaction.response.send_message(embed = nextcord.Embed(title = "You can't use that here!", description = "You can only use this command in text channels.", color = nextcord.Color.red()), ephemeral=True)
         return False
 
-async def user_has_config_permissions(interaction: Interaction, notify = True):
+async def user_has_config_permissions(interaction: Interaction, notify: bool = True) -> bool:
     """|coro|
     
     Determines if an interaction can be continued if it is protected by InfiniBot Mod. NOT SILENT!!!
     InfiniBot WILL warn the user if they do not have the required permissions.
 
-    ------
     Parameters
-    ------
-    interaction: `nextcord.Interaction`
+    ----------
+    interaction: Interaction
         The interaction.
-        
-    Optional Parameters
-    ------
-    notify: optional [`bool`]
-        Whether to notify the user if they fail. Defaults to True.
+    notify: bool, optional
+        Whether to notify the user if they fail, by default True
 
     Returns
-    ------
-    `bool`
+    -------
+    bool
         Whether or not the interaction can continue.
     """
     
@@ -442,28 +472,18 @@ async def user_has_config_permissions(interaction: Interaction, notify = True):
     if notify: await interaction.response.send_message(embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.\n\nType `/help infinibot_mod` for more information.", color = nextcord.Color.red()), ephemeral = True)
     return False
 
-async def check_text_channel_permissions(channel: nextcord.TextChannel, auto_warn: bool, custom_channel_name: str = None):
-    """|coro|
-    
+async def check_text_channel_permissions(channel: nextcord.TextChannel, auto_warn: bool, custom_channel_name: str = None) -> bool:
+    """
     Ensure that InfiniBot has permissions to send messages and embeds in a channel.
 
-    ------
-    Parameters
-    ------
-    channel: `nextcord.TextChannel`
-        The channel to check.
-    auto_warn: `bool`
-        Whether or not to warn the guild's owner if InfiniBot does NOT have the required permissions.
-        
-    Optional Parameters
-    ------
-    custom_channel_name: optional [`str`]
-        If warning the owner, custom_channel_name specifies a specific name for the channel instead of the default channel name. Defaults to None.
-
-    Returns
-    ------
-    `bool`
-        Whether or not InfiniBot has permissions to send messages and embeds in the channel.
+    :param channel: The channel to check.
+    :type channel: nextcord.TextChannel
+    :param auto_warn: Whether or not to warn the guild's owner if InfiniBot does NOT have the required permissions.
+    :type auto_warn: bool
+    :param custom_channel_name: If warning the owner, specifies a specific name for the channel instead of the default channel name. Defaults to None.
+    :type custom_channel_name: str, optional
+    :return: Whether or not InfiniBot has permissions to send messages and embeds in the channel.
+    :rtype: bool
     """    
     
     if channel == None:
@@ -490,33 +510,31 @@ async def check_text_channel_permissions(channel: nextcord.TextChannel, auto_war
 
     return False
 
-async def send_error_message_to_server_owner(guild: nextcord.Guild, permission, message = None, administrator = True, channel = None, guild_permission = False):
-    """|coro|
-    
-    Sends an error message to the owner of the server via dm
+async def send_error_message_to_server_owner(
+    guild: nextcord.Guild, 
+    permission: str, 
+    message: str = None, 
+    administrator: bool = True, 
+    channel: str = None, 
+    guild_permission: bool = False
+) -> None:
+    """
+    Sends an error message to the owner of the server via DM (Direct Message).
 
-    ------
-    Parameters
-    ------
-    guild: `nextcord.Guild` 
-        The guild in which the error occured.
-    permission: `str`
-        The permission needed.
-
-    Optional Parameters
-    ------
-    message: `str`
-        A custom message to send (the opt out info is appended to this). Defaults to None.
-    administrator: `bool`
-        Whether to include info about giving InfiniBot adminstrator. Defaults to True.
-    channel: `str`
-        The channel where the permission is needed. Defaults to None (meaning the message says "one or more channels").
-    guild_permission: `bool`
-        Whether the permission is a guild permission. If so, channel (↑) is overwritten. Defaults to False.
-
-    Returns
-    ------
-        `None`
+    :param guild: The guild in which the error occured.
+    :type guild: nextcord.Guild
+    :param permission: The permission needed.
+    :type permission: str
+    :param message: A custom message to send (the opt out info is appended to this). Defaults to None.
+    :type message: str, optional
+    :param administrator: Whether to include info about giving InfiniBot adminstrator. Defaults to True.
+    :type administrator: bool, optional
+    :param channel: The channel where the permission is needed. Defaults to None (meaning the message says "one or more channels").
+    :type channel: str, optional
+    :param guild_permission: Whether the permission is a guild permission. If so, channel (↑) is overwritten. Defaults to False.
+    :type guild_permission: bool, optional
+    :return: None
+    :rtype: None
     """
     
     if not guild:
@@ -565,21 +583,14 @@ async def send_error_message_to_server_owner(guild: nextcord.Guild, permission, 
     except:
         return
     
-async def check_server_for_infinibot_mod_role(guild: nextcord.Guild):
-    """|coro|
-    
+async def check_server_for_infinibot_mod_role(guild: nextcord.Guild) -> bool:
+    """
     Check to see if InfiniBot Mod role exists. If not, create it.
 
-    ------
-    Parameters
-    ------
-    guild: `nextcord.Guild`
-        The guild in which to check.
-        
-    Returns
-    ------
-    `bool`
-        True if the role was created. False if it already existed, or the process failed.
+    :param guild: The guild in which to check.
+    :type guild: nextcord.Guild
+    :return: True if the role was created. False if it already existed, or the process failed.
+    :rtype: bool
     """
     
     if not guild:
@@ -601,31 +612,25 @@ async def check_server_for_infinibot_mod_role(guild: nextcord.Guild):
     else:
         return False
 
-async def timeout(member: nextcord.Member, seconds: int, reason: str = None):
-    """|coro|
-    
+async def timeout(member: nextcord.Member, seconds: int, reason: str = None) -> str | None:
+    """
+    |coro|
+
     Handles the timing out of a member.
 
-    ------
-    Parameters
-    ------
-    member: `nextcord.Member`
-        The member to time out.
-    seconds: `int`
-        The timeout time in seconds.
-        
-    Optional Parameters
-    ------
-    reason: optional [`str`]
-        The reason that appears in the audit log. Defaults to None.
+    :param member: The member to time out.
+    :type member: nextcord.Member
+    :param seconds: The timeout time in seconds.
+    :type seconds: int
+    :param reason: The reason that appears in the audit log. Defaults to None.
+    :type reason: str, optional
 
-    Returns
-    ------
-    optional [`True` | `False`]
-        - "Success revoked" - If the member was successfully un-timed out
-        - "Success granted" - If the member was successfully timed out
-        - "Failure Forbidden" - If the member could not be timed out due to missing permissions
-        - "Failure Unknown" - If the member could not be timed out due to an error
+    :return: A string indicating the result of the timeout operation or None.
+    :rtype: str | None
+    - "Success revoked" - If the member was successfully un-timed out
+    - "Success granted" - If the member was successfully timed out
+    - "Failure Forbidden" - If the member could not be timed out due to missing permissions
+    - "Failure Unknown" - If the member could not be timed out due to an error
     """
     # Check permissions
     if not member.guild.me.guild_permissions.moderate_members:

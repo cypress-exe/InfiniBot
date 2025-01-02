@@ -15,6 +15,9 @@ from modules.custom_types import UNSET_VALUE
 
 
 class ShowMoreButton(nextcord.ui.View):
+  """
+  A View that will be used for the Action Logging feature.
+  """
   def __init__(self):
     super().__init__(timeout = None)
     self.possible_embeds = [
@@ -55,7 +58,18 @@ class ShowMoreButton(nextcord.ui.View):
   
 
 
-async def should_log(guild: nextcord.Guild):
+async def should_log(guild: nextcord.Guild) -> tuple[bool, nextcord.TextChannel | None]:
+    """
+    |coro|
+
+    Determines whether logging should be performed for the given guild.
+
+    :param guild: The guild to check logging settings for.
+    :type guild: nextcord.Guild
+    :return: A tuple indicating whether logging is active and the log channel if active.
+    :rtype: Tuple[bool, Optional[nextcord.TextChannel]]
+    """
+
     server = Server(guild.id)
     
     if not utils.feature_is_active(server = server, feature = "logging"):
@@ -75,13 +89,38 @@ async def should_log(guild: nextcord.Guild):
     else:
         return True, log_channel
 
-def entry_is_fresh(entry: nextcord.AuditLogEntry):
+def entry_is_fresh(entry: nextcord.AuditLogEntry) -> bool:
+    """
+    Determines whether the given AuditLogEntry is fresh enough to be considered recently modified.
+
+    :param entry: The AuditLogEntry to check the freshness of.
+    :type entry: nextcord.AuditLogEntry
+    :return: A boolean indicating whether the entry is considered fresh.
+    :rtype: bool
+    """
     return (entry.created_at.month == datetime.datetime.now(datetime.timezone.utc).month 
                             and entry.created_at.day == datetime.datetime.now(datetime.timezone.utc).day 
                             and entry.created_at.hour == datetime.datetime.now(datetime.timezone.utc).hour 
                             and ((datetime.datetime.now(datetime.timezone.utc).minute - entry.created_at.minute) <= 5))
 
-async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Message, edited_message: nextcord.Message, user: nextcord.Member = None):
+async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Message, edited_message: nextcord.Message, user: nextcord.Member = None) -> None:
+    """
+    |coro|
+
+    Triggers the edit log system.
+
+    :param guild: The guild where the edited message is located.
+    :type guild: nextcord.Guild
+    :param original_message: The original message.
+    :type original_message: nextcord.Message
+    :param edited_message: The edited message.
+    :type edited_message: nextcord.Message
+    :param user: The user who edited the message. If None, the author of the edited message is used.
+    :type user: Optional[nextcord.Member]
+    :return: None
+    :rtype: None
+    """
+
     if not user: user = edited_message.author
 
     # Get the log channel
@@ -230,7 +269,15 @@ async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Mes
         # Finally, update the old message to have the new embed
         await message.edit(embed = embed)
     
-async def file_computation(file: nextcord.Attachment):
+async def file_computation(file: nextcord.Attachment) -> nextcord.File | None:
+    """
+    |coro|
+
+    :param file: The file to be processed
+    :type file: nextcord.Attachment
+    :return: The processed file, or None if there was an error
+    :rtype: nextcord.File or None
+    """
     # ChatGPT :)
     try:
         file_bytes = await file.read()
@@ -245,7 +292,22 @@ async def file_computation(file: nextcord.Attachment):
     except:
         return None
     
-async def files_computation(deleted_message: nextcord.Message, log_channel: nextcord.TextChannel, log_message: nextcord.Message):
+async def files_computation(deleted_message: nextcord.Message, log_channel: nextcord.TextChannel, log_message: nextcord.Message) -> None:
+    """
+    |coro|
+
+    Compute a list of files from a deleted message.
+
+    :param deleted_message: The deleted message that had the attachments
+    :type deleted_message: nextcord.Message
+    :param log_channel: The channel to send the files to
+    :type log_channel: nextcord.TextChannel
+    :param log_message: The message to update after sending all the files
+    :type log_message: nextcord.Message
+    :return: None
+    :rtype: None
+    """
+    
     # ChatGPT :)
     # Create tasks for each attachment
     tasks = []
@@ -266,7 +328,22 @@ async def files_computation(deleted_message: nextcord.Message, log_channel: next
 
 
 
-async def log_raw_message_edit(guild: nextcord.Guild, before_message: nextcord.Message, after_message: nextcord.Message):
+async def log_raw_message_edit(guild: nextcord.Guild, before_message: nextcord.Message, after_message: nextcord.Message) -> None:
+    """
+    |coro|
+
+    Logs the edit of a message in a guild.
+
+    :param guild: The guild where the message was edited.
+    :type guild: nextcord.Guild
+    :param before_message: The original message before it was edited.
+    :type before_message: nextcord.Message
+    :param after_message: The message after it was edited.
+    :type after_message: nextcord.Message
+    :return: None
+    :rtype: None
+    """
+
     # Test if logging is enabled
     logging_enabled, _ = await should_log(guild)
     if not logging_enabled: return
@@ -282,7 +359,25 @@ async def log_raw_message_edit(guild: nextcord.Guild, before_message: nextcord.M
     # UI Log
     await trigger_edit_log(guild, before_message, after_message)
  
-async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, channel: nextcord.TextChannel, message: nextcord.Message, message_id: int):
+async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, channel: nextcord.TextChannel, message: nextcord.Message, message_id: int) -> None:
+    """
+    |coro|
+
+    Logs the deletion of a message in a guild.
+
+    :param bot: The bot instance
+    :type bot: nextcord.Client
+    :param guild: The guild where the message was deleted
+    :type guild: nextcord.Guild
+    :param channel: The channel where the message was deleted
+    :type channel: nextcord.TextChannel
+    :param message: The message that was deleted
+    :type message: nextcord.Message
+    :param message_id: The ID of the message that was deleted
+    :type message_id: int
+    :return: None
+    :rtype: None
+    """
     # Make sure that logging is enabled
     logging_enabled, log_channel = await should_log(guild)
     if not logging_enabled: return
@@ -398,7 +493,19 @@ async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, ch
     if message and message.attachments != []:
         await files_computation(message, log_channel, log_message)
 
-async def log_member_update(before: nextcord.Member, after: nextcord.Member):
+async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> None:
+    """
+    |coro|
+
+    Logs a member update event.
+
+    :param before: The member before the update.
+    :type before: nextcord.Member
+    :param after: The member after the update.
+    :type after: nextcord.Member
+    :return: None
+    :rtype: None
+    """
     guild = after.guild
 
     logging_enabled, log_channel = await should_log(guild)
@@ -515,7 +622,19 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member):
             
             await log_channel.send(embed = embed)
 
-async def log_member_removal(guild: nextcord.Guild, member: nextcord.Member):
+async def log_member_removal(guild: nextcord.Guild, member: nextcord.Member) -> None:
+    """
+    |coro|
+
+    Logs a member removal event.
+
+    :param guild: The guild the member was removed from.
+    :type guild: nextcord.Guild
+    :param member: The member that was removed.
+    :type member: nextcord.Member
+    :return: None
+    :rtype: None
+    """
     if guild == None: return
     if guild.unavailable: return
     if guild.me == None: return
@@ -553,8 +672,19 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.Member):
         await log_channel.send(embed = embed)
 
 
-async def run_set_log_channel_command(interaction: Interaction):
-   if await utils.user_has_config_permissions(interaction) and await utils.check_and_warn_if_channel_is_text_channel(interaction):
+async def run_set_log_channel_command(interaction: Interaction) -> None:
+    """
+    |coro|
+
+    Runs the command to set the log channel for moderation updates and alerts.
+
+    :param interaction: The interaction object from the Discord event.
+    :type interaction: Interaction
+    
+    :return: None
+    :rtype: None
+    """
+    if await utils.user_has_config_permissions(interaction) and await utils.check_and_warn_if_channel_is_text_channel(interaction):
         server = Server(interaction.guild.id)
 
         server.logging_profile.channel = interaction.channel.id

@@ -8,7 +8,15 @@ from config.global_settings import get_configs
 from features.leveling import midnight_action_leveling
 
 
-async def run_every_minute():
+async def run_every_minute() -> None:
+    """
+    |coro|
+
+    Run midnight code. This function is intended to be run every minute.
+
+    :return: None
+    :rtype: None
+    """
     # Get the current time
     current_time_utc = datetime.datetime.now(datetime.timezone.utc)
     
@@ -27,7 +35,13 @@ scheduler = AsyncIOScheduler()
 # Suppress logs from APScheduler but keep INFO level for the rest of the program
 logging.getLogger('apscheduler').setLevel(logging.WARNING)
 
-def start_scheduler():
+def start_scheduler() -> None:
+    """
+    Starts the scheduler. Scheduler will run the `run_every_minute` function every 60 seconds.
+
+    :return: None
+    :rtype: None
+    """
     global scheduler
 
     # Calculate the next run time as the next full minute
@@ -43,6 +57,12 @@ def start_scheduler():
     # Start the scheduler
     scheduler.start()
 
-def get_scheduler():
+def get_scheduler() -> AsyncIOScheduler:
+    """
+    Get the scheduler instance.
+
+    :return: The scheduler instance
+    :rtype: apscheduler.schedulers.asyncio.AsyncIOScheduler
+    """
     global scheduler
     return scheduler

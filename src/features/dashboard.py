@@ -17,6 +17,9 @@ from modules.custom_types import UNSET_VALUE
 
 
 class Dashboard(CustomView):
+    """
+    This is the main view for the dashboard feature.
+    """
     def __init__(self):
         super().__init__(timeout = None)
         
@@ -3884,6 +3887,17 @@ class Dashboard(CustomView):
             await self.ExtraFeaturesButton(self.outer).setup(interaction)
 
 async def run_dashboard_command(interaction: Interaction):
+    """
+    |coro|
+
+    Execute the dashboard command for InfiniBot.
+
+    :param interaction: The interaction object from the Discord event.
+    :type interaction: Interaction
+
+    :return: None
+    :rtype: None
+    """
     if await utils.user_has_config_permissions(interaction):
         view = Dashboard()
         await view.setup(interaction)

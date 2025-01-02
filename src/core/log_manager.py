@@ -10,6 +10,16 @@ from config.global_settings import get_configs
 
 
 class LogIfFailure(ContextDecorator):
+    """
+    A context manager to log any exceptions that occur while running the code in the context.
+
+    :param feature: The name of the feature to log the error in, defaults to None
+    :type feature: str, optional
+    :param suppress: Whether to suppress the exception or not, defaults to True
+    :type suppress: bool, optional
+    :return: The error ID if an exception occurred, None otherwise
+    :rtype: str or None
+    """
     def __init__(self, feature=None, suppress=True):
         self.error_id = None
         self.feature = feature
@@ -29,7 +39,18 @@ class LogIfFailure(ContextDecorator):
         return self.suppress
 
 
-def create_logging_folder():
+def create_logging_folder() -> None:
+    """
+    Creates a new log folder in the generated/logs directory with the current date and time as its name.
+
+    This function creates a new log folder in the generated/logs directory with the current date and time as its name.
+    It is used to generate a new log file every time the bot is restarted.
+
+    :param: None
+    :return: None
+    :type: None
+    :rtype: None
+    """
     if not os.path.exists("./generated/logs"):
         os.makedirs("./generated/logs")
 
@@ -43,10 +64,24 @@ def create_logging_folder():
 
     return test_folder_path
 
-def get_uuid_for_logging():
+def get_uuid_for_logging() -> str:
+    """
+    Generate a UUID for logging purposes.
+
+    :return: A string representation of a UUID.
+    :rtype: str
+    """
     return str(uuid.uuid4())
 
-def setup_logging(level=logging.INFO):
+def setup_logging(level: int = logging.INFO) -> None:
+    """
+    Set up the logging handlers and logging level.
+
+    :param level: The logging level to set, defaults to logging.INFO
+    :type level: int, optional
+    :return: None
+    :rtype: None
+    """
     # Create logging folder
     test_folder_path = create_logging_folder()
     test_folder_path = os.path.abspath(test_folder_path)
@@ -87,7 +122,16 @@ def setup_logging(level=logging.INFO):
 
     sys.excepthook = exception_logger
 
-def change_logging_level(level:str):
+def change_logging_level(level: str) -> None:
+    """
+    Change the logging level of the root logger.
+
+    :param level: The logging level to set. Must be one of 
+                  "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL".
+    :type level: str
+    :return: None
+    :rtype: None
+    """
     if level.upper() not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
         raise ValueError("Invalid logging level")
     

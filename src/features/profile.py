@@ -6,6 +6,9 @@ from config.member import Member
 
 
 class Profile(nextcord.ui.View):
+    """
+    View for the profile command.
+    """
     def __init__(self):
         super().__init__(timeout = None)
         
@@ -616,7 +619,17 @@ class Profile(nextcord.ui.View):
         async def callback(self, interaction: Interaction):
             await self.SettingsView(self.outer).setup(interaction)
     
-async def run_profile_command(interaction: Interaction):
+async def run_profile_command(interaction: Interaction) -> None:
+    """
+    |coro|
+
+    Runs the profile command.
+
+    :param interaction: The interaction to respond to.
+    :type interaction: :class:`~nextcord.Interaction`
+    :return: None
+    :rtype: None
+    """
     if await utils.user_has_config_permissions(interaction):
         view = Profile()
         await view.setup(interaction)

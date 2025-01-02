@@ -10,16 +10,47 @@ from core.log_manager import setup_logging, change_logging_level
 
 # Functions
 def create_environment():
+    """
+    Creates the environment required for InfiniBot to run.
+
+    :return: None
+    :rtype: None
+    """
     def create_folder(folder_path):
+        """
+        Creates the specified folder.
+
+        :param folder_path: The path to the folder to be created.
+        :type folder_path: str
+        :return: None
+        :rtype: None
+        """
         os.makedirs(folder_path, exist_ok=True)
         logging.info("Created folder: " + folder_path)
     
     def copy_file(source_path, destination_path):
+        """
+        Copies a file from the source path to the destination path if the destination path does not exist.
+
+        :param source_path: The path to the source file to be copied.
+        :type source_path: str
+        :param destination_path: The path where the file should be copied.
+        :type destination_path: str
+        :return: None
+        :rtype: None
+        """
+
         if not os.path.exists(destination_path):
             shutil.copy(source_path, destination_path)
             logging.info("Copied file: " + source_path + " to " + destination_path)
 
     def get_token():
+        """
+        Gets the token from the user.
+
+        :return: The token provided by the user.
+        :rtype: str
+        """
         # Check token
         logging.info("Checking token...")
         try:
@@ -58,6 +89,12 @@ def create_environment():
     logging.info("To modify defaults, edit settings file in ./generated/configure")
     
 def configure_logging():
+    """
+    Sets up the logging system for InfiniBot.
+
+    :return: None
+    :rtype: None
+    """
     setup_logging()
 
     # Change logging level depending on configurations
@@ -71,7 +108,20 @@ def configure_logging():
     logging.info(f"Logging level set to {log_level}")
 
 def check_internet_connection():
+    """
+    Checks if the host running InfiniBot has a valid internet connection.
+
+    :return: True if the host has a valid internet connection, False otherwise.
+    :rtype: bool
+    """
     def is_connected():
+        """
+        Checks if the host running InfiniBot has a valid internet connection.
+
+        :param: None
+        :return: True if the host has a valid internet connection, False otherwise.
+        :rtype: bool
+        """
         try:
             host = socket.gethostbyname("google.com")
             s = socket.create_connection((host, 80), timeout = 2)
