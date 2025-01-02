@@ -3,6 +3,7 @@
 import logging
 import os
 import random
+from typing import Any, List, Dict
 import uuid
 
 import unittest
@@ -17,28 +18,77 @@ from core.log_manager import setup_logging
 from modules.custom_types import UNSET_VALUE
 from modules.database import Database
 
+"""
+This file contains a collection of tests for the database module.
 
-def hijack_database_url():
+The tests are run using the unittest framework provided by Python.
+
+The tests are run in a separate thread to prevent blocking the main thread.
+"""
+
+
+def hijack_database_url() -> None:
+    """
+    Hijacks the database URL to use an in-memory database for testing purposes.
+
+    :return: None
+    :rtype: None
+    """
     logging.warning("Hijacking database url to use memory database")
     db_manager.database_url = "sqlite:///"
     db_manager.init_database()
 
 # Database Tests
 class TestDatabase(unittest.TestCase):
-    def get_memory_database(self):
+    def get_memory_database(self) -> Database:
+        """
+        Retrieves an instance of the `Database` class, but with the database
+        URL hijacked to use an in-memory database for testing purposes.
+
+        :return: An instance of the `Database` class connected to an
+            in-memory database.
+        :rtype: Database
+        """
         return Database("sqlite://", "resources/test_db_build.sql")
     
-    def create_test_row(self, database:Database, table, id):
+    def create_test_row(self, database: Database, table: str, id: int) -> None:
+        """
+        Creates a test row in the given table.
+
+        :param database: The database to use.
+        :type database: Database
+        :param table: The table to insert the row into.
+        :type table: str
+        :param id: The primary key of the row to insert.
+        :type id: int
+        :return: None
+        :rtype: None
+        """
         column_defaults = database.all_column_defaults[table]
         query_values = ", ".join(list(column_defaults.values()))
         query = f"INSERT OR IGNORE INTO {table} VALUES ({id}, {query_values})"
         database.execute_query(query, commit = True)
 
-    def test_setup(self):
+    def test_setup(self) -> None:
+        """
+        Tests the setup of the database.
+
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing database setup...")
         database = self.get_memory_database()
 
-    def test_database_integrity(self):
+    def test_database_integrity(self) -> None:
+        """
+        Tests the integrity of the database.
+
+        Ensures that the database has been properly set up and that the
+        database's integrity is maintained.
+
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing database integrity...")
         database = self.get_memory_database()
         self.assertEqual(len(database.tables), 3)
@@ -56,7 +106,15 @@ class TestDatabase(unittest.TestCase):
                                                      'table_3': ['primary_key', 'example_bool', 'example_channel', 'example_integer', 'example_list']})
         self.assertEqual(database.all_primary_keys, {'table_1': 'primary_key', 'table_2': 'primary_key_1', 'table_3': 'primary_key'})
 
-    def test_execute_query(self):
+    def test_execute_query(self) -> None:
+        """
+        Tests that the database can execute queries properly.
+
+        :param: None
+        :type: None
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing that the database can execute queries...")
         database = self.get_memory_database()
 
@@ -66,7 +124,15 @@ class TestDatabase(unittest.TestCase):
 
         self.assertEqual(result, [(1234, 0, '{"status": "UNSET", "value": null}', 3, '[]')])
 
-    def test_optimization(self):
+    def test_optimization(self) -> None:
+        """
+        Tests database optimization.
+
+        :param: None
+        :type: None
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing database optimization...")
         database = self.get_memory_database()
 
@@ -93,7 +159,15 @@ class TestDatabase(unittest.TestCase):
             results = database.execute_query(f"SELECT * FROM table_1 WHERE primary_key = {test_server}", multiple_values=True)
             self.assertEqual(results, [])
 
-    def test_force_remove_entry(self):
+    def test_force_remove_entry(self) -> None:
+        """
+        Tests database force remove entry.
+
+        :param: None
+        :type: None
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing database force remove entry...")
         database = self.get_memory_database()
         
@@ -110,7 +184,18 @@ class TestDatabase(unittest.TestCase):
         results = database.execute_query(f"SELECT * FROM table_1 WHERE primary_key = 123456789", multiple_values=True)
         self.assertEqual(results, [])
 
-    def test_get_column_default(self):
+    def test_get_column_default(self) -> None:
+        """
+        Tests the `get_column_default` method of the `Database` class.
+
+        Checks if the default values of columns in tables are correctly retrieved
+        both with and without formatting.
+
+        :param: None
+        :type: None
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing database get column default...")
         database = self.get_memory_database()
 
@@ -158,7 +243,15 @@ class TestDatabase(unittest.TestCase):
                 value = database.get_column_default(table, column, format = True)
                 self.assertEqual(value, test_values_with_format[table][column])
 
-    def test_does_entry_exist(self):
+    def test_does_entry_exist(self) -> None:
+        """
+        Tests the does_entry_exist function of the database.
+
+        :param self: The instance of the TestDatabase object.
+        :type self: TestDatabase
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing database does entry exist...")
         database = self.get_memory_database()
 
@@ -172,7 +265,15 @@ class TestDatabase(unittest.TestCase):
         result = database.does_entry_exist("table_1", 123456788)
         self.assertEqual(result, False)
 
-    def test_get_table_unique_entries(self):
+    def test_get_table_unique_entries(self) -> None:
+        """
+        Tests the get_table_unique_entries function of the database.
+
+        :param self: The instance of the TestDatabase object.
+        :type self: TestDatabase
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing database get table unique entries...")
         database = self.get_memory_database()
 
@@ -186,7 +287,15 @@ class TestDatabase(unittest.TestCase):
         unique_entries = [server for server in unique_entries_generator] # generator to list
         self.assertEqual(unique_entries, test_servers)
 
-    def test_get_table_unique_entries(self):
+    def test_get_table_unique_entries(self) -> None:
+        """
+        Tests the get_table_unique_entries function of the database.
+
+        :param self: The instance of the TestDatabase object.
+        :type self: TestDatabase
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing database get table unique entries...")
         database = self.get_memory_database()
 
@@ -218,7 +327,15 @@ class TestDatabase(unittest.TestCase):
         # Check that the unique entries are the same as the test servers
         self.assertEqual(set(unique_entries), set(test_servers + test_servers_unique_table_1 + test_servers_unique_table_3))
 
-    def test_get_id_sql_name(self):
+    def test_get_id_sql_name(self) -> None:
+        """
+        Tests the get_id_sql_name function of the database.
+
+        :param self: The instance of the TestDatabase object.
+        :type self: TestDatabase
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing database get id sql name...")
         database = self.get_memory_database()
 
@@ -236,7 +353,15 @@ class TestServer(unittest.TestCase):
     def __init__(self, methodName:str = ...) -> None:
         super().__init__(methodName)
     
-    def test_server_creation(self):
+    def test_server_creation(self) -> None:
+        """
+        Tests the creation of a Server instance and its functionalities.
+
+        :param self: The instance of the TestServer object.
+        :type self: TestServer
+        :return: None
+        :rtype: None
+        """
         server_id = random.randint(0, 1000000000)
 
         server = Server(server_id)
@@ -245,7 +370,21 @@ class TestServer(unittest.TestCase):
 
         server.remove_all_data()
 
-    def run_test_on_property(self, primary_server_instance, table_name, property_name:str, default_value, test_values):
+    def run_test_on_property(self, primary_server_instance, table_name, property_name: str, default_value, test_values) -> None:
+        """
+        Runs a test on a property of a Server instance.
+
+        :param primary_server_instance: The primary server instance to test.
+        :type primary_server_instance: Server
+        :param table_name: The name of the table that the property is in.
+        :type table_name: str
+        :param property_name: The name of the property to test.
+        :type property_name: str
+        :param default_value: The default value of the property.
+        :param test_values: A list of values to test the property with.
+        :return: None
+        :rtype: None
+        """
         logging.debug(f'Testing property "{property_name}". Default value: {default_value}, test values: {test_values}')
         
         def get_property(server, table_name, property_name):
@@ -287,7 +426,23 @@ class TestServer(unittest.TestCase):
     class RunTestOnIntegratedListProperty:
         """Helper class to generate test data and perform tests on integrated list properties."""
         
-        def __init__(self, server: 'Server', table_name: str, test_values: list, iterations: list, extra_keys_to_query: list = []):
+        def __init__(self, server: 'Server', table_name: str, test_values: list, iterations: list, extra_keys_to_query: list = []) -> None:
+            """
+            Helper class to generate test data and perform tests on integrated list properties.
+
+            :param server: The server instance to use.
+            :type server: Server
+            :param table_name: The name of the table to use.
+            :type table_name: str
+            :param test_values: A list of values to test.
+            :type test_values: list
+            :param iterations: A list containing the number of iterations to perform, and the number of rows to add per iteration.
+            :type iterations: list
+            :param extra_keys_to_query: A list of extra keys to query when creating a new server instance.
+            :type extra_keys_to_query: list
+            :return: None
+            :rtype: None
+            """
             self.server = server
             self.table_name = table_name
             self.test_values = test_values
@@ -308,8 +463,14 @@ class TestServer(unittest.TestCase):
             self.ektq_row_values = {}
             self.ektw_row_mappings = {}
 
-        def generate_test_data_for_integrated_lists(self):
-            """Generates the test data with consistent secondary keys across iterations."""
+        def generate_test_data_for_integrated_lists(self) -> list:
+            """
+            Generates the test data with consistent secondary keys across iterations.
+
+            :return: A list containing test data for each iteration. Each iteration is represented 
+                     by a list of dictionaries containing the test data for each row.
+            :rtype: list
+            """
             secondary_key_name = self.test_values[0].split(":")[0]
             secondary_key_values = []
 
@@ -396,8 +557,13 @@ class TestServer(unittest.TestCase):
 
             return test_data
 
-        def run(self, test_case: unittest.TestCase):
-            """Runs tests on the integrated list property for add, edit, and delete operations."""
+        def run(self, test_case: unittest.TestCase) -> None:
+            """
+            Runs tests on the integrated list property for add, edit, and delete operations.
+            
+            :param test_case: The unittest.TestCase to run the tests on
+            :type test_case: unittest.TestCase
+            """
             logging.info("Running tests on integrated list property: " + self.table_name + " with test iterations: " + str(self.iterations))
 
             test_data = self.generate_test_data_for_integrated_lists()
@@ -460,15 +626,37 @@ class TestServer(unittest.TestCase):
 
             logging.info("Finished running tests on integrated list property: " + self.table_name)
 
-        def _verify_entries(self, test_case, property, test_data):
-            """Helper function to verify that the entries match the expected data."""
+        def _verify_entries(self, test_case: unittest.TestCase, property: db_manager.IntegratedList_TableManager, test_data: List[Dict[str, Any]]) -> None:
+            """
+            Helper function to verify that the entries match the expected data.
+
+            :param test_case: The test case to assert upon.
+            :type test_case: unittest.TestCase
+            :param property: The property to verify data for.
+            :type property: db_manager.IntegratedList_TableManager
+            :param test_data: The test data to verify against.
+            :type test_data: List[Dict[str, Any]]
+            :return: None
+            :rtype: None
+            """
             for test_entry in test_data:
                 secondary_key_value = list(test_entry.values())[0]
                 for key, value in test_entry.items():
                     test_case.assertEqual(getattr(property[secondary_key_value], key), value)
 
-        def _verify_data_in_new_server_instance(self, test_case, server_id, test_data):
-            """Helper function to create a new server instance and verify data consistency."""
+        def _verify_data_in_new_server_instance(self, test_case: unittest.TestCase, server_id: int, test_data: List[Dict[str, Any]]) -> None:
+            """
+            Helper function to create a new server instance and verify data consistency.
+
+            :param test_case: The test case to assert upon.
+            :type test_case: unittest.TestCase
+            :param server_id: The ID of the server to use.
+            :type server_id: int
+            :param test_data: The test data to verify against.
+            :type test_data: List[Dict[str, Any]]
+            :return: None
+            :rtype: None
+            """
             new_server_instance = Server(server_id)
             property = getattr(new_server_instance, self.table_name)
 
@@ -480,8 +668,17 @@ class TestServer(unittest.TestCase):
 
             del new_server_instance
 
-        def _generate_unique_value(self, existing_values, value_type):
-            """Generates a unique value based on the type and ensures it doesn't conflict."""
+        def _generate_unique_value(self, existing_values, value_type) -> Any:
+            """
+            Generates a unique value based on the type and ensures it doesn't conflict.
+
+            :param existing_values: A set of values that the generated value should not conflict with.
+            :type existing_values: set
+            :param value_type: The type of value to generate. Can be "str", "int", "bool", or "float".
+            :type value_type: str
+            :return: A unique value of the specified type that is not in existing_values.
+            :rtype: Any
+            """
             if value_type == "str":
                 value = str(uuid.uuid4())
                 while value in existing_values:
@@ -496,8 +693,15 @@ class TestServer(unittest.TestCase):
                 value = float(random.random() * random.randint(0, 1000000000))
             return value
 
-        def _generate_valid_subset_for_ektq(self, X):
-            """Generates a random valid subset of X elements for constant keys."""
+        def _generate_valid_subset_for_ektq(self, X: int) -> List[int]:
+            """
+            Generates a random valid subset of X elements for constant keys.
+
+            :param X: The maximum number of elements in the subset.
+            :type X: int
+            :return: A list of X elements, where each element is an integer between 0 and X (inclusive).
+            :rtype: List[int]
+            """
             # Create a range of elements from 0 to X (inclusive)
             full_range = range(0, X + 1)
 
@@ -728,7 +932,13 @@ class TestMember(unittest.TestCase):
     def __init__(self, methodName:str = ...) -> None:
         super().__init__(methodName)
 
-    def test_member_creation(self):
+    def test_member_creation(self) -> None:
+        """
+        Tests the creation of a Member instance.
+
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing Member...")
 
         member = Member(123456789)
@@ -736,7 +946,19 @@ class TestMember(unittest.TestCase):
 
         member.remove_all_data()
 
-    def run_test_on_property(self, primary_member_instance:Member, property_name:str, default_value, test_values):
+    def run_test_on_property(self, primary_member_instance:Member, property_name:str, default_value, test_values) -> None:
+        """
+        Runs a test on a Member property.
+
+        :param primary_member_instance: The primary Member instance to test
+        :type primary_member_instance: Member
+        :param property_name: The name of the property to test
+        :type property_name: str
+        :param default_value: The default value to test
+        :param test_values: The test values to test
+        :return: None
+        :rtype: None
+        """
         logging.debug(f'Testing property "{property_name}". Default value: {default_value}, test values: {test_values}')
         
         def get_property(member, property_name):
@@ -794,7 +1016,13 @@ class TestMember(unittest.TestCase):
         member.remove_all_data()
 
 class TestFileManager(unittest.TestCase):
-    def test_json_file(self):
+    def test_json_file(self) -> None:
+        """
+        Tests the JSONFile class.
+
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing FileManager -> JSONFile...")
         test_file = JSONFile("test_file")
         path = test_file.path
@@ -832,13 +1060,19 @@ class TestFileManager(unittest.TestCase):
         logging.info("Finished testing FileManager -> JSONFile...")
 
 class TestGlobalSettings(unittest.TestCase):
-    def test_global_kill_status(self):
+    def test_global_kill_status(self) -> None:
+        """
+        Tests the GlobalKillStatus class.
+
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing GlobalKillStatus...")
 
         # Clear file
         get_global_kill_status().reset()
 
-        self.assertFalse(get_global_kill_status()["profanity_moderation"])
+        self.assertFalse(get_global_kill_status()["profanity_moderation"]) # USES PROFANITY MODERATION AS A TEST
 
         get_global_kill_status()["profanity_moderation"] = True
         self.assertTrue(get_global_kill_status()["profanity_moderation"])
@@ -849,13 +1083,21 @@ class TestGlobalSettings(unittest.TestCase):
 
         logging.info("Finished testing GlobalKillStatus...")
 
-    def test_persistent_data(self):
+    def test_persistent_data(self) -> None:
+        """
+        Tests the PersistentData class.
+
+        :param self: The unittest.TestCase to run the tests on
+        :type self: unittest.TestCase
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing PersistentData...")
 
         # Clear file
         get_persistent_data().reset()
 
-        self.assertFalse(get_persistent_data()["login_response_guildID"])
+        self.assertFalse(get_persistent_data()["login_response_guildID"]) # USES LOGIN RESPONSE GUILD ID AS A TEST
 
         get_persistent_data()["login_response_guildID"] = True
         self.assertTrue(get_persistent_data()["login_response_guildID"])
@@ -867,7 +1109,15 @@ class TestGlobalSettings(unittest.TestCase):
         logging.info("Finished testing PersistentData...")
 
 class TestUtils(unittest.TestCase):
-    def test_feature_is_active(self):
+    def test_feature_is_active(self) -> None:
+        """
+        Tests the feature_is_active function.
+
+        :param self: The unittest.TestCase to run the tests on
+        :type self: unittest.TestCase
+        :return: None
+        :rtype: None
+        """
         logging.info("Testing feature_is_active...")
 
         # Clear global kill status file to get consistent results
