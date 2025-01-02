@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS leveling_profile( -- #optimize
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    level_up_embed TEXT DEFAULT '{"title":"Congratulations, @displayname!","description":"Congrats @mention! You reached level [level]!"}',
+    level_up_embed TEXT DEFAULT '{"title":"Congratulations, @displayname!","description":"Congrats @mention! You reached level [level]!", "color":"White"}',
     points_lost_per_day INT DEFAULT 0,
     max_points_per_message INT DEFAULT 40,
     exempt_channels TEXT DEFAULT '[]',
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS join_message_profile( -- #optimize
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    embed TEXT DEFAULT '{"title":"@displayname just joined the server!","description":"Welcome to the server, @mention!"}',
+    embed TEXT DEFAULT '{"title":"@displayname just joined the server!","description":"Welcome to the server, @mention!", "color":"Yellow"}',
     allow_join_cards BOOLEAN DEFAULT true
 );
 
@@ -59,14 +59,14 @@ CREATE TABLE IF NOT EXISTS leave_message_profile( -- #optimize
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    embed TEXT DEFAULT '{"title":"@displayname just left the server.","description":"@mention left."}'
+    embed TEXT DEFAULT '{"title":"@displayname just left the server.","description":"@mention left.", "color":"Blurple"}'
 );
 
 -- Create birthdays_profile Table (simple table)
 CREATE TABLE IF NOT EXISTS birthdays_profile( -- #optimize
     server_id INT PRIMARY KEY,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    embed TEXT DEFAULT '{"title":"Happy Birthday, [realname]!","description":"@mention just turned [age]!"}',
+    embed TEXT DEFAULT '{"title":"Happy Birthday, [realname]!","description":"@mention just turned [age]!", "color":"Blurple"}',
     runtime TEXT DEFAULT '{"status": "UNSET", "value": null}'
 )
 

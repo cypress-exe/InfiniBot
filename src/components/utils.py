@@ -205,25 +205,27 @@ def conversion_local_time_and_utc_time(utc_offset, local_time_str=None, utc_time
 
 def get_discord_color_from_string(color: str):
     if color == None or color == "": return nextcord.Color.default()
+
+    color = color.lower()
         
-    if color == "Red": return nextcord.Color.red()
-    if color == "Green": return nextcord.Color.green()
-    if color == "Blue": return nextcord.Color.blue()
-    if color == "Yellow": return nextcord.Color.yellow()
-    if color == "White": return nextcord.Color.from_rgb(255, 255, 255) #white
+    if color == "red": return nextcord.Color.red()
+    if color == "green": return nextcord.Color.green()
+    if color == "blue": return nextcord.Color.blue()
+    if color == "yellow": return nextcord.Color.yellow()
+    if color == "white": return nextcord.Color.from_rgb(255, 255, 255) #white
     
-    if color == "Blurple": return nextcord.Color.blurple()
-    if color == "Greyple": return nextcord.Color.greyple()
-    if color == "Teal": return nextcord.Color.teal()
-    if color == "Purple": return nextcord.Color.purple()
+    if color == "blurple": return nextcord.Color.blurple()
+    if color == "greyple": return nextcord.Color.greyple()
+    if color == "teal": return nextcord.Color.teal()
+    if color == "purple": return nextcord.Color.purple()
     
-    if color == "Gold": return nextcord.Color.gold()
-    if color == "Magenta": return nextcord.Color.magenta()
-    if color == "Fuchsia": return nextcord.Color.fuchsia()
+    if color == "gold": return nextcord.Color.gold()
+    if color == "magenta": return nextcord.Color.magenta()
+    if color == "fuchsia": return nextcord.Color.fuchsia()
     
     return nextcord.Color.default()
 
-def get_string_frolm_discord_color(color: nextcord.colour.Colour):
+def get_string_from_discord_color(color: nextcord.colour.Colour):
     if color == None or color == nextcord.Color.default(): return None
         
     if color == nextcord.Color.red(): return "Red"
@@ -243,8 +245,10 @@ def get_string_frolm_discord_color(color: nextcord.colour.Colour):
     
     return None
 
-def replace_placeholders_in_embed(embed: nextcord.Embed, replacements: dict, member: nextcord.Member, guild: nextcord.Guild):
-    # Add more replacements
+def replace_placeholders_in_embed(embed: nextcord.Embed, member: nextcord.Member, guild: nextcord.Guild, custom_replacements:dict={}, skip_channel_replacement=False):
+    replacements = custom_replacements
+
+    # Add default replacements
     replacements["@displayname"] = member.display_name
     replacements["@mention"] = member.mention
     replacements["@username"] = member.name
@@ -265,29 +269,30 @@ def replace_placeholders_in_embed(embed: nextcord.Embed, replacements: dict, mem
             field.name = field.name.replace(key, value)
             field.value = field.value.replace(key, value)
     
-    # Optimization: Skip channel replacement if no "#" in the embed
-    embed_content = (
-        (embed.title or "") +
-        (embed.description or "") +
-        (embed.footer.text if embed.footer and embed.footer.text else "") +
-        "".join(field.name + field.value for field in embed.fields)
-    )
-    if "#" in embed_content:
-        # Replace channel names with mentions
-        for channel in guild.text_channels:
-            channel_placeholder = f"#{channel.name}"
-            channel_mention = channel.mention
-            
-            if embed.title:
-                embed.title = embed.title.replace(channel_placeholder, channel_mention)
-            if embed.description:
-                embed.description = embed.description.replace(channel_placeholder, channel_mention)
-            if embed.footer and embed.footer.text:
-                embed.footer.text = embed.footer.text.replace(channel_placeholder, channel_mention)
-            
-            for field in embed.fields:
-                field.name = field.name.replace(channel_placeholder, channel_mention)
-                field.value = field.value.replace(channel_placeholder, channel_mention)
+    if not skip_channel_replacement:
+        # Optimization: Skip channel replacement if no "#" in the embed
+        embed_content = (
+            (embed.title or "") +
+            (embed.description or "") +
+            (embed.footer.text if embed.footer and embed.footer.text else "") +
+            "".join(field.name + field.value for field in embed.fields)
+        )
+        if "#" in embed_content:
+            # Replace channel names with mentions
+            for channel in guild.text_channels:
+                channel_placeholder = f"#{channel.name}"
+                channel_mention = channel.mention
+                
+                if embed.title:
+                    embed.title = embed.title.replace(channel_placeholder, channel_mention)
+                if embed.description:
+                    embed.description = embed.description.replace(channel_placeholder, channel_mention)
+                if embed.footer and embed.footer.text:
+                    embed.footer.text = embed.footer.text.replace(channel_placeholder, channel_mention)
+                
+                for field in embed.fields:
+                    field.name = field.name.replace(channel_placeholder, channel_mention)
+                    field.value = field.value.replace(channel_placeholder, channel_mention)
     
     return embed
 

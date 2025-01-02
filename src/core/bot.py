@@ -10,7 +10,7 @@ from config.file_manager import JSONFile
 from core import log_manager
 from core.log_manager import LogIfFailure
 from core.scheduling import start_scheduler, get_scheduler
-from features import action_logging, admin_commands, dashboard, dm_commands, leveling, moderation, profile
+from features import action_logging, admin_commands, dashboard, dm_commands, join_leave_messages, leveling, moderation, profile
 
 
 # INIT BOT ==============================================================================================================================================================
@@ -167,23 +167,32 @@ async def on_message(message: nextcord.Message):
       
     # DM Commands ---------------------------------------------
     if message.guild == None:
-        await dm_commands.check_and_run_dm_commands(bot, message)
-        await admin_commands.check_and_run_admin_commands(message)
+        with LogIfFailure(feature="dm_commands.check_and_run_dm_commands"):
+            await dm_commands.check_and_run_dm_commands(bot, message)
+        
+        with LogIfFailure(feature="admin_commands.check_and_run_admin_commands"):
+            await admin_commands.check_and_run_admin_commands(message)
+
         return
 
     # Moderation
-    # await checkForExpiration(server)
+    # await checkForExpiration(server) # TODO - Check for Expiration of Strikes (Do this as a midnight action)
 
     # Don't do anything if the message is from a bot
     if message.author.bot:
         return
 
     # Moderation
-    message_is_flagged_for_moderation = await moderation.check_and_run_moderation_commands(bot, message)
+    message_is_flagged_for_moderation = False
+    with LogIfFailure(feature="moderation.check_and_run_moderation_commands"):
+        message_is_flagged_for_moderation = await moderation.check_and_run_moderation_commands(bot, message)
     
     if not message_is_flagged_for_moderation:
-        await leveling.grant_xp_for_message(message)
-        await admin_commands.check_and_run_admin_commands(message)
+        with LogIfFailure(feature="leveling.grant_xp_for_message"):
+            await leveling.grant_xp_for_message(message)
+
+        with LogIfFailure(feature="admin_commands.check_and_run_admin_commands"):
+            await admin_commands.check_and_run_admin_commands(message)
 
 
     # Continue with the Rest of the bot commands
@@ -271,7 +280,21 @@ async def on_member_update(before: nextcord.Member, after: nextcord.Member):
             if after.nick != None: await moderation.check_and_punish_nickname_for_profanity(bot, after.guild, before, after)
 
 @bot.event
+async def on_member_join(member: nextcord.Member):
+    # Trigger the welcome message
+    with LogIfFailure(feature="join_leave_messages.trigger_join_message"):
+        await join_leave_messages.trigger_join_message(member)
+
+@bot.event
 async def on_member_remove(member: nextcord.Member):
+    # Trigger the farewell message
+    with LogIfFailure(feature="join_leave_messages.trigger_leave_message"):
+        await join_leave_messages.trigger_leave_message(member)
+
+    # Remove levels
+    with LogIfFailure(feature="leveling.handle_member_removal"):
+        leveling.handle_member_removal(member)
+
     # Log the removal
     with LogIfFailure(feature="action_logging.log_member_removal"):
         await action_logging.log_member_removal(member.guild, member)

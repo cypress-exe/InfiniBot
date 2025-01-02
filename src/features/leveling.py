@@ -250,16 +250,15 @@ async def process_level_change(guild: nextcord.Guild, member: nextcord.Member, l
 
             if _continue:
                 embed: nextcord.Embed = server.leveling_profile.level_up_embed.to_embed()
-                embed.color = nextcord.Color.from_rgb(235, 235, 235)
 
-                embed = utils.replace_placeholders_in_embed(embed, {"[level]": str(level)}, member, guild)
+                embed = utils.replace_placeholders_in_embed(embed, member, guild, custom_replacements={"[level]": str(level)})
                 embeds = [embed]
                 
                 # Get the card (if needed)
                 if server.leveling_profile.allow_leveling_cards:
                     if member_settings.level_up_card_enabled:
                         card_embed = member_settings.level_up_card_embed.to_embed()
-                        card = utils.replace_placeholders_in_embed(card_embed, {"[level]": str(level)}, member, guild)
+                        card = utils.replace_placeholders_in_embed(card_embed, member, guild, custom_replacements={"[level]": str(level)}, skip_channel_replacement=True)
                         embeds.append(card)
                 
                 # Send message
@@ -315,6 +314,10 @@ async def process_level_change(guild: nextcord.Guild, member: nextcord.Member, l
                                 # DMs are disabled
                                 pass
   
+def handle_member_removal(member: nextcord.Member):
+    server = Server(member.guild.id)
+    if member.id in server.member_levels:
+        server.member_levels.delete(member.id)
 
 async def run_leaderboard_command(interaction: Interaction):
     server = Server(interaction.guild.id)

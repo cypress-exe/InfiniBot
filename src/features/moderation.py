@@ -78,22 +78,63 @@ class IncorrectButtonView(nextcord.ui.View):
     self.stop()
 
 
-async def check_profanity_moderation_enabled_and_warn_if_not(interaction: nextcord.Interaction):
-    """Runs a check whether moderation is active. NOT SILENT!"""
+async def check_profanity_moderation_enabled_and_warn_if_not(interaction: nextcord.Interaction) -> bool:
+    """
+    Runs a check to determine whether profanity moderation is active.
+
+    :param interaction: The interaction object from the Discord event.
+    :type interaction: nextcord.Interaction
+    :return: True if profanity moderation is active, False otherwise.
+    :rtype: bool
+    """
     server = Server(interaction.guild.id)
-    if utils.feature_is_active(server = server, feature = "profanity_moderation"):
+    if utils.feature_is_active(server=server, feature="profanity_moderation"):
         return True
     else:
         if get_global_kill_status()["profanity_moderation"]:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Moderation Tools Disabled", description = "Moderation has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
+            await interaction.response.send_message(
+                embed=nextcord.Embed(
+                    title="Moderation Tools Disabled",
+                    description=(
+                        "Moderation has been disabled by the developers of InfiniBot. "
+                        "This is likely due to a critical instability with it right now. "
+                        "It will be re-enabled shortly after the issue has been resolved."
+                    ),
+                    color=nextcord.Color.red()
+                ),
+                ephemeral=True
+            )
             return False
         else:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Moderation Tools Disabled", description = "Moderation has been turned off. Go to the `/dashboard` to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
+            await interaction.response.send_message(
+                embed=nextcord.Embed(
+                    title="Moderation Tools Disabled",
+                    description=(
+                        "Moderation has been turned off. "
+                        "Go to the `/dashboard` to turn it back on."
+                    ),
+                    color=nextcord.Color.red()
+                ),
+                ephemeral=True
+            )
             return False
 
 # Confirm that a nickname is not in violation of profanity
-async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: nextcord.Guild, before: nextcord.Member, after: nextcord.Member):
-    """Check to ensure that the edited nickname is in compliance with moderation"""
+async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: nextcord.Guild, before: nextcord.Member, after: nextcord.Member) -> None:
+    """
+    Check and ensure that the edited nickname complies with moderation rules.
+
+    :param bot: The bot client.
+    :type bot: nextcord.Client
+    :param guild: The guild where the nickname change occurred.
+    :type guild: nextcord.Guild
+    :param before: The member state before the nickname change.
+    :type before: nextcord.Member
+    :param after: The member state after the nickname change.
+    :type after: nextcord.Member
+    
+    :return: None
+    """
     
     member = after
     nickname = after.nick
@@ -195,8 +236,35 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
             embed.set_footer(text = f"Member ID: {str(member.id)}")
             await admin_channel.send(embed = embed)
 
-def str_is_profane(message: str, database: list[str]):
+def str_is_profane(message: str, database: list[str]) -> str | None:
+    """
+    Checks if a given string contains any profanity.
+
+    This function checks if a given string contains any profanity based on a given
+    database of profane words. The database is a list of strings, where each string
+    contains a profane word or phrase. Wildcards (*) are supported in the database
+    strings.
+
+    :param message: The string to check for profanity.
+    :type message: str
+    :param database: A list of strings containing profane words or phrases.
+    :type database: list[str]
+    :return: The matched profane word or phrase if found, or None if no profanity was found.
+    :rtype: str | None
+    """
+
     def generate_regex_pattern(word: str):
+        """
+        Generates a regular expression pattern from a given string.
+
+        This function generates a regular expression pattern from a given string,
+        which is used to match profane words or phrases in a given string.
+
+        :param word: The string to generate a regular expression pattern for.
+        :type word: str
+        :return: The generated regular expression pattern.
+        :rtype: str
+        """
         word = word.lower()
         word = word.replace("*", ".")
 
@@ -230,20 +298,16 @@ def update_strikes_for_member(guild_id:int, member_id:int, amount:int):
     This function updates the strike count for a specified user within a given guild.
     If the profanity moderation strike system is active for the server, it will add or subtract the specified amount of strikes to the user's current strike count. If the updated strike count becomes less than or equal to 0, the user's strike record is removed.
 
-    Parameters:
-    ----------
-    guild_id : int
-        The ID of the guild (server) where the user resides.
-    member_id : int
-        The ID of the user for whom the strike count needs to be updated.
-    amount : int
-        The amount by which to update the user's strike count. This can be positive
+    :type guild_id: int
+    :param guild_id: The ID of the guild (server) where the user resides.
+    :type member_id: int
+    :param member_id: The ID of the user for whom the strike count needs to be updated.
+    :type amount: int
+    :param amount: The amount by which to update the user's strike count. This can be positive
         (to add strikes) or negative (to remove strikes).
 
-    Returns:
-    -------
-    int
-        The updated strike count for the user. If the user's strike record is removed,
+    :rtype: int
+    :return: The updated strike count for the user. If the user's strike record is removed,
         this will return 0.
     """
     server = Server(guild_id)
@@ -266,27 +330,30 @@ def update_strikes_for_member(guild_id:int, member_id:int, amount:int):
 
     return updated_strike_count
 
-async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: nextcord.Member, amount: int, server = None, strike_data = None):
+async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: nextcord.Member, amount: int, server = None, strike_data = None) -> bool:
     """|coro|
     
     Handle giving or taking a strike to/from a member.
     
     Note: This will grant timeouts.
 
+
+    ------
+    
     ------
     Parameters
-    ------
-    guild_id : `int`
-        The guild id that you are in.
-    member : `nextcord.Member`
-        The the member to give/take a strike to/from.
-    amount : `int`
-        Positive or negative number of strikes to give/take.
+    ----------
+    :param guild_id: The guild id that you are in.
+    :type guild_id: int
+    :param member: The the member to give/take a strike to/from.
+    :type member: :class:`nextcord.Member`
+    :param amount: Positive or negative number of strikes to give/take.
+    :type amount: int
         
     Returns
-    ------
-    `bool`
-        If the user was timed out.
+    -------
+    :return: If the user was timed out.
+    :rtype: bool
     """
     updated_strike_count = update_strikes_for_member(guild_id, member.id, amount)
         
@@ -342,38 +409,58 @@ async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: n
     else:
         return True
 
-async def check_and_trigger_profanity_moderation_for_message(bot: nextcord.client, server: Server, message: nextcord.Message, skip_admin_check=False):
+async def check_and_trigger_profanity_moderation_for_message(
+    bot: nextcord.Client, 
+    server: Server, 
+    message: nextcord.Message, 
+    skip_admin_check: bool = False
+) -> bool:
+    """
+    Checks if the given message contains profanity, and punishes the user if it does.
+
+    :param bot: The bot client.
+    :type bot: nextcord.Client
+    :param server: The server that the message is from.
+    :type server: Server
+    :param message: The message to check.
+    :type message: nextcord.Message
+    :param skip_admin_check: If the bot should skip checking if the user is an administrator.
+    :type skip_admin_check: bool
+
+    :return: True if a strike was given, False otherwise.
+    :rtype: bool
+    """
     # Checks
-    if not utils.feature_is_active(server = server, feature = "profanity_moderation"): return
+    if not utils.feature_is_active(server=server, feature="profanity_moderation"):
+        return False
     if message.channel.type != nextcord.ChannelType.stage_voice and message.channel.is_nsfw():
         logging.debug(f"Skipped profanity check for NSFW / stage channel: {message.channel}. Guild ID: {message.guild.id}") 
-        return
+        return False
 
     if not isinstance(message.author, nextcord.Member): 
         logging.warning(f"Tried to check profanity for a non-member: {message.author}. Guild ID: {message.guild.id}")
-        return
+        return False
     
-    if not skip_admin_check:
-        if message.author.guild_permissions.administrator: # Don't check profanity for admins
-            logging.debug(f"Skipped profanity check for admin: {message.author}. Guild ID: {message.guild.id}")
-            return
+    if not skip_admin_check and message.author.guild_permissions.administrator:
+        logging.debug(f"Skipped profanity check for admin: {message.author}. Guild ID: {message.guild.id}")
+        return False
         
     # Message Content
     msg = message.content.lower()
 
     # Ignore if the message is nothing, or if it is actually just a slash command
     if len(msg) == 0 or msg[0] == "/":
-        return
+        return False
     
-    # Check for profanity -------------------------------------------------------------------
+    # Check for profanity
     profane_word = str_is_profane(msg, server.profanity_moderation_profile.filtered_words)
-    if profane_word == None: 
-        return # No profanity found. Nothing to do.
+    if profane_word is None:
+        return False
     
     # Grant a strike (and maybe timeout)
     action_successful = await grant_and_punish_strike(bot, message.guild.id, message.author, 1)
     
-    timed_out = False if message.author.communication_disabled_until == None else True
+    timed_out = message.author.communication_disabled_until is not None
 
     if action_successful:
         # Notify the user that they were timed out via DM
@@ -405,9 +492,9 @@ async def check_and_trigger_profanity_moderation_for_message(bot: nextcord.clien
                     """
 
                 description = utils.standardize_str_indention(description)
-                embed = nextcord.Embed(title = "Profanity Log", description = description, color = nextcord.Color.red(), timestamp = datetime.datetime.now())
-                embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
-                await message.author.send(embed = embed)
+                embed = nextcord.Embed(title="Profanity Log", description=description, color=nextcord.Color.red(), timestamp=datetime.datetime.now())
+                embed.set_footer(text="To opt out of dm notifications, use /opt_out_of_dms")
+                await message.author.send(embed=embed)
                     
             except nextcord.Forbidden:
                 pass # The user has dms turned off. It's not a big deal, they just don't get notified.
@@ -421,7 +508,7 @@ async def check_and_trigger_profanity_moderation_for_message(bot: nextcord.clien
         await message.delete()
         message_deleted = True
     except nextcord.errors.Forbidden:
-        await utils.send_error_message_to_server_owner(message.guild, "Manage Messages", channel = message.channel.name)
+        await utils.send_error_message_to_server_owner(message.guild, "Manage Messages", channel=message.channel.name)
     except Exception as e:
         logging.error(f"Error deleting message after profanity check: {e}", exc_info=True)
 
@@ -433,16 +520,16 @@ async def check_and_trigger_profanity_moderation_for_message(bot: nextcord.clien
         Contact a server admin for more info.
         """
         description = utils.standardize_str_indention(description)
-        embed = nextcord.Embed(title = "Profanity Detected", description = description, color = nextcord.Color.dark_red())
-        await message.channel.send(embed = embed, view = ui_components.InviteView(), delete_after = 10.0)
+        embed = nextcord.Embed(title="Profanity Detected", description=description, color=nextcord.Color.dark_red())
+        await message.channel.send(embed=embed, view=ui_components.InviteView(), delete_after=10.0)
     
     # Send message to admin channel (if enabled)
     if server.profanity_moderation_profile.channel != UNSET_VALUE:
         admin_channel = message.guild.get_channel(server.profanity_moderation_profile.channel)
-        if admin_channel == None: 
-            description = f"InfiniBot couln't find your server's admin channel (Moderation -> Profanity -> Admin Channel). It was either deleted, or the bot does not have permission to view it. Please go to the Moderation -> Profanity page of the `/dashboard` and configure the admin channel."
+        if admin_channel is None: 
+            description = f"InfiniBot couldn't find your server's admin channel (Moderation -> Profanity -> Admin Channel). It was either deleted, or the bot does not have permission to view it. Please go to the Moderation -> Profanity page of the `/dashboard` and configure the admin channel."
             await utils.send_error_message_to_server_owner(message.guild, None, message=description)
-        elif await utils.check_text_channel_permissions(admin_channel, True, custom_channel_name = f"Admin Channel (#{admin_channel.name})"):
+        elif await utils.check_text_channel_permissions(admin_channel, True, custom_channel_name=f"Admin Channel (#{admin_channel.name})"):
             view = IncorrectButtonView()
 
             description = f"""
@@ -472,14 +559,26 @@ async def check_and_trigger_profanity_moderation_for_message(bot: nextcord.clien
 
             description = utils.standardize_str_indention(description)
             
-            embed = nextcord.Embed(title = "Profanity Detected", description = description, color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
-            embed.set_footer(text = f"Member ID: {str(message.author.id)}")
+            embed = nextcord.Embed(title="Profanity Detected", description=description, color=nextcord.Color.dark_red(), timestamp=datetime.datetime.now())
+            embed.set_footer(text=f"Member ID: {str(message.author.id)}")
             
-            await admin_channel.send(view = view, embed = embed)
+            await admin_channel.send(view=view, embed=embed)
+
+    return True
 
 
 
-def check_repeated_words_percentage(text, threshold=0.8):
+def check_repeated_words_percentage(text: str, threshold: float = 0.8) -> bool:
+    """
+    Checks if the percentage of repeated words in a given text exceeds a given threshold.
+
+    :param text: The text to analyze.
+    :type text: str
+    :param threshold: The minimum percentage of repeated words to trigger the check.
+    :type threshold: float, optional
+    :return: True if the percentage of repeated words exceeds the threshold, False otherwise.
+    :rtype: bool
+    """
     words = re.findall(r'\w+', text.lower())  # Convert text to lowercase and extract words
     counts = defaultdict(lambda: 0)  # Dictionary to store word counts
     
@@ -508,7 +607,17 @@ def check_repeated_words_percentage(text, threshold=0.8):
     # Check if the percentage exceeds the threshold
     return repeated_percentage >= threshold
 
-def levenshtein_distance(s1, s2):
+def levenshtein_distance(s1: str, s2: str) -> int:
+    """
+    Calculates the Levenshtein distance between two strings.
+
+    :param s1: The first string.
+    :type s1: str
+    :param s2: The second string.
+    :type s2: str
+    :return: The Levenshtein distance between the two strings.
+    :rtype: int
+    """
     # ChatGPT :)
     # Create a matrix to store the distances
     len_s1, len_s2 = len(s1), len(s2)
@@ -530,7 +639,17 @@ def levenshtein_distance(s1, s2):
 
     return matrix[len_s1][len_s2]
 
-def get_percent_similar(s1, s2):
+def get_percent_similar(s1: str, s2: str) -> float:
+    """
+    Calculates the percentage similarity between two strings.
+
+    :param s1: The first string.
+    :type s1: str
+    :param s2: The second string.
+    :type s2: str
+    :return: The percentage similarity between the two strings, as a float in [0, 1].
+    :rtype: float
+    """
     # Calculate the Levenshtein distance
     lev_dist = levenshtein_distance(s1, s2)
     
@@ -542,51 +661,71 @@ def get_percent_similar(s1, s2):
     
     return 1 - ratio
 
-def compare_attachments(attachments_1: List[nextcord.Attachment], attachments_2: List[nextcord.Attachment]):
-        # quick optimizations
-        if not attachments_1 or not attachments_2:
-            return False
-        if attachments_1 == attachments_2:
-            return True
+def compare_attachments(attachments_1: List[nextcord.Attachment], attachments_2: List[nextcord.Attachment]) -> bool:
+    """
+    Checks if any attachments are the same.
 
-        for attachment_1 in attachments_1:
-            for attachment_2 in attachments_2:
-                if (
-                    attachment_1.url == attachment_2.url
-                    or (
-                        attachment_1.filename == attachment_2.filename
-                        and attachment_1.width == attachment_2.width
-                        and attachment_1.height == attachment_2.height
-                        and attachment_1.size == attachment_2.size
-                    )
-                ):
-                    return True
+    :param attachments_1: The first list of attachments.
+    :type attachments_1: List[nextcord.Attachment]
+    :param attachments_2: The second list of attachments.
+    :type attachments_2: List[nextcord.Attachment]
+    :return: True if any attachments are the same, False otherwise.
+    :rtype: bool
+    """
+    # Quick optimizations
+    if not attachments_1 or not attachments_2:
         return False
+    if attachments_1 == attachments_2:
+        return True
 
-def normalized_exponential_decay(x, k=5):
+    for attachment_1 in attachments_1:
+        for attachment_2 in attachments_2:
+            if (
+                attachment_1.url == attachment_2.url
+                or (
+                    attachment_1.filename == attachment_2.filename
+                    and attachment_1.width == attachment_2.width
+                    and attachment_1.height == attachment_2.height
+                    and attachment_1.size == attachment_2.size
+                )
+            ):
+                return True
+    return False
+
+def normalized_exponential_decay(x: float, k: float = 5) -> float:
     """
     Exponentially decay the input x (0 to 1) normalized to the range [0, 1].
     
-    Parameters:
-        x (float): Input value between 0 and 1.
-        k (float): Decay rate (higher values decay faster).
-    
-    Returns:
-        float: The normalized exponentially decayed value.
+    :param x: Input value between 0 and 1.
+    :type x: float
+    :param k: Decay rate (higher values decay faster).
+    :type k: float
+    :return: The normalized exponentially decayed value.
+    :rtype: float
     """
     return (1 - math.exp(-k * x)) / (1 - math.exp(-k))
 
-async def check_and_trigger_spam_moderation_for_message(message: nextcord.Message, server: Server):
+async def check_and_trigger_spam_moderation_for_message(message: nextcord.Message, server: Server) -> bool:
+    """
+    Checks if the given message should trigger spam moderation and punishes the user if it does.
+
+    :param message: The message to check.
+    :type message: nextcord.Message
+    :param server: The server that the message is from.
+    :type server: Server
+    :return: True if a strike was given, False otherwise.
+    :rtype: bool
+    """
     max_messages_to_check = get_configs()["spam_moderation"]["max_messages_to_check"]    # The MAXIMUM messages InfiniBot will try to check for spam
     message_chars_to_check_repetition = get_configs()["spam_moderation"]["message_chars_to_check_repetition"]    # A message requires these many characters before it is checked for repetition
 
     # If Spam is Enabled
-    if not utils.feature_is_active(server = server, feature = "spam_moderation"): return
+    if not utils.feature_is_active(server = server, feature = "spam_moderation"): return False
 
     # Check if InfiniBot can view the audit log
     if not message.guild.me.guild_permissions.view_audit_log:
         await utils.send_error_message_to_server_owner(message.guild, "View Audit Log", channel=message.channel.name)
-        return
+        return False
 
     # Configure limit (the most messages that we're willing to check)
     if server.spam_moderation_profile.score_threshold < max_messages_to_check:
@@ -669,20 +808,36 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
                 )
         except nextcord.errors.Forbidden:
             await utils.send_error_message_to_server_owner(message.guild, "Timeout Members", guild_permission=True)
+    
+        return True
+
+    return False
 
 
-async def check_and_run_moderation_commands(bot: nextcord.client, message: nextcord.Message):
+async def check_and_run_moderation_commands(bot: nextcord.Client, message: nextcord.Message) -> bool:
+    """
+    Checks if any moderation commands should be run, and runs them if needed.
+
+    :param bot: The bot client.
+    :type bot: nextcord.Client
+    :param message: The message to check.
+    :type message: nextcord.Message
+
+    :return: If the message was flagged for something.
+    :rtype: bool
+    """
     if message.guild == None: return # Guild not loaded yet.
 
     if message.author.guild_permissions.administrator: # Don't check profanity for admins
         logging.debug(f"Skipped profanity check for admin in {__name__}: {message.author}")
-        return
+        return False
     
     server = Server(message.guild.id)
 
     with log_manager.LogIfFailure(feature="check_and_trigger_profanity_moderation_for_message"):
         message_is_profane = await check_and_trigger_profanity_moderation_for_message(bot, server, message, skip_admin_check=True)
-        if message_is_profane: return True
+        if message_is_profane: 
+            return True
 
     # Check Invites
     if server.infinibot_settings_profile.delete_invites:
@@ -692,10 +847,23 @@ async def check_and_run_moderation_commands(bot: nextcord.client, message: nextc
 
     # Check spam
     with log_manager.LogIfFailure(feature="check_and_trigger_spam_moderation_for_message"):
-        await check_and_trigger_spam_moderation_for_message(message, server)
-        return True
+        message_is_spam =await check_and_trigger_spam_moderation_for_message(message, server)
+        if message_is_spam:
+            return True
+    
+    return False
     
 async def run_my_strikes_command(interaction: nextcord.Interaction):
+    """
+    Runs the command to view the strikes of the user who invoked it.
+
+    :param interaction: The interaction object from the Discord event.
+    :type interaction: nextcord.Interaction
+
+    :return: None
+    :rtype: None
+    """
+
     if not await check_profanity_moderation_enabled_and_warn_if_not(interaction): return
 
     server = Server(interaction.guild.id)
@@ -708,6 +876,18 @@ async def run_my_strikes_command(interaction: nextcord.Interaction):
                                                                    color =  nextcord.Color.blue()), ephemeral = True)
 
 async def run_view_member_strikes_command(interaction: nextcord.Interaction, member: nextcord.Member):
+    """
+    Runs the command to view the strikes of a specified member.
+
+    :param interaction: The interaction object from the Discord event.
+    :type interaction: nextcord.Interaction
+    :param member: The member whose strikes are to be viewed.
+    :type member: nextcord.Member
+
+    :return: None
+    :rtype: None
+    """
+
     if await utils.user_has_config_permissions(interaction):
         server = Server(interaction.guild.id)
         if not await check_profanity_moderation_enabled_and_warn_if_not(interaction): return
@@ -722,7 +902,17 @@ async def run_view_member_strikes_command(interaction: nextcord.Interaction, mem
         await interaction.response.send_message(embed = embed, ephemeral = True)
 
 async def run_set_admin_channel_command(interaction: nextcord.Interaction):
-   if await utils.user_has_config_permissions(interaction) and await utils.check_and_warn_if_channel_is_text_channel(interaction):
+    """
+    Runs the command to set the admin channel for moderation updates and alerts.
+
+    :param interaction: The interaction object from the Discord event.
+    :type interaction: nextcord.Interaction
+    
+    :return: None
+    :rtype: None
+    """
+
+    if await utils.user_has_config_permissions(interaction) and await utils.check_and_warn_if_channel_is_text_channel(interaction):
         server = Server(interaction.guild.id)
 
         server.profanity_moderation_profile.channel = interaction.channel.id

@@ -3793,7 +3793,7 @@ class Dashboard(CustomView):
             async def setup(self, interaction: Interaction):
                 for child in self.children: 
                     del child 
-                    self.__init__(self.outer, interaction.guild.id)
+                    self.__init__(self.outer)
                 
                 server = Server(interaction.guild.id)
                 
@@ -3878,10 +3878,10 @@ class Dashboard(CustomView):
                         raise ValueError(f"Error: {__name__} got an unknown error when retrieving a variable from the server. Path: {path}")
                  
                 async def callback(self, interaction: Interaction):
-                    await self.ChooseView(self.outer, self.name, self.path).setup(interaction)
+                    await self.ChooseView(self.outer, self.name, interaction.guild.id, self.path).setup(interaction)
                        
         async def callback(self, interaction: Interaction):
-            await self.ExtraFeaturesButton(self.outer, interaction.guild.id).setup(interaction)
+            await self.ExtraFeaturesButton(self.outer).setup(interaction)
 
 async def run_dashboard_command(interaction: Interaction):
     if await utils.user_has_config_permissions(interaction):
