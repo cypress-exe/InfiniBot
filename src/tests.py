@@ -562,6 +562,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "leveling_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE, 0, None])
         self.run_test_on_property(server, "leveling_profile", "level_up_embed[title]", "Congratulations, @displayname!", ["Title_Changed", None])
         self.run_test_on_property(server, "leveling_profile", "level_up_embed[description]", "Congrats @mention! You reached level [level]!", ["Description_Changed"])
+        self.run_test_on_property(server, "leveling_profile", "level_up_embed[color]", "White", ["Red", "Orange", "Yellow", "Green"])
         self.run_test_on_property(server, "leveling_profile", "points_lost_per_day", 0, [12, 0, 1])
         self.run_test_on_property(server, "leveling_profile", "max_points_per_message", 40, [200, None, 0, 20, 500])
         self.run_test_on_property(server, "leveling_profile", "exempt_channels", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]])
@@ -579,6 +580,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "join_message_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE])
         self.run_test_on_property(server, "join_message_profile", "embed[title]", "@displayname just joined the server!", ["Title_Changed", None])
         self.run_test_on_property(server, "join_message_profile", "embed[description]", "Welcome to the server, @mention!", ["Description_Changed"])
+        self.run_test_on_property(server, "join_message_profile", "embed[color]", "Blurple", ["Red", "Orange", "Yellow", "Green"])
         self.run_test_on_property(server, "join_message_profile", "allow_join_cards", True, [False, True])
 
         server.remove_all_data()
@@ -593,6 +595,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "leave_message_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE])
         self.run_test_on_property(server, "leave_message_profile", "embed[title]", "@displayname just left the server.", ["Title_Changed", None])
         self.run_test_on_property(server, "leave_message_profile", "embed[description]", "@mention left.", ["Description_Changed"])
+        self.run_test_on_property(server, "leave_message_profile", "embed[color]", "Blurple", ["Red", "Orange", "Yellow", "Green"])
 
         server.remove_all_data()
 
@@ -605,6 +608,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "birthdays_profile", "channel", UNSET_VALUE, [1234567989, None, UNSET_VALUE])
         self.run_test_on_property(server, "birthdays_profile", "embed[title]", "Happy Birthday, [realname]!", ["Title_Changed", None])
         self.run_test_on_property(server, "birthdays_profile", "embed[description]", "@mention just turned [age]!", ["Description_Changed"])
+        self.run_test_on_property(server, "birthdays_profile", "embed[color]", "Gold", ["Red", "Orange", "Yellow", "Green"])
         self.run_test_on_property(server, "birthdays_profile", "runtime", UNSET_VALUE, ["12:00 MDT", "8:00 PDT", "18:00 UTC", "0:00 EST", UNSET_VALUE])
 
         server.remove_all_data()
