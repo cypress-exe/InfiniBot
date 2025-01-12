@@ -38,12 +38,21 @@ class LogIfFailure(ContextDecorator):
 
         return self.suppress
 
-
-def create_logging_folder() -> None:
+def get_uuid_for_logging() -> str:
     """
-    Creates a new log folder in the generated/logs directory with the current date and time as its name.
+    Generate a UUID for logging purposes.
 
-    This function creates a new log folder in the generated/logs directory with the current date and time as its name.
+    :return: A string representation of a UUID.
+    :rtype: str
+    """
+    return str(uuid.uuid4())
+
+
+def generate_logging_file_name() -> None:
+    """
+    Creates a new log file name in the generated/logs directory with the current date and time as its name.
+
+    This function returns a name to a new log file in the generated/logs directory with the current date and time as its name.
     It is used to generate a new log file every time the bot is restarted.
 
     :param: None
@@ -54,24 +63,15 @@ def create_logging_folder() -> None:
     if not os.path.exists("./generated/logs"):
         os.makedirs("./generated/logs")
 
-    date = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    test_folder_path = f"./generated/logs/{date}"
-    os.makedirs(test_folder_path)
-
     # Ensure no more than max_logs_to_keep files exist
-    while len(os.listdir("./generated/logs")) > get_configs()["logging"]["max_logs_to_keep"]:
-        shutil.rmtree(f"./generated/logs/{os.listdir('./generated/logs')[0]}")
+    max_logs_to_keep = get_configs()["logging"]["max_logs_to_keep"]
+    while (len(os.listdir("./generated/logs")) + 1) > max_logs_to_keep:
+        os.remove(f"./generated/logs/{os.listdir('./generated/logs')[0]}")
+    
+    date = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+    new_logfile_name = f"logfile-{date}.log"
 
-    return test_folder_path
-
-def get_uuid_for_logging() -> str:
-    """
-    Generate a UUID for logging purposes.
-
-    :return: A string representation of a UUID.
-    :rtype: str
-    """
-    return str(uuid.uuid4())
+    return new_logfile_name
 
 def setup_logging(level: int = logging.INFO) -> None:
     """
@@ -83,16 +83,16 @@ def setup_logging(level: int = logging.INFO) -> None:
     :rtype: None
     """
     # Create logging folder
-    test_folder_path = create_logging_folder()
-    test_folder_path = os.path.abspath(test_folder_path)
+    logfile_name = generate_logging_file_name()
+    logfile_path = os.path.join("./generated/logs", logfile_name)
+    logfile_path = os.path.abspath(logfile_path)
 
     # Remove all existing handlers to avoid conflicts
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
 
     # Set up file handler
-    log_file_path = os.path.join(test_folder_path, "logfile.log")
-    file_handler = logging.FileHandler(log_file_path)
+    file_handler = logging.FileHandler(logfile_path)
     formatter = logging.Formatter(
         "{asctime} - {levelname} - {funcName} - {message}", 
         style="{", 
@@ -109,7 +109,7 @@ def setup_logging(level: int = logging.INFO) -> None:
     # Set the logging level
     logging.root.setLevel(level)
 
-    logging.info("Created logging folder and logging file")
+    logging.info("Created logging file")
 
     # Hook up exception logging
     def exception_logger(exc_type, exc_value, exc_traceback):
