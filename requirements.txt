@@ -24,7 +24,7 @@ frozenlist==1.4.0
     #   aiosignal
 humanfriendly==10.0
     # via -r requirements.in
-idna==3.4
+idna==3.7
     # via yarl
 levenshtein==0.23.0
     # via -r requirements.in
