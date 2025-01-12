@@ -1,5 +1,6 @@
 import copy
 import datetime
+from dateutil import parser
 import json
 import logging
 
@@ -11,7 +12,7 @@ from components import ui_components, utils
 from components.ui_components import CustomView, CustomModal
 from config.global_settings import ShardLoadedStatus, get_configs
 from config.server import Server
-from features import help_commands, leveling
+from features import birthdays,help_commands, leveling
 from modules.custom_types import UNSET_VALUE
 
 
@@ -2794,8 +2795,8 @@ class Dashboard(CustomView):
                 self.birthdays_channel_btn = self.BirthdaysChannelButton(self)
                 self.add_item(self.birthdays_channel_btn)
 
-                self.update_message_btn = self.UpdateMessageTimeButton(self)
-                self.add_item(self.update_message_btn)
+                self.set_messsage_time_btn = self.SetMessageTimeButton(self)
+                self.add_item(self.set_messsage_time_btn)
 
                 self.edit_birthday_message_btn = self.EditBirthdayMessageButton(self)
                 self.add_item(self.edit_birthday_message_btn)
@@ -2825,9 +2826,14 @@ class Dashboard(CustomView):
                     if birthday_channel: birthday_channel_ui_text = birthday_channel.mention
                     else: birthday_channel_ui_text = "#unknown"
 
-                if server.birthdays_profile.runtime == UNSET_VALUE: server.birthdays_profile.runtime = get_configs()["birthday_message_runtime_default_utc"]
+                birthdays_runtime = server.birthdays_profile.runtime
+                if birthdays_runtime == UNSET_VALUE:
+                    # Forward to Set Message Time screen
+                    await self.set_messsage_time_btn.callback(interaction)
+                    return
+                
                 try:
-                    hour, minute = server.birthdays_profile.runtime.split(":")
+                    hour, minute = birthdays_runtime.split(":")
                     epoch_time = datetime.datetime(2000, 1, 1, int(hour), int(minute), 0, tzinfo = datetime.timezone.utc).timestamp()
                     epoch_time = round(epoch_time)
                     message_time_ui_text = f"<t:{epoch_time}:t>"
@@ -2960,7 +2966,7 @@ class Dashboard(CustomView):
                                 self.outer = outer
                                 self.member_id = member_id
                                 
-                                self.date_input = nextcord.ui.TextInput(label = "Date (MM/DD/YYYY)", style = nextcord.TextInputStyle.short, max_length = 10, placeholder = "MM/DD/YYYY")
+                                self.date_input = nextcord.ui.TextInput(label = "Date", style = nextcord.TextInputStyle.short, max_length = 50, placeholder = "January 1st, 2000 or MM/DD/YYYY")
                                 self.add_item(self.date_input)
                                 
                                 self.real_name_input = nextcord.ui.TextInput(label = "Real Name (Optional)", style = nextcord.TextInputStyle.short, max_length=50, required = False)
@@ -2968,14 +2974,15 @@ class Dashboard(CustomView):
                                 
                             async def callback(self, interaction: Interaction):
                                 try:
-                                    datetime.datetime.strptime(self.date_input.value, f"%m/%d/%Y")
+                                    date = parser.parse(self.date_input.value, dayfirst=False)
+                                    date_serialized = date.strftime(f"%Y-%m-%d")
                                 except:
-                                    await interaction.response.send_message(embed = nextcord.Embed(title = "Invalid Format", description = "You formatted the date wrong. Try formating it like this: MM/DD/YYYY", color =  nextcord.Color.red()), ephemeral=True)
+                                    await interaction.response.send_message(embed = nextcord.Embed(title = "Invalid Format", description = "You formatted the date wrong. Try formating it like this: Month Day, Year", color =  nextcord.Color.red()), ephemeral=True)
                                     return
                                 
                                 server = Server(interaction.guild.id)
                                 real_name = self.real_name_input.value if self.real_name_input.value != "" else None
-                                server.birthdays.add(member_id = self.member_id, birth_date = self.date_input.value, real_name = real_name)
+                                server.birthdays.add(member_id = self.member_id, birth_date = date_serialized, real_name = real_name)
 
                                 await self.outer.setup(interaction)
                 
@@ -3015,22 +3022,23 @@ class Dashboard(CustomView):
                                 server = Server(guild_id)
                                 birthday = server.birthdays[self.member_id]
                                 
-                                self.dateInput = nextcord.ui.TextInput(label = "Date (MM/DD/YYYY)", style = nextcord.TextInputStyle.short, max_length = 10, placeholder = "MM/DD/YYYY", default_value = birthday.birth_date)
-                                self.add_item(self.dateInput)
+                                self.date_input = nextcord.ui.TextInput(label = "Date", style = nextcord.TextInputStyle.short, max_length = 50, placeholder = "January 1st, 2000 or MM/DD/YYYY", default_value = birthday.birth_date)
+                                self.add_item(self.date_input)
                                 
-                                self.realNameInput = nextcord.ui.TextInput(label = "Real Name (Optional)", style = nextcord.TextInputStyle.short, max_length=50, required = False, default_value = birthday.real_name)
-                                self.add_item(self.realNameInput)
+                                self.real_name_input = nextcord.ui.TextInput(label = "Real Name (Optional)", style = nextcord.TextInputStyle.short, max_length=50, required = False, default_value = birthday.real_name)
+                                self.add_item(self.real_name_input)
                                 
                             async def callback(self, interaction: Interaction):
                                 try:
-                                    datetime.datetime.strptime(self.dateInput.value, f"%m/%d/%Y")
+                                    date = parser.parse(self.date_input.value, dayfirst=False)
+                                    date_serialized = date.strftime(f"%Y-%m-%d")
                                 except:
-                                    await interaction.response.send_message(embed = nextcord.Embed(title = "Invalid Format", description = "You formatted the date wrong. Try formating it like this: MM/DD/YYYY", color =  nextcord.Color.red()), ephemeral=True)
+                                    await interaction.response.send_message(embed = nextcord.Embed(title = "Invalid Format", description = "You formatted the date wrong. Try formating it like this: Month Day, Year", color =  nextcord.Color.red()), ephemeral=True)
                                     return
                                 
                                 server = Server(interaction.guild.id)
-                                real_name = self.realNameInput.value if self.realNameInput.value != "" else None
-                                server.birthdays.edit(self.member_id, birth_date = self.dateInput.value, real_name = real_name)
+                                real_name = self.real_name_input.value if self.real_name_input.value != "" else None
+                                server.birthdays.edit(self.member_id, birth_date = date_serialized, real_name = real_name)
                                 
                                 await self.outer.setup(interaction)
 
@@ -3144,12 +3152,12 @@ class Dashboard(CustomView):
 
                     await self.outer.setup(interaction)
 
-            class UpdateMessageTimeButton(nextcord.ui.Button):
+            class SetMessageTimeButton(nextcord.ui.Button):
                 def __init__(self, outer):
-                    super().__init__(label = "Update Message Time", style = nextcord.ButtonStyle.gray, row = 1)
+                    super().__init__(label = "Set Message Time", style = nextcord.ButtonStyle.gray, row = 1)
                     self.outer = outer
 
-                class UpdateMessageTimeView(CustomView):
+                class SetMessageTimeView(CustomView):
                     def __init__(self, outer):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -3163,20 +3171,24 @@ class Dashboard(CustomView):
 
                     async def setup(self, interaction: Interaction):
                         description = """
-                        Update the time that InfiniBot will send birthday messages at.
+                        Set the time that InfiniBot will send birthday messages at.
 
-                        To do provide the best experience, InfiniBot needs to account for your timezone. To do this, it will ask for your current date and time. InfiniBot will compare your answers to its date and time to find your UTC offset. Your data will not be stored.
+                        To provide the best experience, InfiniBot needs to account for your timezone. To do this, it will ask for your current date and time. InfiniBot will compare your answers to its date and time to find your UTC offset.
                         
                         If you experience timezone changes throught the year, such as Daylight Savings Time, you may need to periodically update this value.
 
                         When you're ready, click "Continue".
                         """
                         description = utils.standardize_str_indention(description)
-                        embed = nextcord.Embed(title = "Dashboard - Birthdays - Update Message Time", description = description, color = nextcord.Color.blue())
+                        embed = nextcord.Embed(title = "Dashboard - Birthdays - Set Message Time", description = description, color = nextcord.Color.blue())
                         await interaction.response.edit_message(embed = embed, view = self)
 
                     async def cancel_btn_callback(self, interaction: Interaction):
-                        await self.outer.setup(interaction)
+                        server = Server(interaction.guild.id)
+                        if server.birthdays_profile.runtime == UNSET_VALUE: # Skipped here
+                            await self.outer.outer.setup(interaction)
+                        else:
+                            await self.outer.setup(interaction)
 
                     class ContinueButton(nextcord.ui.Button):
                         def __init__(self, outer):
@@ -3204,7 +3216,7 @@ class Dashboard(CustomView):
                                     if self.time_input.value == "" or self.time_input.value == None: raise Exception
                                     if self.date_input.value == "" or self.date_input.value == None: raise Exception
 
-                                    self.utc_offset = utils.calculate_utc_offset(self.date_input.value, self.time_input.value)
+                                    self.utc_offset = birthdays.calculate_utc_offset(self.date_input.value, self.time_input.value)
                                 except:
                                     await interaction.response.send_message(embed = error_embed, ephemeral=True)
                                     return
@@ -3226,7 +3238,8 @@ class Dashboard(CustomView):
 
                                 async def setup(self, interaction: Interaction):
                                     try:
-                                        _datetime = utils.conversion_local_time_and_utc_time(self.utc_offset, local_time_str="08:30", return_entire_datetime=True)
+                                        local_time = utils.parse_str_to_datetime("08:30")
+                                        _datetime = utils.conversion_local_time_and_utc_time(self.utc_offset, local_time_datetime=local_time)
                                         epoch_time = _datetime.timestamp()
                                         epoch_time = round(epoch_time)
                                         discord_timestamp = f"<t:{epoch_time}:f>"
@@ -3243,10 +3256,13 @@ class Dashboard(CustomView):
 
                                     If this is incorrect, click "Cancel" and try again.
 
-                                    To update the time that InfiniBot will send birthday messages at, click "Set Time".
+                                    To set the time that InfiniBot will send birthday messages at, click "Set Time".
+                                    This time must be on the 15 minute mark (12:00, 12:15, 12:30, 12:45, etc).
+
+                                    Tip: To avoid mistakes due to timezones, try setting the message time around noon in your local time. This helps to avoid edge-cases that may cause unexpected results.
                                     """
                                     description = utils.standardize_str_indention(description)
-                                    embed = nextcord.Embed(title = "Dashboard - Birthdays - Update Message Time", description = description, color = nextcord.Color.blue())
+                                    embed = nextcord.Embed(title = "Dashboard - Birthdays - Set Message Time", description = description, color = nextcord.Color.blue())
                                     await interaction.response.edit_message(embed=embed, view=self)
 
                                 async def cancel_btn_callback(self, interaction: Interaction):
@@ -3259,18 +3275,20 @@ class Dashboard(CustomView):
                                         self.utc_offset = utc_offset
 
                                     async def callback(self, interaction: Interaction):
-                                        await interaction.response.send_modal(self.UpdateMessageTimeModal(self.outer, interaction.guild.id, self.utc_offset))
+                                        await interaction.response.send_modal(self.SetMessageTimeModal(self.outer, interaction.guild.id, self.utc_offset))
                                 
-                                    class UpdateMessageTimeModal(CustomModal):
+                                    class SetMessageTimeModal(CustomModal):
                                         def __init__(self, outer, guild_id, utc_offset):
-                                            super().__init__(title = "Update Message Time", timeout = None)
+                                            super().__init__(title = "Set Message Time", timeout = None)
                                             self.outer = outer
                                             self.guild_id = guild_id
                                             self.utc_offset = utc_offset
 
                                             try:
                                                 server = Server(guild_id)
-                                                time_formatted = utils.conversion_local_time_and_utc_time(self.utc_offset, utc_time_str=server.birthdays_profile.runtime)
+                                                if server.birthdays_profile.runtime == UNSET_VALUE: raise Exception
+                                                _datetime = utils.parse_str_to_datetime(server.birthdays_profile.runtime)
+                                                time_formatted = utils.conversion_local_time_and_utc_time(self.utc_offset, utc_time_datetime=_datetime).time()
                                                 time_formatted = f"{time_formatted}"[:-3] # Remove the seconds
                                             except:
                                                 time_formatted = None
@@ -3280,23 +3298,28 @@ class Dashboard(CustomView):
                                             self.add_item(self.local_time_input)
                                             
                                         async def callback(self, interaction: Interaction):
-                                            error_embed = nextcord.Embed(title = "An Error Occurred", description = "Something went wrong. The time must be formatted as HH:MM (AM/PM).", color = nextcord.Color.red())
+                                            error_embed = nextcord.Embed(title = "An Error Occurred", description = "Something went wrong. The time must be formatted as HH:MM (AM/PM). The time must also be on the 15 minute mark (12:00, 12:15, 12:30, 12:45, etc)", color = nextcord.Color.red())
 
                                             try:
                                                 if self.local_time_input.value == "" or self.local_time_input.value == None: raise Exception
-                                                time_split = self.local_time_input.value.split(":")
-                                                if len(time_split) != 2: raise Exception
-                                                for time in time_split: 
-                                                    if not time.isdigit() or int(time) < 0 or int(time) > 23: raise Exception
-                                                    
-                                                time_formatted = utils.conversion_local_time_and_utc_time(self.utc_offset, local_time_str=self.local_time_input.value)
-                                                time_formatted = f"{time_formatted}"[:-3] # Remove the seconds
-                                            except:
+
+                                                _datetime = utils.parse_str_to_datetime(self.local_time_input.value)
+                                                utc_time = utils.conversion_local_time_and_utc_time(self.utc_offset, local_time_datetime=_datetime)
+                                                
+                                                if utc_time.minute not in [0, 15, 30, 45]:
+                                                    # Round to the nearest 15 minutes
+                                                    utc_time = utc_time.replace(minute=round(utc_time.minute / 15) * 15)
+
+                                                utc_time_formatted = f"{utc_time.time()}"[:-3] # Remove the seconds
+
+                                            except Exception as e:
+                                                logging.error(e)
                                                 await interaction.response.send_message(embed = error_embed, ephemeral=True)
                                                 return
                                             
                                             server = Server(self.guild_id)
-                                            server.birthdays_profile.runtime = time_formatted
+                                            server.birthdays_profile.runtime = utc_time_formatted
+                                            server.birthdays_profile.utc_offset = self.utc_offset
 
                                             await self.outer.outer.setup(interaction)
                                 
@@ -3304,7 +3327,7 @@ class Dashboard(CustomView):
                             await interaction.response.send_modal(self.PinpointTimezoneModal(self.outer))
                 
                 async def callback(self, interaction: Interaction):
-                    await self.UpdateMessageTimeView(self.outer).setup(interaction)
+                    await self.SetMessageTimeView(self.outer).setup(interaction)
 
             class EditBirthdayMessageButton(nextcord.ui.Button):
                 def __init__(self, outer):

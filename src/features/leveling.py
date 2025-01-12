@@ -181,11 +181,11 @@ async def midnight_action_leveling(bot: nextcord.Client) -> None:
                         server.member_levels.delete(member_level_info.member_id)
 
                 except Exception as err:
-                    logging.error(f"ERROR when checking levels (member): {err}")
+                    logging.error(f"ERROR when checking levels (member) in server {guild.id}: {err}")
                     continue
             
         except Exception as err:
-            logging.error(f"ERROR When checking levels (server): {err}")
+            logging.error(f"ERROR When checking levels (server) in server {guild.id}: {err}")
             continue
 
 async def check_leveling_enabled_and_warn_if_not(interaction: Interaction, server: Server) -> bool:

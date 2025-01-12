@@ -24,8 +24,8 @@ class Profile(nextcord.ui.View):
     async def setup(self, interaction: Interaction):
         for child in self.children: del child
         self.__init__()
-    
-        if not utils.feature_is_active(guild_id = interaction.guild.id, feature = "profile"):
+
+        if not utils.feature_is_active(guild = interaction.guild, feature = "profile"):
             await ui_components.disabled_feature_override(self, interaction)
             return
     
@@ -630,6 +630,5 @@ async def run_profile_command(interaction: Interaction) -> None:
     :return: None
     :rtype: None
     """
-    if await utils.user_has_config_permissions(interaction):
-        view = Profile()
-        await view.setup(interaction)
+    view = Profile()
+    await view.setup(interaction)

@@ -221,8 +221,11 @@ class Server:
         @Server_Simple_TableManager.embed_property("embed")
         def embed(self): pass
                 
-        @Server_Simple_TableManager.typed_property("runtime")
+        @Server_Simple_TableManager.typed_property("runtime", accept_none_value=False)
         def runtime(self): pass
+
+        @Server_Simple_TableManager.float_property("utc_offset", accept_none_value=False)
+        def utc_offset(self): pass
 
     @property
     def infinibot_settings_profile(self):

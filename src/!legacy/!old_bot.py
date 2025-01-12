@@ -1285,7 +1285,7 @@ class Messages:
         # If the server does not exist, then we'll return None. If we later add something, THEN and only then will we save.
         return None
 
-    def add(self, _type, channel_id, message_id, owner_id, persistent=False, parameters = []):
+    def add(self, _type, channel_id, message_id, owner_id, persistent=False, parameters = []): # Dangerous using [] for parameters declaration
         '''Adds an active message to the server.
         Returns True if successful, False if the type is invalid.'''
         

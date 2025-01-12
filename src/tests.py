@@ -426,7 +426,7 @@ class TestServer(unittest.TestCase):
     class RunTestOnIntegratedListProperty:
         """Helper class to generate test data and perform tests on integrated list properties."""
         
-        def __init__(self, server: 'Server', table_name: str, test_values: list, iterations: list, extra_keys_to_query: list = []) -> None:
+        def __init__(self, server: 'Server', table_name: str, test_values: list, iterations: list, extra_keys_to_query: list = None) -> None:
             """
             Helper class to generate test data and perform tests on integrated list properties.
 
@@ -447,7 +447,7 @@ class TestServer(unittest.TestCase):
             self.table_name = table_name
             self.test_values = test_values
             self.iterations = iterations # [iteration_count, rows_per_iteration]
-            self.ektq = extra_keys_to_query
+            self.ektq = extra_keys_to_query if extra_keys_to_query is not None else []
 
             # Ensure the minimum number of iterations is correct
             minimum_iterations = 2 + len(self.ektq)
@@ -814,6 +814,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "birthdays_profile", "embed[description]", "@mention just turned [age]!", ["Description_Changed"])
         self.run_test_on_property(server, "birthdays_profile", "embed[color]", "Gold", ["Red", "Orange", "Yellow", "Green"])
         self.run_test_on_property(server, "birthdays_profile", "runtime", UNSET_VALUE, ["12:00 MDT", "8:00 PDT", "18:00 UTC", "0:00 EST", UNSET_VALUE])
+        self.run_test_on_property(server, "birthdays_profile", "utc_offset", 0, [5.5, 10, -7, -9.25])
 
         server.remove_all_data()
 

@@ -252,7 +252,7 @@ class Simple_TableManager:
 
         return Simple_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
 
-    def float_property(property_name:float, **kwargs):
+    def float_property(property_name:float, accept_none_value = True, **kwargs):
         """
         Custom decorator for creating properties that are floats.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -268,6 +268,10 @@ class Simple_TableManager:
         """
 
         def setter_modifier(value):
+            if value == None: 
+                if not accept_none_value:
+                    raise TypeError('This property has been modified to not accept None values.')
+                return None
             if isinstance(value, str):
                 if value.isdigit(): value = float(value)
             if isinstance(value, int):

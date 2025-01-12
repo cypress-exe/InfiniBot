@@ -6,3 +6,4 @@ SQLAlchemy
 topggpy
 dateparser
 apscheduler
+python-dateutil

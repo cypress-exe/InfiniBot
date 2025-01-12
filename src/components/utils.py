@@ -2,7 +2,6 @@ import datetime
 import logging
 from typing import Any
 
-import dateparser
 import nextcord
 from nextcord import Interaction
 
@@ -118,92 +117,69 @@ def standardize_str_indention(string: str) -> str:
     # Join the lines back into a string
     return('\n'.join(lines))
 
-def calculate_utc_offset(user_date_str: str, user_time_str: str) -> float:
+def parse_str_to_time(time_str: str) -> datetime.time:
     """
-    Calculate the UTC offset based on the provided date and time strings.
+    Attempt to parse a string as a time of day.
 
-    This function parses a wide variety of date and time formats using `dateparser`,
-    calculates the difference between the provided datetime and the current UTC time,
-    and snaps the offset to the nearest quarter-hour.
-
-    :param user_date_str: The date string (e.g., "11/24/2024", "November 24, 2024").
-    :type user_date_str: str
-    :param user_time_str: The time string (e.g., "15:30", "3:30 PM").
-    :type user_time_str: str
-    :return: The snapped UTC offset in hours (rounded to the nearest 15 minutes).
-    :rtype: float
-    :raises ValueError: If the date or time string cannot be parsed.
+    :param time_str: A string representing the time to be parsed.
+    :type time_str: str
+    :return: A datetime.time object representing the time.
+    :type: datetime.time
+    :raises ValueError: If the string cannot be parsed as a time.
     """
-    # Parse the user-provided date and time
-    user_datetime = dateparser.parse(f"{user_date_str} {user_time_str}")
+    for fmt in ["%I:%M %p", "%H:%M"]:
+        try:
+            dt = datetime.datetime.strptime(time_str, fmt)
+            return dt.time()
+        except ValueError:
+            pass
+    raise ValueError("Invalid time format")
 
-    if not user_datetime:
-        raise ValueError("Invalid date or time format. Please provide a recognizable format.")
+def parse_str_to_datetime(time_str: str) -> datetime.datetime:
+    """
+    Parse a string as a time of day and return a datetime object with the time set to the parsed value and the date set to January 1, 2000.
 
-    # Get the current UTC time
-    utc_now = datetime.datetime.now(datetime.timezone.utc)
+    :param time_str: A string representing the time to be parsed (e.g., '2:30 PM' or '14:30').
+    :type time_str: str
+    :return: A datetime object representing the time.
+    :rtype: datetime.datetime
+    """
+    time_obj = parse_str_to_time(time_str)
 
-    # Calculate the UTC offset as a timedelta
-    offset = user_datetime - utc_now.replace(tzinfo=None)
-
-    # Convert timedelta to hours
-    offset_hours = offset.total_seconds() / 3600
-
-    # Snap to the nearest 15 minutes (0.25 hours)
-    snapped_offset = round(offset_hours * 4) / 4
-
-    # Return the calculated offset
-    return snapped_offset
+    date_obj = datetime.date(2000, 1, 1)
+    return datetime.datetime.combine(date_obj, time_obj)
 
 def conversion_local_time_and_utc_time(
-    utc_offset: float, local_time_str: str = None, utc_time_str: str = None, return_entire_datetime: bool = False
+    utc_offset: float, local_time_datetime: datetime.datetime = None, utc_time_datetime: datetime.datetime = None
 ) -> datetime.datetime | datetime.time:
     """
-    Convert a given local time string to UTC time using a UTC offset.
+    Convert a given local time to UTC time using a UTC offset.
 
     :param utc_offset: The UTC offset in hours (e.g., -5.0 for EST).
     :type utc_offset: float
-    :param local_time_str: The time string to parse (e.g., "5:21 PM", "17:21").
-    :type local_time_str: str | None
-    :param utc_time_str: The UTC time string to parse (e.g., "22:21", "5:21 PM").
-    :type utc_time_str: str | None
-    :param return_entire_datetime: If True, returns a datetime object instead of just the time.
-    :type return_entire_datetime: bool
+    :param local_time_datetime: The local time to convert.
+    :type local_time_datetime: datetime.datetime | None
+    :param utc_time_datetime: The UTC time to convert.
+    :type utc_time_datetime: datetime.datetime | None
     :return: A `datetime.time` object representing the time in UTC or a `datetime.datetime` object if
         `return_entire_datetime` is True.
-    :raises ValueError: If neither local_time_str nor utc_time_str is provided.
-    :raises ValueError: If both local_time_str and utc_time_str are provided.
-    :raises ValueError: If the time string cannot be parsed.
+    :raises ValueError: If neither local_time_datetime nor utc_time_datetime is provided.
+    :raises ValueError: If both local_time_datetime and utc_time_datetime are provided.
     """
-    if local_time_str == None and utc_time_str == None:
-        raise ValueError("Either local_time_str or utc_time_str must be provided.")
-    if local_time_str != None and utc_time_str != None:
-        raise ValueError("Either local_time_str and utc_time_str must be provided, but not both.")
+    if local_time_datetime == None and utc_time_datetime == None:
+        raise ValueError("Either local_time_datetime or utc_time_datetime must be provided.")
+    if local_time_datetime != None and utc_time_datetime != None:
+        raise ValueError("Either local_time_datetime and utc_time_datetime must be provided, but not both.")
     
-    working_time_str = local_time_str if local_time_str != None else utc_time_str
-
-    # Parse the time string into a datetime object
-    parsed_time = dateparser.parse(working_time_str)
-    if not parsed_time:
-        raise ValueError("Invalid time format. Please provide a recognizable time format.")
-
-    # Extract the time component
-    local_time = parsed_time.time()
-
-    # Convert local time to a datetime object for arithmetic
-    dummy_date = datetime.datetime(2000, 1, 1, local_time.hour, local_time.minute, local_time.second)
+    working_time_datetime: datetime.datetime = local_time_datetime if local_time_datetime != None else utc_time_datetime
 
     # Adjust the time to UTC by subtracting the UTC offset
-    if local_time_str != None: # Converting from local time to UTC time
-        utc_datetime = dummy_date - datetime.timedelta(hours=utc_offset)
-    else: # Converting from UTC time to local time
-        utc_datetime = dummy_date + datetime.timedelta(hours=utc_offset)
+    if local_time_datetime is None: # Converting from UTC time to local time
+        return_datetime = working_time_datetime + datetime.timedelta(hours=utc_offset)
+    else: # Converting from local time to UTC time
+        return_datetime = working_time_datetime - datetime.timedelta(hours=utc_offset)
 
-    if return_entire_datetime:
-        return utc_datetime
-    else:
-        # Return only the time component
-        return utc_datetime.time()
+    return return_datetime
 
 
 def get_discord_color_from_string(color: str) -> nextcord.Color:
@@ -342,32 +318,32 @@ def feature_is_active(**kwargs) -> bool:
     Checks if a feature is active for a server (or globally).
 
     :param server: The server object to check the feature for.
-    :type server: Server
+    :type server: Server | None
     :param server_id: The ID of the server to check the feature for.
-    :type server_id: int
+    :type server_id: int | None
+    :param guild: The guild object to check the feature for.
+    :type guild: nextcord.Guild | None
     :param guild_id: The ID of the guild to check the feature for.
-    :type guild_id: int
+    :type guild_id: int | None
     :param feature: The name of the feature to check.
     :type feature: str
+    :param skip_server_check: If True, skip checking server-specific status.
+    :type skip_server_check: bool
+
+    :raises ValueError: If neither a server nor server_id (guild or guild_id) is provided when required.
 
     :return: True if the feature is active for the server (or globally), False otherwise.
     :rtype: bool
     """
     from config.server import Server
 
-    server:Server = kwargs.get("server")
-    server_id:int = kwargs.get("server_id")
-    if kwargs.get("guild_id"): server_id:int = kwargs.get("guild_id")
-    feature:str = kwargs.get("feature")
-
-    # Validate inputs
-    if not server and not server_id:
-        raise ValueError(f"Error: {__name__} received no server or server_id.")
-    if not feature:
-        raise ValueError(f"Error: {__name__} received no feature.")
-    
+    server:Server = kwargs.get("server") or kwargs.get("guild")
     if not server:
-        server = Server(server_id)
+        server_id:int = kwargs.get("server_id") or kwargs.get("guild_id")
+        if server_id: server = Server(server_id)
+        
+    feature:str = kwargs.get("feature")
+    skip_server_check = kwargs.get("skip_server_check", False)
 
     # Make feature case insensitive
     feature = feature.lower()
@@ -392,20 +368,25 @@ def feature_is_active(**kwargs) -> bool:
             return False
 
     # Check if feature is enabled in the server
-    for key in server_feature_keys:
-        path = key.split(".")
-        attr = server
-        for level in path:
-            if not hasattr(attr, level):
-                raise ValueError(f"Error: {__name__} received an invalid path when checking if the feature is enabled in the server. Path: {key}")
-            attr = getattr(attr, level)
+    if not skip_server_check:
+        # Validate server
+        if len(server_feature_keys) > 0 and server is None:
+            raise ValueError(f"Error: {__name__} received server or server_id. A server instance is required for this feature.")
 
-        if not isinstance(attr, bool):
-            raise ValueError(f"Error: {__name__} received an invalid type when checking if the feature is enabled in the server. Type: {type(attr)}")
-        
-        if not attr:
-            logging.debug(f"Determined that feature {feature} is disabled in the server. Key: {key}")
-            return False
+        for key in server_feature_keys:
+            path = key.split(".")
+            attr = server
+            for level in path:
+                if not hasattr(attr, level):
+                    raise ValueError(f"Error: {__name__} received an invalid path when checking if the feature is enabled in the server. Path: {key}")
+                attr = getattr(attr, level)
+
+            if not isinstance(attr, bool):
+                raise ValueError(f"Error: {__name__} received an invalid type when checking if the feature is enabled in the server. Type: {type(attr)}")
+            
+            if not attr:
+                logging.debug(f"Determined that feature {feature} is disabled in the server. Key: {key}")
+                return False
 
     logging.debug(f"Determined that feature {feature} is enabled in the server. Key: {key}")
     return True

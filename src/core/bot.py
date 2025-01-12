@@ -9,7 +9,7 @@ import config.global_settings as global_settings
 from config.file_manager import JSONFile
 from core import log_manager
 from core.log_manager import LogIfFailure
-from core.scheduling import start_scheduler, get_scheduler
+from core.scheduling import start_scheduler, stop_scheduler
 from features import action_logging, admin_commands, dashboard, dm_commands, join_leave_messages, leveling, moderation, profile
 
 
@@ -80,7 +80,7 @@ async def on_close() -> None:
     :rtype: None
     """
     global_settings.set_bot_load_status(False)
-    get_scheduler().shutdown()
+    stop_scheduler()
     logging.fatal("InfiniBot is shutting down...")
 
 # SLASH COMMANDS ==============================================================================================================================================================
@@ -414,6 +414,7 @@ def run() -> None:
     :return: None
     :rtype: None
     """
+
     # Get token
     token = JSONFile("TOKEN")["discord_auth_token"]
     logging.info(f"Running bot with token: {token[:5]}*******...")

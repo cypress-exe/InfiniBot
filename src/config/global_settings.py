@@ -159,7 +159,9 @@ class Configs(GlobalSetting):
                 "max_messages_to_check": 11,
                 "message_chars_to_check_repetition": 140,
             },
-            "birthday_message_runtime_default_utc": "15:00",
+            "scheduler": {
+                "misfire_grace_time_seconds": 30
+            },
             "server_utc_offset": -7
         }
 
