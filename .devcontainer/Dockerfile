@@ -1,5 +1,5 @@
 # Base Python image
-FROM mcr.microsoft.com/devcontainers/python:bullseye AS base
+FROM mcr.microsoft.com/devcontainers/python:3.13-bullseye AS base
 
 # Set the working directory
 WORKDIR /app
