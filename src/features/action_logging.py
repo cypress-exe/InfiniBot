@@ -5,13 +5,14 @@ import io
 import logging
 import math
 import mmap
+from typing import Union
 from nextcord import AuditLogAction, Interaction
 import nextcord
 
 from components import ui_components
 from components import utils
 from config.server import Server
-from modules.custom_types import UNSET_VALUE
+from modules.custom_types import UNSET_VALUE, ExpiringSet
 
 
 class ShowMoreButton(nextcord.ui.View):
@@ -50,44 +51,43 @@ class ShowMoreButton(nextcord.ui.View):
         # Change the Name of the button
         button.label = "Show More"
         
-        if len(interaction.message.embeds) > 2:
-            # Extra embeds were added to the message
-            all_embeds = interaction.message.embeds[:-1] # Remove the last embed
+        # Remove the info embed
+        all_embeds = interaction.message.embeds[:-1]
 
     await interaction.response.edit_message(view=self, embeds = all_embeds)
   
 
-
-async def should_log(guild: nextcord.Guild) -> tuple[bool, nextcord.TextChannel | None]:
+# Utility Functions
+async def get_logging_channel(guild: nextcord.Guild) -> nextcord.TextChannel:
     """
     |coro|
 
-    Determines whether logging should be performed for the given guild.
+    Returns the logging channel for the given guild.
 
-    :param guild: The guild to check logging settings for.
+    :param guild: The guild for which to retrieve the logging channel.
     :type guild: nextcord.Guild
-    :return: A tuple indicating whether logging is active and the log channel if active.
-    :rtype: Tuple[bool, Optional[nextcord.TextChannel]]
+    :return: The log channel if logging is enabled, None otherwise.
+    :rtype: nextcord.TextChannel
     """
 
     server = Server(guild.id)
     
     if not utils.feature_is_active(server = server, feature = "logging"):
-        return False, None
+        return None
 
     log_channel_id = server.logging_profile.channel
     if log_channel_id == UNSET_VALUE:
-        return False, None
+        return None
     
     log_channel = guild.get_channel(log_channel_id)
     if not log_channel:
-        return False, None
+        return None
     
     if not await utils.check_text_channel_permissions(log_channel, True, custom_channel_name = f"Log Message Channel (#{log_channel.name})"):
-        return False, None
+        return None
     
     else:
-        return True, log_channel
+        return log_channel
 
 def entry_is_fresh(entry: nextcord.AuditLogEntry) -> bool:
     """
@@ -103,6 +103,67 @@ def entry_is_fresh(entry: nextcord.AuditLogEntry) -> bool:
                             and entry.created_at.hour == datetime.datetime.now(datetime.timezone.utc).hour 
                             and ((datetime.datetime.now(datetime.timezone.utc).minute - entry.created_at.minute) <= 5))
 
+
+# File Computation
+async def file_computation(file: nextcord.Attachment) -> nextcord.File | None:
+    """
+    |coro|
+
+    :param file: The file to be processed
+    :type file: nextcord.Attachment
+    :return: The processed file, or None if there was an error
+    :rtype: nextcord.File or None
+    """
+    # ChatGPT :)
+    try:
+        file_bytes = await file.read()
+        
+        with mmap.mmap(-1, len(file_bytes), access=mmap.ACCESS_WRITE) as mem:
+            mem.write(file_bytes)
+            mem.seek(0)
+            file_data = bytes(mem)
+            
+        file = nextcord.File(io.BytesIO(file_data), file.filename, description=file.description, spoiler=file.is_spoiler())
+        return file
+    except:
+        return None
+    
+async def files_computation(deleted_message: nextcord.Message, log_channel: nextcord.TextChannel, log_message: nextcord.Message) -> None:
+    """
+    |coro|
+
+    Compute a list of files from a deleted message.
+
+    :param deleted_message: The deleted message that had the attachments
+    :type deleted_message: nextcord.Message
+    :param log_channel: The channel to send the files to
+    :type log_channel: nextcord.TextChannel
+    :param log_message: The message to update after sending all the files
+    :type log_message: nextcord.Message
+    :return: None
+    :rtype: None
+    """
+    
+    # ChatGPT :)
+    # Create tasks for each attachment
+    tasks = []
+    for attachment in deleted_message.attachments:
+        tasks.append(asyncio.create_task(file_computation(attachment)))
+    
+    # Wait for all tasks to complete asynchronously
+    completed_tasks = await asyncio.gather(*tasks)
+    
+    # Collect the files from the completed tasks
+    files = [task_result for task_result in completed_tasks if task_result is not None]
+    
+        
+    if len(files) > 0:
+        await log_channel.send(files = files, reference = log_message)
+    else:
+        await log_channel.send(embed = nextcord.Embed(title = "Error", description = "There was a problem when retrieving these files. They have been lost to the void.", color = nextcord.Color.red()), reference = log_message)
+
+
+# Triggers
 async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Message, edited_message: nextcord.Message, user: nextcord.Member = None) -> None:
     """
     |coro|
@@ -269,108 +330,18 @@ async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Mes
         # Finally, update the old message to have the new embed
         await message.edit(embed = embed)
     
-async def file_computation(file: nextcord.Attachment) -> nextcord.File | None:
+async def trigger_delete_log(bot: nextcord.Client, channel: nextcord.TextChannel, guild: nextcord.Guild, message: nextcord.Message, message_id: int) -> None:
     """
     |coro|
 
-    :param file: The file to be processed
-    :type file: nextcord.Attachment
-    :return: The processed file, or None if there was an error
-    :rtype: nextcord.File or None
-    """
-    # ChatGPT :)
-    try:
-        file_bytes = await file.read()
-        
-        with mmap.mmap(-1, len(file_bytes), access=mmap.ACCESS_WRITE) as mem:
-            mem.write(file_bytes)
-            mem.seek(0)
-            file_data = bytes(mem)
-            
-        file = nextcord.File(io.BytesIO(file_data), file.filename, description=file.description, spoiler=file.is_spoiler())
-        return file
-    except:
-        return None
-    
-async def files_computation(deleted_message: nextcord.Message, log_channel: nextcord.TextChannel, log_message: nextcord.Message) -> None:
-    """
-    |coro|
-
-    Compute a list of files from a deleted message.
-
-    :param deleted_message: The deleted message that had the attachments
-    :type deleted_message: nextcord.Message
-    :param log_channel: The channel to send the files to
-    :type log_channel: nextcord.TextChannel
-    :param log_message: The message to update after sending all the files
-    :type log_message: nextcord.Message
-    :return: None
-    :rtype: None
-    """
-    
-    # ChatGPT :)
-    # Create tasks for each attachment
-    tasks = []
-    for attachment in deleted_message.attachments:
-        tasks.append(asyncio.create_task(file_computation(attachment)))
-    
-    # Wait for all tasks to complete asynchronously
-    completed_tasks = await asyncio.gather(*tasks)
-    
-    # Collect the files from the completed tasks
-    files = [task_result for task_result in completed_tasks if task_result is not None]
-    
-        
-    if len(files) > 0:
-        await log_channel.send(files = files, reference = log_message)
-    else:
-        await log_channel.send(embed = nextcord.Embed(title = "Error", description = "There was a problem when retrieving these files. They have been lost to the void.", color = nextcord.Color.red()), reference = log_message)
-
-
-
-async def log_raw_message_edit(guild: nextcord.Guild, before_message: nextcord.Message, after_message: nextcord.Message) -> None:
-    """
-    |coro|
-
-    Logs the edit of a message in a guild.
-
-    :param guild: The guild where the message was edited.
-    :type guild: nextcord.Guild
-    :param before_message: The original message before it was edited.
-    :type before_message: nextcord.Message
-    :param after_message: The message after it was edited.
-    :type after_message: nextcord.Message
-    :return: None
-    :rtype: None
-    """
-
-    # Test if logging is enabled
-    logging_enabled, _ = await should_log(guild)
-    if not logging_enabled: return
-    
-    # Test for false-positives
-    if not logging_enabled: return
-    if after_message.author.bot == True: return
-    if after_message == None: return
-    if after_message.content == "": return
-    if before_message != None and before_message.content == "": return
-    if before_message != None and after_message.content == before_message.content: return
-    
-    # UI Log
-    await trigger_edit_log(guild, before_message, after_message)
- 
-async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, channel: nextcord.TextChannel, message: nextcord.Message, message_id: int) -> None:
-    """
-    |coro|
-
-    Logs the deletion of a message in a guild.
+    Triggers the deletion log feature.
 
     :param bot: The bot instance
     :type bot: nextcord.Client
-    :param guild: The guild where the message was deleted
-    :type guild: nextcord.Guild
     :param channel: The channel where the message was deleted
     :type channel: nextcord.TextChannel
+    :param guild: The guild where the message was deleted
+    :type guild: nextcord.Guild
     :param message: The message that was deleted
     :type message: nextcord.Message
     :param message_id: The ID of the message that was deleted
@@ -378,21 +349,15 @@ async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, ch
     :return: None
     :rtype: None
     """
-    # Make sure that logging is enabled
-    logging_enabled, log_channel = await should_log(guild)
-    if not logging_enabled: return
     
-    await asyncio.sleep(1) # We need this time delay for some other features
-    
-    # Remove the message if we're storing it TODO
-    # server = Server(guild.id)
-    # server.messages.delete(payload.message_id)
-    # server.messages.save()
-    # del server
-
-    # Do not trigger if confident that the message was InfiniBot's
-    if message:
-        if message.author.id == bot.application_id: return
+    # Get the log channel
+    server = Server(guild.id)
+    if not utils.feature_is_active(server = server, feature = "logging"): return
+    log_channel_id = server.logging_profile.channel
+    if log_channel_id == UNSET_VALUE: return
+    log_channel = guild.get_channel(log_channel_id)
+    if not log_channel: return
+    if not await utils.check_text_channel_permissions(log_channel, True, custom_channel_name = f"Log Message Channel (#{log_channel.name})"): return
     
     # Gather more data and eliminate cases -----------------------------------------------------------------------------------------------------------------------------
     # Get more information about the message with Audit Logs
@@ -493,6 +458,354 @@ async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, ch
     if message and message.attachments != []:
         await files_computation(message, log_channel, log_message)
 
+async def log_nickname_change(before: nextcord.Member, after: nextcord.Member, entry: nextcord.AuditLogEntry, log_channel: nextcord.TextChannel) -> None:
+    """
+    |coro|
+
+    Logs a nickname change event.
+
+    :param before: The member before the nickname change.
+    :type before: nextcord.Member
+    :param after: The member after the nickname change.
+    :type after: nextcord.Member
+    :param entry: The audit log entry related to the nickname change.
+    :type entry: nextcord.AuditLogEntry
+    :param log_channel: The channel where the log message will be sent.
+    :type log_channel: nextcord.TextChannel
+    :return: None
+    :rtype: None
+    """
+    user = entry.user
+    fresh_audit_log = entry_is_fresh(entry)
+
+    # Create an embed for the nickname change event
+    embed = nextcord.Embed(
+        title="Nickname Changed",
+        description=f"{user.mention} changed {after.mention}'s nickname.",
+        color=nextcord.Color.blue(),
+        timestamp=datetime.datetime.now()
+    )
+
+    # Add fields for the old and new nicknames
+    if before.nick is not None:
+        embed.add_field(name="Before", value=before.nick, inline=True)
+    else:
+        embed.add_field(name="Before", value="None", inline=True)
+
+    if after.nick is not None:
+        embed.add_field(name="After", value=after.nick, inline=True)
+    else:
+        embed.add_field(name="After", value="None", inline=True)
+
+    # Add a field for the reason if the audit log is fresh and a reason is provided
+    if fresh_audit_log and entry.reason is not None:
+        embed.add_field(name="Reason", value=entry.reason, inline=False)
+
+    # Send the embed to the log channel
+    await log_channel.send(embed=embed)
+
+fresh_role_updates = ExpiringSet(expiration_time=2)  # Used for tracking recent role update messages as not to get duplicated logs. {(user_id, role_id, "added"), (user_id, role_id, "removed")}
+async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry: nextcord.AuditLogEntry, guild: nextcord.Guild, log_channel: nextcord.TextChannel) -> None:
+    """
+    |coro|
+
+    Logs a role change event.
+
+    :param before: The member before the role change.
+    :type before: nextcord.Member
+    :param after: The member after the role change.
+    :type after: nextcord.Member
+    :param entry: The audit log entry related to the role change.
+    :type entry: nextcord.AuditLogEntry
+    :param guild: The guild where the role change event occurred.
+    :type guild: nextcord.Guild
+    :param log_channel: The channel where the log message will be sent.
+    :type log_channel: nextcord.TextChannel
+    :return: None
+    :rtype: None
+    """
+
+    class RoleList:
+        """
+        A list of roles that can be easily manipulated.
+        """
+
+        def __init__(self):
+            self.roles: list[nextcord.Role] = []
+
+        def append(self, role: Union[nextcord.Role, int]):
+            """
+            Add a role to the list.
+
+            :param role: The role to add.
+            :type role: Union[nextcord.Role, int]
+            """
+            if isinstance(role, nextcord.Role):
+                self.roles.append(role)
+            else:
+                raise TypeError("Role must be of type nextcord.Role")
+
+        def remove(self, role: Union[nextcord.Role, int]):
+            """
+            Remove a role from the list.
+
+            :param role: The role to remove.
+            :type role: Union[nextcord.Role, int]
+            """
+            if isinstance(role, nextcord.Role):
+                self.roles.remove(role)
+            elif isinstance(role, int):
+                self.roles.pop(self.ids().index(role))
+            else:
+                raise TypeError("Role must be of type nextcord.Role or int")
+
+        def ids(self):
+            """
+            Get a list of the role IDs in the list.
+
+            :return: A list of role IDs.
+            :rtype: List[int]
+            """
+            return [role.id for role in self.roles]
+
+        def mentions(self):
+            """
+            Get a list of the role mentions in the list.
+
+            :return: A list of role mentions.
+            :rtype: List[str]
+            """
+            return [role.mention for role in self.roles]
+
+        def __contains__(self, role: Union[nextcord.Role, int]):
+            """
+            Check if a role is in the list.
+
+            :param role: The role to check.
+            :type role: Union[nextcord.Role, int]
+            :return: Whether the role is in the list.
+            :rtype: bool
+            """
+            if isinstance(role, nextcord.Role):
+                return role in self.roles
+            elif isinstance(role, int):
+                return role in self.ids()
+            else:
+                raise NotImplementedError
+
+        def __iter__(self):
+            """
+            Iterate over the roles in the list.
+
+            :return: An iterator over the roles.
+            :rtype: Iterator[nextcord.Role]
+            """
+            return iter(self.roles)
+
+        def __len__(self):
+            """
+            Get the length of the list.
+
+            :return: The length of the list.
+            :rtype: int
+            """
+            return len(self.roles)
+
+        def __str__(self):
+            """
+            Get a string representation of the list.
+
+            :return: A string representation of the list.
+            :rtype: str
+            """
+            return ", ".join(role.name for role in self.roles)
+
+        def __repr__(self):
+            """
+            Get a repr representation of the list.
+
+            :return: A repr representation of the list.
+            :rtype: str
+            """
+            return f"RoleList({[role.name for role in self.roles]})"
+
+    added_roles = RoleList()
+    for after_role in after.roles:
+        for before_role in before.roles:
+            found_role = False
+            if before_role == after_role:
+                found_role = True
+                break
+
+        if found_role == False:
+            added_roles.append(after_role)
+
+    deleted_roles = RoleList()
+    for before_role in before.roles:
+        for after_role in after.roles:
+            found_role = False
+            if before_role == after_role:
+                found_role = True
+                break
+
+        if found_role == False:
+            deleted_roles.append(before_role)
+
+    if guild.premium_subscriber_role:  # Do not log when a user gets / looses the boost role
+        if guild.premium_subscriber_role.id in added_roles.ids():
+            added_roles.remove(guild.premium_subscriber_role.id)
+        if guild.premium_subscriber_role.id in deleted_roles.ids():
+            deleted_roles.remove(guild.premium_subscriber_role.id)
+
+    # Remove roles that were just logged
+    for role_info in fresh_role_updates:
+        if role_info[0] == entry.user.id:
+            if role_info[2] is "added" and role_info[1] in added_roles:
+                added_roles.remove(role_info[1])
+            elif role_info[2] is "removed" and role_info[1] in deleted_roles:
+                deleted_roles.remove(role_info[1])
+
+    if len(added_roles) == 0 and len(deleted_roles) == 0:
+        return
+
+    user = entry.user
+    fresh_audit_log = entry_is_fresh(entry)
+    if fresh_audit_log:
+        description = f"{user.mention} modified {after.mention}'s roles."
+    else:
+        description = f"Someone modified {after.mention}'s roles."
+
+    embed = nextcord.Embed(title="Roles Modified", description=description, color=nextcord.Color.blue(), timestamp=datetime.datetime.now())
+
+    if len(added_roles) > 0:
+        embed.add_field(name="Added", value="\n".join(added_roles.mentions()), inline=True)
+
+    if len(deleted_roles) > 0:
+        embed.add_field(name="Removed", value="\n".join(deleted_roles.mentions()), inline=False)
+
+    if fresh_audit_log and entry.reason != None:
+        embed.add_field(name="Reason", value=entry.reason, inline=False)
+
+    await log_channel.send(embed=embed)
+
+    # Add to fresh role updates
+    for role in added_roles: fresh_role_updates.add((entry.user.id, role.id, "added"))
+    for role in deleted_roles: fresh_role_updates.add((entry.user.id, role.id, "removed"))
+
+async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, entry: nextcord.AuditLogEntry, log_channel: nextcord.TextChannel) -> None:
+    """
+    |coro|
+
+    Logs a timeout change event for a member.
+
+    :param before: The member state before the timeout change.
+    :type before: nextcord.Member
+    :param after: The member state after the timeout change.
+    :type after: nextcord.Member
+    :param entry: The audit log entry related to the timeout change.
+    :type entry: nextcord.AuditLogEntry
+    :param log_channel: The channel where the log message will be sent.
+    :type log_channel: nextcord.TextChannel
+    :return: None
+    :rtype: None
+    """
+    user = entry.user
+    fresh_audit_log = entry_is_fresh(entry)
+            
+    if before.communication_disabled_until is None:
+        # Member was not previously timed out, calculate the timeout duration
+        timeout_time: datetime.timedelta = after.communication_disabled_until - datetime.datetime.now(datetime.timezone.utc)
+
+        # Round to the nearest second (ceiling)
+        rounded_timeout_time = datetime.timedelta(seconds=math.ceil(timeout_time.total_seconds()))
+        
+        # Convert the timeout duration to a human-friendly format
+        timeout_time_ui_text = humanfriendly.format_timespan(rounded_timeout_time)
+        
+        # Create an embed for the timeout event
+        embed = nextcord.Embed(
+            title="Member Timed-Out",
+            description=f"{user.mention} timed out {after.mention} for about {timeout_time_ui_text}",
+            color=nextcord.Color.orange(),
+            timestamp=datetime.datetime.now()
+        )
+        
+        # Add a reason field if the audit log is fresh and a reason is provided
+        if fresh_audit_log and entry.reason is not None:
+            embed.add_field(name="Reason", value=entry.reason)
+        
+        # Send the embed to the log channel
+        await log_channel.send(embed=embed)
+        
+    elif after.communication_disabled_until is None:
+        # Timeout was revoked manually
+        embed = nextcord.Embed(
+            title="Timeout Revoked",
+            description=f"{user.mention} revoked {after.mention}'s timeout",
+            color=nextcord.Color.orange(),
+            timestamp=datetime.datetime.now()
+        )
+        
+        # Send the embed to the log channel
+        await log_channel.send(embed=embed)
+
+
+
+# Entrypoints
+async def log_raw_message_edit(guild: nextcord.Guild, before_message: nextcord.Message, after_message: nextcord.Message) -> None:
+    """
+    |coro|
+
+    Logs the edit of a message in a guild.
+
+    :param guild: The guild where the message was edited.
+    :type guild: nextcord.Guild
+    :param before_message: The original message before it was edited.
+    :type before_message: nextcord.Message
+    :param after_message: The message after it was edited.
+    :type after_message: nextcord.Message
+    :return: None
+    :rtype: None
+    """
+    
+    # Test for false-positives
+    if after_message.author.bot == True: return
+    if after_message == None: return
+    if after_message.content == "": return
+    if before_message != None and before_message.content == "": return
+    if before_message != None and after_message.content == before_message.content: return
+    
+    # UI Log
+    await trigger_edit_log(guild, before_message, after_message)
+ 
+async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, channel: nextcord.TextChannel, message: nextcord.Message, message_id: int) -> None:
+    """
+    |coro|
+
+    Logs the deletion of a message in a guild.
+
+    :param bot: The bot instance
+    :type bot: nextcord.Client
+    :param guild: The guild where the message was deleted
+    :type guild: nextcord.Guild
+    :param channel: The channel where the message was deleted
+    :type channel: nextcord.TextChannel
+    :param message: The message that was deleted
+    :type message: nextcord.Message
+    :param message_id: The ID of the message that was deleted
+    :type message_id: int
+    :return: None
+    :rtype: None
+    """
+    
+    await asyncio.sleep(1) # We need this time delay for some other features
+
+    # Do not trigger if confident that the message was InfiniBot's
+    if message:
+        if message.author.id == bot.application_id: return
+    
+    await trigger_delete_log(bot, channel, guild, message, message_id)
+
 async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> None:
     """
     |coro|
@@ -508,8 +821,8 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> 
     """
     guild = after.guild
 
-    logging_enabled, log_channel = await should_log(guild)
-    if not logging_enabled: return
+    log_channel = await get_logging_channel(guild)
+    if not log_channel: return
 
     if not guild.me.guild_permissions.view_audit_log:
         await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
@@ -523,8 +836,6 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> 
         guild.audit_logs(limit=1),
         None
     )
-
-    fresh_audit_log = entry_is_fresh(entry)
     
     if entry == None:
         # No audit log entry
@@ -532,95 +843,15 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> 
 
     # Nickname change --------------------------------------------------------------
     if before.nick != after.nick:
-        user = entry.user
-
-        embed = nextcord.Embed(title = "Nickname Changed", description = f"{user.mention} changed {after.mention}'s nickname.", color = nextcord.Color.blue(), timestamp = datetime.datetime.now())
-
-        if before.nick != None: embed.add_field(name = "Before", value = before.nick, inline = True)
-        else: embed.add_field(name = "Before", value = "None", inline = True)
-
-        if after.nick != None: embed.add_field(name = "After", value = after.nick, inline = True)
-        else: embed.add_field(name = "After", value = "None", inline = True)
-
-        if fresh_audit_log and entry.reason != None:
-            embed.add_field(name = "Reason", value = entry.reason, inline = False)
-
-        await log_channel.send(embed = embed)
+        await log_nickname_change(before, after, entry, log_channel)
 
     # Roles change --------------------------------------------------------------  
     if before.roles != after.roles:
-        added_roles = []
-        for after_role in after.roles:
-            for before_role in before.roles:
-                found_role = False
-                if before_role == after_role:
-                    found_role = True
-                    break
-
-            if found_role == False:
-                added_roles.append(after_role.mention)
-        
-        deleted_roles = []
-        for before_role in before.roles:
-            for after_role in after.roles:
-                found_role = False
-                if before_role == after_role:
-                    found_role = True
-                    break
-            
-            if found_role == False:
-                deleted_roles.append(before_role.mention)
-
-        if len(added_roles) == 0 and len(deleted_roles) == 0:
-            return
-        
-        if len(deleted_roles) == 0 and len(added_roles) == 1:
-            if guild.premium_subscriber_role:
-                if added_roles[0].id == guild.premium_subscriber_role.id: return # Do not log when a user gets the boost role
-        
-        user = entry.user
-        if fresh_audit_log:
-            description = f"{user.mention} modified {after.mention}'s roles."
-        else:
-            description = f"Someone modified {after.mention}'s roles."
-
-        embed = nextcord.Embed(title = "Roles Modified", description = description, color = nextcord.Color.blue(), timestamp = datetime.datetime.now())
-
-        if len(added_roles) > 0:
-            embed.add_field(name = "Added", value = "\n".join(added_roles), inline = True)
-
-        if len(deleted_roles) > 0:
-            embed.add_field(name = "Removed", value = "\n".join(deleted_roles), inline = False)
-
-        if fresh_audit_log and entry.reason != None:
-            embed.add_field(name = "Reason", value = entry.reason, inline = False)
-
-        await log_channel.send(embed = embed)
+        await log_role_change(before, after, entry, guild, log_channel)
             
     # Timeout change --------------------------------------------------------------
     if before.communication_disabled_until != after.communication_disabled_until:
-        user = entry.user
-            
-        if before.communication_disabled_until == None: # If they weren't timed out before
-            # Get the seconds
-            timeout_time: datetime.timedelta = after.communication_disabled_until - datetime.datetime.now(datetime.timezone.utc)
-
-            # Round to the nearest second (ceiling)
-            rounded_timeout_time = datetime.timedelta(seconds=math.ceil(timeout_time.total_seconds()))
-            
-            # Display
-            timeout_time_ui_text = humanfriendly.format_timespan(rounded_timeout_time)
-            embed = nextcord.Embed(title = "Member Timed-Out", description = f"{user.mention} timed out {after.mention} for about {timeout_time_ui_text}", color = nextcord.Color.orange(), timestamp = datetime.datetime.now())
-            
-            if fresh_audit_log and entry.reason != None:
-                embed.add_field(name = "Reason", value = entry.reason)
-            
-            await log_channel.send(embed = embed)
-            
-        elif after.communication_disabled_until == None: #their timeout was removed manually
-            embed = nextcord.Embed(title = "Timeout Revoked", description = f"{user.mention} revoked {after.mention}'s timeout", color = nextcord.Color.orange(), timestamp = datetime.datetime.now())
-            
-            await log_channel.send(embed = embed)
+        await log_timeout_change(before, after, entry, log_channel)
 
 async def log_member_removal(guild: nextcord.Guild, member: nextcord.Member) -> None:
     """
@@ -653,11 +884,15 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.Member) -> 
     if entry == None: # User chose to leave the server
         return
     
+    # Ensure log is fresh
+    _entry_is_fresh = entry_is_fresh(entry)
+    if not _entry_is_fresh: return # User chose to leave the server
+    
     user = entry.user 
     reason = entry.reason
 
-    logging_enabled, log_channel = await should_log(guild)
-    if logging_enabled:
+    log_channel = await get_logging_channel(guild)
+    if log_channel is not None:
         if entry.action == AuditLogAction.kick:
             embed = nextcord.Embed(title = "Member Kicked", description = f"{user} kicked {member}.", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
             embed.add_field(name = "Reason", value = f"{reason}", inline = False)
@@ -672,6 +907,7 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.Member) -> 
         await log_channel.send(embed = embed)
 
 
+# Commands
 async def run_set_log_channel_command(interaction: Interaction) -> None:
     """
     |coro|
