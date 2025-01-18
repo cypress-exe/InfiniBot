@@ -10,7 +10,7 @@ from config.file_manager import JSONFile
 from core import log_manager
 from core.log_manager import LogIfFailure
 from core.scheduling import start_scheduler, stop_scheduler
-from features import action_logging, admin_commands, dashboard, dm_commands, join_leave_messages, leveling, moderation, profile
+from features import action_logging, admin_commands, dashboard, default_roles, dm_commands, join_leave_messages, leveling, moderation, profile
 
 
 # INIT BOT ==============================================================================================================================================================
@@ -335,6 +335,8 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
     with LogIfFailure(feature="action_logging.log_raw_message_delete"):
         await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id)
 
+    # Remove the message if we're storing it TODO
+
 @bot.event
 async def on_member_update(before: nextcord.Member, after: nextcord.Member) -> None:
     """
@@ -370,6 +372,10 @@ async def on_member_join(member: nextcord.Member) -> None:
     # Trigger the welcome message
     with LogIfFailure(feature="join_leave_messages.trigger_join_message"):
         await join_leave_messages.trigger_join_message(member)
+
+    # Add default roles
+    with LogIfFailure(feature="default_roles.add_roles_for_new_member"):
+        await default_roles.add_roles_for_new_member(member)
 
 @bot.event
 async def on_member_remove(member: nextcord.Member) -> None:
