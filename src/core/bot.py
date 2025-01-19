@@ -10,7 +10,7 @@ from config.file_manager import JSONFile
 from core import log_manager
 from core.log_manager import LogIfFailure
 from core.scheduling import start_scheduler, stop_scheduler
-from features import action_logging, admin_commands, dashboard, default_roles, dm_commands, join_leave_messages, leveling, moderation, profile
+from features import action_logging, admin_commands, dashboard, default_roles, dm_commands, join_leave_messages, join_to_create_vcs, leveling, moderation, profile
 
 
 # INIT BOT ==============================================================================================================================================================
@@ -411,6 +411,23 @@ async def on_guild_channel_delete(channel: nextcord.abc.GuildChannel) -> None:
     """
     # TODO Delete message info from channels that are deleted.
     pass
+
+@bot.event
+async def on_voice_state_update(member: nextcord.Member, before: nextcord.VoiceState, after: nextcord.VoiceState) -> None:
+    """
+    Handles voice state update events.
+
+    :param member: The member whose voice state was updated.
+    :type member: nextcord.Member
+    :param before: The voice state before the update.
+    :type before: nextcord.VoiceState
+    :param after: The voice state after the update.
+    :type after: nextcord.VoiceState
+    :return: None
+    :rtype: None
+    """
+    # Trigger join to create vc update
+    await join_to_create_vcs.run_join_to_create_vc_member_update(member, before, after)
 
 # RUN BOT ==============================================================================================================================================================================
 def run() -> None:
