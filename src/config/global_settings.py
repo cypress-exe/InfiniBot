@@ -21,6 +21,10 @@ feature_dependencies = {
         "global_kill": "spam_moderation",
         "server": "spam_moderation_profile.active",
     },
+    "delete_invite_links": {
+        "global_kill": "delete_invite_links",
+        "server": "infinibot_settings_profile.delete_invites",
+    },
     # ------------------------------------------------------------------------------------------------------
     "logging": {"global_kill": "logging", "server": "logging_profile.active"},
     # ------------------------------------------------------------------------------------------------------
@@ -109,7 +113,8 @@ class GlobalKillStatus(GlobalSetting):
             "jokes": False,
             "joke_submissions": False,
             "dashboard": False,
-            "profile": False
+            "profile": False,
+            "delete_invite_links": False,
         }
 
 
