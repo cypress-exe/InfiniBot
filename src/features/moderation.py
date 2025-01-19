@@ -125,7 +125,6 @@ async def check_profanity_moderation_enabled_and_warn_if_not(interaction: nextco
             )
             return False
 
-# Confirm that a nickname is not in violation of profanity
 async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: nextcord.Guild, before: nextcord.Member, after: nextcord.Member) -> None:
     """
     Check and ensure that the edited nickname complies with moderation rules.
@@ -573,7 +572,7 @@ async def check_and_trigger_profanity_moderation_for_message(
     return True
 
 
-
+# Spam Moderation ----------------------------------------------------------------------------------------------------------
 def check_repeated_words_percentage(text: str, threshold: float = 0.8) -> bool:
     """
     Checks if the percentage of repeated words in a given text exceeds a given threshold.
@@ -820,6 +819,45 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
     return False
 
 
+# Other Moderation ----------------------------------------------------------------------------------------------------------
+def contains_discord_invite(message):
+    """
+    Detects if a message contains a Discord invite link.
+
+    Args:
+        message (str): The message to check.
+
+    Returns:
+        bool: True if a Discord invite link is detected, False otherwise.
+    """
+    # Regular expression for Discord invite links
+    discord_invite_pattern = r"(?:https?://)?(?:www\.)?(?:discord\.gg|discordapp\.com/invite|discord\.com/invite)/[\w-]+"
+
+    # Search for the pattern in the message
+    return re.search(discord_invite_pattern, message) is not None
+
+async def check_and_delete_invite_links(message: nextcord.Message) -> bool:
+    # If invite link deletion is enabled
+    if not utils.feature_is_active(guild = message.guild, feature = "delete_invite_links"): return False
+
+    if message.author.bot: return False
+    if message.author.id == message.guild.owner_id: return False
+    if message.author.guild_permissions.administrator: return False
+
+    # Check if the message contains an invite link
+    if contains_discord_invite(message.content):
+        # Delete the message
+        try:
+            await message.delete()
+            return True
+        except nextcord.errors.Forbidden:
+            await utils.send_error_message_to_server_owner(message.guild, "Manage Messages", channel=message.channel.name)
+            return False
+
+    return False
+
+
+# Commands
 async def check_and_run_moderation_commands(bot: nextcord.Client, message: nextcord.Message) -> bool:
     """
     Checks if any moderation commands should be run, and runs them if needed.
@@ -846,14 +884,14 @@ async def check_and_run_moderation_commands(bot: nextcord.Client, message: nextc
             return True
 
     # Check Invites
-    if server.infinibot_settings_profile.delete_invites:
-        if "discord.gg/" in message.content.lower(): 
-            await message.delete()
+    with log_manager.LogIfFailure(feature="check_and_delete_invite_links"):
+        message_is_invite = await check_and_delete_invite_links(message)
+        if message_is_invite:
             return True
 
     # Check spam
     with log_manager.LogIfFailure(feature="check_and_trigger_spam_moderation_for_message"):
-        message_is_spam =await check_and_trigger_spam_moderation_for_message(message, server)
+        message_is_spam = await check_and_trigger_spam_moderation_for_message(message, server)
         if message_is_spam:
             return True
     

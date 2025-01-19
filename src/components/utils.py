@@ -337,10 +337,16 @@ def feature_is_active(**kwargs) -> bool:
     """
     from config.server import Server
 
-    server:Server = kwargs.get("server") or kwargs.get("guild")
+    server:Server = kwargs.get("server")
     if not server:
-        server_id:int = kwargs.get("server_id") or kwargs.get("guild_id")
+        if kwargs.get("guild"):
+            server_id = kwargs.get("guild").id
+        else:
+            server_id:int = kwargs.get("server_id") or kwargs.get("guild_id")
         if server_id: server = Server(server_id)
+
+    if server and not isinstance(server, Server):
+        raise ValueError(f"Error: {__name__} received an invalid server object. Server: {server}")
         
     feature:str = kwargs.get("feature")
     skip_server_check = kwargs.get("skip_server_check", False)
@@ -378,7 +384,7 @@ def feature_is_active(**kwargs) -> bool:
             attr = server
             for level in path:
                 if not hasattr(attr, level):
-                    raise ValueError(f"Error: {__name__} received an invalid path when checking if the feature is enabled in the server. Path: {key}")
+                    raise ValueError(f"Error: {__name__} received an invalid path when checking if the feature is enabled in the server. Path: {key}. Level: {level}")
                 attr = getattr(attr, level)
 
             if not isinstance(attr, bool):
