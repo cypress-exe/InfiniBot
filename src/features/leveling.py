@@ -12,6 +12,7 @@ from config.server import Server
 from features.moderation import get_percent_similar
 from modules.custom_types import UNSET_VALUE
 
+# Utility Functions
 def compress_string(input_string: str) -> str:
     """
     Remove all non-alphanumeric characters and spaces from a given string.
@@ -126,6 +127,7 @@ def add_leaderboard_ranking_to_embed(guild: nextcord.Guild, embed: nextcord.Embe
         return embed, ranked_members
     return embed
 
+# Actions
 async def midnight_action_leveling(bot: nextcord.Client) -> None:
     """
     |coro|
@@ -394,24 +396,8 @@ async def process_level_change(guild: nextcord.Guild, member: nextcord.Member, l
                             except nextcord.errors.Forbidden:
                                 # DMs are disabled
                                 pass
-  
-def handle_member_removal(member: nextcord.Member):
-    """
-    Handles the removal of a member from the server by performing cleanup tasks
-    such as deleting member level information.
 
-    :param member: The member being removed.
-    :type member: nextcord.Member
-    :return: None
-    :rtype: None
-    """
-    server = Server(member.guild.id)
-    if member.id in server.member_levels:
-        server.member_levels.delete(member.id)
-    server = Server(member.guild.id)
-    if member.id in server.member_levels:
-        server.member_levels.delete(member.id)
-
+# Commands
 async def run_leaderboard_command(interaction: Interaction):
     """
     Executes the leaderboard command, displaying the level leaderboard for the server.
