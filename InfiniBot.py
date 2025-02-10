@@ -114,7 +114,7 @@ intents.members = True
 intents.voice_states = True
 intents.reactions = True
 
-bot = commands.Bot(intents = intents, allowed_mentions = nextcord.AllowedMentions(everyone = True), help_command=None)
+bot = commands.AutoShardedBot(intents = intents, allowed_mentions = nextcord.AllowedMentions(everyone = True), help_command=None)
 
 
 # LOAD IDS ==============================================================================================================================================================
