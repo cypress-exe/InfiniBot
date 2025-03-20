@@ -10,7 +10,7 @@ from config.file_manager import JSONFile
 from core import log_manager
 from core.log_manager import LogIfFailure
 from core.scheduling import start_scheduler, stop_scheduler
-from features import action_logging, admin_commands, dashboard, default_roles, dm_commands, join_leave_messages, join_to_create_vcs, leveling, moderation, profile
+from features import action_logging, admin_commands, birthdays, dashboard, default_roles, dm_commands, join_leave_messages, join_to_create_vcs, leveling, moderation, profile
 
 
 # INIT BOT ==============================================================================================================================================================
@@ -156,8 +156,8 @@ async def set_level(interaction: Interaction,
                     level: int = SlashOption(description="The level to set.", required=True)):
     await leveling.run_set_level_command(interaction, member, level)
 
-@bot.slash_command(name = "test", description = "Test command", integration_types=[nextcord.IntegrationType.guild_install], guild_ids=[968872260557488158, 1014000756090736680])
-async def test(interaction: Interaction):
+@bot.slash_command(name = "test1", description = "Test command", integration_types=[nextcord.IntegrationType.guild_install], guild_ids=[968872260557488158, 1014000756090736680])
+async def test1(interaction: Interaction):
     await moderation.midnight_action_moderation(bot)
     # Return a response to the user
     await interaction.response.send_message("Test1 command executed successfully!")
@@ -177,6 +177,12 @@ async def test2(interaction: Interaction):
         server.moderation_strikes.edit(member_id=interaction.user.id, last_strike=last_strike_time)
     # Return a response to the user
     await interaction.response.send_message("Test2 command executed successfully!")
+
+@bot.slash_command(name = "test3", description = "Test command", integration_types=[nextcord.IntegrationType.guild_install], guild_ids=[968872260557488158, 1014000756090736680])
+async def test3(interaction: Interaction):
+    await birthdays.fifteen_minutely_birthay_check_action(bot)
+    # Return a response to the user
+    await interaction.response.send_message("Test3 command executed successfully!")
 
 
 # ERROR HANDLING ==============================================================================================================================================================

@@ -2,49 +2,13 @@ import dateparser
 import datetime
 import logging
 import nextcord
+import zoneinfo
 
 from components import utils
 from config.global_settings import get_bot_load_status, get_global_kill_status
 from config.member import Member
 from config.server import Server
 from modules.custom_types import UNSET_VALUE
-
-def calculate_utc_offset(user_date_str: str, user_time_str: str) -> float:
-    """
-    Calculate the UTC offset based on the provided date and time strings.
-
-    This function parses a wide variety of date and time formats using `dateparser`,
-    calculates the difference between the provided datetime and the current UTC time,
-    and snaps the offset to the nearest quarter-hour.
-
-    :param user_date_str: The date string (e.g., "11/24/2024", "November 24, 2024").
-    :type user_date_str: str
-    :param user_time_str: The time string (e.g., "15:30", "3:30 PM").
-    :type user_time_str: str
-    :return: The snapped UTC offset in hours (rounded to the nearest 15 minutes).
-    :rtype: float
-    :raises ValueError: If the date or time string cannot be parsed.
-    """
-    # Parse the user-provided date and time
-    user_datetime = dateparser.parse(f"{user_date_str} {user_time_str}")
-
-    if not user_datetime:
-        raise ValueError("Invalid date or time format. Please provide a recognizable format.")
-
-    # Get the current UTC time
-    utc_now = datetime.datetime.now(datetime.timezone.utc)
-
-    # Calculate the UTC offset as a timedelta
-    offset = user_datetime - utc_now.replace(tzinfo=None)
-
-    # Convert timedelta to hours
-    offset_hours = offset.total_seconds() / 3600
-
-    # Snap to the nearest 15 minutes (0.25 hours)
-    snapped_offset = round(offset_hours * 4) / 4
-
-    # Return the calculated offset
-    return snapped_offset
 
 def calculate_age(local_datetime: datetime.datetime, birth_date: datetime.datetime) -> int:
     """
@@ -103,14 +67,17 @@ async def fifteen_minutely_birthay_check_action(bot: nextcord.Client) -> None:
             if len(server.birthdays) == 0: continue
             if server.birthdays_profile.utc_offset == UNSET_VALUE: continue
 
+            runtime = ":".join(server.birthdays_profile.runtime.split(':')[:-1])
+
+            logging.debug(f"Runtime: {runtime}, Current Time: {hour_minute_now}")
+
             # Check if runtime is now
-            if hour_minute_now != server.birthdays_profile.runtime: continue
+            if hour_minute_now != runtime: continue
 
             logging.debug(f"Found a server with runtime now. Server: {guild.name} (ID: {guild.id})")
 
             # Get date to check (convert to the server's timezone)
-            utc_offset = server.birthdays_profile.utc_offset
-            local_datetime: datetime.datetime = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=utc_offset)
+            local_datetime: datetime.datetime = datetime.datetime.now(datetime.timezone.utc).astimezone(zoneinfo.ZoneInfo(server.infinibot_settings_profile.timezone))
 
             # Find members with birthdays 
             # Based on IntegratedList_TableManager's get_matching() and _get_all_matching_indexes()

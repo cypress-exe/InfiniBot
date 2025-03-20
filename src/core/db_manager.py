@@ -489,6 +489,12 @@ class Simple_TableManager:
                 
                 return NextcordEmbed(**properties)
             
+            def get(self, key, default=None):
+                if key in self.properties:
+                    return self.properties[key]
+                else:
+                    return default
+            
         def getter_modifier(value):
             if value is None: # This case should never happen.
                 return EmbedProperty()
