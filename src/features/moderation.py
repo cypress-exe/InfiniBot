@@ -906,7 +906,7 @@ async def midnight_action_moderation(bot: nextcord.Client) -> None:
             server = Server(guild.id)
             
             # Checks
-            if server == None : 
+            if server == None: 
                 logging.info("Server is None. Skipping.")
                 continue
             if server.profanity_moderation_profile.active == False: 
@@ -1027,11 +1027,11 @@ async def run_my_strikes_command(interaction: nextcord.Interaction) -> None:
 
     server = Server(interaction.guild.id)
     if interaction.user.id in server.moderation_strikes:
-        strike = server.moderation_strikes[interaction.user.id]
+        strike = server.moderation_strikes[interaction.user.id].strikes
     else:
         strike = 0
 
-    await interaction.response.send_message(embed = nextcord.Embed(title = f"My Strikes", description = f"You are at {str(strike)} strike(s)", 
+    await interaction.response.send_message(embed = nextcord.Embed(title = f"My Strikes", description = f"You are at {strike} strike{"s" if strike != 1 else ""}.", 
                                                                    color =  nextcord.Color.blue()), ephemeral = True)
 
 async def run_view_member_strikes_command(interaction: nextcord.Interaction, member: nextcord.Member) -> None:
@@ -1053,11 +1053,11 @@ async def run_view_member_strikes_command(interaction: nextcord.Interaction, mem
 
         server = Server(interaction.guild.id)
         if member.id in server.moderation_strikes:
-            strike = server.moderation_strikes[member.id]
+            strike = server.moderation_strikes[member.id].strikes
         else:
             strike = 0
 
-        embed = nextcord.Embed(title = f"View Member Strikes", description = f"{member.mention} is at {str(strike)} strike(s).", color =  nextcord.Color.blue())
+        embed = nextcord.Embed(title = f"View Member Strikes", description = f"{member.mention} is at {str(strike)} strike{"s" if strike != 1 else ""}.", color =  nextcord.Color.blue())
         await interaction.response.send_message(embed = embed, ephemeral = True)
 
 async def run_set_admin_channel_command(interaction: nextcord.Interaction) -> None:
