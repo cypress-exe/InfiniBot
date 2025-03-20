@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS birthdays_profile( -- #optimize
 CREATE TABLE IF NOT EXISTS infinibot_settings_profile( -- #optimize
     server_id INT PRIMARY KEY,
     delete_invites BOOLEAN DEFAULT false,
-    get_updates BOOLEAN DEFAULT true
+    get_updates BOOLEAN DEFAULT true,
+    timezone TEXT DEFAULT '{"status": "UNSET", "value": null}'
 )
 
 -- Create member_profile Table (simple table)

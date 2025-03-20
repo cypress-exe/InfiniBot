@@ -83,25 +83,25 @@ class Server:
         @Server_Simple_TableManager.boolean_property("active")
         def active(self): pass
 
-        @Server_Simple_TableManager.typed_property("channel", enforce_numerical_values = True)
+        @Server_Simple_TableManager.typed_property("channel", enforce_numerical_values=True)
         def channel(self): pass
 
         @Server_Simple_TableManager.boolean_property("strike_system_active")
         def strike_system_active(self): pass
 
-        @Server_Simple_TableManager.integer_property("max_strikes")
+        @Server_Simple_TableManager.integer_property("max_strikes", accept_none_value=False)
         def max_strikes(self): pass
 
         @Server_Simple_TableManager.boolean_property("strike_expiring_active")
         def strike_expiring_active(self): pass
 
-        @Server_Simple_TableManager.integer_property("strike_expire_days")
+        @Server_Simple_TableManager.integer_property("strike_expire_days", accept_none_value=False)
         def strike_expire_days(self): pass
 
-        @Server_Simple_TableManager.integer_property("timeout_seconds")
+        @Server_Simple_TableManager.integer_property("timeout_seconds", accept_none_value=False)
         def timeout_seconds(self): pass
 
-        @Server_Simple_TableManager.list_property("filtered_words", accept_duplicate_values = False)
+        @Server_Simple_TableManager.list_property("filtered_words", accept_duplicate_values=False)
         def filtered_words(self): pass
 
     @property
@@ -115,13 +115,13 @@ class Server:
         @Server_Simple_TableManager.boolean_property("active")
         def active(self): pass
 
-        @Server_Simple_TableManager.integer_property("score_threshold")
+        @Server_Simple_TableManager.integer_property("score_threshold",  accept_none_value=False)
         def score_threshold(self): pass
 
-        @Server_Simple_TableManager.integer_property("time_threshold_seconds")
+        @Server_Simple_TableManager.integer_property("time_threshold_seconds", accept_none_value=False)
         def time_threshold_seconds(self): pass
 
-        @Server_Simple_TableManager.integer_property("timeout_seconds")
+        @Server_Simple_TableManager.integer_property("timeout_seconds", accept_none_value=False)
         def timeout_seconds(self): pass
 
         @Server_Simple_TableManager.boolean_property("delete_invites")
@@ -138,7 +138,7 @@ class Server:
         @Server_Simple_TableManager.boolean_property("active")
         def active(self): pass
 
-        @Server_Simple_TableManager.typed_property("channel", accept_none_value=False, enforce_numerical_values = True)
+        @Server_Simple_TableManager.typed_property("channel", accept_none_value=False, enforce_numerical_values=True)
         def channel(self): pass
 
     @property
@@ -152,7 +152,7 @@ class Server:
         @Server_Simple_TableManager.boolean_property("active")
         def active(self): pass
 
-        @Server_Simple_TableManager.typed_property("channel", enforce_numerical_values = True)
+        @Server_Simple_TableManager.typed_property("channel", enforce_numerical_values=True)
         def channel(self): pass
 
         @Server_Simple_TableManager.embed_property("level_up_embed")
@@ -161,10 +161,10 @@ class Server:
         @Server_Simple_TableManager.integer_property("points_lost_per_day", accept_none_value=False)
         def points_lost_per_day(self): pass
 
-        @Server_Simple_TableManager.integer_property("max_points_per_message")
+        @Server_Simple_TableManager.integer_property("max_points_per_message", accept_none_value=True)
         def max_points_per_message(self): pass
 
-        @Server_Simple_TableManager.list_property("exempt_channels")
+        @Server_Simple_TableManager.list_property("exempt_channels", accept_duplicate_values=False)
         def exempt_channels(self): pass
 
         @Server_Simple_TableManager.boolean_property("allow_leveling_cards")
@@ -181,7 +181,7 @@ class Server:
         @Server_Simple_TableManager.boolean_property("active")
         def active(self): pass
 
-        @Server_Simple_TableManager.typed_property("channel", accept_none_value=False, enforce_numerical_values = True)
+        @Server_Simple_TableManager.typed_property("channel", accept_none_value=False, enforce_numerical_values=True)
         def channel(self): pass
 
         @Server_Simple_TableManager.embed_property("embed")
@@ -201,7 +201,7 @@ class Server:
         @Server_Simple_TableManager.boolean_property("active")
         def active(self): pass
 
-        @Server_Simple_TableManager.typed_property("channel", accept_none_value=False, enforce_numerical_values = True)
+        @Server_Simple_TableManager.typed_property("channel", accept_none_value=False, enforce_numerical_values=True)
         def channel(self): pass
 
         @Server_Simple_TableManager.embed_property("embed")
@@ -215,7 +215,7 @@ class Server:
         def __init__(self, server_id):
             super().__init__(server_id, "birthdays_profile")
 
-        @Server_Simple_TableManager.typed_property("channel", enforce_numerical_values = True)
+        @Server_Simple_TableManager.typed_property("channel", enforce_numerical_values=True)
         def channel(self): pass
 
         @Server_Simple_TableManager.embed_property("embed")
@@ -224,7 +224,7 @@ class Server:
         @Server_Simple_TableManager.typed_property("runtime", accept_none_value=False)
         def runtime(self): pass
 
-        @Server_Simple_TableManager.float_property("utc_offset", accept_none_value=False)
+        @Server_Simple_TableManager.float_property("utc_offset", accept_none_value=False, allow_negative_values=True)
         def utc_offset(self): pass
 
     @property
@@ -241,6 +241,9 @@ class Server:
         @Server_Simple_TableManager.boolean_property("get_updates")
         def get_updates(self): pass
 
+        @Server_Simple_TableManager.typed_property("timezone", accept_none_value=False, enforce_numerical_values=False)
+        def timezone(self): pass
+
 
     # SIMPLE LISTS
     @property
@@ -251,7 +254,7 @@ class Server:
         def __init__(self, server_id):
             super().__init__(server_id, "join_to_create_vcs")
         
-        @Server_Simple_TableManager.list_property("channels", accept_duplicate_values = False)
+        @Server_Simple_TableManager.list_property("channels", accept_duplicate_values=False)
         def channels(self): pass
 
     @property
@@ -262,7 +265,7 @@ class Server:
         def __init__(self, server_id):
             super().__init__(server_id, "default_roles")
 
-        @Server_Simple_TableManager.list_property("default_roles", accept_duplicate_values = False)
+        @Server_Simple_TableManager.list_property("default_roles", accept_duplicate_values=False)
         def default_roles(self): pass
 
 

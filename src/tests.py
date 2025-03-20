@@ -5,8 +5,8 @@ import os
 import random
 from typing import Any, List, Dict
 import uuid
-
 import unittest
+from zoneinfo import ZoneInfo
 
 from components.utils import feature_is_active
 from config.file_manager import JSONFile
@@ -350,6 +350,11 @@ class TestDatabase(unittest.TestCase):
             self.assertEqual(result, answers[table])
 
 class TestServer(unittest.TestCase):
+    INVALID_INT_TESTS = [(ValueError, -1), (TypeError, "abc"), (TypeError, None)]
+    INVALID_FLOAT_TESTS = [(ValueError, -1), (TypeError, "abc"), (TypeError, None)]
+    INVALID_BOOL_TESTS = [(TypeError, "abc"), (TypeError, None)]
+    INVALID_CHANNEL_TESTS = [(TypeError, "abc")]
+    
     def __init__(self, methodName:str = ...) -> None:
         super().__init__(methodName)
     
@@ -370,7 +375,7 @@ class TestServer(unittest.TestCase):
 
         server.remove_all_data()
 
-    def run_test_on_property(self, primary_server_instance, table_name, property_name: str, default_value, test_values) -> None:
+    def run_test_on_property(self, primary_server_instance, table_name, property_name: str, default_value, test_values, invalid_values) -> None:
         """
         Runs a test on a property of a Server instance.
 
@@ -382,6 +387,7 @@ class TestServer(unittest.TestCase):
         :type property_name: str
         :param default_value: The default value of the property.
         :param test_values: A list of values to test the property with.
+        :param invalid_values: A list of invalid values to test the property with. Should raise an error. (Optional)
         :return: None
         :rtype: None
         """
@@ -422,6 +428,11 @@ class TestServer(unittest.TestCase):
             new_server_instance = Server(getattr(primary_server_instance, table_name).server_id)
             self.assertEqual(get_property(new_server_instance, table_name, property_name), test_value)
             del new_server_instance
+
+        # Check invalid values
+        for invalid_value in invalid_values:
+            with self.assertRaises(invalid_value[0], msg=f"Wrong or no error raised for invalid value \"{invalid_value[1]}\" for \"{property_name}\"."):
+                set_property(primary_server_instance, table_name, property_name, invalid_value[1])
 
     class RunTestOnIntegratedListProperty:
         """Helper class to generate test data and perform tests on integrated list properties."""
@@ -720,14 +731,15 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_property
-        self.run_test_on_property(server, "profanity_moderation_profile", "active", False, [True, False])
-        self.run_test_on_property(server, "profanity_moderation_profile", "channel", UNSET_VALUE, [1234567989, None, UNSET_VALUE])
-        self.run_test_on_property(server, "profanity_moderation_profile", "strike_system_active", True, [False, True])
-        self.run_test_on_property(server, "profanity_moderation_profile", "max_strikes", 3, [5, 0])
-        self.run_test_on_property(server, "profanity_moderation_profile", "strike_expiring_active", True, [False, True])
-        self.run_test_on_property(server, "profanity_moderation_profile", "strike_expire_days", 7, [10, 0, None])
-        self.run_test_on_property(server, "profanity_moderation_profile", "timeout_seconds", 3600, [7200, 0])
-        self.run_test_on_property(server, "profanity_moderation_profile", "filtered_words", [], [["hello", "world"], ["apple", "banana", "orange", "pineapple", "grape"], []])
+        self.run_test_on_property(server, "profanity_moderation_profile", "active", False, [True, False], self.INVALID_BOOL_TESTS)
+        self.run_test_on_property(server, "profanity_moderation_profile", "channel", UNSET_VALUE, [1234567989, None, UNSET_VALUE], self.INVALID_CHANNEL_TESTS)
+        self.run_test_on_property(server, "profanity_moderation_profile", "strike_system_active", True, [False, True], self.INVALID_BOOL_TESTS)
+        self.run_test_on_property(server, "profanity_moderation_profile", "max_strikes", 3, [5, 0], self.INVALID_INT_TESTS)
+        self.run_test_on_property(server, "profanity_moderation_profile", "strike_expiring_active", True, [False, True], self.INVALID_BOOL_TESTS)
+        self.run_test_on_property(server, "profanity_moderation_profile", "strike_expire_days", 7, [10, 0], self.INVALID_INT_TESTS)
+        self.run_test_on_property(server, "profanity_moderation_profile", "timeout_seconds", 3600, [7200, 0], self.INVALID_INT_TESTS)
+        self.run_test_on_property(server, "profanity_moderation_profile", "filtered_words", [], [["hello", "world"], ["apple", "banana", "orange", "pineapple", "grape"], []], 
+                                  [(ValueError, ["apple", "grape", "apple", "orange"])])
 
         server.remove_all_data()
 
@@ -737,11 +749,11 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_property
-        self.run_test_on_property(server, "spam_moderation_profile", "active", False, [True, False])
-        self.run_test_on_property(server, "spam_moderation_profile", "score_threshold", 100, [12, 1500, 0])
-        self.run_test_on_property(server, "spam_moderation_profile", "time_threshold_seconds", 60, [500, 0])
-        self.run_test_on_property(server, "spam_moderation_profile", "timeout_seconds", 60, [140, 0])
-        self.run_test_on_property(server, "spam_moderation_profile", "delete_invites", False, [True, False])
+        self.run_test_on_property(server, "spam_moderation_profile", "active", False, [True, False], self.INVALID_BOOL_TESTS)
+        self.run_test_on_property(server, "spam_moderation_profile", "score_threshold", 100, [12, 1500, 0], self.INVALID_INT_TESTS)
+        self.run_test_on_property(server, "spam_moderation_profile", "time_threshold_seconds", 60, [500, 0], self.INVALID_INT_TESTS)
+        self.run_test_on_property(server, "spam_moderation_profile", "timeout_seconds", 60, [140, 0], self.INVALID_INT_TESTS)
+        self.run_test_on_property(server, "spam_moderation_profile", "delete_invites", False, [True, False], self.INVALID_BOOL_TESTS)
 
         server.remove_all_data()
 
@@ -751,8 +763,8 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_property
-        self.run_test_on_property(server, "logging_profile", "active", False, [True, False])
-        self.run_test_on_property(server, "logging_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE])
+        self.run_test_on_property(server, "logging_profile", "active", False, [True, False], self.INVALID_BOOL_TESTS)
+        self.run_test_on_property(server, "logging_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE], self.INVALID_CHANNEL_TESTS + [(TypeError, None)])
 
         server.remove_all_data()
 
@@ -762,15 +774,15 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_property
-        self.run_test_on_property(server, "leveling_profile", "active", False, [True, False])
-        self.run_test_on_property(server, "leveling_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE, 0, None])
-        self.run_test_on_property(server, "leveling_profile", "level_up_embed[title]", "Congratulations, @displayname!", ["Title_Changed", None])
-        self.run_test_on_property(server, "leveling_profile", "level_up_embed[description]", "Congrats @mention! You reached level [level]!", ["Description_Changed"])
-        self.run_test_on_property(server, "leveling_profile", "level_up_embed[color]", "White", ["Red", "Orange", "Yellow", "Green"])
-        self.run_test_on_property(server, "leveling_profile", "points_lost_per_day", 0, [12, 0, 1])
-        self.run_test_on_property(server, "leveling_profile", "max_points_per_message", 40, [200, None, 0, 20, 500])
-        self.run_test_on_property(server, "leveling_profile", "exempt_channels", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]])
-        self.run_test_on_property(server, "leveling_profile", "allow_leveling_cards", True, [False, True])
+        self.run_test_on_property(server, "leveling_profile", "active", False, [True, False], self.INVALID_BOOL_TESTS)
+        self.run_test_on_property(server, "leveling_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE, 0, None], self.INVALID_CHANNEL_TESTS)
+        self.run_test_on_property(server, "leveling_profile", "level_up_embed[title]", "Congratulations, @displayname!", ["Title_Changed", None], [])
+        self.run_test_on_property(server, "leveling_profile", "level_up_embed[description]", "Congrats @mention! You reached level [level]!", ["Description_Changed"], [])
+        self.run_test_on_property(server, "leveling_profile", "level_up_embed[color]", "White", ["Red", "Orange", "Yellow", "Green"], [])
+        self.run_test_on_property(server, "leveling_profile", "points_lost_per_day", 0, [12, 0, 1], self.INVALID_INT_TESTS)
+        self.run_test_on_property(server, "leveling_profile", "max_points_per_message", 40, [200, None, 0, 20, 500], [i for i in self.INVALID_INT_TESTS if i != (TypeError, None)]) # Allow None values
+        self.run_test_on_property(server, "leveling_profile", "exempt_channels", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]], [(ValueError, [1234, 9876, 1234])]) # No duplicates
+        self.run_test_on_property(server, "leveling_profile", "allow_leveling_cards", True, [False, True], self.INVALID_BOOL_TESTS)
 
         server.remove_all_data()
 
@@ -780,12 +792,12 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_property
-        self.run_test_on_property(server, "join_message_profile", "active", False, [True, False])
-        self.run_test_on_property(server, "join_message_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE])
-        self.run_test_on_property(server, "join_message_profile", "embed[title]", "@displayname just joined the server!", ["Title_Changed", None])
-        self.run_test_on_property(server, "join_message_profile", "embed[description]", "Welcome to the server, @mention!", ["Description_Changed"])
-        self.run_test_on_property(server, "join_message_profile", "embed[color]", "Blurple", ["Red", "Orange", "Yellow", "Green"])
-        self.run_test_on_property(server, "join_message_profile", "allow_join_cards", True, [False, True])
+        self.run_test_on_property(server, "join_message_profile", "active", False, [True, False], self.INVALID_BOOL_TESTS)
+        self.run_test_on_property(server, "join_message_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE], self.INVALID_CHANNEL_TESTS + [(TypeError, None)])
+        self.run_test_on_property(server, "join_message_profile", "embed[title]", "@displayname just joined the server!", ["Title_Changed", None], [])
+        self.run_test_on_property(server, "join_message_profile", "embed[description]", "Welcome to the server, @mention!", ["Description_Changed"], [])
+        self.run_test_on_property(server, "join_message_profile", "embed[color]", "Blurple", ["Red", "Orange", "Yellow", "Green"], [])
+        self.run_test_on_property(server, "join_message_profile", "allow_join_cards", True, [False, True], self.INVALID_BOOL_TESTS)
 
         server.remove_all_data()
 
@@ -795,11 +807,11 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_property
-        self.run_test_on_property(server, "leave_message_profile", "active", False, [True, False])
-        self.run_test_on_property(server, "leave_message_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE])
-        self.run_test_on_property(server, "leave_message_profile", "embed[title]", "@displayname just left the server.", ["Title_Changed", None])
-        self.run_test_on_property(server, "leave_message_profile", "embed[description]", "@mention left.", ["Description_Changed"])
-        self.run_test_on_property(server, "leave_message_profile", "embed[color]", "Blurple", ["Red", "Orange", "Yellow", "Green"])
+        self.run_test_on_property(server, "leave_message_profile", "active", False, [True, False], self.INVALID_BOOL_TESTS)
+        self.run_test_on_property(server, "leave_message_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE], self.INVALID_CHANNEL_TESTS + [(TypeError, None)])
+        self.run_test_on_property(server, "leave_message_profile", "embed[title]", "@displayname just left the server.", ["Title_Changed", None], [])
+        self.run_test_on_property(server, "leave_message_profile", "embed[description]", "@mention left.", ["Description_Changed"], [])
+        self.run_test_on_property(server, "leave_message_profile", "embed[color]", "Blurple", ["Red", "Orange", "Yellow", "Green"], [])
 
         server.remove_all_data()
 
@@ -809,12 +821,13 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_property
-        self.run_test_on_property(server, "birthdays_profile", "channel", UNSET_VALUE, [1234567989, None, UNSET_VALUE])
-        self.run_test_on_property(server, "birthdays_profile", "embed[title]", "Happy Birthday, [realname]!", ["Title_Changed", None])
-        self.run_test_on_property(server, "birthdays_profile", "embed[description]", "@mention just turned [age]!", ["Description_Changed"])
-        self.run_test_on_property(server, "birthdays_profile", "embed[color]", "Gold", ["Red", "Orange", "Yellow", "Green"])
-        self.run_test_on_property(server, "birthdays_profile", "runtime", UNSET_VALUE, ["12:00 MDT", "8:00 PDT", "18:00 UTC", "0:00 EST", UNSET_VALUE])
-        self.run_test_on_property(server, "birthdays_profile", "utc_offset", 0, [5.5, 10, -7, -9.25])
+        self.run_test_on_property(server, "birthdays_profile", "channel", UNSET_VALUE, [1234567989, None, UNSET_VALUE], self.INVALID_CHANNEL_TESTS)
+        self.run_test_on_property(server, "birthdays_profile", "embed[title]", "Happy Birthday, [realname]!", ["Title_Changed", None], [])
+        self.run_test_on_property(server, "birthdays_profile", "embed[description]", "@mention just turned [age]!", ["Description_Changed"], [])
+        self.run_test_on_property(server, "birthdays_profile", "embed[color]", "Gold", ["Red", "Orange", "Yellow", "Green"], [])
+        self.run_test_on_property(server, "birthdays_profile", "runtime", UNSET_VALUE, ["12:00 MDT", "8:00 PDT", "18:00 UTC", "0:00 EST", UNSET_VALUE], [(TypeError, None)])
+        self.run_test_on_property(server, "birthdays_profile", "utc_offset", 0, [5.5, 10, -7, -9.25], 
+                                  [i for i in self.INVALID_FLOAT_TESTS if i != (ValueError, -1)])
 
         server.remove_all_data()
 
@@ -824,8 +837,10 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_property
-        self.run_test_on_property(server, "infinibot_settings_profile", "delete_invites", False, [True, False])
-        self.run_test_on_property(server, "infinibot_settings_profile", "get_updates", True, [False, True])
+        self.run_test_on_property(server, "infinibot_settings_profile", "delete_invites", False, [True, False], self.INVALID_BOOL_TESTS)
+        self.run_test_on_property(server, "infinibot_settings_profile", "get_updates", True, [False, True], self.INVALID_BOOL_TESTS)
+        self.run_test_on_property(server, "infinibot_settings_profile", "timezone", UNSET_VALUE, [ZoneInfo("America/Los_Angeles").key, ZoneInfo("America/New_York").key, UNSET_VALUE], 
+                                  [(TypeError, None)])
 
         server.remove_all_data()
 
@@ -836,7 +851,8 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_property
-        self.run_test_on_property(server, "join_to_create_vcs", "channels", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]])
+        self.run_test_on_property(server, "join_to_create_vcs", "channels", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]], 
+                                  [(ValueError, [1234567989, 256468532, 1234567989])]) # No Duplicate values
 
         server.remove_all_data()
 
@@ -846,7 +862,8 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_property
-        self.run_test_on_property(server, "default_roles", "default_roles", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]])
+        self.run_test_on_property(server, "default_roles", "default_roles", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]],
+                                  [(ValueError, [1234567989, 256468532, 1234567989])]) # No Duplicate values
 
         server.remove_all_data()
 

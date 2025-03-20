@@ -1,4 +1,5 @@
 import json
+import logging
 
 from nextcord import Embed as NextcordEmbed
 
@@ -218,7 +219,7 @@ class Simple_TableManager:
 
         return decorator
     
-    def integer_property(property_name:int, accept_none_value = True, **kwargs):
+    def integer_property(property_name:int, accept_none_value=True, allow_negative_values=False, **kwargs):
         """
         Custom decorator for creating properties that are integers.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -243,16 +244,19 @@ class Simple_TableManager:
             if isinstance(value, str):
                 if value.isdigit(): value = int(value)
             if isinstance(value, int):
+                if (not allow_negative_values) and value < 0: raise ValueError('This property has been modified to only accept positive values.')
                 return value
             if isinstance(value, float):
+                if (not allow_negative_values) and value < 0: raise ValueError('This property has been modified to only accept positive values.')
+                if not value.is_integer(): logging.warning("Value is not an integer. It will be rounded to the nearest integer.")
                 return int(value)
             if isinstance(value, UNSET_VALUE): return value
-            if isinstance(value, data_structure): return value
+            if data_structure and isinstance(value, data_structure): return value
             raise TypeError('Must be of type Int')
 
         return Simple_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
 
-    def float_property(property_name:float, accept_none_value = True, **kwargs):
+    def float_property(property_name:float, accept_none_value=True, allow_negative_values=False, **kwargs):
         """
         Custom decorator for creating properties that are floats.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -275,8 +279,10 @@ class Simple_TableManager:
             if isinstance(value, str):
                 if value.isdigit(): value = float(value)
             if isinstance(value, int):
+                if (not allow_negative_values) and value < 0: raise ValueError('This property has been modified to only accept positive values.')
                 value = float(value)
             if isinstance(value, float):
+                if (not allow_negative_values) and value < 0: raise ValueError('This property has been modified to only accept positive values.')
                 return value
             raise TypeError('Must be of type Float')
 
@@ -307,7 +313,7 @@ class Simple_TableManager:
 
         return Simple_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
 
-    def string_property(property_name:str, accept_none_value = False, **kwargs):
+    def string_property(property_name:str, accept_none_value=False, **kwargs):
         """
         Custom decorator for creating properties that are strings.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -336,7 +342,7 @@ class Simple_TableManager:
 
         return Simple_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
 
-    def typed_property(property_name:(int | UNSET_VALUE | None), accept_unset_value = True, accept_none_value = True, enforce_numerical_values = False, **kwargs):
+    def typed_property(property_name:(int | UNSET_VALUE | None), accept_unset_value=True, accept_none_value=True, enforce_numerical_values=False, **kwargs):
         """
         Custom decorator for creating properties that can be equal to None, UNSET_VALUE, integer, float, or string.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -392,7 +398,7 @@ class Simple_TableManager:
 
         return Simple_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier, **kwargs)
 
-    def list_property(property_name:(list | None), accept_duplicate_values = True, **kwargs):
+    def list_property(property_name:(list | None), accept_duplicate_values=True, **kwargs):
         """
         Custom decorator for creating properties that are lists.
         Handles SQL retrieval, setting, cleaning, etc...
