@@ -5,8 +5,9 @@ import logging
 import time
 
 from config.global_settings import get_configs
-from features.birthdays import fifteen_minutely_action
+from features.birthdays import fifteen_minutely_birthay_check_action
 from features.leveling import midnight_action_leveling
+from features.moderation import midnight_action_moderation
 
 
 async def run_every_minute() -> None:
@@ -21,27 +22,33 @@ async def run_every_minute() -> None:
     logging.debug("Running run_every_minute")
     try:
         # Get the current time
-        current_time_utc = datetime.datetime.now(datetime.timezone.utc)
+        current_time_utc = datetime.datetime.now()
         
         utc_offset = get_configs()["server_utc_offset"]
         current_time_local = current_time_utc + datetime.timedelta(hours=utc_offset)
+
+        # General Time Checks ---------------------------------------------
+        if current_time_local.minute in [0, 15, 30, 45]:
+            # Run 15-minutely birthday check
+            from core.bot import bot
+            await fifteen_minutely_birthay_check_action(bot)
         
-        # Check if the time is 00:01
-        if current_time_local.hour == 00 and current_time_local.minute == 5:
-            
-            # Run midnight code
+        # Specific Time Checks --------------------------------------------
+        if current_time_local.hour == 00 and current_time_local.minute == 5: # Check if the time is 00:05
+            # Run midnight code for leveling
             from core.bot import bot
             await midnight_action_leveling(bot)
 
-        if current_time_local.minute in [0, 15, 30, 45]:
+        elif current_time_local.hour == 00 and current_time_local.minute == 35: # Check if the time is 00:35
+            # Run midnight code for moderation
             from core.bot import bot
-            await fifteen_minutely_action(bot)
-    
+            await midnight_action_moderation(bot)
+
     except Exception as e:
         logging.error(f"Error running run_every_minute: {e}", exc_info=True)
 
     finally:
-        finish_time_utc = datetime.datetime.now(datetime.timezone.utc)
+        finish_time_utc = datetime.datetime.now()
         if finish_time_utc - current_time_utc > datetime.timedelta(seconds=10):
             logging.warning(f"Scheduler took too long to run: {finish_time_utc - current_time_utc}")
 

@@ -66,7 +66,7 @@ def calculate_age(local_datetime: datetime.datetime, birth_date: datetime.dateti
     age = local_date.year - birth_date.year - ((local_date.month, local_date.day) < (birth_date.month, birth_date.day))
     return age
 
-async def fifteen_minutely_action(bot: nextcord.Client) -> None:
+async def fifteen_minutely_birthay_check_action(bot: nextcord.Client) -> None:
     """
     Run the 15-minute birthday task.
 
@@ -117,11 +117,11 @@ async def fifteen_minutely_action(bot: nextcord.Client) -> None:
             query = f"SELECT {server.birthdays.secondary_key_sql_name} FROM {server.birthdays.table_name} WHERE {server.birthdays.primary_key_sql_name} = :primary_key_value AND strftime('%m-%d', birth_date) = :month_day"
             raw_values = server.birthdays.database.execute_query(query, {'primary_key_value': server.birthdays.primary_key_value, 'month_day': local_datetime.strftime("%m-%d")}, multiple_values=True)
             member_ids_with_birthdays_today = [server.birthdays.database.get_query_first_value(value) for value in raw_values]
-            entrys_with_birthdays_today = [server.birthdays._get_entry(row) for row in member_ids_with_birthdays_today]
+            entries_with_birthdays_today = [server.birthdays._get_entry(row) for row in member_ids_with_birthdays_today]
 
-            logging.debug(f"Found {len(entrys_with_birthdays_today)} members with birthdays today.")
+            logging.debug(f"Found {len(entries_with_birthdays_today)} members with birthdays today.")
 
-            for entry in entrys_with_birthdays_today:
+            for entry in entries_with_birthdays_today:
                 member_id = entry.member_id
                 member = bot.get_user(member_id)
 

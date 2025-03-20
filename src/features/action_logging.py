@@ -660,9 +660,9 @@ async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry
     # Remove roles that were just logged
     for role_info in fresh_role_updates:
         if role_info[0] == entry.user.id:
-            if role_info[2] is "added" and role_info[1] in added_roles:
+            if role_info[2] == "added" and role_info[1] in added_roles:
                 added_roles.remove(role_info[1])
-            elif role_info[2] is "removed" and role_info[1] in deleted_roles:
+            elif role_info[2] == "removed" and role_info[1] in deleted_roles:
                 deleted_roles.remove(role_info[1])
 
     if len(added_roles) == 0 and len(deleted_roles) == 0:

@@ -153,7 +153,7 @@ def conversion_local_time_and_utc_time(
     utc_offset: float, local_time_datetime: datetime.datetime = None, utc_time_datetime: datetime.datetime = None
 ) -> datetime.datetime | datetime.time:
     """
-    Convert a given local time to UTC time using a UTC offset.
+    Convert a given local time to UTC time or vice versa using a UTC offset.
 
     :param utc_offset: The UTC offset in hours (e.g., -5.0 for EST).
     :type utc_offset: float
@@ -161,8 +161,8 @@ def conversion_local_time_and_utc_time(
     :type local_time_datetime: datetime.datetime | None
     :param utc_time_datetime: The UTC time to convert.
     :type utc_time_datetime: datetime.datetime | None
-    :return: A `datetime.time` object representing the time in UTC or a `datetime.datetime` object if
-        `return_entire_datetime` is True.
+    :return: A `datetime.time` object representing the time in UTC or the local time. (Depending on which parameter is provided).
+        If `return_entire_datetime` is True, returns a `datetime.datetime` object.
     :raises ValueError: If neither local_time_datetime nor utc_time_datetime is provided.
     :raises ValueError: If both local_time_datetime and utc_time_datetime are provided.
     """

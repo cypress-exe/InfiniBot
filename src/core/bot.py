@@ -156,6 +156,29 @@ async def set_level(interaction: Interaction,
                     level: int = SlashOption(description="The level to set.", required=True)):
     await leveling.run_set_level_command(interaction, member, level)
 
+@bot.slash_command(name = "test", description = "Test command", integration_types=[nextcord.IntegrationType.guild_install], guild_ids=[968872260557488158, 1014000756090736680])
+async def test(interaction: Interaction):
+    await moderation.midnight_action_moderation(bot)
+    # Return a response to the user
+    await interaction.response.send_message("Test1 command executed successfully!")
+
+@bot.slash_command(name = "test2", description = "Test command", integration_types=[nextcord.IntegrationType.guild_install], guild_ids=[968872260557488158, 1014000756090736680])
+async def test2(interaction: Interaction):
+    # Alter strikes for this user ID for testing
+    server = Server(interaction.guild.id)
+
+    import datetime
+
+    last_strike_time = datetime.datetime.now() - datetime.timedelta(days=8)
+
+    if (interaction.user.id not in server.moderation_strikes):
+        server.moderation_strikes.add(member_id=interaction.user.id, strikes=1, last_strike=last_strike_time)
+    else:
+        server.moderation_strikes.edit(member_id=interaction.user.id, last_strike=last_strike_time)
+    # Return a response to the user
+    await interaction.response.send_message("Test2 command executed successfully!")
+
+
 # ERROR HANDLING ==============================================================================================================================================================
 @bot.event
 async def on_application_command_error(interaction: Interaction, error) -> None:
