@@ -128,18 +128,20 @@ def add_leaderboard_ranking_to_embed(guild: nextcord.Guild, embed: nextcord.Embe
     return embed
 
 # Actions
-async def midnight_action_leveling(bot: nextcord.Client) -> None:
+async def daily_leveling_maintenance(bot: nextcord.Client, guild: nextcord.Guild) -> None:
     """
     |coro|
 
-    The midnight action for leveling.
+    Execute the midnight leveling action to update member levels and manage leveling-related tasks.
 
-    :param bot: The bot instance.
+    :param bot: The instance of the bot client.
     :type bot: nextcord.Client
+    :param guild: The guild instance where the leveling action is executed.
+    :type guild: nextcord.Guild
     :return: None
     :rtype: None
     """
-    logging.info("MIDNIGHT ACTION: Leveling ----------------------------------------------------------------")
+    logging.info(f"Running midnight action for leveling in guild: {guild.name})({guild.id})")
     if get_global_kill_status()["leveling"]:
         logging.warning("Skipping leveling because of global kill status.")
         return
@@ -147,48 +149,46 @@ async def midnight_action_leveling(bot: nextcord.Client) -> None:
         logging.warning("Skipping leveling because of bot load status.")
         return
     
-    for guild in bot.guilds:
-        try:
-            if guild == None: continue
+    try:
+        if guild == None: return
 
-            server = Server(guild.id)
-            
-            # Checks
-            if server == None : continue
-            if server.leveling_profile.active == False: continue
-            if server.leveling_profile.points_lost_per_day == 0: continue
-            
-            # Go through each member and edit
-            for member_level_info in server.member_levels:
-                try:
-                    member = guild.get_member(member_level_info.member_id)
-                    if member == None: # Member is no longer in the server
-                        # Remove the member
-                        server.member_levels.delete(member_level_info.member_id)
-                        continue
-
-                    # Remove the points
-                    _points = member_level_info.points
-                    _points -= server.leveling_profile.points_lost_per_day
-                    if _points < 0:
-                        _points = 0
-
-                    # Update the member
-                    server.member_levels.edit(member_level_info.member_id, points = _points)
-
-                    await process_level_change(guild, member)
-
-                    # Remove the member if they have no points
-                    if member_level_info.points == 0:
-                        server.member_levels.delete(member_level_info.member_id)
-
-                except Exception as err:
-                    logging.error(f"ERROR when checking levels (member) in server {guild.id}: {err}")
+        server = Server(guild.id)
+        
+        # Checks
+        if server == None : return
+        if server.leveling_profile.active == False: return
+        if server.leveling_profile.points_lost_per_day == 0: return
+        
+        # Go through each member and edit
+        for member_level_info in server.member_levels:
+            try:
+                member = guild.get_member(member_level_info.member_id)
+                if member == None: # Member is no longer in the server
+                    # Remove the member
+                    server.member_levels.delete(member_level_info.member_id)
                     continue
-            
-        except Exception as err:
-            logging.error(f"ERROR When checking levels (server) in server {guild.id}: {err}")
-            continue
+
+                # Remove the points
+                _points = member_level_info.points
+                _points -= server.leveling_profile.points_lost_per_day
+                if _points < 0:
+                    _points = 0
+
+                # Update the member
+                server.member_levels.edit(member_level_info.member_id, points = _points)
+
+                await process_level_change(guild, member)
+
+                # Remove the member if they have no points
+                if member_level_info.points == 0:
+                    server.member_levels.delete(member_level_info.member_id)
+
+            except Exception as err:
+                logging.error(f"ERROR when checking levels (member) in server {guild.id}: {err}", exc_info=True)
+                continue
+        
+    except Exception as err:
+        logging.error(f"ERROR When checking levels (server) in server {guild.id}: {err}", exc_info=True)
 
 async def check_leveling_enabled_and_warn_if_not(interaction: Interaction, server: Server) -> bool:
     """

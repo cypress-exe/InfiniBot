@@ -67,15 +67,15 @@ CREATE TABLE IF NOT EXISTS birthdays_profile( -- #optimize
     server_id INT PRIMARY KEY,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
     embed TEXT DEFAULT '{"title":"Happy Birthday, [realname]!","description":"@mention just turned [age]!", "color":"Gold"}',
-    runtime TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    utc_offset INT DEFAULT 0
+    runtime TEXT DEFAULT '{"status": "UNSET", "value": null}'
 )
 
 -- Create infinibot_settings_profile Table (simple table)
 CREATE TABLE IF NOT EXISTS infinibot_settings_profile( -- #optimize
     server_id INT PRIMARY KEY,
     delete_invites BOOLEAN DEFAULT false,
-    get_updates BOOLEAN DEFAULT true
+    get_updates BOOLEAN DEFAULT true,
+    timezone TEXT DEFAULT '{"status": "UNSET", "value": null}'
 )
 
 -- Create member_profile Table (simple table)
@@ -110,8 +110,8 @@ CREATE TABLE IF NOT EXISTS default_roles( -- #optimize
 -- START of INTEGRATED LISTS
 -- Create moderation_strikes Table (integrated list table)
 CREATE TABLE IF NOT EXISTS moderation_strikes(
-    server_id INT,
-    member_id INT,
+    server_id INT, -- primary key
+    member_id INT, -- secondary key
     strikes INT,
     last_strike DATETIME,
     PRIMARY KEY (server_id, member_id)
@@ -119,24 +119,24 @@ CREATE TABLE IF NOT EXISTS moderation_strikes(
 
 -- Create member_levels Table (integrated list table)
 CREATE TABLE IF NOT EXISTS member_levels(
-    server_id INT,
-    member_id INT,
+    server_id INT, -- primary key
+    member_id INT, -- secondary key
     points INT,
     PRIMARY KEY (server_id, member_id)
 )
 
 -- Create level_rewards Table (integrated list table)
 CREATE TABLE IF NOT EXISTS level_rewards(
-    server_id INT,
-    role_id INT,
+    server_id INT, -- primary key
+    role_id INT, -- secondary key
     level INT, -- "level" is technically an SQL keyword, but it doesn't seem to cause an issue here.
     PRIMARY KEY (server_id, role_id)
 )
 
 -- Create birthdays Table (integrated list table)
 CREATE TABLE IF NOT EXISTS birthdays(
-    server_id INT,
-    member_id INT,
+    server_id INT, -- primary key
+    member_id INT, -- secondary key
     birth_date DATE,
     real_name TEXT,
     PRIMARY KEY (server_id, member_id)
@@ -146,8 +146,8 @@ CREATE TABLE IF NOT EXISTS birthdays(
 -- START of MESSAGE LOGS
 -- Create embeds table (integrated list table)
 CREATE TABLE IF NOT EXISTS embeds(
-    server_id INT,
-    message_id INT,
+    server_id INT, -- primary key
+    message_id INT, -- secondary key
     channel_id INT,
     author_id INT,
     PRIMARY KEY (server_id, message_id)
@@ -155,8 +155,8 @@ CREATE TABLE IF NOT EXISTS embeds(
 
 -- Create reaction_roles table (integrated list table)
 CREATE TABLE IF NOT EXISTS reaction_roles(
-    server_id INT,
-    message_id INT,
+    server_id INT, -- primary key
+    message_id INT, -- secondary key
     channel_id INT,
     author_id INT,
     PRIMARY KEY (server_id, message_id)
@@ -164,8 +164,8 @@ CREATE TABLE IF NOT EXISTS reaction_roles(
 
 -- Create role_messages table (integrated list table)
 CREATE TABLE IF NOT EXISTS role_messages(
-    server_id INT,
-    message_id INT,
+    server_id INT, -- primary key
+    message_id INT, -- secondary key
     channel_id INT,
     author_id INT,
     PRIMARY KEY (server_id, message_id)

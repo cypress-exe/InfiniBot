@@ -10,7 +10,7 @@ from typing import List
 import nextcord
 
 from components import utils, ui_components
-from config.global_settings import get_configs, get_global_kill_status
+from config.global_settings import get_configs, get_global_kill_status, get_bot_load_status
 from config.member import Member
 from config.server import Server
 from core import log_manager
@@ -824,11 +824,10 @@ def contains_discord_invite(message):
     """
     Detects if a message contains a Discord invite link.
 
-    Args:
-        message (str): The message to check.
-
-    Returns:
-        bool: True if a Discord invite link is detected, False otherwise.
+    :param message: The message to check.
+    :type message: str
+    :return: True if a Discord invite link is detected, False otherwise.
+    :rtype: bool
     """
     # Regular expression for Discord invite links
     discord_invite_pattern = r"(?:https?://)?(?:www\.)?(?:discord\.gg|discordapp\.com/invite|discord\.com/invite)/[\w-]+"
@@ -837,8 +836,18 @@ def contains_discord_invite(message):
     return re.search(discord_invite_pattern, message) is not None
 
 async def check_and_delete_invite_links(message: nextcord.Message) -> bool:
+    """
+    Checks if the message contains a Discord invite link and deletes it if present.
+
+    :param message: The message to check for invite links.
+    :type message: nextcord.Message
+
+    :return: True if an invite link was found and the message was deleted, False otherwise.
+    :rtype: bool
+    """
     # If invite link deletion is enabled
-    if not utils.feature_is_active(guild = message.guild, feature = "delete_invite_links"): return False
+    if not utils.feature_is_active(guild=message.guild, feature="delete_invite_links"):
+        return False
 
     if message.author.bot: return False
     if message.author.id == message.guild.owner_id: return False
@@ -851,10 +860,87 @@ async def check_and_delete_invite_links(message: nextcord.Message) -> bool:
             await message.delete()
             return True
         except nextcord.errors.Forbidden:
-            await utils.send_error_message_to_server_owner(message.guild, "Manage Messages", channel=message.channel.name)
+            await utils.send_error_message_to_server_owner(
+                message.guild, "Manage Messages", channel=message.channel.name
+            )
             return False
 
     return False
+
+
+# Moderation Actions ----------------------------------------------------------------------------------------------------------
+async def daily_moderation_maintenance(bot: nextcord.Client, guild: nextcord.Guild) -> None:
+    """|coro|
+
+    The midnight action for moderation, handling strikes for profanity moderation.
+    If bot is unloaded, the action will be automatically handled and delayed for 30 minutes.
+
+    :param bot: The bot client.
+    :type bot: nextcord.Client
+    :return: None
+    :rtype: None
+    """
+    logging.info(f"Running midnight action for moderation in guild: {guild.name})({guild.id})")
+    if get_global_kill_status()["profanity_moderation"]:
+        logging.warning("SKIPPING profanity moderation strike update because of global kill status.")
+        return
+    if get_bot_load_status() == False:
+        logging.warning("SKIPPING profanity moderation strike update because of bot load status.")
+        return
+    
+    try:
+        if guild == None: return
+
+        server = Server(guild.id)
+        
+        # Checks
+        if server == None: return
+        if server.profanity_moderation_profile.active == False: return
+        if server.profanity_moderation_profile.strike_system_active == False: return
+        if server.profanity_moderation_profile.strike_expiring_active == False: return
+        
+        # Go through each member and edit
+        for member_strike_info in server.moderation_strikes:
+            try:
+                member = guild.get_member(member_strike_info.member_id)
+                if member == None: # Member is no longer in the server
+                    # Remove the member
+                    server.member_levels.delete(member_strike_info.member_id)
+                    continue
+
+                # Check if the member has strikes
+                if (member_strike_info.strikes == 0): 
+                    server.moderation_strikes.delete(member_strike_info.member_id)
+                    continue
+
+                # Convert string to UTC-aware datetime
+                strike_date = datetime.datetime.strptime(
+                    member_strike_info.last_strike, 
+                    "%Y-%m-%d %H:%M:%S.%f"
+                ).replace(tzinfo=datetime.timezone.utc)
+
+                # Determine if within the window for strike removal
+                if (strike_date + datetime.timedelta(days = server.profanity_moderation_profile.strike_expire_days) > datetime.datetime.now(datetime.timezone.utc)): 
+                    continue
+
+                # Remove a single strike
+                _strikes = member_strike_info.strikes
+                _strikes -= 1
+                if _strikes > 0:
+                    # Update the member's record
+                    server.moderation_strikes.edit(member_strike_info.member_id, strikes = _strikes, last_strike = datetime.datetime.now())
+                    logging.info(f"Member's strike has been removed. Server: {guild.name} ({guild.id})")
+                else:
+                    # Remove the member's record
+                    server.moderation_strikes.delete(member_strike_info.member_id)
+                    logging.info(f"Member's record has been removed. Server: {guild.name} ({guild.id})")
+
+            except Exception as err:
+                logging.error(f"ERROR when checking profanity moderation (member) in server {guild.id}: {err}", exc_info=True)
+                continue
+        
+    except Exception as err:
+        logging.error(f"ERROR When checking profanity moderation (server) in server {guild.id}: {err}", exc_info=True)
 
 
 # Commands
@@ -912,11 +998,11 @@ async def run_my_strikes_command(interaction: nextcord.Interaction) -> None:
 
     server = Server(interaction.guild.id)
     if interaction.user.id in server.moderation_strikes:
-        strike = server.moderation_strikes[interaction.user.id]
+        strike = server.moderation_strikes[interaction.user.id].strikes
     else:
         strike = 0
 
-    await interaction.response.send_message(embed = nextcord.Embed(title = f"My Strikes", description = f"You are at {str(strike)} strike(s)", 
+    await interaction.response.send_message(embed = nextcord.Embed(title = f"My Strikes", description = f"You are at {strike} strike{"s" if strike != 1 else ""}.", 
                                                                    color =  nextcord.Color.blue()), ephemeral = True)
 
 async def run_view_member_strikes_command(interaction: nextcord.Interaction, member: nextcord.Member) -> None:
@@ -938,11 +1024,11 @@ async def run_view_member_strikes_command(interaction: nextcord.Interaction, mem
 
         server = Server(interaction.guild.id)
         if member.id in server.moderation_strikes:
-            strike = server.moderation_strikes[member.id]
+            strike = server.moderation_strikes[member.id].strikes
         else:
             strike = 0
 
-        embed = nextcord.Embed(title = f"View Member Strikes", description = f"{member.mention} is at {str(strike)} strike(s).", color =  nextcord.Color.blue())
+        embed = nextcord.Embed(title = f"View Member Strikes", description = f"{member.mention} is at {str(strike)} strike{"s" if strike != 1 else ""}.", color =  nextcord.Color.blue())
         await interaction.response.send_message(embed = embed, ephemeral = True)
 
 async def run_set_admin_channel_command(interaction: nextcord.Interaction) -> None:

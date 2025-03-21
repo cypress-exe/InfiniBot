@@ -1,6 +1,11 @@
 import threading
 
-class _Missing:
+class FalseType(type):
+    # Override __bool__ to make the class itself falsy
+    def __bool__(cls):
+        return False
+
+class _Missing(metaclass=FalseType):
     def __eq__(self, other):
         return self is other
 
@@ -19,7 +24,7 @@ class _Missing:
 MISSING = _Missing
 '''A constant value used for cases when there is no value when there should be.'''
 
-class _Unset_Value:
+class _Unset_Value(metaclass=FalseType):
     def __eq__(self, other):
         return self is other
 

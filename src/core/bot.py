@@ -10,7 +10,7 @@ from config.file_manager import JSONFile
 from core import log_manager
 from core.log_manager import LogIfFailure
 from core.scheduling import start_scheduler, stop_scheduler
-from features import action_logging, admin_commands, dashboard, default_roles, dm_commands, join_leave_messages, join_to_create_vcs, leveling, moderation, profile
+from features import action_logging, admin_commands, birthdays, dashboard, default_roles, dm_commands, join_leave_messages, join_to_create_vcs, leveling, moderation, profile
 
 
 # INIT BOT ==============================================================================================================================================================
@@ -155,6 +155,7 @@ async def set_level(interaction: Interaction,
                     member: nextcord.Member = SlashOption(description="The member to set the level of.", required=True), 
                     level: int = SlashOption(description="The level to set.", required=True)):
     await leveling.run_set_level_command(interaction, member, level)
+
 
 # ERROR HANDLING ==============================================================================================================================================================
 @bot.event

@@ -3,6 +3,7 @@ import datetime
 from dateutil import parser
 import json
 import logging
+from zoneinfo import ZoneInfo, available_timezones
 
 import humanfriendly
 import nextcord
@@ -12,7 +13,7 @@ from components import ui_components, utils
 from components.ui_components import CustomView, CustomModal
 from config.global_settings import ShardLoadedStatus, get_configs
 from config.server import Server
-from features import birthdays,help_commands, leveling
+from features import birthdays, help_commands, leveling
 from modules.custom_types import UNSET_VALUE
 
 
@@ -47,6 +48,9 @@ class Dashboard(CustomView):
         
         self.extra_features_btn = self.ExtraFeaturesButton(self)
         self.add_item(self.extra_features_btn)
+
+        self.configure_timezone_btn = self.ConfigureTimezoneButton(self)
+        self.add_item(self.configure_timezone_btn)
 
     async def setup(self, interaction: Interaction):
         for child in self.children: del child
@@ -237,13 +241,13 @@ class Dashboard(CustomView):
                                     InfiniBot will automatically filter messages for profane words. You can add or delete words to be filtered here:
 
                                     **Customization**
-                                    - Starting / ending a word with a quote will make InfiniBot match the exact start / end.
+                                    - Starting/ending a word with a quote will make InfiniBot match the exact start / end.
                                     ```
                                     "apple → matches apple, apples, apple's, but not pineapple
                                     apple" → matches apple, pineapple, but not apples or apple's
                                     "apple" → matches only apple
                                     ```
-                                    - Adding a "*" will make InfiniBot match any character at that point in the word.
+                                    - Adding a * will make InfiniBot match any character at that point in the word.
                                     ```
                                     fruit* → matches fruity, fruits, grapefruit!, but not fruities
                                     or**ge → matches orange, oreige, or!nge, but not orage or orang!e
@@ -2779,12 +2783,12 @@ class Dashboard(CustomView):
     
     class BirthdaysButton(nextcord.ui.Button):
         def __init__(self, outer):
-            super().__init__(label = "Birthdays", style = nextcord.ButtonStyle.gray, row = 1)
-            self.outer = outer 
-            
-        class BirthdaysView(CustomView): #Birthdays Window -----------------------------------------------------
-            def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
-                super().__init__(timeout = None)
+            super().__init__(label="Birthdays", style=nextcord.ButtonStyle.gray, row=1)
+            self.outer = outer
+                
+        class BirthdaysView(CustomView):
+            def __init__(self, outer, onboarding_modifier=None, onboarding_embed=None):
+                super().__init__(timeout=None)
                 self.outer = outer
                 self.onboarding_modifier = onboarding_modifier
                 self.onboarding_embed = onboarding_embed
@@ -2795,51 +2799,72 @@ class Dashboard(CustomView):
                 self.birthdays_channel_btn = self.BirthdaysChannelButton(self)
                 self.add_item(self.birthdays_channel_btn)
 
-                self.set_messsage_time_btn = self.SetMessageTimeButton(self)
-                self.add_item(self.set_messsage_time_btn)
+                self.set_message_time_btn = self.SetMessageTimeButton(self)
+                self.add_item(self.set_message_time_btn)
 
                 self.edit_birthday_message_btn = self.EditBirthdayMessageButton(self)
                 self.add_item(self.edit_birthday_message_btn)
                 
-                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 2) 
+                self.back_btn = nextcord.ui.Button(label="Back", style=nextcord.ButtonStyle.danger, row=2) 
                 self.back_btn.callback = self.back_btn_callback
                 self.add_item(self.back_btn)
-                             
+                            
             async def setup(self, interaction: Interaction):
-                if self.onboarding_modifier: self.onboarding_modifier(self)
-                        
-                # Clean up
+                if self.onboarding_modifier: 
+                    self.onboarding_modifier(self)
+                            
                 if not self.onboarding_modifier:
                     for child in self.children: 
                         del child 
                         self.__init__(self.outer)
-                
-                if not utils.feature_is_active(server_id = interaction.guild.id, feature = "birthdays"): # server_id won't be used here, but it's required as an input
+                    
+                if not utils.feature_is_active(server_id=interaction.guild.id, feature="birthdays"):
                     await ui_components.disabled_feature_override(self, interaction)
                     return
-                
+                    
                 server = Server(interaction.guild.id)
                 
-                if server.birthdays_profile.channel == UNSET_VALUE: birthday_channel_ui_text = "System Messages Channel"
+                # Check if timezone is configured
+                if server.infinibot_settings_profile.timezone == UNSET_VALUE:
+                    embed = nextcord.Embed(
+                        title="Timezone Not Configured",
+                        description="**A timezone must be configured before setting up birthdays!**\n\n"
+                                "Please configure the server timezone first to ensure accurate birthday notifications.\n"
+                                "Timezone affects how we determine the actual date for birthday messages.",
+                        color=nextcord.Color.red()
+                    )
+                    configure_btn = nextcord.ui.Button(
+                        label="Configure Timezone", 
+                        style=nextcord.ButtonStyle.green,
+                        custom_id="configure_tz"
+                    )
+                    configure_btn.callback = lambda i: self.outer.configure_timezone_btn.callback(i)
+                    
+                    view = CustomView(timeout=None)
+                    view.add_item(configure_btn)
+                    await interaction.response.edit_message(embed=embed, view=view)
+                    return
+
+                # UI Elements
+                if server.birthdays_profile.channel == UNSET_VALUE:
+                    birthday_channel_ui_text = "System Messages Channel"
                 else: 
                     birthday_channel = interaction.guild.get_channel(server.birthdays_profile.channel)
-                    if birthday_channel: birthday_channel_ui_text = birthday_channel.mention
-                    else: birthday_channel_ui_text = "#unknown"
+                    birthday_channel_ui_text = birthday_channel.mention if birthday_channel else "#unknown"
 
-                birthdays_runtime = server.birthdays_profile.runtime
-                if birthdays_runtime == UNSET_VALUE:
-                    # Forward to Set Message Time screen
-                    await self.set_messsage_time_btn.callback(interaction)
-                    return
-                
+                # Ensure runtime is set
+                server.birthdays_profile.runtime = server.birthdays_profile.runtime or "00:00:00"
+
+                # Convert stored UTC time to server's timezone for display
                 try:
-                    hour, minute = birthdays_runtime.split(":")
-                    epoch_time = datetime.datetime(2000, 1, 1, int(hour), int(minute), 0, tzinfo = datetime.timezone.utc).timestamp()
-                    epoch_time = round(epoch_time)
-                    message_time_ui_text = f"<t:{epoch_time}:t>"
+                    tz = ZoneInfo(server.infinibot_settings_profile.timezone or "UTC")
+                    utc_time = datetime.datetime.strptime(server.birthdays_profile.runtime, "%H:%M:%S").time()
+                    utc_datetime = datetime.datetime.combine(datetime.date.today(), utc_time).replace(tzinfo=datetime.timezone.utc)
+                    local_datetime = utc_datetime.astimezone(tz)
+                    message_time_ui_text = f"{local_datetime.strftime('%H:%M')} ({tz})"
                 except Exception as e:
-                    logging.error(e)
-                    message_time_ui_text = "Unknown"
+                    logging.error(f"Birthdays time display error: {str(e)}")
+                    message_time_ui_text = "Not set"
 
                 description = f"""
                 Celebrate birthdays with InfiniBot's personalized messages.
@@ -2847,36 +2872,35 @@ class Dashboard(CustomView):
                 **Settings**
                 - **Notifications Channel:** {birthday_channel_ui_text}
                 - **Message Time:** {message_time_ui_text}
-                - **Message**: 
-                ```
-                Title: {server.birthdays_profile.embed["title"]}
-                Description: {server.birthdays_profile.embed["description"]}
-                ```
+                - **Message:** 
+                ```Title: {server.birthdays_profile.embed.get('title', 'No title set')}
+                Description: {server.birthdays_profile.embed.get('description', 'No description set')}```
                 **Configure Birthdays**
-                To set up birthdays for members, use the "Configure Birthdays" button below.
-
-                **Message Time**
-                The time shown above includes a date due to Discord's timestamp behavior, but the date can be ignored. Birthday messages are sent at the specified time on the day of the birthday. Unfortunately, Discord timestamps always display an associated date, even when it's irrelevant.
+                Use the buttons below to manage birthday settings.
+                """ + ("" if server.birthdays_profile.runtime else "\n⚠️ **You must set a message time before birthdays will work!**")
                 
-                For more information, use: {UNSET_VALUE}
-                """ # TODO add shortcut for help command
                 description = utils.standardize_str_indention(description)
                 
-                embed = nextcord.Embed(title = "Dashboard - Birthdays", description = description, color = nextcord.Color.blue())
+                embed = nextcord.Embed(title="Dashboard - Birthdays", description=description, color=nextcord.Color.blue())
                 
-                if self.onboarding_embed: embeds = [self.onboarding_embed, embed]
-                else: embeds = [embed]
-                
-                await interaction.response.edit_message(embeds = embeds, view = self)
+                if self.onboarding_embed: 
+                    embeds = [self.onboarding_embed, embed]
+                else: 
+                    embeds = [embed]
+
+                try:   
+                    await interaction.response.edit_message(embeds=embeds, view=self)
+                except nextcord.errors.InteractionResponded:
+                    await interaction.edit_original_message(embeds=embeds, view=self)
 
             class ConfigureBirthdaysButton(nextcord.ui.Button):
                 def __init__(self, outer):
-                    super().__init__(label = "Configure Birthdays", style = nextcord.ButtonStyle.gray)
+                    super().__init__(label="Configure Birthdays", style=nextcord.ButtonStyle.gray)
                     self.outer = outer
 
                 class ConfigureBirthdaysView(CustomView):
                     def __init__(self, outer):
-                        super().__init__(timeout = None)
+                        super().__init__(timeout=None)
                         self.outer = outer
 
                         self.add_birthday_btn = self.AddBirthdayButton(self)
@@ -2891,7 +2915,7 @@ class Dashboard(CustomView):
                         self.delete_all_birthdays_btn = self.DeleteAllBirthdaysButton(self)
                         self.add_item(self.delete_all_birthdays_btn)
 
-                        self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1) 
+                        self.back_btn = nextcord.ui.Button(label="Back", style=nextcord.ButtonStyle.danger, row=1) 
                         self.back_btn.callback = self.back_btn_callback
                         self.add_item(self.back_btn)
 
@@ -2904,57 +2928,77 @@ class Dashboard(CustomView):
                                 member_id = bday.member_id
                                 member = interaction.guild.get_member(member_id)
                                 
-                                if member == None: # Member left. Delete their birthday
+                                if member is None:  # Member left. Delete their birthday
                                     server.birthdays.delete(member_id)
                                     continue
                                 
-                                member_mention = member.mention if member != None else "#unknown"
+                                member_mention = member.mention if member else "#unknown"
 
-                                if bday.real_name != None: birthdays.append(f"{member_mention} ({str(bday.real_name)}) - {bday.birth_date}")
-                                else: birthdays.append(f"{member_mention} - {bday.birth_date}")
+                                if bday.real_name is not None:
+                                    birthdays.append(f"{member_mention} ({str(bday.real_name)}) - {bday.birth_date}")
+                                else:
+                                    birthdays.append(f"{member_mention} - {bday.birth_date}")
                                     
                             except Exception as err:
                                 logging.error(f"Birthdays View Error: {err}")
                                 
-                        if len(birthdays) == 0: birthdays_str = "You don't have any birthdays. Create one!"
-                        else: birthdays_str = "\n".join(birthdays)
+                        if len(birthdays) == 0:
+                            birthdays_str = "You don't have any birthdays. Create one!"
+                        else:
+                            birthdays_str = "\n".join(birthdays)
 
                         description = f"""
                         Celebrate birthdays with InfiniBot's personalized messages.
 
                         **Birthdays**
                         {birthdays_str}
-                        """ # TODO add shortcut for help command
+                        """
                         description = utils.standardize_str_indention(description)
                         
-                        self.embed = nextcord.Embed(title = "Dashboard - Birthdays", description = description, color = nextcord.Color.blue())
+                        self.embed = nextcord.Embed(title="Dashboard - Birthdays", description=description, color=nextcord.Color.blue())
                         
-                        try: await interaction.response.edit_message(embed = self.embed, view = self)
-                        except: await interaction.edit_original_message(embed = self.embed, view = self)
-                
+                        try:
+                            await interaction.response.edit_message(embed=self.embed, view=self)
+                        except:
+                            await interaction.edit_original_message(embed=self.embed, view=self)
+
                     class AddBirthdayButton(nextcord.ui.Button):
                         def __init__(self, outer):
-                            super().__init__(label = "Add", style = nextcord.ButtonStyle.gray)
+                            super().__init__(label="Add", style=nextcord.ButtonStyle.gray)
                             self.outer = outer
                             
-                        async def callback(self, interaction: Interaction):# Edit Strikes Callback ————————————————————————————————————————————————————————————
+                        async def callback(self, interaction: Interaction):
                             server = Server(interaction.guild.id)
                                 
                             member_select_options = []
                             for member in interaction.guild.members:
-                                if member.bot: continue
-                                if member.id in server.birthdays: continue
-                                member_select_options.append(nextcord.SelectOption(label = f"{member}", description = member.nick, value = member.id))
+                                if member.bot:
+                                    continue
+                                if member.id in server.birthdays:
+                                    continue
+                                member_select_options.append(nextcord.SelectOption(label=f"{member}", description=member.nick, value=member.id))
                             
-                            
-                            if member_select_options == []: 
-                                await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Members", description = "Every member in your server already has a birthday! Go invite someone!", color = nextcord.Color.red()), ephemeral = True)
+                            if not member_select_options:
+                                await interaction.response.send_message(
+                                    embed=nextcord.Embed(
+                                        title="No Available Members",
+                                        description="Every member in your server already has a birthday! Go invite someone!",
+                                        color=nextcord.Color.red()
+                                    ),
+                                    ephemeral=True
+                                )
                                 return
                             
-                            await ui_components.SelectView(self.outer.embed, member_select_options, self.select_view_return, placeholder = "Choose a Member", continue_button_label = "Next").setup(interaction)
+                            await ui_components.SelectView(
+                                self.outer.embed,
+                                member_select_options,
+                                self.select_view_return,
+                                placeholder="Choose a Member",
+                                continue_button_label="Next"
+                            ).setup(interaction)
                             
                         async def select_view_return(self, interaction: Interaction, selection):
-                            if selection == None: # User clicked "Cancel"
+                            if selection is None:  # User clicked "Cancel"
                                 await self.outer.setup(interaction)
                                 return
                             
@@ -2962,52 +3006,81 @@ class Dashboard(CustomView):
                                             
                         class InfoModal(CustomModal):            
                             def __init__(self, outer, member_id):
-                                super().__init__(title = "Add Birthday", timeout = None)
+                                super().__init__(title="Add Birthday", timeout=None)
                                 self.outer = outer
                                 self.member_id = member_id
                                 
-                                self.date_input = nextcord.ui.TextInput(label = "Date", style = nextcord.TextInputStyle.short, max_length = 50, placeholder = "January 1st, 2000 or MM/DD/YYYY")
+                                self.date_input = nextcord.ui.TextInput(
+                                    label="Date",
+                                    style=nextcord.TextInputStyle.short,
+                                    max_length=50,
+                                    placeholder="January 1st, 2000 or MM/DD/YYYY"
+                                )
                                 self.add_item(self.date_input)
                                 
-                                self.real_name_input = nextcord.ui.TextInput(label = "Real Name (Optional)", style = nextcord.TextInputStyle.short, max_length=50, required = False)
+                                self.real_name_input = nextcord.ui.TextInput(
+                                    label="Real Name (Optional)",
+                                    style=nextcord.TextInputStyle.short,
+                                    max_length=50,
+                                    required=False
+                                )
                                 self.add_item(self.real_name_input)
                                 
                             async def callback(self, interaction: Interaction):
                                 try:
                                     date = parser.parse(self.date_input.value, dayfirst=False)
-                                    date_serialized = date.strftime(f"%Y-%m-%d")
+                                    date_serialized = date.strftime("%Y-%m-%d")
                                 except:
-                                    await interaction.response.send_message(embed = nextcord.Embed(title = "Invalid Format", description = "You formatted the date wrong. Try formating it like this: Month Day, Year", color =  nextcord.Color.red()), ephemeral=True)
+                                    await interaction.response.send_message(
+                                        embed=nextcord.Embed(
+                                            title="Invalid Format",
+                                            description="You formatted the date wrong. Try formatting it like this: Month Day, Year",
+                                            color=nextcord.Color.red()
+                                        ),
+                                        ephemeral=True
+                                    )
                                     return
                                 
                                 server = Server(interaction.guild.id)
                                 real_name = self.real_name_input.value if self.real_name_input.value != "" else None
-                                server.birthdays.add(member_id = self.member_id, birth_date = date_serialized, real_name = real_name)
+                                server.birthdays.add(member_id=self.member_id, birth_date=date_serialized, real_name=real_name)
 
                                 await self.outer.setup(interaction)
-                
+
                     class EditBirthdayButton(nextcord.ui.Button):
                         def __init__(self, outer):
-                            super().__init__(label = "Edit", style = nextcord.ButtonStyle.gray)
+                            super().__init__(label="Edit", style=nextcord.ButtonStyle.gray)
                             self.outer = outer
-                                                            
+                                                                
                         async def callback(self, interaction: Interaction):
                             server = Server(interaction.guild.id)
                                 
                             member_select_options = []
                             for member in interaction.guild.members:
                                 if member.id in server.birthdays:
-                                    member_select_options.append(nextcord.SelectOption(label = f"{member}", description = member.nick, value = member.id))
+                                    member_select_options.append(nextcord.SelectOption(label=f"{member}", description=member.nick, value=member.id))
                             
-                            
-                            if member_select_options == []: 
-                                await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Members", description = "No members in your server have birthdays. Add some!", color = nextcord.Color.red()), ephemeral = True)
+                            if not member_select_options:
+                                await interaction.response.send_message(
+                                    embed=nextcord.Embed(
+                                        title="No Available Members",
+                                        description="No members in your server have birthdays. Add some!",
+                                        color=nextcord.Color.red()
+                                    ),
+                                    ephemeral=True
+                                )
                                 return
                             
-                            await ui_components.SelectView(self.outer.embed, member_select_options, self.select_view_return, placeholder = "Choose a Member", continue_button_label = "Next").setup(interaction)
+                            await ui_components.SelectView(
+                                self.outer.embed,
+                                member_select_options,
+                                self.select_view_return,
+                                placeholder="Choose a Member",
+                                continue_button_label="Next"
+                            ).setup(interaction)
                             
                         async def select_view_return(self, interaction: Interaction, selection):
-                            if selection == None: # User clicked "Cancel"
+                            if selection is None:  # User clicked "Cancel"
                                 await self.outer.setup(interaction)
                                 return
                             
@@ -3015,55 +3088,86 @@ class Dashboard(CustomView):
                                             
                         class InfoModal(CustomModal):            
                             def __init__(self, outer, member_id, guild_id):
-                                super().__init__(title = "Add Birthday", timeout = None)
+                                super().__init__(title="Edit Birthday", timeout=None)
                                 self.outer = outer
                                 self.member_id = member_id
                                 
                                 server = Server(guild_id)
                                 birthday = server.birthdays[self.member_id]
                                 
-                                self.date_input = nextcord.ui.TextInput(label = "Date", style = nextcord.TextInputStyle.short, max_length = 50, placeholder = "January 1st, 2000 or MM/DD/YYYY", default_value = birthday.birth_date)
+                                self.date_input = nextcord.ui.TextInput(
+                                    label="Date",
+                                    style=nextcord.TextInputStyle.short,
+                                    max_length=50,
+                                    placeholder="January 1st, 2000 or MM/DD/YYYY",
+                                    default_value=birthday.birth_date
+                                )
                                 self.add_item(self.date_input)
                                 
-                                self.real_name_input = nextcord.ui.TextInput(label = "Real Name (Optional)", style = nextcord.TextInputStyle.short, max_length=50, required = False, default_value = birthday.real_name)
+                                self.real_name_input = nextcord.ui.TextInput(
+                                    label="Real Name (Optional)",
+                                    style=nextcord.TextInputStyle.short,
+                                    max_length=50,
+                                    required=False,
+                                    default_value=birthday.real_name
+                                )
                                 self.add_item(self.real_name_input)
                                 
                             async def callback(self, interaction: Interaction):
                                 try:
                                     date = parser.parse(self.date_input.value, dayfirst=False)
-                                    date_serialized = date.strftime(f"%Y-%m-%d")
+                                    date_serialized = date.strftime("%Y-%m-%d")
                                 except:
-                                    await interaction.response.send_message(embed = nextcord.Embed(title = "Invalid Format", description = "You formatted the date wrong. Try formating it like this: Month Day, Year", color =  nextcord.Color.red()), ephemeral=True)
+                                    await interaction.response.send_message(
+                                        embed=nextcord.Embed(
+                                            title="Invalid Format",
+                                            description="You formatted the date wrong. Try formatting it like this: Month Day, Year",
+                                            color=nextcord.Color.red()
+                                        ),
+                                        ephemeral=True
+                                    )
                                     return
                                 
                                 server = Server(interaction.guild.id)
                                 real_name = self.real_name_input.value if self.real_name_input.value != "" else None
-                                server.birthdays.edit(self.member_id, birth_date = date_serialized, real_name = real_name)
+                                server.birthdays.edit(self.member_id, birth_date=date_serialized, real_name=real_name)
                                 
                                 await self.outer.setup(interaction)
 
                     class DeleteBirthdayButton(nextcord.ui.Button):
                         def __init__(self, outer):
-                            super().__init__(label = "Delete", style = nextcord.ButtonStyle.gray)
+                            super().__init__(label="Delete", style=nextcord.ButtonStyle.gray)
                             self.outer = outer
-                                            
-                        async def callback(self, interaction: Interaction):# Edit Strikes Callback ————————————————————————————————————————————————————————————
+                                                
+                        async def callback(self, interaction: Interaction):
                             server = Server(interaction.guild.id)
                                 
                             member_select_options = []
                             for member in interaction.guild.members:
                                 if member.id in server.birthdays:
-                                    member_select_options.append(nextcord.SelectOption(label = f"{member}", description = member.nick, value = member.id))
+                                    member_select_options.append(nextcord.SelectOption(label=f"{member}", description=member.nick, value=member.id))
                             
-                            
-                            if member_select_options == []: 
-                                await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Members", description = "No members in your server have birthdays. Add some!", color = nextcord.Color.red()), ephemeral = True)
+                            if not member_select_options:
+                                await interaction.response.send_message(
+                                    embed=nextcord.Embed(
+                                        title="No Available Members",
+                                        description="No members in your server have birthdays. Add some!",
+                                        color=nextcord.Color.red()
+                                    ),
+                                    ephemeral=True
+                                )
                                 return
                             
-                            await ui_components.SelectView(self.outer.embed, member_select_options, self.select_view_return, placeholder = "Choose a Member", continue_button_label = "Delete").setup(interaction)
+                            await ui_components.SelectView(
+                                self.outer.embed,
+                                member_select_options,
+                                self.select_view_return,
+                                placeholder="Choose a Member",
+                                continue_button_label="Delete"
+                            ).setup(interaction)
                             
                         async def select_view_return(self, interaction: Interaction, selection):
-                            if selection == None: # User clicked "Cancel"
+                            if selection is None:  # User clicked "Cancel"
                                 await self.outer.setup(interaction)
                                 return
                             
@@ -3071,28 +3175,32 @@ class Dashboard(CustomView):
                             server.birthdays.delete(selection)
                             
                             await self.outer.setup(interaction)      
-                                            
+                                                
                     class DeleteAllBirthdaysButton(nextcord.ui.Button):
                         def __init__(self, outer):
-                            super().__init__(label = "Delete All", style = nextcord.ButtonStyle.gray)
+                            super().__init__(label="Delete All", style=nextcord.ButtonStyle.gray)
                             self.outer = outer
-                            
+                                
                         class DeleteAllStrikesView(CustomView):
                             def __init__(self, outer):
-                                super().__init__(timeout = None)
+                                super().__init__(timeout=None)
                                 self.outer = outer
                                 
-                                self.no_btn = nextcord.ui.Button(label = "No", style = nextcord.ButtonStyle.danger)
+                                self.no_btn = nextcord.ui.Button(label="No", style=nextcord.ButtonStyle.danger)
                                 self.no_btn.callback = self.no_btn_command
                                 self.add_item(self.no_btn)
                                 
-                                self.yes_btn = nextcord.ui.Button(label = "Yes", style = nextcord.ButtonStyle.green)
+                                self.yes_btn = nextcord.ui.Button(label="Yes", style=nextcord.ButtonStyle.green)
                                 self.yes_btn.callback = self.yes_btn_command
                                 self.add_item(self.yes_btn)
                                 
                             async def setup(self, interaction: Interaction):
-                                embed = nextcord.Embed(title = "Are you sure you want to do this?", description = "By choosing \"Yes\", you will delete all birthdays in the server.\nThis action cannot be undone.", color = nextcord.Color.blue())
-                                await interaction.response.edit_message(embed = embed, view = self)
+                                embed = nextcord.Embed(
+                                    title="Are you sure you want to do this?",
+                                    description="By choosing \"Yes\", you will delete all birthdays in the server.\nThis action cannot be undone.",
+                                    color=nextcord.Color.blue()
+                                )
+                                await interaction.response.edit_message(embed=embed, view=self)
                                 
                             async def no_btn_command(self, interaction: Interaction):
                                 await self.outer.setup(interaction)
@@ -3103,7 +3211,7 @@ class Dashboard(CustomView):
                                     server.birthdays.delete(birthday.member_id)
 
                                 await self.outer.setup(interaction)
-                            
+                                
                         async def callback(self, interaction: Interaction):
                             await self.DeleteAllStrikesView(self.outer).setup(interaction)           
 
@@ -3112,22 +3220,30 @@ class Dashboard(CustomView):
 
                 async def callback(self, interaction: Interaction):
                     await self.ConfigureBirthdaysView(self.outer).setup(interaction)
-    
+        
             class BirthdaysChannelButton(nextcord.ui.Button):
                 def __init__(self, outer):
-                    super().__init__(label = "Notification Channel", style = nextcord.ButtonStyle.gray)
+                    super().__init__(label="Notification Channel", style=nextcord.ButtonStyle.gray)
                     self.outer = outer
-                                     
+                                        
                 async def callback(self, interaction: Interaction):
                     server = Server(interaction.guild.id)
                         
-                    select_options = [nextcord.SelectOption(label = "System Messages Channel", value = "__SYS__", description = "Display in system messages channel", 
-                                                            default = (server.birthdays_profile.channel == UNSET_VALUE))]
+                    select_options = [nextcord.SelectOption(
+                        label="System Messages Channel",
+                        value="__SYS__",
+                        description="Display in system messages channel",
+                        default=(server.birthdays_profile.channel == UNSET_VALUE)
+                    )]
                     for channel in interaction.guild.text_channels:
-                        if not await utils.check_text_channel_permissions(channel, False): continue
-                        select_options.append(nextcord.SelectOption(label = channel.name, value = channel.id, 
-                                                                    description = f"{channel.category}", 
-                                                                    default = (server.birthdays_profile.channel == channel.id)))
+                        if not await utils.check_text_channel_permissions(channel, False):
+                            continue
+                        select_options.append(nextcord.SelectOption(
+                            label=channel.name,
+                            value=channel.id,
+                            description=f"{channel.category}",
+                            default=(server.birthdays_profile.channel == channel.id)
+                        ))
                     
                     description = """
                     Select a channel to send birthday messages.
@@ -3136,16 +3252,27 @@ class Dashboard(CustomView):
                     Ensure InfiniBot has permissions to view and send messages in all your channels.
                     """
                     description = utils.standardize_str_indention(description)
-                    embed = nextcord.Embed(title = "Dashboard - Birthdays - Notification Channel", description = description, color = nextcord.Color.blue())
-                    await ui_components.SelectView(embed, select_options, self.select_view_return, continue_button_label = "Confirm").setup(interaction)
-                      
+                    embed = nextcord.Embed(
+                        title="Dashboard - Birthdays - Notification Channel",
+                        description=description,
+                        color=nextcord.Color.blue()
+                    )
+                    await ui_components.SelectView(
+                        embed,
+                        select_options,
+                        self.select_view_return,
+                        continue_button_label="Confirm"
+                    ).setup(interaction)
+                        
                 async def select_view_return(self, interaction: Interaction, selection):
-                    if selection == None: # User clicked "Cancel"
+                    if selection is None:  # User clicked "Cancel"
                         await self.outer.setup(interaction)
                         return
                     
-                    if selection == "__SYS__": value = UNSET_VALUE
-                    else: value = selection
+                    if selection == "__SYS__":
+                        value = UNSET_VALUE
+                    else:
+                        value = selection
                     
                     server = Server(interaction.guild.id)
                     server.birthdays_profile.channel = value
@@ -3154,199 +3281,151 @@ class Dashboard(CustomView):
 
             class SetMessageTimeButton(nextcord.ui.Button):
                 def __init__(self, outer):
-                    super().__init__(label = "Set Message Time", style = nextcord.ButtonStyle.gray, row = 1)
+                    super().__init__(label="Set Message Time", style=nextcord.ButtonStyle.gray, row=1)
                     self.outer = outer
 
-                class SetMessageTimeView(CustomView):
-                    def __init__(self, outer):
-                        super().__init__(timeout = None)
+                class SetMessageTimeModal(CustomModal):
+                    def __init__(self, outer, guild_id):
+                        super().__init__(title="Set Message Time", timeout=None)
                         self.outer = outer
+                        self.guild_id = guild_id
                         
-                        self.cancel_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger) 
-                        self.cancel_btn.callback = self.cancel_btn_callback
-                        self.add_item(self.cancel_btn)
+                        server = Server(guild_id)
+                        try:
+                            # Convert stored UTC time to local time for display
+                            tz = ZoneInfo(server.infinibot_settings_profile.timezone or "UTC")
+                            utc_time = datetime.datetime.strptime(server.birthdays_profile.runtime, "%H:%M:%S").time()
+                            local_time = utc_time.replace(tzinfo=datetime.timezone.utc).astimezone(tz)
+                            default_time = local_time.strftime("%I:%M %p")  # Changed to 12-hour format with AM/PM
+                        except:
+                            default_time = None
+                            
+                        self.time_input = nextcord.ui.TextInput(
+                            label="Notification Time (HH:MM AM/PM)",  # Updated label
+                            placeholder="Example: 09:00 AM or 02:30 PM",  # Updated examples
+                            default_value=default_time,
+                            max_length=8  # Increased max length for AM/PM
+                        )
+                        self.add_item(self.time_input)
 
-                        self.continue_btn = self.ContinueButton(self)
-                        self.add_item(self.continue_btn)
+                    async def callback(self, interaction: Interaction):
+                        try:
+                            time_str = self.time_input.value.strip().upper()
+                            input_time = None
 
-                    async def setup(self, interaction: Interaction):
-                        description = """
-                        Set the time that InfiniBot will send birthday messages at.
+                            # Try parsing both formats
+                            try:
+                                # First attempt to parse with AM/PM
+                                input_time = datetime.datetime.strptime(time_str, "%I:%M %p").time()
+                            except ValueError:
+                                # Then try 24-hour format if AM/PM parse fails
+                                input_time = datetime.datetime.strptime(time_str, "%H:%M").time()
 
-                        To provide the best experience, InfiniBot needs to account for your timezone. To do this, it will ask for your current date and time. InfiniBot will compare your answers to its date and time to find your UTC offset.
+                            # Calculate adjusted time to nearest 15 minutes
+                            total_minutes = input_time.hour * 60 + input_time.minute
+                            rounded_total = round(total_minutes / 15) * 15
+                            rounded_total %= 1440  # Ensure it wraps around midnight
+
+                            adjusted_hour = rounded_total // 60
+                            adjusted_minute = rounded_total % 60
+                            adjusted_time = datetime.time(hour=adjusted_hour, minute=adjusted_minute)
+
+                            time_adjusted = (input_time.hour != adjusted_hour) or (input_time.minute != adjusted_minute)
+
+                        except ValueError:
+                            await interaction.response.send_message(
+                                embed=nextcord.Embed(
+                                    title="Invalid Time Format",
+                                    description="Please use either:\n- HH:MM (24-hour format)\n- HH:MM AM/PM (12-hour format)",
+                                    color=nextcord.Color.red()
+                                ),
+                                ephemeral=True
+                            )
+                            return
+
+                        server = Server(self.guild_id)
+                        try:
+                            # Convert adjusted local time to UTC
+                            tz = ZoneInfo(server.infinibot_settings_profile.timezone or "UTC")
+                            local_dt = datetime.datetime.combine(datetime.date.today(), adjusted_time).replace(tzinfo=tz)
+                            utc_time = local_dt.astimezone(datetime.timezone.utc).time()
+                            server.birthdays_profile.runtime = utc_time.strftime("%H:%M:%S")
+                        except Exception as e:
+                            logging.error(f"Timezone conversion error: {str(e)}")
+                            await interaction.response.send_message(
+                                embed=nextcord.Embed(
+                                    title="Configuration Error",
+                                    description="Could not save time due to timezone issues. Please check server timezone settings.",
+                                    color=nextcord.Color.red()
+                                ),
+                                ephemeral=True
+                            )
+                            return
                         
-                        If you experience timezone changes throught the year, such as Daylight Savings Time, you may need to periodically update this value.
+                        await self.outer.setup(interaction)
 
-                        When you're ready, click "Continue".
-                        """
-                        description = utils.standardize_str_indention(description)
-                        embed = nextcord.Embed(title = "Dashboard - Birthdays - Set Message Time", description = description, color = nextcord.Color.blue())
-                        await interaction.response.edit_message(embed = embed, view = self)
+                        # Send adjustment notification if needed
+                        if time_adjusted:
+                            await interaction.followup.send(
+                                embed=nextcord.Embed(
+                                    title="Time Rounded",
+                                    description=f"Your time was adjusted from {input_time.strftime('%H:%M')} " +
+                                                f"to {adjusted_time.strftime('%H:%M')} (nearest 15-minute interval).",
+                                    color=nextcord.Color.orange()
+                                ),
+                                ephemeral=True
+                            )
 
-                    async def cancel_btn_callback(self, interaction: Interaction):
-                        server = Server(interaction.guild.id)
-                        if server.birthdays_profile.runtime == UNSET_VALUE: # Skipped here
-                            await self.outer.outer.setup(interaction)
-                        else:
-                            await self.outer.setup(interaction)
-
-                    class ContinueButton(nextcord.ui.Button):
-                        def __init__(self, outer):
-                            super().__init__(label = "Continue", style = nextcord.ButtonStyle.green)
-                            self.outer = outer
-                    
-                        class PinpointTimezoneModal(CustomModal):
-                            def __init__(self, outer):
-                                super().__init__(title = "Pinpoint Timezone", timeout = None)
-                                self.outer = outer
-                                self.utc_offset = None
-                                    
-                                self.date_input = nextcord.ui.TextInput(label = "What day is it right now?",  
-                                                                    placeholder = "MM/DD/YYYY", max_length=100)
-                                self.add_item(self.date_input)
-
-                                self.time_input = nextcord.ui.TextInput(label = "What time is it right now?",
-                                                                    placeholder = "HH:MM (AM/PM)", max_length=100)
-                                self.add_item(self.time_input)
-                                
-                            async def callback(self, interaction: Interaction):
-                                error_embed = nextcord.Embed(title = "An Error Occurred", description = "Something went wrong. The date must be your current date, formatted as MM/DD/YYYY, and the time must be your current time, formatted as HH:MM (AM/PM).", color = nextcord.Color.red())
-
-                                try:
-                                    if self.time_input.value == "" or self.time_input.value == None: raise Exception
-                                    if self.date_input.value == "" or self.date_input.value == None: raise Exception
-
-                                    self.utc_offset = birthdays.calculate_utc_offset(self.date_input.value, self.time_input.value)
-                                except:
-                                    await interaction.response.send_message(embed = error_embed, ephemeral=True)
-                                    return
-                                
-                                await self.NextView(self.outer, self.utc_offset).setup(interaction)
-
-                            class NextView(CustomView):
-                                def __init__(self, outer, utc_offset):
-                                    super().__init__(timeout = None)
-                                    self.outer = outer
-                                    self.utc_offset = utc_offset
-
-                                    self.cancel_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger) 
-                                    self.cancel_btn.callback = self.cancel_btn_callback
-                                    self.add_item(self.cancel_btn)
-
-                                    self.set_time_btn = self.SetTimeButton(self.outer, self.utc_offset)
-                                    self.add_item(self.set_time_btn)
-
-                                async def setup(self, interaction: Interaction):
-                                    try:
-                                        local_time = utils.parse_str_to_datetime("08:30")
-                                        _datetime = utils.conversion_local_time_and_utc_time(self.utc_offset, local_time_datetime=local_time)
-                                        epoch_time = _datetime.timestamp()
-                                        epoch_time = round(epoch_time)
-                                        discord_timestamp = f"<t:{epoch_time}:f>"
-                                    except Exception as e:
-                                        logging.error(e)
-                                        discord_timestamp = "*ERROR: An unknown error occurred.*"
-
-
-                                    description = f"""
-                                    InfiniBot has determined your UTC offset to be {self.utc_offset} hours. 
-                                    
-                                    The time below should be equivalent to January 1st, 2000 at 8:30 (in the morning).
-                                    {discord_timestamp}
-
-                                    If this is incorrect, click "Cancel" and try again.
-
-                                    To set the time that InfiniBot will send birthday messages at, click "Set Time".
-                                    This time must be on the 15 minute mark (12:00, 12:15, 12:30, 12:45, etc).
-
-                                    Tip: To avoid mistakes due to timezones, try setting the message time around noon in your local time. This helps to avoid edge-cases that may cause unexpected results.
-                                    """
-                                    description = utils.standardize_str_indention(description)
-                                    embed = nextcord.Embed(title = "Dashboard - Birthdays - Set Message Time", description = description, color = nextcord.Color.blue())
-                                    await interaction.response.edit_message(embed=embed, view=self)
-
-                                async def cancel_btn_callback(self, interaction: Interaction):
-                                    await self.outer.setup(interaction)
-
-                                class SetTimeButton(nextcord.ui.Button):
-                                    def __init__(self, outer, utc_offset):
-                                        super().__init__(label = "Set Time", style = nextcord.ButtonStyle.green)
-                                        self.outer = outer
-                                        self.utc_offset = utc_offset
-
-                                    async def callback(self, interaction: Interaction):
-                                        await interaction.response.send_modal(self.SetMessageTimeModal(self.outer, interaction.guild.id, self.utc_offset))
-                                
-                                    class SetMessageTimeModal(CustomModal):
-                                        def __init__(self, outer, guild_id, utc_offset):
-                                            super().__init__(title = "Set Message Time", timeout = None)
-                                            self.outer = outer
-                                            self.guild_id = guild_id
-                                            self.utc_offset = utc_offset
-
-                                            try:
-                                                server = Server(guild_id)
-                                                if server.birthdays_profile.runtime == UNSET_VALUE: raise Exception
-                                                _datetime = utils.parse_str_to_datetime(server.birthdays_profile.runtime)
-                                                time_formatted = utils.conversion_local_time_and_utc_time(self.utc_offset, utc_time_datetime=_datetime).time()
-                                                time_formatted = f"{time_formatted}"[:-3] # Remove the seconds
-                                            except:
-                                                time_formatted = None
-                                                
-                                            self.local_time_input = nextcord.ui.TextInput(label = "What time should birthday messages be sent?",
-                                                                            placeholder = "HH:MM (AM/PM)", default_value=time_formatted, max_length=100)
-                                            self.add_item(self.local_time_input)
-                                            
-                                        async def callback(self, interaction: Interaction):
-                                            error_embed = nextcord.Embed(title = "An Error Occurred", description = "Something went wrong. The time must be formatted as HH:MM (AM/PM). The time must also be on the 15 minute mark (12:00, 12:15, 12:30, 12:45, etc)", color = nextcord.Color.red())
-
-                                            try:
-                                                if self.local_time_input.value == "" or self.local_time_input.value == None: raise Exception
-
-                                                _datetime = utils.parse_str_to_datetime(self.local_time_input.value)
-                                                utc_time = utils.conversion_local_time_and_utc_time(self.utc_offset, local_time_datetime=_datetime)
-                                                
-                                                if utc_time.minute not in [0, 15, 30, 45]:
-                                                    # Round to the nearest 15 minutes
-                                                    utc_time = utc_time.replace(minute=round(utc_time.minute / 15) * 15)
-
-                                                utc_time_formatted = f"{utc_time.time()}"[:-3] # Remove the seconds
-
-                                            except Exception as e:
-                                                logging.error(e)
-                                                await interaction.response.send_message(embed = error_embed, ephemeral=True)
-                                                return
-                                            
-                                            server = Server(self.guild_id)
-                                            server.birthdays_profile.runtime = utc_time_formatted
-                                            server.birthdays_profile.utc_offset = self.utc_offset
-
-                                            await self.outer.outer.setup(interaction)
-                                
-                        async def callback(self, interaction: Interaction):
-                            await interaction.response.send_modal(self.PinpointTimezoneModal(self.outer))
-                
                 async def callback(self, interaction: Interaction):
-                    await self.SetMessageTimeView(self.outer).setup(interaction)
+                    server = Server(interaction.guild.id)
+                    if not server.infinibot_settings_profile.timezone:
+                        embed = nextcord.Embed(
+                            title="Timezone Not Configured",
+                            description="You must configure the server timezone before setting notification times!",
+                            color=nextcord.Color.red()
+                        )
+                        configure_btn = nextcord.ui.Button(
+                            label="Configure Timezone", 
+                            style=nextcord.ButtonStyle.green,
+                            custom_id="configure_tz"
+                        )
+                        configure_btn.callback = lambda i: self.outer.outer.configure_timezone_btn.callback(i)
+                        
+                        view = CustomView(timeout=None)
+                        view.add_item(configure_btn)
+                        await interaction.response.edit_message(embed=embed, view=view)
+                        return
+
+                    await interaction.response.send_modal(self.SetMessageTimeModal(self.outer, interaction.guild.id))
 
             class EditBirthdayMessageButton(nextcord.ui.Button):
                 def __init__(self, outer):
-                    super().__init__(label = "Edit Message", style = nextcord.ButtonStyle.gray, row = 1)
+                    super().__init__(label="Edit Message", style=nextcord.ButtonStyle.gray, row=1)
                     self.outer = outer
                     
                 class EditMessageModal(CustomModal):
                     def __init__(self, guild: nextcord.Guild, outer):
-                        super().__init__(timeout = None, title = "Birthday Message")
+                        super().__init__(title="Birthday Message", timeout=None)
                         self.outer = outer
                         
                         server = Server(guild.id)
                         
-                        self.join_message_title_input = nextcord.ui.TextInput(label = "Title", style = nextcord.TextInputStyle.short, max_length=256, 
-                                                                                default_value = server.birthdays_profile.embed["title"], placeholder = "Happy Birthday, @realname!")
+                        self.join_message_title_input = nextcord.ui.TextInput(
+                            label="Title",
+                            style=nextcord.TextInputStyle.short,
+                            max_length=256,
+                            default_value=server.birthdays_profile.embed.get("title", ""),
+                            placeholder="Happy Birthday, @realname!"
+                        )
                         self.add_item(self.join_message_title_input)
 
-                        self.join_message_description_input = nextcord.ui.TextInput(label = "Description", style = nextcord.TextInputStyle.paragraph, max_length=1024, 
-                                                                                default_value = server.birthdays_profile.embed["description"], placeholder = "@mention just turned [age]!")
+                        self.join_message_description_input = nextcord.ui.TextInput(
+                            label="Description",
+                            style=nextcord.TextInputStyle.paragraph,
+                            max_length=1024,
+                            default_value=server.birthdays_profile.embed.get("description", ""),
+                            placeholder="@mention just turned [age]!"
+                        )
                         self.add_item(self.join_message_description_input)
                         
                     async def callback(self, interaction: Interaction):
@@ -3368,7 +3447,7 @@ class Dashboard(CustomView):
         async def callback(self, interaction: Interaction):
             view = self.BirthdaysView(self.outer)
             await view.setup(interaction)
-           
+
     class DefaultRolesButton(nextcord.ui.Button):
         def __init__(self, outer):
             super().__init__(label = "Default Roles", style = nextcord.ButtonStyle.gray, row = 1)
@@ -3908,6 +3987,180 @@ class Dashboard(CustomView):
                        
         async def callback(self, interaction: Interaction):
             await self.ExtraFeaturesButton(self.outer).setup(interaction)
+
+    class ConfigureTimezoneButton(nextcord.ui.Button):
+        def __init__(self, outer):
+            super().__init__(
+                label="Configure Timezone", 
+                style=nextcord.ButtonStyle.gray,  # Initial style will be updated in setup
+                row=2
+            )
+            self.outer = outer
+
+        async def callback(self, interaction: Interaction):
+            await self.show_landing_page(interaction)
+
+        async def show_landing_page(self, interaction: Interaction):
+            server = Server(interaction.guild.id)
+            current_tz = server.infinibot_settings_profile.timezone
+            is_set = current_tz not in [None, "UTC", UNSET_VALUE]
+
+            # Update button style based on current state
+            self.style = nextcord.ButtonStyle.green if not is_set else nextcord.ButtonStyle.gray
+            self.label = "Set Timezone" if not is_set else "Change Timezone"
+
+            description = []
+            if is_set:
+                description.append(f"**Current Timezone:** `{current_tz}`")
+                try:
+                    tz = ZoneInfo(current_tz)
+                    now = datetime.datetime.now(tz)
+                    description.append(f"**Current Time:** {now.strftime('%Y-%m-%d %H:%M:%S')}")
+                    description.append(f"**UTC Offset:** {self.get_current_offset(current_tz)}")
+                except Exception as e:
+                    description.append("⚠️ Current timezone configuration appears invalid!")
+
+            description.extend([
+                "\n**Why configure timezone?**",
+                "InfiniBot uses this timezone for:",
+                "- Scheduling automatic actions",
+                "- Displaying time-relative information",
+                "- Birthday notifications",
+                "- Leveling system maintenance",
+                "\nWe strongly recommend setting this for accurate time management!"
+            ])
+
+            embed = nextcord.Embed(
+                title="Dashboard - Configure Timezone",
+                description="\n".join(description),
+                color=nextcord.Color.blue()
+            )
+
+            view = CustomView(timeout=None)
+            configure_btn = nextcord.ui.Button(
+                label=self.label,
+                style=self.style,
+                custom_id="configure_tz"
+            )
+            configure_btn.callback = self.start_configuration
+            view.add_item(configure_btn)
+
+            back_btn = nextcord.ui.Button(
+                label="Back", 
+                style=nextcord.ButtonStyle.danger
+            )
+            back_btn.callback = self.back_to_dashboard
+            view.add_item(back_btn)
+
+            try:
+                if interaction.response.is_done():
+                    await interaction.edit_original_message(embed=embed, view=view)
+                else:
+                    await interaction.response.edit_message(embed=embed, view=view)
+            except Exception as e:
+                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+
+        async def start_configuration(self, interaction: Interaction):
+            regions = self.get_timezone_regions()
+            select_options = [nextcord.SelectOption(label=region, value=region) for region in regions]
+
+            embed = nextcord.Embed(
+                title="Configure Timezone - Select Region",
+                description="Select the region that best represents your location:",
+                color=nextcord.Color.blue()
+            )
+            await ui_components.SelectView(
+                embed,
+                select_options,
+                self.region_selected_callback,
+                continue_button_label="Next",
+                cancel_button_label="Back",
+                preserve_order=True
+            ).setup(interaction)
+
+        async def back_to_dashboard(self, interaction: Interaction):
+            await self.outer.setup(interaction)
+
+        def get_timezone_regions(self):
+            regions = set()
+            for tz in available_timezones():
+                if '/' in tz:
+                    regions.add(tz.split('/')[0])
+            regions = sorted(regions)
+            if 'US' in regions:
+                regions.remove('US')
+                regions.insert(0, 'United States')
+            if 'Etc' in regions:
+                regions.remove('Etc')
+                regions.append('Etc')
+            return regions
+
+        async def region_selected_callback(self, interaction: Interaction, region_selected):
+            if region_selected is None:
+                await self.show_landing_page(interaction)
+                return
+
+            region = region_selected.replace("United States", "US")
+            raw_tzones = [tz for tz in available_timezones() if tz.startswith(f"{region}/")]
+            tz_entries = []
+            for tz in raw_tzones:
+                formatted_name = self.format_timezone_name(tz)
+                offset = self.get_current_offset(tz)
+                tz_entries.append((formatted_name, tz, offset))
+
+            tz_entries_sorted = sorted(tz_entries, key=lambda x: x[0])
+            select_options = [
+                nextcord.SelectOption(
+                    label=f"{name}",
+                    value=tz,
+                    description=offset
+                ) for name, tz, offset in tz_entries_sorted
+            ]
+
+            embed = nextcord.Embed(
+                title=f"Configure Timezone - {region_selected}",
+                description="Select your specific timezone:",
+                color=nextcord.Color.blue()
+            )
+            await ui_components.SelectView(
+                embed,
+                select_options,
+                self.timezone_selected_callback,
+                continue_button_label="Select",
+                cancel_button_label="Back",
+                preserve_order=True
+            ).setup(interaction)
+
+        def format_timezone_name(self, tz_name):
+            parts = tz_name.split('/')
+            location = parts[-1].replace('_', ' ')
+            return f"{location}, {parts[0]}" if len(parts) > 1 else tz_name
+
+        def get_current_offset(self, tz_name):
+            tz = ZoneInfo(tz_name)
+            now = datetime.datetime.now(tz)
+            offset = now.utcoffset().total_seconds() / 3600
+            return f"UTC{offset:+g}"
+
+        async def timezone_selected_callback(self, interaction: Interaction, tz_selected):
+            if tz_selected is None:
+                await self.start_configuration(interaction)
+                return
+
+            server = Server(interaction.guild.id)
+            server.infinibot_settings_profile.timezone = tz_selected
+
+            # Send confirmation and refresh landing page
+            await interaction.response.defer()
+            await interaction.followup.send(
+                embed=nextcord.Embed(
+                    title="⏰ Timezone Updated",
+                    description=f"Successfully set server timezone to:\n`{tz_selected}`",
+                    color=nextcord.Color.green()
+                ),
+                ephemeral=True
+            )
+            await self.show_landing_page(interaction)
 
 async def run_dashboard_command(interaction: Interaction):
     """

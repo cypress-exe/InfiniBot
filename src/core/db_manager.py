@@ -1,8 +1,13 @@
+import asyncio
+import datetime
 import json
-
+import logging
+import nextcord
 from nextcord import Embed as NextcordEmbed
+import psutil
 
 from components.utils import format_var_to_pythonic_type, get_discord_color_from_string
+from config.global_settings import get_bot_load_status
 from modules.database import Database, DatabaseContextManager
 from modules.custom_types import UNSET_VALUE
 
@@ -218,7 +223,7 @@ class Simple_TableManager:
 
         return decorator
     
-    def integer_property(property_name:int, accept_none_value = True, **kwargs):
+    def integer_property(property_name:int, accept_none_value=True, allow_negative_values=False, **kwargs):
         """
         Custom decorator for creating properties that are integers.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -243,16 +248,19 @@ class Simple_TableManager:
             if isinstance(value, str):
                 if value.isdigit(): value = int(value)
             if isinstance(value, int):
+                if (not allow_negative_values) and value < 0: raise ValueError('This property has been modified to only accept positive values.')
                 return value
             if isinstance(value, float):
+                if (not allow_negative_values) and value < 0: raise ValueError('This property has been modified to only accept positive values.')
+                if not value.is_integer(): logging.warning("Value is not an integer. It will be rounded to the nearest integer.")
                 return int(value)
             if isinstance(value, UNSET_VALUE): return value
-            if isinstance(value, data_structure): return value
+            if data_structure and isinstance(value, data_structure): return value
             raise TypeError('Must be of type Int')
 
         return Simple_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
 
-    def float_property(property_name:float, accept_none_value = True, **kwargs):
+    def float_property(property_name:float, accept_none_value=True, allow_negative_values=False, **kwargs):
         """
         Custom decorator for creating properties that are floats.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -275,8 +283,10 @@ class Simple_TableManager:
             if isinstance(value, str):
                 if value.isdigit(): value = float(value)
             if isinstance(value, int):
+                if (not allow_negative_values) and value < 0: raise ValueError('This property has been modified to only accept positive values.')
                 value = float(value)
             if isinstance(value, float):
+                if (not allow_negative_values) and value < 0: raise ValueError('This property has been modified to only accept positive values.')
                 return value
             raise TypeError('Must be of type Float')
 
@@ -307,7 +317,7 @@ class Simple_TableManager:
 
         return Simple_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
 
-    def string_property(property_name:str, accept_none_value = False, **kwargs):
+    def string_property(property_name:str, accept_none_value=False, **kwargs):
         """
         Custom decorator for creating properties that are strings.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -336,7 +346,7 @@ class Simple_TableManager:
 
         return Simple_TableManager.custom_property(property_name, setter_modifier=setter_modifier, **kwargs)
 
-    def typed_property(property_name:(int | UNSET_VALUE | None), accept_unset_value = True, accept_none_value = True, enforce_numerical_values = False, **kwargs):
+    def typed_property(property_name:(int | UNSET_VALUE | None), accept_unset_value=True, accept_none_value=True, enforce_numerical_values=False, **kwargs):
         """
         Custom decorator for creating properties that can be equal to None, UNSET_VALUE, integer, float, or string.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -392,7 +402,7 @@ class Simple_TableManager:
 
         return Simple_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier, **kwargs)
 
-    def list_property(property_name:(list | None), accept_duplicate_values = True, **kwargs):
+    def list_property(property_name:(list | None), accept_duplicate_values=True, **kwargs):
         """
         Custom decorator for creating properties that are lists.
         Handles SQL retrieval, setting, cleaning, etc...
@@ -482,6 +492,12 @@ class Simple_TableManager:
                     properties["color"] = get_discord_color_from_string(properties["color"])
                 
                 return NextcordEmbed(**properties)
+            
+            def get(self, key, default=None):
+                if key in self.properties:
+                    return self.properties[key]
+                else:
+                    return default
             
         def getter_modifier(value):
             if value is None: # This case should never happen.
@@ -871,3 +887,112 @@ class IntegratedList_TableManager:
         entries_str = ", ".join(str(entry) for entry in entries)
         return f"[{entries_str}]"
 
+
+async def daily_database_maintenance(bot: nextcord.Client):
+    """Perform database maintenance with async optimizations and performance monitoring"""
+    # Initialize performance tracking
+    start_time = datetime.datetime.now(datetime.timezone.utc)
+    total_deleted = 0
+    throttle_events = 0
+    max_cpu = 75  # % CPU usage threshold for throttling
+    loop = asyncio.get_event_loop()
+    
+    logging.info(f"================================ GLOBAL DATABASE MAINTENANCE ================================")
+    
+    try:
+        if not get_bot_load_status():
+            logging.warning("SKIPPING: Bot load status prevents maintenance")
+            return
+
+        # Database optimization phase
+        logging.info("Starting database optimization...")
+        optimize_start = datetime.datetime.now(datetime.timezone.utc)
+        await loop.run_in_executor(
+            None,
+            get_database().optimize_database
+        )
+        optimize_duration = datetime.datetime.now(datetime.timezone.utc) - optimize_start
+        logging.info(f"Optimization completed in {optimize_duration.total_seconds():.2f}s")
+
+        # Guild cleanup phase
+        all_guild_ids = {guild.id for guild in bot.guilds}
+        logging.info(f"Scanning tables for orphaned entries")
+
+        for table in get_database().tables:
+            try:
+                table_start = datetime.datetime.now(datetime.timezone.utc)
+                # Get entries as list to handle length and batching
+                entries = await loop.run_in_executor(
+                    None,
+                    lambda: list(get_database().get_table_unique_entries(table))
+                )
+                total_entries = len(entries)
+                logging.info(f"Processing {total_entries} entries in {table}")
+                deleted_count = 0
+                batch_size = 100
+                
+                for batch_num in range(0, total_entries, batch_size):
+                    # Throttle check
+                    if psutil.cpu_percent() > max_cpu:
+                        throttle_events += 1
+                        await asyncio.sleep(1)
+                        logging.warning(f"CPU at {psutil.cpu_percent()}% - throttling batch {batch_num//batch_size}")
+                    
+                    batch = entries[batch_num:batch_num + batch_size]
+                    
+                    # Process batch
+                    deleted_in_batch = await loop.run_in_executor(
+                        None,
+                        _process_batch,
+                        table,
+                        batch,
+                        all_guild_ids
+                    )
+                    
+                    deleted_count += deleted_in_batch
+                    total_deleted += deleted_in_batch
+                    
+                    # Progress logging every 10 batches
+                    if batch_num % (batch_size * 10) == 0:
+                        elapsed = datetime.datetime.now(datetime.timezone.utc) - table_start
+                        processed = min(batch_num + batch_size, total_entries)
+                        logging.info(
+                            f"{table}: Processed {processed}/{total_entries} "
+                            f"({processed/total_entries*100:.1f}%) | "
+                            f"Deleted: {deleted_count} | "
+                            f"Rate: {batch_size/elapsed.total_seconds():.1f} entries/s"
+                        )
+                
+                logging.info(f"Completed {table} in {datetime.datetime.now(datetime.timezone.utc) - table_start}")
+
+            except Exception as table_err:
+                logging.error(f"Table {table} processing failed: {table_err}", exc_info=True)
+
+        # Final report
+        total_duration = datetime.datetime.now(datetime.timezone.utc) - start_time
+        logging.info(
+            f"MAINTENANCE COMPLETE\n"
+            f"Duration: {total_duration}\n"
+            f"Deleted: {total_deleted} orphans\n"
+            f"Throttle events: {throttle_events}\n"
+            f"Peak CPU: {psutil.cpu_percent()}%\n"
+            f"Memory usage: {psutil.virtual_memory().percent}%"
+        )
+
+    except Exception as err:
+        logging.error(f"Fatal maintenance error: {err}", exc_info=True)
+    finally:
+        if (datetime.datetime.now(datetime.timezone.utc) - start_time) > datetime.timedelta(minutes=5):
+            logging.warning("Database maintenance exceeded 5 minute threshold!")
+
+def _process_batch(table: str, batch: list, valid_ids: set) -> int:
+    """Helper function for batch processing (runs in executor)"""
+    deleted = 0
+    for entry_id in batch:
+        if entry_id not in valid_ids:
+            try:
+                get_database().force_remove_entry(table, entry_id)
+                deleted += 1
+            except Exception as e:
+                logging.error(f"Failed to delete {entry_id} from {table}: {e}")
+    return deleted
