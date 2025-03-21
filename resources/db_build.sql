@@ -67,8 +67,7 @@ CREATE TABLE IF NOT EXISTS birthdays_profile( -- #optimize
     server_id INT PRIMARY KEY,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
     embed TEXT DEFAULT '{"title":"Happy Birthday, [realname]!","description":"@mention just turned [age]!", "color":"Gold"}',
-    runtime TEXT DEFAULT '{"status": "UNSET", "value": null}',
-    utc_offset INT DEFAULT 0
+    runtime TEXT DEFAULT '{"status": "UNSET", "value": null}'
 )
 
 -- Create infinibot_settings_profile Table (simple table)

@@ -826,8 +826,6 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "birthdays_profile", "embed[description]", "@mention just turned [age]!", ["Description_Changed"], [])
         self.run_test_on_property(server, "birthdays_profile", "embed[color]", "Gold", ["Red", "Orange", "Yellow", "Green"], [])
         self.run_test_on_property(server, "birthdays_profile", "runtime", UNSET_VALUE, ["12:00 MDT", "8:00 PDT", "18:00 UTC", "0:00 EST", UNSET_VALUE], [(TypeError, None)])
-        self.run_test_on_property(server, "birthdays_profile", "utc_offset", 0, [5.5, 10, -7, -9.25], 
-                                  [i for i in self.INVALID_FLOAT_TESTS if i != (ValueError, -1)])
 
         server.remove_all_data()
 

@@ -166,8 +166,7 @@ class Configs(GlobalSetting):
             },
             "scheduler": {
                 "misfire_grace_time_seconds": 30
-            },
-            "server_utc_offset": -7
+            }
         }
 
         super().__init__("config", variable_list)

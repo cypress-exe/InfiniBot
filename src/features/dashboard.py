@@ -2857,7 +2857,7 @@ class Dashboard(CustomView):
 
                 # Convert stored UTC time to server's timezone for display
                 try:
-                    tz = ZoneInfo(server.infinibot_settings_profile.timezone)
+                    tz = ZoneInfo(server.infinibot_settings_profile.timezone or "UTC")
                     utc_time = datetime.datetime.strptime(server.birthdays_profile.runtime, "%H:%M:%S").time()
                     utc_datetime = datetime.datetime.combine(datetime.date.today(), utc_time).replace(tzinfo=datetime.timezone.utc)
                     local_datetime = utc_datetime.astimezone(tz)
@@ -3293,7 +3293,7 @@ class Dashboard(CustomView):
                         server = Server(guild_id)
                         try:
                             # Convert stored UTC time to local time for display
-                            tz = ZoneInfo(server.infinibot_settings_profile.timezone)
+                            tz = ZoneInfo(server.infinibot_settings_profile.timezone or "UTC")
                             utc_time = datetime.datetime.strptime(server.birthdays_profile.runtime, "%H:%M:%S").time()
                             local_time = utc_time.replace(tzinfo=datetime.timezone.utc).astimezone(tz)
                             default_time = local_time.strftime("%I:%M %p")  # Changed to 12-hour format with AM/PM
@@ -3346,7 +3346,7 @@ class Dashboard(CustomView):
                         server = Server(self.guild_id)
                         try:
                             # Convert adjusted local time to UTC
-                            tz = ZoneInfo(server.infinibot_settings_profile.timezone)
+                            tz = ZoneInfo(server.infinibot_settings_profile.timezone or "UTC")
                             local_dt = datetime.datetime.combine(datetime.date.today(), adjusted_time).replace(tzinfo=tz)
                             utc_time = local_dt.astimezone(datetime.timezone.utc).time()
                             server.birthdays_profile.runtime = utc_time.strftime("%H:%M:%S")

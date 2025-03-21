@@ -869,7 +869,7 @@ async def check_and_delete_invite_links(message: nextcord.Message) -> bool:
 
 
 # Moderation Actions ----------------------------------------------------------------------------------------------------------
-async def midnight_action_moderation(bot: nextcord.Client) -> None:
+async def daily_moderation_maintenance(bot: nextcord.Client, guild: nextcord.Guild) -> None:
     """|coro|
 
     The midnight action for moderation, handling strikes for profanity moderation.
@@ -880,96 +880,67 @@ async def midnight_action_moderation(bot: nextcord.Client) -> None:
     :return: None
     :rtype: None
     """
-    logging.info("MIDNIGHT ACTION: Profanity Moderation Strike Update ----------------------------------------------------------------")
+    logging.info(f"Running midnight action for moderation in guild: {guild.name})({guild.id})")
     if get_global_kill_status()["profanity_moderation"]:
-        logging.warning("Skipping profanity moderation strike update because of global kill status.")
+        logging.warning("SKIPPING profanity moderation strike update because of global kill status.")
         return
     if get_bot_load_status() == False:
-        logging.warning("Delaying profanity moderation strike update because of bot load status.")
-        logging.info("Delaying for 30 minutes...")
-
-        # Schedule retry in 30 minutes without blocking
-        async def delayed_retry():
-            await asyncio.sleep(30 * 60)  # 30 minutes
-            await midnight_action_moderation(bot)  # Recursive retry
-            
-        asyncio.create_task(delayed_retry())
-        return  # Exit current execution
+        logging.warning("SKIPPING profanity moderation strike update because of bot load status.")
+        return
     
-    for guild in bot.guilds:
-        try:
-            logging.info("Processing guild: " + guild.name)
-            if guild == None: 
-                logging.info("Guild is None. Skipping.")
-                continue
+    try:
+        if guild == None: return
 
-            server = Server(guild.id)
-            
-            # Checks
-            if server == None: 
-                logging.info("Server is None. Skipping.")
-                continue
-            if server.profanity_moderation_profile.active == False: 
-                logging.info("Profanity Moderation is not active. Skipping.")
-                continue
-            if server.profanity_moderation_profile.strike_system_active == False: 
-                logging.info("Profanity Moderation Strike System is not active. Skipping.")
-                continue
-            if server.profanity_moderation_profile.strike_expiring_active == False: 
-                logging.info("Profanity Moderation Strike Expiring is not active. Skipping.")
-                continue
-            
-            # Go through each member and edit
-            for member_strike_info in server.moderation_strikes:
-                try:
-                    logging.info(f"Processing member: {member_strike_info.member_id}")
-                    member = guild.get_member(member_strike_info.member_id)
-                    if member == None: # Member is no longer in the server
-                        # Remove the member
-                        server.member_levels.delete(member_strike_info.member_id)
-                        logging.info("Member is no longer in the server. Skipping.")
-                        continue
-                    
-                    logging.info(f"Member name: {member.name}")
-
-                    # Check if the member has strikes
-                    if (member_strike_info.strikes == 0): 
-                        logging.info("Member has no strikes. Skipping and removing their record.")
-                        server.moderation_strikes.delete(member_strike_info.member_id)
-                        continue
-
-                    # Convert string to UTC-aware datetime
-                    logging.info("Last strike: " + member_strike_info.last_strike)
-                    strike_date = datetime.datetime.strptime(
-                        member_strike_info.last_strike, 
-                        "%Y-%m-%d %H:%M:%S.%f"
-                    ).replace(tzinfo=datetime.timezone.utc)
-
-                    # Determine if within the window for strike removal
-                    if (strike_date + datetime.timedelta(days = server.profanity_moderation_profile.strike_expire_days) > datetime.datetime.now(datetime.timezone.utc)): 
-                        logging.info("Member's strikes are not within the window for removal. Skipping.")
-                        continue
-
-                    # Remove a single strike
-                    _strikes = member_strike_info.strikes
-                    _strikes -= 1
-                    logging.info("New strikes: " + str(_strikes))
-                    if _strikes > 0:
-                        # Update the member's record
-                        server.moderation_strikes.edit(member_strike_info.member_id, strikes = _strikes, last_strike = datetime.datetime.now())
-                        logging.info("Member's strike has been removed.")
-                    else:
-                        # Remove the member's record
-                        server.moderation_strikes.delete(member_strike_info.member_id)
-                        logging.info("Member's record has been removed.")
-
-                except Exception as err:
-                    logging.error(f"ERROR when checking profanity moderation (member) in server {guild.id}: {err}", exc_info=True)
+        server = Server(guild.id)
+        
+        # Checks
+        if server == None: return
+        if server.profanity_moderation_profile.active == False: return
+        if server.profanity_moderation_profile.strike_system_active == False: return
+        if server.profanity_moderation_profile.strike_expiring_active == False: return
+        
+        # Go through each member and edit
+        for member_strike_info in server.moderation_strikes:
+            try:
+                member = guild.get_member(member_strike_info.member_id)
+                if member == None: # Member is no longer in the server
+                    # Remove the member
+                    server.member_levels.delete(member_strike_info.member_id)
                     continue
-            
-        except Exception as err:
-            logging.error(f"ERROR When checking profanity moderation (server) in server {guild.id}: {err}", exc_info=True)
-            continue
+
+                # Check if the member has strikes
+                if (member_strike_info.strikes == 0): 
+                    server.moderation_strikes.delete(member_strike_info.member_id)
+                    continue
+
+                # Convert string to UTC-aware datetime
+                strike_date = datetime.datetime.strptime(
+                    member_strike_info.last_strike, 
+                    "%Y-%m-%d %H:%M:%S.%f"
+                ).replace(tzinfo=datetime.timezone.utc)
+
+                # Determine if within the window for strike removal
+                if (strike_date + datetime.timedelta(days = server.profanity_moderation_profile.strike_expire_days) > datetime.datetime.now(datetime.timezone.utc)): 
+                    continue
+
+                # Remove a single strike
+                _strikes = member_strike_info.strikes
+                _strikes -= 1
+                if _strikes > 0:
+                    # Update the member's record
+                    server.moderation_strikes.edit(member_strike_info.member_id, strikes = _strikes, last_strike = datetime.datetime.now())
+                    logging.info(f"Member's strike has been removed. Server: {guild.name} ({guild.id})")
+                else:
+                    # Remove the member's record
+                    server.moderation_strikes.delete(member_strike_info.member_id)
+                    logging.info(f"Member's record has been removed. Server: {guild.name} ({guild.id})")
+
+            except Exception as err:
+                logging.error(f"ERROR when checking profanity moderation (member) in server {guild.id}: {err}", exc_info=True)
+                continue
+        
+    except Exception as err:
+        logging.error(f"ERROR When checking profanity moderation (server) in server {guild.id}: {err}", exc_info=True)
 
 
 # Commands

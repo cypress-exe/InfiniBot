@@ -2,6 +2,7 @@ import atexit
 import logging
 import os
 import re
+import time
 
 from typing import Any, Generator
 
@@ -187,12 +188,13 @@ class Database:
         # Execute the query
         self.execute_query(select_query, commit=True)
 
-    def optimize_database(self) -> None:
+    def optimize_database(self, throttle:bool = False) -> None:
         """
         Optimize database including:
             Remove extraneous entries in all tables marked as `#optimize`
         """
         for table in self.tables_to_optimize:
+            if throttle: time.sleep(1)
             self.remove_extraneous_rows(table)
 
     def force_remove_entry(self, table:str, id:int) -> None:
@@ -296,8 +298,8 @@ class Database:
         """
         Get all unique entries from a specific table.
 
-        Returns:
-            Generator[int, int, int]: Generator yielding integer IDs.
+        Yields:
+            list[int] (Generator[int, int, int]): Generator yielding integer IDs.
         """
         id_sql_name = self.get_id_sql_name(table)
         ids = self.execute_query(f"SELECT DISTINCT {id_sql_name} FROM {table}", 

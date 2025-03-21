@@ -224,9 +224,6 @@ class Server:
         @Server_Simple_TableManager.typed_property("runtime", accept_none_value=False)
         def runtime(self): pass
 
-        @Server_Simple_TableManager.float_property("utc_offset", accept_none_value=False, allow_negative_values=True)
-        def utc_offset(self): pass
-
     @property
     def infinibot_settings_profile(self):
         if self._infinibot_settings_profile is None: self._infinibot_settings_profile = self.InfinibotSettingsProfile(self.server_id)
