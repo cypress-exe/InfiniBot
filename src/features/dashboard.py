@@ -11,9 +11,9 @@ from nextcord import Interaction
 
 from components import ui_components, utils
 from components.ui_components import CustomView, CustomModal
-from config.global_settings import ShardLoadedStatus, get_configs
+from config.global_settings import ShardLoadedStatus
 from config.server import Server
-from features import birthdays, help_commands, leveling
+from features import help_commands, leveling
 from modules.custom_types import UNSET_VALUE
 
 

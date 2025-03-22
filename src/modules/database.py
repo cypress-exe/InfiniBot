@@ -1,3 +1,4 @@
+import asyncio
 import atexit
 import logging
 import os
@@ -188,14 +189,55 @@ class Database:
         # Execute the query
         self.execute_query(select_query, commit=True)
 
-    def optimize_database(self, throttle:bool = False) -> None:
+    async def optimize_database(self, throttle: bool = False, throttle_delay: float = 1.0) -> None:
         """
-        Optimize database including:
-            Remove extraneous entries in all tables marked as `#optimize`
+        Async database optimization with simple throttling and metrics
+        - throttle: Enable delay between table optimizations
+        - throttle_delay: Seconds to pause between tables (if throttling)
         """
-        for table in self.tables_to_optimize:
-            if throttle: time.sleep(1)
-            self.remove_extraneous_rows(table)
+        # Initialize metrics
+        start_time = time.monotonic()
+        total_tables = len(self.tables_to_optimize)
+        processed_tables = 0
+        total_throttle_time = 0.0
+        loop = asyncio.get_event_loop()
+
+        logging.info(f"Starting database optimization ({total_tables} tables)")
+
+        try:
+            for table in self.tables_to_optimize:
+                # Process table in executor (prevents blocking event loop)
+                await loop.run_in_executor(
+                    None,  # Use default executor
+                    self.remove_extraneous_rows,
+                    table
+                )
+                processed_tables += 1
+
+                # Apply simple throttling
+                if throttle:
+                    throttle_start = time.monotonic()
+                    await asyncio.sleep(throttle_delay)
+                    total_throttle_time += time.monotonic() - throttle_start
+
+        except Exception as e:
+            logging.error(f"Optimization failed: {e}")
+            raise
+
+        finally:
+            # Calculate metrics
+            total_duration = time.monotonic() - start_time
+            avg_per_table = (total_duration - total_throttle_time) / processed_tables if processed_tables else 0
+
+            # Log final metrics
+            logging.info(
+                f"Database optimization completed\n"
+                f"Tables processed: {processed_tables}/{total_tables}\n"
+                f"Total duration: {total_duration:.2f}s\n"
+                f"Active processing time: {total_duration - total_throttle_time:.2f}s\n"
+                f"Throttle time: {total_throttle_time:.2f}s\n"
+                f"Avg time per table: {avg_per_table:.2f}s"
+            )
 
     def force_remove_entry(self, table:str, id:int) -> None:
         """
