@@ -271,8 +271,12 @@ def str_is_profane(message: str, database: list[str]) -> str | None:
         :rtype: str
         """
         word = word.lower()
-        word = word.replace("*", ".")
-
+        # Handle required wildcards (* = exactly 1 character)
+        word = word.replace("*", ".")  
+        # Add optional wildcards (? = 0 or 1 characters)
+        word = word.replace("?", ".?")  # NEW
+        
+        # Existing boundary logic
         if not word.startswith("\""):
             word = r"\w*" + word
         else:

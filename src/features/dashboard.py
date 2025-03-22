@@ -11,9 +11,9 @@ from nextcord import Interaction
 
 from components import ui_components, utils
 from components.ui_components import CustomView, CustomModal
-from config.global_settings import ShardLoadedStatus, get_configs
+from config.global_settings import ShardLoadedStatus
 from config.server import Server
-from features import birthdays, help_commands, leveling
+from features import help_commands, leveling
 from modules.custom_types import UNSET_VALUE
 
 
@@ -240,19 +240,23 @@ class Dashboard(CustomView):
                                 description = """
                                     InfiniBot will automatically filter messages for profane words. You can add or delete words to be filtered here:
 
-                                    **Customization**
-                                    - Starting/ending a word with a quote will make InfiniBot match the exact start / end.
-                                    ```
-                                    "apple → matches apple, apples, apple's, but not pineapple
-                                    apple" → matches apple, pineapple, but not apples or apple's
-                                    "apple" → matches only apple
-                                    ```
-                                    - Adding a * will make InfiniBot match any character at that point in the word.
-                                    ```
-                                    fruit* → matches fruity, fruits, grapefruit!, but not fruities
-                                    or**ge → matches orange, oreige, or!nge, but not orage or orang!e
-                                    ```
-                                    ​
+                                    **INFINIBOT FILTER RULES**
+                                    1. Boundaries
+                                    • "test → Start match (test123 ✅ | contest ❌)
+                                    • test" → End match (123test ✅ | testing ❌)
+                                    • "test" → Exact word only
+
+                                    2. Wildcards
+                                    • * = 1 character: te\*st → texst ✅ | test ❌
+                                    • ? = 0-1 chars: colou?r → color/colour ✅
+
+                                    3. Examples  
+                                    • "apple → apples ✅ | pineapple ❌
+                                    • cat\* → cats ✅ | cat ❌
+                                    • log?n → login/logon/logn ✅ | logout ❌
+
+                                    Case-insensitive: TEST = test
+                                    Handles numbers/symbols: test3! ✅
                                 """
                                 description = utils.standardize_str_indention(description)
                                 
