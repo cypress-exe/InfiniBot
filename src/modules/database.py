@@ -189,35 +189,28 @@ class Database:
         # Execute the query
         self.execute_query(select_query, commit=True)
 
-    async def optimize_database(self, throttle: bool = False, throttle_delay: float = 1.0) -> None:
+    def optimize_database(self, throttle: bool = False, throttle_delay: float = 1.0) -> None:
         """
-        Async database optimization with simple throttling and metrics
+        Synchronous database optimization with throttling and metrics
         - throttle: Enable delay between table optimizations
         - throttle_delay: Seconds to pause between tables (if throttling)
         """
-        # Initialize metrics
         start_time = time.monotonic()
         total_tables = len(self.tables_to_optimize)
         processed_tables = 0
         total_throttle_time = 0.0
-        loop = asyncio.get_event_loop()
 
         logging.info(f"Starting database optimization ({total_tables} tables)")
 
         try:
             for table in self.tables_to_optimize:
-                # Process table in executor (prevents blocking event loop)
-                await loop.run_in_executor(
-                    None,  # Use default executor
-                    self.remove_extraneous_rows,
-                    table
-                )
+                # Process table directly in main thread
+                self.remove_extraneous_rows(table)
                 processed_tables += 1
 
-                # Apply simple throttling
                 if throttle:
                     throttle_start = time.monotonic()
-                    await asyncio.sleep(throttle_delay)
+                    time.sleep(throttle_delay)  # Synchronous sleep
                     total_throttle_time += time.monotonic() - throttle_start
 
         except Exception as e:
@@ -225,11 +218,9 @@ class Database:
             raise
 
         finally:
-            # Calculate metrics
             total_duration = time.monotonic() - start_time
             avg_per_table = (total_duration - total_throttle_time) / processed_tables if processed_tables else 0
 
-            # Log final metrics
             logging.info(
                 f"Database optimization completed\n"
                 f"Tables processed: {processed_tables}/{total_tables}\n"

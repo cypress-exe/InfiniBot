@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import asyncio
 import logging
 import os
 import random
@@ -134,6 +135,7 @@ class TestDatabase(unittest.TestCase):
         :rtype: None
         """
         logging.info("Testing database optimization...")
+
         database = self.get_memory_database()
 
         test_servers = [random.randint(0, 1000000000) for _ in range(20)]
@@ -144,7 +146,7 @@ class TestDatabase(unittest.TestCase):
         # Make changes on the first three
         for test_server in test_servers[:3]:
             query = f"UPDATE table_1 SET example_bool = 'true' WHERE primary_key = {test_server}"
-            database.execute_query(query, commit = True)
+            database.execute_query(query, commit=True)
 
         # Optimize Database
         database.optimize_database()
@@ -152,12 +154,13 @@ class TestDatabase(unittest.TestCase):
         # Check if only first three servers are still in the database
         results = database.execute_query("SELECT * FROM table_1", multiple_values=True)
         for result in results:
-            self.assertIn(result[0], test_servers[:3])
+            self.assertIn(result[0], test_servers[:3], msg=f"Optimization failed. Server {result[0]} is not in the set of servers {test_servers[:3]} that should be in the database.\nServers that should have been removed: {test_servers[3:]}")
         
         # Check if the rest of the servers are not in the database
         for test_server in test_servers[3:]:
             results = database.execute_query(f"SELECT * FROM table_1 WHERE primary_key = {test_server}", multiple_values=True)
             self.assertEqual(results, [])
+
 
     def test_force_remove_entry(self) -> None:
         """

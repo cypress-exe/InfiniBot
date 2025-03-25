@@ -48,7 +48,7 @@ async def check_and_run_birthday_actions(bot: nextcord.Client, guild: nextcord.G
     :rtype: None
     """
     
-    logging.info(f"Running scheduled action for birthdays in across all guilds...")
+    logging.info(f"Running scheduled action for birthdays in on guild: {guild.name})({guild.id})")
 
     if get_global_kill_status()["birthdays"]:
         logging.warning("SKIPPING birthdays because of global kill status.")

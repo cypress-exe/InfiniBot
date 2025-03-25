@@ -908,7 +908,7 @@ async def daily_database_maintenance(bot: nextcord.Client):
         logging.info("Starting database optimization...")
         optimize_start = datetime.datetime.now(datetime.timezone.utc)
         
-        await get_database().optimize_database(throttle=True)
+        get_database().optimize_database(throttle=True)
 
         optimize_duration = datetime.datetime.now(datetime.timezone.utc) - optimize_start
         logging.info(f"Optimization completed in {optimize_duration.total_seconds():.2f}s")
