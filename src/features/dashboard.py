@@ -238,25 +238,25 @@ class Dashboard(CustomView):
                                 server = Server(interaction.guild.id)
 
                                 description = """
-                                    InfiniBot will automatically filter messages for profane words. You can add or delete words to be filtered here:
+                                InfiniBot will automatically filter messages for profane words. You can add or delete words to be filtered here:
 
-                                    **INFINIBOT FILTER RULES**
-                                    1. Boundaries
-                                    • "test → Start match (test123 ✅ | contest ❌)
-                                    • test" → End match (123test ✅ | testing ❌)
-                                    • "test" → Exact word only
+                                **INFINIBOT FILTER RULES**
+                                1. Boundaries
+                                • "test → Start match (test123 ✅ | contest ❌)
+                                • test" → End match (123test ✅ | testing ❌)
+                                • "test" → Exact word only
 
-                                    2. Wildcards
-                                    • * = 1 character: te\*st → texst ✅ | test ❌
-                                    • ? = 0-1 chars: colou?r → color/colour ✅
+                                2. Wildcards
+                                • * = 1 character: te\\*st → texst ✅ | test ❌
+                                • ? = 0-1 chars: colou?r → color/colour ✅
 
-                                    3. Examples  
-                                    • "apple → apples ✅ | pineapple ❌
-                                    • cat\* → cats ✅ | cat ❌
-                                    • log?n → login/logon/logn ✅ | logout ❌
+                                3. Examples  
+                                • "apple → apples ✅ | pineapple ❌
+                                • cat\\* → cats ✅ | cat ❌
+                                • log?n → login/logon/logn ✅ | logout ❌
 
-                                    Case-insensitive: TEST = test
-                                    Handles numbers/symbols: test3! ✅
+                                Case-insensitive: TEST = test
+                                Handles numbers/symbols: test3! ✅
                                 """
                                 description = utils.standardize_str_indention(description)
                                 
@@ -3995,176 +3995,189 @@ class Dashboard(CustomView):
     class ConfigureTimezoneButton(nextcord.ui.Button):
         def __init__(self, outer):
             super().__init__(
-                label="Configure Timezone", 
-                style=nextcord.ButtonStyle.gray,  # Initial style will be updated in setup
-                row=2
+                label = "Configure Timezone",
+                style = nextcord.ButtonStyle.gray,
+                row = 2
             )
             self.outer = outer
 
         async def callback(self, interaction: Interaction):
-            await self.show_landing_page(interaction)
+            view = self.ConfigureTimezoneView(self.outer)
+            await view.setup(interaction)
 
-        async def show_landing_page(self, interaction: Interaction):
-            server = Server(interaction.guild.id)
-            current_tz = server.infinibot_settings_profile.timezone
-            is_set = current_tz not in [None, "UTC", UNSET_VALUE]
+        class ConfigureTimezoneView(CustomView):
+            def __init__(self, outer):
+                super().__init__(timeout = None)
+                self.outer = outer
+                
+            async def setup(self, interaction: Interaction):
+                server = Server(interaction.guild.id)
+                current_tz = server.infinibot_settings_profile.timezone
+                is_set = current_tz not in [None, "UTC", UNSET_VALUE]
 
-            # Update button style based on current state
-            self.style = nextcord.ButtonStyle.green if not is_set else nextcord.ButtonStyle.gray
-            self.label = "Set Timezone" if not is_set else "Change Timezone"
+                # Clear previous components
+                self.clear_items()
 
-            description = []
-            if is_set:
-                description.append(f"**Current Timezone:** `{current_tz}`")
+                # Create buttons
+                back_btn = nextcord.ui.Button(
+                    label = "Back", 
+                    style = nextcord.ButtonStyle.danger
+                )
+                back_btn.callback = self.back_to_dashboard
+                self.add_item(back_btn)
+
+
+                configure_btn = nextcord.ui.Button(
+                    label = "Set Timezone" if not is_set else "Change Timezone",
+                    style = nextcord.ButtonStyle.green if not is_set else nextcord.ButtonStyle.gray,
+                    custom_id = "configure_tz"
+                )
+                configure_btn.callback = self.start_configuration
+                self.add_item(configure_btn)
+
+                
+                # Build description
+                description = []
+                if is_set:
+                    description.append(f"**Current Timezone:** `{current_tz}`")
+                    try:
+                        tz = ZoneInfo(current_tz)
+                        now = datetime.datetime.now(tz)
+                        description.append(f"**Current Time:** {now.strftime('%Y-%m-%d %H:%M:%S')}")
+                        description.append(f"**UTC Offset:** {self.get_current_offset(current_tz)}")
+                    except Exception as e:
+                        description.append("⚠️ Current timezone configuration appears invalid!")
+
+                description.extend([
+                    "\n**Why configure timezone?**",
+                    "InfiniBot uses this timezone for:",
+                    "- Scheduling automatic actions",
+                    "- Displaying time-relative information",
+                    "- Birthday notifications",
+                    "- Leveling system maintenance",
+                    "\nWe strongly recommend setting this for accurate time management!"
+                ])
+                
+                embed = nextcord.Embed(
+                    title = "Dashboard - Configure Timezone",
+                    description = utils.standardize_str_indention("\n".join(description)),
+                    color = nextcord.Color.blue()
+                )
+
                 try:
-                    tz = ZoneInfo(current_tz)
-                    now = datetime.datetime.now(tz)
-                    description.append(f"**Current Time:** {now.strftime('%Y-%m-%d %H:%M:%S')}")
-                    description.append(f"**UTC Offset:** {self.get_current_offset(current_tz)}")
+                    if interaction.response.is_done():
+                        await interaction.edit_original_message(embed = embed, view = self)
+                    else:
+                        await interaction.response.edit_message(embed = embed, view = self)
                 except Exception as e:
-                    description.append("⚠️ Current timezone configuration appears invalid!")
+                    await interaction.response.send_message(embed = embed, view = self, ephemeral = True)
 
-            description.extend([
-                "\n**Why configure timezone?**",
-                "InfiniBot uses this timezone for:",
-                "- Scheduling automatic actions",
-                "- Displaying time-relative information",
-                "- Birthday notifications",
-                "- Leveling system maintenance",
-                "\nWe strongly recommend setting this for accurate time management!"
-            ])
+            async def start_configuration(self, interaction: Interaction):
+                regions = self.get_timezone_regions()
+                select_options = [nextcord.SelectOption(label = region, value = region) for region in regions]
 
-            embed = nextcord.Embed(
-                title="Dashboard - Configure Timezone",
-                description="\n".join(description),
-                color=nextcord.Color.blue()
-            )
+                embed = nextcord.Embed(
+                    title = "Configure Timezone - Select Region",
+                    description = "Select the region that best represents your location:",
+                    color = nextcord.Color.blue()
+                )
+                
+                await ui_components.SelectView(
+                    embed,
+                    select_options,
+                    self.region_selected_callback,
+                    continue_button_label = "Next",
+                    cancel_button_label = "Back",
+                    preserve_order = True
+                ).setup(interaction)
 
-            view = CustomView(timeout=None)
-            configure_btn = nextcord.ui.Button(
-                label=self.label,
-                style=self.style,
-                custom_id="configure_tz"
-            )
-            configure_btn.callback = self.start_configuration
-            view.add_item(configure_btn)
+            async def region_selected_callback(self, interaction: Interaction, region_selected):
+                if region_selected is None:
+                    await self.setup(interaction)
+                    return
 
-            back_btn = nextcord.ui.Button(
-                label="Back", 
-                style=nextcord.ButtonStyle.danger
-            )
-            back_btn.callback = self.back_to_dashboard
-            view.add_item(back_btn)
+                region = region_selected.replace("United States", "US")
+                raw_tzones = [tz for tz in available_timezones() if tz.startswith(f"{region}/")]
+                tz_entries = []
+                
+                for tz in raw_tzones:
+                    formatted_name = self.format_timezone_name(tz)
+                    offset = self.get_current_offset(tz)
+                    tz_entries.append((formatted_name, tz, offset))
 
-            try:
-                if interaction.response.is_done():
-                    await interaction.edit_original_message(embed=embed, view=view)
-                else:
-                    await interaction.response.edit_message(embed=embed, view=view)
-            except Exception as e:
-                await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+                tz_entries_sorted = sorted(tz_entries, key = lambda x: x[0])
+                select_options = [
+                    nextcord.SelectOption(
+                        label = f"{name}",
+                        value = tz,
+                        description = offset
+                    ) for name, tz, offset in tz_entries_sorted
+                ]
 
-        async def start_configuration(self, interaction: Interaction):
-            regions = self.get_timezone_regions()
-            select_options = [nextcord.SelectOption(label=region, value=region) for region in regions]
+                embed = nextcord.Embed(
+                    title = f"Configure Timezone - {region_selected}",
+                    description = "Select your specific timezone:",
+                    color = nextcord.Color.blue()
+                )
+                
+                await ui_components.SelectView(
+                    embed,
+                    select_options,
+                    self.timezone_selected_callback,
+                    continue_button_label = "Select",
+                    cancel_button_label = "Back",
+                    preserve_order = True
+                ).setup(interaction)
 
-            embed = nextcord.Embed(
-                title="Configure Timezone - Select Region",
-                description="Select the region that best represents your location:",
-                color=nextcord.Color.blue()
-            )
-            await ui_components.SelectView(
-                embed,
-                select_options,
-                self.region_selected_callback,
-                continue_button_label="Next",
-                cancel_button_label="Back",
-                preserve_order=True
-            ).setup(interaction)
+            async def timezone_selected_callback(self, interaction: Interaction, tz_selected):
+                if tz_selected is None:
+                    await self.start_configuration(interaction)
+                    return
 
-        async def back_to_dashboard(self, interaction: Interaction):
-            await self.outer.setup(interaction)
+                server = Server(interaction.guild.id)
+                server.infinibot_settings_profile.timezone = tz_selected
 
-        def get_timezone_regions(self):
-            regions = set()
-            for tz in available_timezones():
-                if '/' in tz:
-                    regions.add(tz.split('/')[0])
-            regions = sorted(regions)
-            if 'US' in regions:
-                regions.remove('US')
-                regions.insert(0, 'United States')
-            if 'Etc' in regions:
-                regions.remove('Etc')
-                regions.append('Etc')
-            return regions
+                await interaction.response.defer()
+                await interaction.followup.send(
+                    embed = nextcord.Embed(
+                        title = "⏰ Timezone Updated",
+                        description = f"Successfully set server timezone to:\n`{tz_selected}`",
+                        color = nextcord.Color.green()
+                    ),
+                    ephemeral = True
+                )
+                await self.setup(interaction)
 
-        async def region_selected_callback(self, interaction: Interaction, region_selected):
-            if region_selected is None:
-                await self.show_landing_page(interaction)
-                return
+            def get_timezone_regions(self):
+                regions = set()
+                for tz in available_timezones():
+                    if '/' in tz:
+                        regions.add(tz.split('/')[0])
+                regions = sorted(regions)
+                
+                # Reorder regions for better UX
+                if 'US' in regions:
+                    regions.remove('US')
+                    regions.insert(0, 'United States')
+                if 'Etc' in regions:
+                    regions.remove('Etc')
+                    regions.append('Etc')
+                    
+                return regions
 
-            region = region_selected.replace("United States", "US")
-            raw_tzones = [tz for tz in available_timezones() if tz.startswith(f"{region}/")]
-            tz_entries = []
-            for tz in raw_tzones:
-                formatted_name = self.format_timezone_name(tz)
-                offset = self.get_current_offset(tz)
-                tz_entries.append((formatted_name, tz, offset))
+            def format_timezone_name(self, tz_name):
+                parts = tz_name.split('/')
+                location = parts[-1].replace('_', ' ')
+                return f"{location}, {parts[0]}" if len(parts) > 1 else tz_name
 
-            tz_entries_sorted = sorted(tz_entries, key=lambda x: x[0])
-            select_options = [
-                nextcord.SelectOption(
-                    label=f"{name}",
-                    value=tz,
-                    description=offset
-                ) for name, tz, offset in tz_entries_sorted
-            ]
+            def get_current_offset(self, tz_name):
+                tz = ZoneInfo(tz_name)
+                now = datetime.datetime.now(tz)
+                offset = now.utcoffset().total_seconds() / 3600
+                return f"UTC{offset:+g}"
 
-            embed = nextcord.Embed(
-                title=f"Configure Timezone - {region_selected}",
-                description="Select your specific timezone:",
-                color=nextcord.Color.blue()
-            )
-            await ui_components.SelectView(
-                embed,
-                select_options,
-                self.timezone_selected_callback,
-                continue_button_label="Select",
-                cancel_button_label="Back",
-                preserve_order=True
-            ).setup(interaction)
-
-        def format_timezone_name(self, tz_name):
-            parts = tz_name.split('/')
-            location = parts[-1].replace('_', ' ')
-            return f"{location}, {parts[0]}" if len(parts) > 1 else tz_name
-
-        def get_current_offset(self, tz_name):
-            tz = ZoneInfo(tz_name)
-            now = datetime.datetime.now(tz)
-            offset = now.utcoffset().total_seconds() / 3600
-            return f"UTC{offset:+g}"
-
-        async def timezone_selected_callback(self, interaction: Interaction, tz_selected):
-            if tz_selected is None:
-                await self.start_configuration(interaction)
-                return
-
-            server = Server(interaction.guild.id)
-            server.infinibot_settings_profile.timezone = tz_selected
-
-            # Send confirmation and refresh landing page
-            await interaction.response.defer()
-            await interaction.followup.send(
-                embed=nextcord.Embed(
-                    title="⏰ Timezone Updated",
-                    description=f"Successfully set server timezone to:\n`{tz_selected}`",
-                    color=nextcord.Color.green()
-                ),
-                ephemeral=True
-            )
-            await self.show_landing_page(interaction)
+            async def back_to_dashboard(self, interaction: Interaction):
+                await self.outer.setup(interaction)
 
 async def run_dashboard_command(interaction: Interaction):
     """
