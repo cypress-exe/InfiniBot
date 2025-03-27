@@ -65,7 +65,7 @@ async def run_scheduled_tasks() -> None:
                     tz = tz_cache.get(guild.id)
                     if not tz:
                         server = Server(guild.id)
-                        tz = zoneinfo.ZoneInfo(server.infinibot_settings_profile.timezone or "MDT") # Using MDT as default because most of the world is asleep at 3:00 MDT, so it works out well to just use that as the default
+                        tz = zoneinfo.ZoneInfo(server.infinibot_settings_profile.timezone or "America/Phoenix") # Using MST as default because most of the world is asleep at 3:00 MST, so it works out well to just use that as the default
                         tz_cache[guild.id] = tz
                 except Exception as e:
                     logging.error(f"Timezone lookup failed for {guild.id}: {e}")
