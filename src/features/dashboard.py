@@ -14,6 +14,7 @@ from components.ui_components import CustomView, CustomModal
 from config.global_settings import ShardLoadedStatus
 from config.server import Server
 from features import help_commands, leveling
+from features.moderation import str_is_profane
 from modules.custom_types import UNSET_VALUE
 
 
@@ -229,6 +230,9 @@ class Dashboard(CustomView):
                                 
                                 self.delete_word_btn = self.DeleteWordButton(self)
                                 self.add_item(self.delete_word_btn)
+
+                                self.test_btn = self.TestButton(self)
+                                self.add_item(self.test_btn)
                                 
                                 self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
                                 self.back_btn.callback = self.back_btn_callback
@@ -339,7 +343,47 @@ class Dashboard(CustomView):
                                         server.profanity_moderation_profile.filtered_words = filtered_words
 
                                     await self.outer.setup(interaction)
-                                
+
+                            class TestButton(nextcord.ui.Button):
+                                def __init__(self, outer):
+                                    super().__init__(label = "Test", style = nextcord.ButtonStyle.gray)
+                                    self.outer = outer
+                                    
+                                class GetInputModal(CustomModal):
+                                    def __init__(self, outer):
+                                        super().__init__(title = "Test a Word/Phrase")
+                                        self.outer = outer
+                                        self.response = None
+
+                                        self.input = nextcord.ui.TextInput(label = "Word/Phrase to Test", style = nextcord.TextInputStyle.short, placeholder="Enter a word or phrase to test if it will be flagged...")
+                                        self.add_item(self.input)
+                                        
+                                    async def callback(self, interaction: Interaction):
+                                        response = self.input.value
+
+                                        server = Server(interaction.guild.id)
+                                        profane_word = str_is_profane(response, server.profanity_moderation_profile.filtered_words)
+
+                                        if profane_word:
+                                            embed = nextcord.Embed(title = "Word Filtered", 
+                                                                   description = f"`{response}` is filtered for profanity.", 
+                                                                   color = nextcord.Color.red())
+                                            embed.set_footer(text = f"Filtered Word: {profane_word}")
+                                        else:
+                                            embed = nextcord.Embed(title = "Word Not Filtered", description = f"`{response}` is not currently filtered for profanity.", color = nextcord.Color.green())
+                                        
+                                        self.stop()
+
+                                        # Send embed
+                                        await interaction.response.send_message(embed=embed, ephemeral=True)
+                                        
+                                async def callback(self, interaction: Interaction):
+                                    modal = self.GetInputModal(self)
+                                    await interaction.response.send_modal(modal)
+                                    await modal.wait()
+                                    
+                                    await self.outer.setup(interaction)
+
                         async def callback(self, interaction: Interaction): #Filtered Words Button Callback ————————————————————————————————————————————————————————————
                             view = self.FilteredWordsView(self.outer)
                             await view.setup(interaction)
