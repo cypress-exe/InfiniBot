@@ -66,7 +66,9 @@ def generate_logging_file_name() -> None:
     # Ensure no more than max_logs_to_keep files exist
     max_logs_to_keep = get_configs()["logging"]["max_logs_to_keep"]
     while (len(os.listdir("./generated/logs")) + 1) > max_logs_to_keep:
-        os.remove(f"./generated/logs/{os.listdir('./generated/logs')[0]}")
+        logs_in_order = os.listdir("./generated/logs")
+        logs_in_order.sort()
+        os.remove(f"./generated/logs/{logs_in_order[0]}")
     
     date = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     new_logfile_name = f"logfile-{date}.log"
