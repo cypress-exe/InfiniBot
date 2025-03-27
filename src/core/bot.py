@@ -100,7 +100,7 @@ async def create(interaction: Interaction):
 async def help(interaction: Interaction):
     pass
 
-# COMMANDS ================================================================================================================================================================
+# SERVER COMMANDS ================================================================================================================================================================
 @bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", integration_types=[nextcord.IntegrationType.guild_install])
 async def dashboard_command(interaction: Interaction):
     await dashboard.run_dashboard_command(interaction)

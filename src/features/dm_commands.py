@@ -1,11 +1,11 @@
 import nextcord
+import logging
 
 async def check_and_run_dm_commands(bot: nextcord.Client, message: nextcord.Message) -> None:
     """
     |coro|
 
-    Checks if the message is a direct message and if the author is the bot owner.
-    If true, runs the specified command.
+    Runs a specified command for DMs
     
     :param bot: The bot client
     :type bot: nextcord.Client
@@ -14,12 +14,14 @@ async def check_and_run_dm_commands(bot: nextcord.Client, message: nextcord.Mess
     :return: None
     :rtype: None
     """
-    if message.content.lower() == "clear": # Clear all messages
-        async for message in message.channel.history():
+    if message.author.id == bot.application_id: return
+
+    if message.content.lower() == "clear-last": # Clear last message
+        async for message in message.channel.history(limit=10):
             if message.author.id == bot.application_id:
                 await message.delete()
-                            
-    elif message.content.lower() == "del": # Clear last message
-        async for message in message.channel.history(limit=1):
-            if message.author.id == bot.application_id:
-                await message.delete()
+                break
+
+        embed = nextcord.Embed(title = "Cleared Last Message", description="Last message has been cleared.", color = nextcord.Color.green())
+        await message.channel.send(embed = embed, delete_after = 3)
+        
