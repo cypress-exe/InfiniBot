@@ -212,11 +212,8 @@ async def on_message(message: nextcord.Message) -> None:
         
         with LogIfFailure(feature="admin_commands.check_and_run_admin_commands"):
             await admin_commands.check_and_run_admin_commands(message)
-
         return
 
-    # Moderation
-    # await checkForExpiration(server) # TODO - Check for Expiration of Strikes (Do this as a midnight action)
     if message == None: return
       
     # DM Commands ---------------------------------------------
@@ -226,11 +223,7 @@ async def on_message(message: nextcord.Message) -> None:
         
         with LogIfFailure(feature="admin_commands.check_and_run_admin_commands"):
             await admin_commands.check_and_run_admin_commands(message)
-
         return
-
-    # Moderation
-    # await checkForExpiration(server) # TODO - Check for Expiration of Strikes (Do this as a midnight action)
 
     # Don't do anything if the message is from a bot
     if message.author.bot:
