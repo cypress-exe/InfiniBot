@@ -5,6 +5,7 @@ from typing import Any
 import nextcord
 from nextcord import Interaction
 
+from components.ui_components import ErrorWhyAdminPrivilegesButton
 from config.global_settings import feature_dependencies, get_global_kill_status
 
 
@@ -499,7 +500,7 @@ async def send_error_message_to_server_owner(
     try:
         dm = await member.create_dm()
         if administrator:
-            await dm.send(embed = embed) # TODO add ErrorWhyAdminPrivilegesButton()
+            await dm.send(embed = embed, view = ErrorWhyAdminPrivilegesButton())
         else:
             await dm.send(embed = embed)
     except:

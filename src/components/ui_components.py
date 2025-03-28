@@ -5,9 +5,8 @@ import uuid
 import nextcord
 from nextcord import Interaction
 
-from config.global_settings import get_configs
+from config.global_settings import get_configs, required_permissions
 from core.log_manager import get_uuid_for_logging
-
 
 # View overrides
 async def disabled_feature_override(self: nextcord.ui.View, interaction: Interaction) -> None:
@@ -142,6 +141,35 @@ class CustomModal(nextcord.ui.Modal):
             embed=embed, ephemeral=True, view=SupportView()
         )
 
+# Error "Why Administrator Privileges?" Button
+class ErrorWhyAdminPrivilegesButton(nextcord.ui.View):
+    def __init__(self):
+        super().__init__(timeout = None)
+    
+    @nextcord.ui.button(label = "Why Administrator Privileges?", style = nextcord.ButtonStyle.gray, custom_id = "why_administrator_privileges")
+    async def event(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        global required_permissions
+
+        # Generate required permissions ui
+        required_permissions_ui = "\n**Text Channel Permissions:**"
+        for permission in required_permissions["text_channel_permissions"]:
+            required_permissions_ui += f"\n- {permission}"
+
+        required_permissions_ui += "\n\n**Voice Channel Permissions:**"
+        for permission in required_permissions["voice_channel_permissions"]:
+            required_permissions_ui += f"\n- {permission}"
+
+        required_permissions = f"{required_permissions_ui}"
+
+        # Generate general message
+        general_message = f"\n\n**Why Administrator Privileges?**\nSome of InfiniBot's features work best when it is able to view every channel and have all its required permissions in every channel. An alternative to Administrator is to give InfiniBot the following permissions in every channel: \n{required_permissions_ui}"
+        
+        embed = interaction.message.embeds[0]
+        embed.description += general_message
+        
+        button.disabled = True
+        
+        await interaction.response.edit_message(view = self, embed = embed)
 
 # View for handling selects with pagnation if needed
 class SelectView(CustomView):

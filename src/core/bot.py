@@ -10,6 +10,7 @@ from config.file_manager import JSONFile
 from core import log_manager
 from core.log_manager import LogIfFailure
 from core.scheduling import start_scheduler, stop_scheduler
+from core.view_manager import init_views
 from features import action_logging, admin_commands, birthdays, dashboard, default_roles, dm_commands, join_leave_messages, join_to_create_vcs, leveling, moderation, profile
 
 
@@ -25,7 +26,7 @@ bot = commands.AutoShardedBot(intents = intents,
                             help_command=None)
 
 @bot.event
-async def on_ready() -> None:
+async def on_ready() -> None: # Bot load
     """
     This function is triggered when the bot becomes ready and all shards are ready.
     It waits for the bot to be fully ready, logs the bot's username, sets bot load status,
@@ -40,6 +41,7 @@ async def on_ready() -> None:
 
     global_settings.set_bot_load_status(True)
     start_scheduler()
+    init_views(bot)
 
     # Print which guilds are on which shard
     if logging.getLevelName(logging.getLogger().getEffectiveLevel()) == "DEBUG":

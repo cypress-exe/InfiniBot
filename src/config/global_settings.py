@@ -1,5 +1,4 @@
 import logging
-from nextcord.ext import commands
 
 from config.file_manager import JSONFile
 
@@ -50,6 +49,27 @@ feature_dependencies = {
     # ------------------------------------------------------------------------------------------------------
     "join_to_create_vcs" : {"global_kill": "join_to_create_vcs"},
     
+}
+
+required_permissions = {
+    "text_channel_permissions": [
+        "View Channels",
+        "Send Messages",
+        "Embed Links",
+        "Manage Roles",
+        "Manage Channels",
+        "Manage Messages",
+        "Manage Nicknames",
+        "View Audit Log",
+        "Add Reactions",
+        "Timeout Members",
+        "Ban Members",
+        "Read Message History"
+    ],
+    "voice_channel_permissions": [
+        "Connect",
+        "Move Members"
+    ]
 }
 
 
