@@ -23,7 +23,7 @@ class Dashboard(CustomView):
     """
     This is the main view for the dashboard feature.
     """
-    def __init__(self):
+    def __init__(self, guild_id):
         super().__init__(timeout = None)
         
         self.moderation_btn = self.ModerationButton(self)
@@ -50,12 +50,12 @@ class Dashboard(CustomView):
         self.extra_features_btn = self.ExtraFeaturesButton(self)
         self.add_item(self.extra_features_btn)
 
-        self.configure_timezone_btn = self.ConfigureTimezoneButton(self)
+        self.configure_timezone_btn = self.ConfigureTimezoneButton(self, guild_id)
         self.add_item(self.configure_timezone_btn)
 
     async def setup(self, interaction: Interaction):
         for child in self.children: del child
-        self.__init__()
+        self.__init__(interaction.guild_id)
         
         if not utils.feature_is_active(guild_id = interaction.guild.id, feature = "dashboard"):
             await ui_components.disabled_feature_override(self, interaction)
@@ -4037,10 +4037,10 @@ class Dashboard(CustomView):
             await self.ExtraFeaturesButton(self.outer).setup(interaction)
 
     class ConfigureTimezoneButton(nextcord.ui.Button):
-        def __init__(self, outer):
+        def __init__(self, outer, guild_id):
             super().__init__(
                 label = "Configure Timezone",
-                style = nextcord.ButtonStyle.gray,
+                style = nextcord.ButtonStyle.blurple if Server(guild_id).infinibot_settings_profile.timezone in [None, "UTC", UNSET_VALUE] else nextcord.ButtonStyle.gray,
                 row = 2
             )
             self.outer = outer
@@ -4073,7 +4073,7 @@ class Dashboard(CustomView):
 
                 configure_btn = nextcord.ui.Button(
                     label = "Set Timezone" if not is_set else "Change Timezone",
-                    style = nextcord.ButtonStyle.green if not is_set else nextcord.ButtonStyle.gray,
+                    style = nextcord.ButtonStyle.blurple if not is_set else nextcord.ButtonStyle.gray,
                     custom_id = "configure_tz"
                 )
                 configure_btn.callback = self.start_configuration
@@ -4236,5 +4236,5 @@ async def run_dashboard_command(interaction: Interaction):
     :rtype: None
     """
     if await utils.user_has_config_permissions(interaction):
-        view = Dashboard()
+        view = Dashboard(interaction.guild_id)
         await view.setup(interaction)
