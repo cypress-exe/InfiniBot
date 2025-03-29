@@ -28,11 +28,11 @@ Follow these steps to set up InfiniBot for a linux environment. Some steps may v
 3. Run `sudo bash run.bash` to run the container.
 4. Once the build completes, InfiniBot will start, but you will see the following error message:
     ```
-    FATAL ERROR: Token config file generated in ./generated/configure/TOKEN.json. Please configure your token!!!
-    Exiting...
+    FATAL ERROR: Some required environment variables are unset or missing.
+    EXITING...
     ```
-5. To resolve this, navigate to `./generated/configure/TOKEN.json` and add your Discord bot’s token to the `discord_auth_token` field.
-    - **Note:** The `topgg_auth_token` field is for the token provided by Top.gg (a Discord bot listing website) to report InfiniBot's server count. Since this feature is only used on the official InfiniBot application, you should leave this as `None`.
+5. To resolve this, navigate to `./.env` and set your Discord bot’s token to the `DISCORD_AUTH_TOKEN` environment variable.
+    - Note: You only need to / should configure this variable. All other variables can be left alone.
 6. Restart the bot by running `sudo bash rebuild_and_run.bash` again.
 7. InfiniBot should now start up. Make sure to invite your bot to a server to get started.
 8. You can configure additional settings in the `./generated/configure` folder, such as:

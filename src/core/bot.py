@@ -2,11 +2,11 @@ import logging
 import nextcord
 from nextcord import Interaction, SlashOption
 from nextcord.ext import commands
+import os
 
 from components import ui_components, utils
 from config.server import Server
 import config.global_settings as global_settings
-from config.file_manager import JSONFile
 from core import log_manager
 from core.log_manager import LogIfFailure
 from core.scheduling import start_scheduler, stop_scheduler
@@ -435,10 +435,13 @@ def run() -> None:
     """
 
     # Get token
-    token = JSONFile("TOKEN")["discord_auth_token"]
+    token = os.environ['DISCORD_AUTH_TOKEN']
     logging.info(f"Running bot with token: {token[:5]}*******...")
-    bot.run(token)
 
+    try:
+        bot.run(token)
+    except nextcord.errors.LoginFailure:
+        logging.critical("FATAL: Invalid token. Check your token and try again.")
 
 if __name__ == "__main__":
     raise Exception("This file is not intended to be run directly. Please run the main.py file instead.")

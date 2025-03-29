@@ -5,3 +5,5 @@ services:
         restart: "on-failure"  # Automatically restart if the bot crashes
         volumes:
             - ../generated:/app/generated  # Persistent data storage
+        env_file:
+            - ../.env

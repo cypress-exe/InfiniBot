@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Create environment
+if [ ! -f ./.env ]; then
+    echo "Creating .env file from template..."
+    cp ./.devcontainer/env.template ./.env
+fi
+
 # Check if "--use-cache" flag is passed
 cache_string="--no-cache"
 for arg in "$@"; do

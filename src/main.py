@@ -4,7 +4,6 @@ import shutil
 import socket
 import time
 
-from config.file_manager import JSONFile
 from config.global_settings import get_configs
 from core.log_manager import setup_logging, change_logging_level
 
@@ -12,81 +11,62 @@ from core.log_manager import setup_logging, change_logging_level
 def create_environment():
     """
     Creates the environment required for InfiniBot to run.
-
-    :return: None
-    :rtype: None
     """
     def create_folder(folder_path):
-        """
-        Creates the specified folder.
-
-        :param folder_path: The path to the folder to be created.
-        :type folder_path: str
-        :return: None
-        :rtype: None
-        """
         os.makedirs(folder_path, exist_ok=True)
-        logging.info("Created folder: " + folder_path)
+        logging.info(f"Created folder: {folder_path}")
     
     def copy_file(source_path, destination_path):
-        """
-        Copies a file from the source path to the destination path if the destination path does not exist.
-
-        :param source_path: The path to the source file to be copied.
-        :type source_path: str
-        :param destination_path: The path where the file should be copied.
-        :type destination_path: str
-        :return: None
-        :rtype: None
-        """
-
         if not os.path.exists(destination_path):
             shutil.copy(source_path, destination_path)
-            logging.info("Copied file: " + source_path + " to " + destination_path)
+            logging.info(f"Copied file: {source_path} to {destination_path}")
 
     def get_token():
         """
-        Gets the token from the user.
-
-        :return: The token provided by the user.
-        :rtype: str
+        Validates that required environment variables exist
         """
-        # Check token
-        logging.info("Checking token...")
-        try:
-            # Ensure token config file exists
-            if not os.path.exists("generated/configure/TOKEN.json"):
-                JSONFile("TOKEN").add_variable("discord_auth_token", None)
-                JSONFile("TOKEN").add_variable("topgg_auth_token", None)
+        logging.info("Checking environment variables for tokens...")
+        environment_vars = [
+            ('DISCORD_AUTH_TOKEN', True), # Required
+            ('TOPGG_AUTH_TOKEN', False)
+        ]
 
-                raise Exception("Token config file generated in ./generated/configure/TOKEN.json. Please configure your token!!!")
-            else:
-                # Add default values for objects if they don't exist
-                if "discord_auth_token" not in JSONFile("TOKEN"): JSONFile("TOKEN").add_variable("discord_auth_token", None)
-                if "topgg_auth_token" not in JSONFile("TOKEN"): JSONFile("TOKEN").add_variable("topgg_auth_token", None)
+        # Ensure existence
+        missing_vars = [var[0] for var in environment_vars if not os.environ.get(var[0])]
+        if missing_vars:
+            error_msg = f"Some environment variables don't exist: {', '.join(missing_vars)}"
+            logging.warning(error_msg)
 
-                # Ensure token is not None
-                if JSONFile("TOKEN")["discord_auth_token"] == None:
-                    raise Exception("Token not set!!! Please configure your token in ./generated/configure/TOKEN.json")
-                else:
-                    logging.info("Token found! Continuing...")
-        except Exception as e:
-            print("FATAL ERROR: " + str(e))
-            print("Exiting...")
-            logging.critical("FATAL ERROR: " + str(e))
+        unset_vars = [var[0] for var in environment_vars if var[1] and os.environ.get(var[0]).lower() in ["", "none", "missing"]]
+        if unset_vars:
+            error_msg = "Some required environment variables are unset or missing."
+            logging.critical("Missing required environment variables: " + ", ".join(unset_vars))
             logging.critical("Exiting...")
+
+            time.sleep(0.1) # Give time for logging so that error is visible at bottom
+
+            print("="*100)
+            print(f"FATAL ERROR: {error_msg}")
+            print("EXITING...")
+            print("="*100)
+
             exit()
+
+        logging.info("All required tokens found in environment variables! Continuing...")
     
+    # Create directory structure
     create_folder("generated")
     create_folder("generated/files")
     create_folder("generated/backups")
     create_folder("generated/configure")
-        
+    
+    # Copy default files
     copy_file("defaults/default_profane_words.txt", "generated/configure/default_profane_words.txt")
 
+    # Validate environment variables
     get_token()
 
-    logging.info("To modify defaults, edit settings file in ./generated/configure")
+    logging.info("To modify defaults, edit settings files in ./generated/configure")
     
 def configure_logging():
     """
