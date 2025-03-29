@@ -383,6 +383,9 @@ async def on_member_remove(member: nextcord.Member) -> None:
     :return: None
     :rtype: None
     """
+    if member.id == bot.user.id: return # Don't do anything if WE are removed
+    if member.guild == None: return # Can't do anything if the guild is None
+
     # Trigger the farewell message
     with LogIfFailure(feature="join_leave_messages.trigger_leave_message"):
         await join_leave_messages.trigger_leave_message(member)

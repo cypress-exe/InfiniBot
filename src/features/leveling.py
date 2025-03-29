@@ -397,6 +397,20 @@ async def process_level_change(guild: nextcord.Guild, member: nextcord.Member, l
                                 # DMs are disabled
                                 pass
 
+async def handle_member_removal(member: nextcord.Member):
+    """
+    Handles the removal of a member from the server.
+
+    :param member: The member object that was removed from the server.
+    :type member: nextcord.Member
+    :return: None
+    :rtype: None
+    """
+    server = Server(member.guild.id)
+    if utils.feature_is_active(server = server, feature = "leveling"):
+        if member.id in server.member_levels:
+            server.member_levels.delete(member.id)
+
 # Commands
 async def run_leaderboard_command(interaction: Interaction):
     """
