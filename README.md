@@ -26,13 +26,14 @@ Follow these steps to set up InfiniBot for a linux environment. Some steps may v
 1. Clone the repository with `git clone https://github.com/cypress-exe/InfiniBot.git`.
 2. Run `sudo bash build.bash` using a Bash terminal (other command line tools may work, but Bash is the supported one). Docker will begin building the container, which may take some time on the first run.
 3. Run `sudo bash run.bash` to run the container.
+    - If experiencing problems, try running `sudo bash remove_container.bash`, then try again.
 4. Once the build completes, InfiniBot will start, but you will see the following error message:
     ```
     FATAL ERROR: Some required environment variables are unset or missing.
     EXITING...
     ```
-5. To resolve this, navigate to `./.env` and set your Discord bot’s token to the `DISCORD_AUTH_TOKEN` environment variable.
-    - Note: You only need to / should configure this variable. All other variables can be left alone.
+5. To resolve this, run `sudo vi .env` and set your Discord bot’s token to the `DISCORD_AUTH_TOKEN` environment variable.
+    - Note: Only configure this variable. All other variables can be left alone.
 6. Restart the bot by running `sudo bash rebuild_and_run.bash` again.
 7. InfiniBot should now start up. Make sure to invite your bot to a server to get started.
 8. You can configure additional settings in the `./generated/configure` folder, such as:
