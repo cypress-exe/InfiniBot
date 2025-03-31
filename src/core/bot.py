@@ -159,6 +159,14 @@ async def set_level(interaction: Interaction,
     await leveling.run_set_level_command(interaction, member, level)
 
 
+# @bot.slash_command(name = "test", description = "Test command.", integration_types=[nextcord.IntegrationType.guild_install], guild_ids=[968872260557488100])
+# async def test(interaction: Interaction):
+    # # Run test code here:
+    # log_manager.setup_logging()
+    
+    # # Respond
+    # await interaction.response.send_message("Test command executed.")
+
 # ERROR HANDLING ==============================================================================================================================================================
 @bot.event
 async def on_application_command_error(interaction: Interaction, error) -> None:

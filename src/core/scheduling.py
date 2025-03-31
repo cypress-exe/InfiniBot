@@ -14,6 +14,7 @@ from features.birthdays import check_and_run_birthday_actions
 from features.leveling import daily_leveling_maintenance
 from features.moderation import daily_moderation_maintenance
 from core.db_manager import daily_database_maintenance
+from core.log_manager import setup_logging
 
 
 
@@ -38,6 +39,11 @@ async def run_scheduled_tasks() -> None:
         logging.error("Scheduler interval misalignment detected!")
 
     try:
+        # Start new log if it is a new day
+        if current_time_utc.hour == 0 and current_time_utc.minute == 0:
+            logging.warning("New day, generating new log file")
+            setup_logging()
+
         from core.bot import bot
         guilds = list(bot.guilds)
         total_guilds = len(guilds)
