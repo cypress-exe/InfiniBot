@@ -19,8 +19,8 @@ from core.log_manager import setup_logging
 
 
 
-# Cache configuration for 5000 guilds
-tz_cache = TTLCache(maxsize=5000, ttl=3600)  # 1-hour cache, handles 5k guilds
+# Cache configuration for 10000 guilds
+tz_cache = TTLCache(maxsize=10000, ttl=3600)  # 1-hour cache, handles 10k guilds
 MONITORING_INTERVAL = 25  # Guilds processed between monitoring checks
 
 INTERVAL_MINUTES = 15  # Define the interval (keep as first assignment)
@@ -37,6 +37,10 @@ async def run_scheduled_tasks() -> None:
     current_time_utc = datetime.datetime.now(datetime.timezone.utc)
     if current_time_utc.minute % INTERVAL_MINUTES != 0:
         logging.error("Scheduler interval misalignment detected!")
+
+    log_on_correct_behavior = (current_time_utc.minute // INTERVAL_MINUTES) % 7 == 0
+    if (not log_on_correct_behavior):
+        logging.info("Logging skipped due to intended behavior.")
 
     try:
         # Start new log if it is a new day
@@ -96,7 +100,7 @@ async def run_scheduled_tasks() -> None:
                 logging.error(f"Guild {guild.id} processing failed: {e}", exc_info=True)
 
             # Progress monitoring
-            if processed % 100 == 0 and processed > 0:
+            if log_on_correct_behavior and processed % 100 == 0 and processed > 0:
                 elapsed = (datetime.datetime.now(datetime.timezone.utc) - start_time).total_seconds()
                 rate = processed / elapsed if elapsed > 0 else 0
                 logging.info(
@@ -111,16 +115,17 @@ async def run_scheduled_tasks() -> None:
             await daily_database_maintenance(bot)
 
         # Final monitoring report
-        duration = datetime.datetime.now(datetime.timezone.utc) - start_time
-        logging.info(
-            f"Completed processing {total_guilds} guilds\n"
-            f"Successes: {successes} | Errors: {errors} | Throttle events: {throttle_count}\n"
-            f"Cache stats: Size {len(tz_cache)}/{tz_cache.maxsize} | "
-            f"System load: CPU {psutil.cpu_percent()}% | Mem {psutil.virtual_memory().percent}%\n"
-            f"Total duration: {duration} | Avg rate: {total_guilds/duration.total_seconds():.1f} guilds/sec"
-        )
+        if log_on_correct_behavior:
+            duration = datetime.datetime.now(datetime.timezone.utc) - start_time
+            logging.info(
+                f"Completed processing {total_guilds} guilds\n"
+                f"Successes: {successes} | Errors: {errors} | Throttle events: {throttle_count}\n"
+                f"Cache stats: Size {len(tz_cache)}/{tz_cache.maxsize} | "
+                f"System load: CPU {psutil.cpu_percent()}% | Mem {psutil.virtual_memory().percent}%\n"
+                f"Total duration: {duration} | Avg rate: {total_guilds/duration.total_seconds():.1f} guilds/sec"
+            )
 
-        logging.info("------------------------------------------------------------------------------------")
+            logging.info("------------------------------------------------------------------------------------")
 
     except Exception as e:
         logging.error(f"Fatal scheduler error: {e}", exc_info=True)
