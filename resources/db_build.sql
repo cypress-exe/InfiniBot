@@ -170,3 +170,16 @@ CREATE TABLE IF NOT EXISTS role_messages(
     author_id INT,
     PRIMARY KEY (server_id, message_id)
 )
+
+-- Create Message Logging table
+CREATE TABLE IF NOT EXISTS messages (
+    message_id INTEGER PRIMARY KEY,
+    guild_id INTEGER NOT NULL,
+    channel_id INTEGER NOT NULL,
+    author_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for faster queries
+CREATE INDEX IF NOT EXISTS idx_guild_time ON messages (guild_id, created_at);

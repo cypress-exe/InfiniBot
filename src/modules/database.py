@@ -56,12 +56,15 @@ class Database:
         # Initialize the database connection
         self.engine = create_engine(db_url, pool_size = 5, poolclass = QueuePool) # create_engine runs a validity check on db_url
         self.Session = sessionmaker(bind=self.engine)
+        self._dburl = db_url
         self.tables:list[str] = []
         self.tables_to_optimize:list[str] = []
         self.all_column_defaults:dict[str, dict[str, str]] = {}
         self.all_column_types:dict[str, dict[str, str]] = {}
         self.all_column_names:dict[str, list[str]] = {}
         self.all_primary_keys:dict[str, str] = {}
+
+        self.execute_query("PRAGMA journal_mode=WAL;")
 
         self.build_database(db_build_file_path) # Database must be valid at initialization
         self.index_tables() # Index tables at runtime
@@ -77,6 +80,9 @@ class Database:
 
     def __del__(self):
         self.cleanup()
+
+    def get_db_url(self):
+        return self._dburl
 
     def execute_query(self, sql: str, args: dict = {}, commit: bool = False, multiple_values: bool = False):
         """
@@ -242,6 +248,9 @@ class Database:
         self.execute_query(f"DELETE FROM {table} WHERE {id_sql_name} = :id", 
                            args={"id": id}, 
                            commit=True)
+        
+    def checkpoint(self):
+        self.execute_query("PRAGMA wal_checkpoint(TRUNCATE)", commit=True)
     
     def get_column_default(self, table:str, column_name:str, format=False) -> (bool | int | str | UNSET_VALUE | Any):
         """

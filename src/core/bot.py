@@ -7,6 +7,7 @@ import os
 from components import ui_components, utils
 from config.server import Server
 import config.global_settings as global_settings
+from core.db_manager import get_database
 from core import log_manager
 from core.log_manager import LogIfFailure
 from core.scheduling import start_scheduler, stop_scheduler
@@ -24,6 +25,8 @@ intents.reactions = True
 bot = commands.AutoShardedBot(intents = intents, 
                             allowed_mentions = nextcord.AllowedMentions(everyone = True), 
                             help_command=None)
+
+def get_bot() -> commands.AutoShardedBot: return bot
 
 @bot.event
 async def on_ready() -> None: # Bot load
@@ -159,13 +162,30 @@ async def set_level(interaction: Interaction,
     await leveling.run_set_level_command(interaction, member, level)
 
 
-# @bot.slash_command(name = "test", description = "Test command.", integration_types=[nextcord.IntegrationType.guild_install], guild_ids=[968872260557488100])
+# @bot.slash_command(name = "test", description = "Test command.", integration_types=[nextcord.IntegrationType.guild_install], guild_ids=[968872260557488100, 968872260557488158, 1014000756090736680])
 # async def test(interaction: Interaction):
-    # # Run test code here:
-    # log_manager.setup_logging()
+#     # Get all stored messages in the databases
+#     messages = get_database().get_all_messages()
+
+#     info = ""
+#     for message in messages:
+#         full_message = await message.get()
+#         block = f"""
+#         Message ID: {message.message_id}
+#         Guild ID: {message.guild_id}
+#         Channel ID: {message.channel_id}
+#         Author ID: {message.author_id}
+#         Content: {message.content}
+#         Created At: {message.created_at}
+#         {full_message.jump_url}        
+#         """
+#         block = utils.standardize_str_indention(block)
+
+#         info += block
+
     
-    # # Respond
-    # await interaction.response.send_message("Test command executed.")
+#     # Respond
+#     await interaction.response.send_message(info)
 
 # ERROR HANDLING ==============================================================================================================================================================
 @bot.event
@@ -212,18 +232,7 @@ async def on_message(message: nextcord.Message) -> None:
     :rtype: None
     """
     if message == None: return
-      
-    # DM Commands ---------------------------------------------
-    if message.guild == None:
-        with LogIfFailure(feature="dm_commands.check_and_run_dm_commands"):
-            await dm_commands.check_and_run_dm_commands(bot, message)
-        
-        with LogIfFailure(feature="admin_commands.check_and_run_admin_commands"):
-            await admin_commands.check_and_run_admin_commands(message)
-        return
-
-    if message == None: return
-      
+    
     # DM Commands ---------------------------------------------
     if message.guild == None:
         with LogIfFailure(feature="dm_commands.check_and_run_dm_commands"):
@@ -236,6 +245,11 @@ async def on_message(message: nextcord.Message) -> None:
     # Don't do anything if the message is from a bot
     if message.author.bot:
         return
+
+    # Store message if logging enabled
+    with LogIfFailure(feature="database.store_message"):
+        if utils.feature_is_active(guild = message.guild, feature = "logging"):
+            get_database().store_message(message)
 
     # Moderation
     message_is_flagged_for_moderation = False
@@ -285,26 +299,35 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
         await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
         return
     
-    # If we have it, grab the before message
-    before_message = payload.cached_message
+    # If we have it, grab the original message
+    original_message = payload.cached_message
+    if original_message == None:
+        # Find db cached message
+        original_message = get_database().get_message(payload.message_id)
     
     # Find the message
-    after_message = None
+    edited_message = None
     try:
         async for message in channel.history(limit=500):
             if int(message.id) == int(payload.message_id):
-                after_message: nextcord.Message = message
+                edited_message: nextcord.Message = message
                 break
     except:
         return
     
     # Punish profanity (if any)
     with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
-        await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), after_message)
+        await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message)
             
     # Log the message
     with LogIfFailure(feature="action_logging.log_raw_message_edit"):
-        await action_logging.log_raw_message_edit(guild, before_message, after_message)
+        await action_logging.log_raw_message_edit(guild, original_message, edited_message)
+
+    # Update the message in the database
+    with LogIfFailure(feature="database.store_message"):
+        if utils.feature_is_active(guild = guild, feature = "logging"):
+            get_database().remove_message(payload.message_id)
+            get_database().store_message(edited_message)
 
 @bot.event
 async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None:
@@ -335,11 +358,22 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
 
     message = payload.cached_message
 
+    if message == None:
+        # Find db cached message
+        message = get_database().get_message(payload.message_id)
+        if (message is not None):
+            # Actual values are important instead of object approximations, so replace them
+            message.guild = guild
+            message.channel = channel
+            # Some additional info needs to be fetched
+            await message.fetch("author")
+
     # Log the message
     with LogIfFailure(feature="action_logging.log_raw_message_delete"):
         await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id)
 
-    # Remove the message if we're storing it TODO
+    # Remove the message if we're storing it
+    get_database().remove_message(payload.message_id)
 
 @bot.event
 async def on_member_update(before: nextcord.Member, after: nextcord.Member) -> None:

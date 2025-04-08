@@ -7,12 +7,12 @@ from nextcord import Embed as NextcordEmbed
 import psutil
 
 from components.utils import format_var_to_pythonic_type, get_discord_color_from_string
-from config.global_settings import get_bot_load_status
+from config.global_settings import get_bot_load_status, get_configs
 from modules.database import Database, DatabaseContextManager
-from modules.custom_types import UNSET_VALUE
+from modules.custom_types import UNSET_VALUE, MessageInfo
 
 # Database Paths
-database_url = "sqlite:///./generated/files/database.db"
+database_url = "sqlite:///./generated/files/prod.db"
 database_build_file_path = "./resources/db_build.sql"
 
 class DatabaseForInfiniBot(Database): # Alters Database to add InfiniBot-specific functions
@@ -28,6 +28,95 @@ class DatabaseForInfiniBot(Database): # Alters Database to add InfiniBot-specifi
         :rtype: list
         """
         return self.get_unique_entries_for_database()
+    
+    def store_message(self, message: nextcord.Message):
+        """
+        Store a message in the database.
+
+        :param message: The message to store in the database.
+        :type message: nextcord.Message
+        """
+
+        if message == None: return
+        if message.guild == None: return
+        if message.author.bot == True: return # Don't store bot messages
+
+        query = """
+        INSERT INTO messages 
+            (message_id, guild_id, channel_id, author_id, content, created_at)
+            VALUES (:message_id, :guild_id, :channel_id, :author_id, :content, :created_at)
+        """
+        self.execute_query(query, {
+            'message_id': message.id,
+            'guild_id': message.guild.id,
+            'channel_id': message.channel.id,
+            'author_id': message.author.id,
+            'content': message.content,
+            'created_at': datetime.datetime.now().isoformat()
+        }, commit=True)
+    
+    def get_message(self, message_id: int) -> MessageInfo | None:
+        """
+        Retrieve a message from the database by its ID.
+
+        :param message_id: The ID of the message to retrieve.
+        :type message_id: int
+        :return: The message object or None if not found.
+        :rtype: nextcord.Message (Object approximation of parameters)
+        """
+        query = "SELECT * FROM messages WHERE message_id = :message_id"
+        result = self.execute_query(query, {'message_id': message_id})
+
+        if not result: return None
+
+        return MessageInfo(
+            message_id=result[0],
+            guild_id=result[1],
+            channel_id=result[2],
+            author_id=result[3],
+            content=result[4],
+            created_at=datetime.datetime.fromisoformat(result[5])
+        )
+        
+
+    def get_all_messages(self) -> list[MessageInfo]:
+        """
+        Retrieve all messages from the database.
+
+        :return: A list of message objects.
+        :rtype: list
+        """
+        query = "SELECT * FROM messages"
+        result = self.execute_query(query, multiple_values=True)
+
+        logging.info(f"Retrieved {len(result)} messages from the database.")
+        logging.info(result)
+
+        messages = []
+        for message_data in result:
+            message = MessageInfo(
+                message_id=message_data[0],
+                guild_id=message_data[1],
+                channel_id=message_data[2],
+                author_id=message_data[3],
+                content=message_data[4],
+                created_at=datetime.datetime.fromisoformat(message_data[5])
+            )
+            messages.append(message)
+
+        return messages
+        
+    
+    def remove_message(self, message_id: int):
+        """
+        Remove a message from the database by its ID.
+        If the message is not found, no action is taken.
+
+        :param message_id: The ID of the message to remove.
+        :type message_id: int
+        """
+        query = "DELETE FROM messages WHERE message_id = :message_id"
+        self.execute_query(query, {'message_id': message_id}, commit=True)
 
 database = None
 def init_database() -> None:
@@ -890,6 +979,8 @@ class IntegratedList_TableManager:
 
 async def daily_database_maintenance(bot: nextcord.Client):
     """Perform database maintenance with async optimizations and performance monitoring"""
+    await bot.wait_until_ready()
+    
     # Initialize performance tracking
     start_time = datetime.datetime.now(datetime.timezone.utc)
     total_deleted = 0
@@ -903,6 +994,16 @@ async def daily_database_maintenance(bot: nextcord.Client):
         if not get_bot_load_status():
             logging.warning("SKIPPING: Bot load status prevents maintenance")
             return
+        
+
+        # WAL checkpoint phase
+        logging.info("Starting WAL checkpoint...")
+        checkpoint_start = datetime.datetime.now(datetime.timezone.utc)
+        
+        get_database().checkpoint()
+        
+        checkpoint_duration = datetime.datetime.now(datetime.timezone.utc) - checkpoint_start
+        logging.info(f"WAL checkpoint completed in {checkpoint_duration.total_seconds():.2f}s")
 
         # Database optimization phase
         logging.info("Starting database optimization...")
@@ -912,6 +1013,41 @@ async def daily_database_maintenance(bot: nextcord.Client):
 
         optimize_duration = datetime.datetime.now(datetime.timezone.utc) - optimize_start
         logging.info(f"Optimization completed in {optimize_duration.total_seconds():.2f}s")
+
+
+
+
+
+        # Message log cleanup phase
+        logging.info("Starting message log cleanup...")
+        message_log_cleanup_start = datetime.datetime.now(datetime.timezone.utc)
+
+        # Delete messages older than max_days_to_keep (config) days 
+        query = f"""
+        DELETE FROM messages 
+        WHERE created_at < datetime('now', '-{get_configs()['message_log_cleanup_days']["max_days_to_keep"]} days');
+        """
+        get_database().execute_query(query)
+
+        # Delete extra message log entries over max_messages_to_keep_per_guild (config) per guild
+        query = f"""DELETE FROM messages
+        WHERE rowid IN (
+            SELECT rowid
+            FROM (
+                SELECT rowid,
+                    ROW_NUMBER() OVER (PARTITION BY guild_id ORDER BY created_at DESC) AS row_num
+                FROM messages
+            )
+            WHERE row_num > {get_configs()['message_log_cleanup_days']["max_messages_to_keep_per_guild"]}
+        );"""
+        get_database().execute_query(query)
+
+        message_log_cleanup_duration = datetime.datetime.now(datetime.timezone.utc) - message_log_cleanup_start
+        logging.info(f"Message log cleanup completed in {message_log_cleanup_duration.total_seconds():.2f}s")
+
+
+
+
 
         # Guild cleanup phase
         all_guild_ids = {guild.id for guild in bot.guilds}

@@ -752,7 +752,7 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
 
 
 # Entrypoints
-async def log_raw_message_edit(guild: nextcord.Guild, before_message: nextcord.Message, after_message: nextcord.Message) -> None:
+async def log_raw_message_edit(guild: nextcord.Guild, original_message: nextcord.Message, edited_message: nextcord.Message) -> None:
     """
     |coro|
 
@@ -760,23 +760,23 @@ async def log_raw_message_edit(guild: nextcord.Guild, before_message: nextcord.M
 
     :param guild: The guild where the message was edited.
     :type guild: nextcord.Guild
-    :param before_message: The original message before it was edited.
-    :type before_message: nextcord.Message
-    :param after_message: The message after it was edited.
-    :type after_message: nextcord.Message
+    :param original_message: The original message before it was edited.
+    :type original_message: nextcord.Message
+    :param edited_message: The message after it was edited.
+    :type edited_message: nextcord.Message
     :return: None
     :rtype: None
     """
     
     # Test for false-positives
-    if after_message.author.bot == True: return
-    if after_message == None: return
-    if after_message.content == "": return
-    if before_message != None and before_message.content == "": return
-    if before_message != None and after_message.content == before_message.content: return
+    if edited_message.author.bot == True: return
+    if edited_message == None: return
+    if edited_message.content == "": return
+    if original_message != None and original_message.content == "": return
+    if original_message != None and edited_message.content == original_message.content: return
     
     # UI Log
-    await trigger_edit_log(guild, before_message, after_message)
+    await trigger_edit_log(guild, original_message, edited_message)
  
 async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, channel: nextcord.TextChannel, message: nextcord.Message, message_id: int) -> None:
     """

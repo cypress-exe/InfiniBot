@@ -28,16 +28,30 @@ The tests are run in a separate thread to prevent blocking the main thread.
 """
 
 
-def hijack_database_url() -> None:
+def update_database_url() -> None:
     """
-    Hijacks the database URL to use an in-memory database for testing purposes.
+    Updates the database URL to use an in-memory database for testing purposes.
 
     :return: None
     :rtype: None
     """
-    logging.warning("Hijacking database url to use memory database")
-    db_manager.database_url = "sqlite:///"
+    logging.warning("Updating database url to use memory database")
+    db_manager.database_url = "sqlite:///./generated/files/test.db"
     db_manager.init_database()
+
+def cleanup_database_url() -> None:
+    """
+    Removes the test database file.
+
+    :return: None
+    :rtype: None
+    """
+    logging.warning("Removing test database file")
+    for file in os.listdir("./generated/files"):
+        logging.info(f"Checking file: {file}")
+        if "test.db" in file:
+            os.remove(f"./generated/files/{file}")
+    logging.info("Test database file removed")
 
 # Database Tests
 class TestDatabase(unittest.TestCase):
@@ -1177,7 +1191,26 @@ if __name__ == "__main__":
     print("RUNNING ---------------------------------------------------------------------------------------------------------")
     setup_logging(logging.DEBUG)
 
-    hijack_database_url()
+    update_database_url()
 
-    logging.info("######################## Running Tests ########################")
-    unittest.main()
+    logging.info(f"{'#'*50} Running Tests {'#'*50}")
+    
+    # Create test suite and runner
+    test_suite = unittest.TestLoader().discover('tests') 
+    runner = unittest.TextTestRunner()
+    test_result = runner.run(test_suite)
+
+    if test_result.wasSuccessful():
+        logging.info("All tests passed! Performing full cleanup")
+        cleanup_database_url()
+    else:
+        logging.warning("Tests failed - preserving test artifacts")
+    
+    header = "Finished Tests"
+    print(f"{'#'*50} {header} {'#'*50}")
+    print(f"Tests run: {test_result.testsRun}")
+    print(f"Failures: {len(test_result.failures)}")
+    print(f"Errors: {len(test_result.errors)}")
+    print(f"Skipped: {len(test_result.skipped)}")
+
+    print('#'*(50 * 2 + 2 + len(header)))

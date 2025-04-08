@@ -184,6 +184,10 @@ class Configs(GlobalSetting):
                 "max_messages_to_check": 11,
                 "message_chars_to_check_repetition": 140,
             },
+            "discord-message-logging": {
+                "max_days_to_keep": 7,
+                "max_messages_to_keep_per_guild": 1000
+            },
             "scheduler": {
                 "misfire_grace_time_seconds": 30
             }
