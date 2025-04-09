@@ -9,6 +9,87 @@ from components.ui_components import ErrorWhyAdminPrivilegesButton
 from config.global_settings import feature_dependencies, get_global_kill_status
 
 
+def asci_to_emoji(letter, fallback_letter = "1"):
+    letter = str(letter)
+    letter = letter.lower()
+
+    if letter == "a": return "🇦", "a"
+    if letter == "b": return "🇧", "b"
+    if letter == "c": return "🇨", "c"
+    if letter == "d": return "🇩", "d"
+    if letter == "e": return "🇪", "e"
+    if letter == "f": return "🇫", "f"
+    if letter == "g": return "🇬", "g"
+    if letter == "h": return "🇭", "h"
+    if letter == "i": return "🇮", "i"
+    if letter == "j": return "🇯", "j"
+    if letter == "k": return "🇰", "k"
+    if letter == "l": return "🇱", "l"
+    if letter == "m": return "🇲", "m"
+    if letter == "n": return "🇳", "n"
+    if letter == "o": return "🇴", "o"
+    if letter == "p": return "🇵", "p"
+    if letter == "q": return "🇶", "q"
+    if letter == "r": return "🇷", "r"
+    if letter == "s": return "🇸", "s"
+    if letter == "t": return "🇹", "t"
+    if letter == "u": return "🇺", "u"
+    if letter == "v": return "🇻", "v"
+    if letter == "w": return "🇼", "w"
+    if letter == "x": return "🇽", "x"
+    if letter == "y": return "🇾", "y"
+    if letter == "z": return "🇿", "z"
+    if letter == "1": return "1️⃣", "1"
+    if letter == "2": return "2️⃣", "2"
+    if letter == "3": return "3️⃣", "3"
+    if letter == "4": return "4️⃣", "4"
+    if letter == "5": return "5️⃣", "5"
+    if letter == "6": return "6️⃣", "6"
+    if letter == "7": return "7️⃣", "7"
+    if letter == "8": return "8️⃣", "8"
+    if letter == "9": return "9️⃣", "9"
+    if letter == "0": return "0️⃣", "0"
+
+    return asci_to_emoji(fallback_letter)
+
+def get_next_open_letter(list):
+    if not ("a" in list): return "a"
+    if not ("b" in list): return "b"
+    if not ("c" in list): return "c"
+    if not ("d" in list): return "d"
+    if not ("e" in list): return "e"
+    if not ("f" in list): return "f"
+    if not ("g" in list): return "g"
+    if not ("h" in list): return "h"
+    if not ("i" in list): return "i"
+    if not ("j" in list): return "j"
+    if not ("k" in list): return "k"
+    if not ("l" in list): return "l"
+    if not ("m" in list): return "m"
+    if not ("n" in list): return "n"
+    if not ("o" in list): return "o"
+    if not ("p" in list): return "p"
+    if not ("q" in list): return "q"
+    if not ("r" in list): return "r"
+    if not ("s" in list): return "s"
+    if not ("t" in list): return "t"
+    if not ("u" in list): return "u"
+    if not ("v" in list): return "v"
+    if not ("w" in list): return "w"
+    if not ("x" in list): return "x"
+    if not ("y" in list): return "y"
+    if not ("z" in list): return "z"
+    if not ("1" in list): return "1"
+    if not ("2" in list): return "2"
+    if not ("3" in list): return "3"
+    if not ("4" in list): return "4"
+    if not ("5" in list): return "5"
+    if not ("6" in list): return "6"
+    if not ("7" in list): return "7"
+    if not ("8" in list): return "8"
+    if not ("9" in list): return "9"
+    if not ("0" in list): return "0"
+
 def format_var_to_pythonic_type(_type: str, value: Any) -> Any:
     """
     Format a variable based on its type.
@@ -347,6 +428,19 @@ def role_assignable_by_infinibot(role: nextcord.Role) -> bool:
     
     return role.is_assignable()
 
+def get_infinibot_top_role(guild: nextcord.Guild):
+    """
+    Returns InfiniBot's top role.
+
+    :param guild: The guild to check for InfiniBot's role.
+    :type guild: nextcord.Guild
+    :return: If applicable, returns InfiniBot's top role. Otherwise, returns `None`.
+    :rtype: Optional[nextcord.Role]
+    """
+    if guild and not guild.unavailable:
+        return guild.me.top_role
+    else:
+        return None
 
 async def check_and_warn_if_channel_is_text_channel(interaction: Interaction) -> bool:
     """

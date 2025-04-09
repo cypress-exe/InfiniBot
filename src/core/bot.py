@@ -12,7 +12,7 @@ from core import log_manager
 from core.log_manager import LogIfFailure
 from core.scheduling import start_scheduler, stop_scheduler
 from core.view_manager import init_views
-from features import action_logging, admin_commands, birthdays, dashboard, default_roles, dm_commands, join_leave_messages, join_to_create_vcs, leveling, moderation, profile
+from features import action_logging, admin_commands, birthdays, dashboard, default_roles, dm_commands, join_leave_messages, join_to_create_vcs, leveling, moderation, profile, reaction_roles
 
 
 # INIT BOT ==============================================================================================================================================================
@@ -90,20 +90,16 @@ async def on_close() -> None:
 
 # SLASH COMMANDS ==============================================================================================================================================================
 @bot.slash_command(name = "view", description = "Requires Infinibot Mod", integration_types=[nextcord.IntegrationType.guild_install])
-async def view(interaction: Interaction):
-    pass
+async def view(interaction: Interaction): pass
 
 @bot.slash_command(name = "set", description = "Requires Infinibot Mod", integration_types=[nextcord.IntegrationType.guild_install])
-async def set(interaction: Interaction):
-    pass
+async def set(interaction: Interaction): pass
 
 @bot.slash_command(name = "create", description = "Requires Infinibot Mod", integration_types=[nextcord.IntegrationType.guild_install])
-async def create(interaction: Interaction):
-    pass
+async def create(interaction: Interaction): pass
 
-@bot.slash_command(name = "help", description="Help with the InfiniBot.")
-async def help(interaction: Interaction):
-    pass
+@bot.slash_command(name = "help", description="Get help with InfiniBot")
+async def help(interaction: Interaction): pass
 
 # SERVER COMMANDS ================================================================================================================================================================
 @bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", integration_types=[nextcord.IntegrationType.guild_install])
@@ -114,7 +110,7 @@ async def dashboard_command(interaction: Interaction):
 async def profile_command(interaction: Interaction):
     await profile.run_profile_command(interaction)
 
-@create.subcommand(name = "infinibot_mod_role", description = "Manually trigger InfiniBot to create the Infinibot Mod role")
+@create.subcommand(name = "infinibot-mod-role", description = "Manually trigger InfiniBot to create the Infinibot Mod role")
 async def create_infinibot_mod_role(interaction: Interaction):
     role_created = await utils.check_server_for_infinibot_mod_role(interaction.guild)
 
@@ -130,19 +126,19 @@ async def create_infinibot_mod_role(interaction: Interaction):
         await interaction.response.send_message(embed = embed, ephemeral = True, view=ui_components.SupportView())
 
 
-@view.subcommand(name = "my_strikes", description = "View your strikes")
+@view.subcommand(name = "my-strikes", description = "View your strikes")
 async def my_strikes(interaction: Interaction):
     await moderation.run_my_strikes_command(interaction)
 
-@view.subcommand(name = "member_strikes", description = "View another member's strikes. (Requires Infinibot Mod)")
+@view.subcommand(name = "member-strikes", description = "View another member's strikes. (Requires Infinibot Mod)")
 async def view_member_strikes(interaction: Interaction, member: nextcord.Member):
     await moderation.run_view_member_strikes_command(interaction, member)
 
-@set.subcommand(name = "admin_channel", description = "Use this channel to log strikes. Channel should only be viewable by admins. (Requires Infinibot Mod)")
+@set.subcommand(name = "admin-channel", description = "Use this channel to log strikes. Channel should only be viewable by admins. (Requires Infinibot Mod)")
 async def set_admin_channel(interaction: Interaction):
     await moderation.run_set_admin_channel_command(interaction)
 
-@set.subcommand(name = "log_channel", description = "Use this channel for logging. Channel should only be viewable by admins. (Requires Infinibot Mod)")
+@set.subcommand(name = "log-channel", description = "Use this channel for logging. Channel should only be viewable by admins. (Requires Infinibot Mod)")
 async def set_log_channel(interaction: Interaction):
     await action_logging.run_set_log_channel_command(interaction)
 
@@ -161,6 +157,17 @@ async def set_level(interaction: Interaction,
                     level: int = SlashOption(description="The level to set.", required=True)):
     await leveling.run_set_level_command(interaction, member, level)
 
+
+REACTIONROLETYPES = ["Letters", "Numbers", "Custom"]
+@create.subcommand(name = "reaction-role", description = "Legacy: Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
+async def reactionRoleCommand(interaction: Interaction, type: str = SlashOption(choices=["Letters", "Numbers"]), 
+                              mention_roles: bool = SlashOption(name="mention-roles", description="Mention the roles with @mention", required=False, default=True)):
+    await reaction_roles.run_reaction_role_command(interaction, type, mention_roles)
+
+@create.subcommand(name = "create-custom-reaction-role", description = "Legacy: Create a reaction role with customized emojis. (Requires Infinibot Mod)")
+async def customReactionRoleCommand(interaction: Interaction, options: str = SlashOption(description="Format: \"👍 = @Member, 🥸 = @Gamer\""), 
+                                    mentionRoles: bool = SlashOption(name="mention_roles", description="Mention the roles with @mention", required = False, default = True)):   
+    await reaction_roles.run_custom_reaction_role_command(interaction, options, mentionRoles)
 
 # @bot.slash_command(name = "test", description = "Test command.", integration_types=[nextcord.IntegrationType.guild_install], guild_ids=[968872260557488100, 968872260557488158, 1014000756090736680])
 # async def test(interaction: Interaction):
@@ -469,6 +476,10 @@ async def on_voice_state_update(member: nextcord.Member, before: nextcord.VoiceS
     """
     # Trigger join to create vc update
     await join_to_create_vcs.run_join_to_create_vc_member_update(member, before, after)
+
+@bot.event
+async def on_raw_reaction_add(payload: nextcord.RawReactionActionEvent):
+    await reaction_roles.run_raw_reaction_add(payload, bot)
 
 # RUN BOT ==============================================================================================================================================================================
 def run() -> None:
