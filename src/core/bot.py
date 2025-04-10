@@ -5,8 +5,9 @@ from nextcord.ext import commands
 import os
 
 from components import ui_components, utils
-from config.server import Server
 import config.global_settings as global_settings
+from config.server import Server
+from config import stored_messages
 from core.db_manager import get_database
 from core import log_manager
 from core.log_manager import LogIfFailure
@@ -254,9 +255,9 @@ async def on_message(message: nextcord.Message) -> None:
         return
 
     # Store message if logging enabled
-    with LogIfFailure(feature="database.store_message"):
+    with LogIfFailure(feature="stored_messages.store_message"):
         if utils.feature_is_active(guild = message.guild, feature = "logging"):
-            get_database().store_message(message)
+            stored_messages.store_message(message)
 
     # Moderation
     message_is_flagged_for_moderation = False
@@ -310,7 +311,7 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     original_message = payload.cached_message
     if original_message == None:
         # Find db cached message
-        original_message = get_database().get_message(payload.message_id)
+        original_message = stored_messages.get_message(payload.message_id)
     
     # Find the message
     edited_message = None
@@ -331,10 +332,10 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
         await action_logging.log_raw_message_edit(guild, original_message, edited_message)
 
     # Update the message in the database
-    with LogIfFailure(feature="database.store_message"):
+    with LogIfFailure(feature="stored_messages.store_message"):
         if utils.feature_is_active(guild = guild, feature = "logging"):
-            get_database().remove_message(payload.message_id)
-            get_database().store_message(edited_message)
+            stored_messages.remove_message(payload.message_id)
+            stored_messages.store_message(edited_message)
 
 @bot.event
 async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None:
@@ -367,7 +368,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
 
     if message == None:
         # Find db cached message
-        message = get_database().get_message(payload.message_id)
+        message = stored_messages.get_message(payload.message_id)
         if (message is not None):
             # Actual values are important instead of object approximations, so replace them
             message.guild = guild
@@ -380,7 +381,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
         await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id)
 
     # Remove the message if we're storing it
-    get_database().remove_message(payload.message_id)
+    stored_messages.remove_message(payload.message_id)
 
 @bot.event
 async def on_member_update(before: nextcord.Member, after: nextcord.Member) -> None:

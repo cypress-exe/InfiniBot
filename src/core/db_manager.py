@@ -9,7 +9,7 @@ import psutil
 from components.utils import format_var_to_pythonic_type, get_discord_color_from_string
 from config.global_settings import get_bot_load_status, get_configs
 from modules.database import Database, DatabaseContextManager
-from modules.custom_types import UNSET_VALUE, MessageInfo
+from modules.custom_types import UNSET_VALUE
 
 # Database Paths
 database_url = "sqlite:///./generated/files/prod.db"
@@ -29,94 +29,7 @@ class DatabaseForInfiniBot(Database): # Alters Database to add InfiniBot-specifi
         """
         return self.get_unique_entries_for_database()
     
-    def store_message(self, message: nextcord.Message):
-        """
-        Store a message in the database.
-
-        :param message: The message to store in the database.
-        :type message: nextcord.Message
-        """
-
-        if message == None: return
-        if message.guild == None: return
-        if message.author.bot == True: return # Don't store bot messages
-
-        query = """
-        INSERT INTO messages 
-            (message_id, guild_id, channel_id, author_id, content, created_at)
-            VALUES (:message_id, :guild_id, :channel_id, :author_id, :content, :created_at)
-        """
-        self.execute_query(query, {
-            'message_id': message.id,
-            'guild_id': message.guild.id,
-            'channel_id': message.channel.id,
-            'author_id': message.author.id,
-            'content': message.content,
-            'created_at': datetime.datetime.now().isoformat()
-        }, commit=True)
     
-    def get_message(self, message_id: int) -> MessageInfo | None:
-        """
-        Retrieve a message from the database by its ID.
-
-        :param message_id: The ID of the message to retrieve.
-        :type message_id: int
-        :return: The message object or None if not found.
-        :rtype: nextcord.Message (Object approximation of parameters)
-        """
-        query = "SELECT * FROM messages WHERE message_id = :message_id"
-        result = self.execute_query(query, {'message_id': message_id})
-
-        if not result: return None
-
-        return MessageInfo(
-            message_id=result[0],
-            guild_id=result[1],
-            channel_id=result[2],
-            author_id=result[3],
-            content=result[4],
-            created_at=datetime.datetime.fromisoformat(result[5])
-        )
-        
-
-    def get_all_messages(self) -> list[MessageInfo]:
-        """
-        Retrieve all messages from the database.
-
-        :return: A list of message objects.
-        :rtype: list
-        """
-        query = "SELECT * FROM messages"
-        result = self.execute_query(query, multiple_values=True)
-
-        logging.info(f"Retrieved {len(result)} messages from the database.")
-        logging.info(result)
-
-        messages = []
-        for message_data in result:
-            message = MessageInfo(
-                message_id=message_data[0],
-                guild_id=message_data[1],
-                channel_id=message_data[2],
-                author_id=message_data[3],
-                content=message_data[4],
-                created_at=datetime.datetime.fromisoformat(message_data[5])
-            )
-            messages.append(message)
-
-        return messages
-        
-    
-    def remove_message(self, message_id: int):
-        """
-        Remove a message from the database by its ID.
-        If the message is not found, no action is taken.
-
-        :param message_id: The ID of the message to remove.
-        :type message_id: int
-        """
-        query = "DELETE FROM messages WHERE message_id = :message_id"
-        self.execute_query(query, {'message_id': message_id}, commit=True)
 
 database = None
 def init_database() -> None:

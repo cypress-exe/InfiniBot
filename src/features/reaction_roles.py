@@ -122,20 +122,20 @@ async def run_reaction_role_command(interaction: Interaction, type: str, mention
     # Finish Proccessing...
     await create_reaction_role(interaction, reaction_role_title, reaction_role_description, view.selection, type, mention_roles)
     
-async def run_custom_reaction_role_command(interaction: Interaction, options: str, mention_roles: bool):   
+async def run_custom_reaction_role_command(interaction: Interaction, options: str, mention_roles: bool):
     if await utils.user_has_config_permissions(interaction):
         if not utils.feature_is_active(guild = interaction.guild, feature = "reaction_roles"):
-            await interaction.response.send_message(embed = REACTION_ROLES_DISABLED_MESSAGE, ephemeral = True)
+            await interaction.response.send_message(embed = REACTION_ROLES_DISABLED_MESSAGE, ephemeral=True)
             return
         
         if not interaction.guild.me.guild_permissions.manage_roles:
-            await interaction.response.send_message(embed = MISSING_PERMISSIONS_MESSAGE, ephemeral = True)
+            await interaction.response.send_message(embed = MISSING_PERMISSIONS_MESSAGE, ephemeral=True)
             return
         
         options_split = [option.strip() for option in options.split(",")]
         
         if len(options_split) > 10:
-            await interaction.followup.send(embed = nextcord.Embed(title = "Too Many Arguments", description = "You can't have more than 10 role options.", color = nextcord.Color.red()), ephemeral=True)
+            await interaction.followup.send(embed = nextcord.Embed(title="Too Many Arguments", description="You can't have more than 10 role options.", color=nextcord.Color.red()), ephemeral=True)
             return
         
         emojis = []
