@@ -90,24 +90,24 @@ async def on_close() -> None:
     logging.fatal("InfiniBot is shutting down...")
 
 # SLASH COMMANDS ==============================================================================================================================================================
-@bot.slash_command(name = "view", description = "Requires Infinibot Mod", integration_types=[nextcord.IntegrationType.guild_install])
+@bot.slash_command(name = "view", description = "Requires Infinibot Mod", contexts=[nextcord.InteractionContextType.guild])
 async def view(interaction: Interaction): pass
 
-@bot.slash_command(name = "set", description = "Requires Infinibot Mod", integration_types=[nextcord.IntegrationType.guild_install])
+@bot.slash_command(name = "set", description = "Requires Infinibot Mod", contexts=[nextcord.InteractionContextType.guild])
 async def set(interaction: Interaction): pass
 
-@bot.slash_command(name = "create", description = "Requires Infinibot Mod", integration_types=[nextcord.IntegrationType.guild_install])
+@bot.slash_command(name = "create", description = "Requires Infinibot Mod", contexts=[nextcord.InteractionContextType.guild])
 async def create(interaction: Interaction): pass
 
 @bot.slash_command(name = "help", description="Get help with InfiniBot")
 async def help(interaction: Interaction): pass
 
 # SERVER COMMANDS ================================================================================================================================================================
-@bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", integration_types=[nextcord.IntegrationType.guild_install])
+@bot.slash_command(name = "dashboard", description = "Configure InfiniBot (Requires Infinibot Mod)", contexts=[nextcord.InteractionContextType.guild])
 async def dashboard_command(interaction: Interaction):
     await dashboard.run_dashboard_command(interaction)
 
-@bot.slash_command(name = "profile", description = "Configure Your Profile In InfiniBot", integration_types=[nextcord.IntegrationType.guild_install])
+@bot.slash_command(name = "profile", description = "Configure Your Profile In InfiniBot", contexts=[nextcord.InteractionContextType.guild])
 async def profile_command(interaction: Interaction):
     await profile.run_profile_command(interaction)
 
@@ -144,7 +144,7 @@ async def set_log_channel(interaction: Interaction):
     await action_logging.run_set_log_channel_command(interaction)
 
 
-@bot.slash_command(name = "leaderboard", description = "Get your level and the level of everyone on the server.", integration_types=[nextcord.IntegrationType.guild_install])
+@bot.slash_command(name = "leaderboard", description = "Get your level and the level of everyone on the server.", contexts=[nextcord.InteractionContextType.guild])
 async def leaderboard(interaction: Interaction):
     await leveling.run_leaderboard_command(interaction)
 
@@ -170,7 +170,7 @@ async def customReactionRoleCommand(interaction: Interaction, options: str = Sla
                                     mentionRoles: bool = SlashOption(name="mention_roles", description="Mention the roles with @mention", required = False, default = True)):   
     await reaction_roles.run_custom_reaction_role_command(interaction, options, mentionRoles)
 
-@bot.slash_command(name = "test", description = "Test command.", integration_types=[nextcord.IntegrationType.guild_install], guild_ids=[968872260557488100, 968872260557488158, 1014000756090736680])
+@bot.slash_command(name = "test", description = "Test command.", contexts=[nextcord.InteractionContextType.guild], guild_ids=[968872260557488100, 968872260557488158, 1014000756090736680])
 async def test(interaction: Interaction):
     # Clear data from the database for this server
     server = Server(interaction.guild.id)
