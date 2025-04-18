@@ -366,7 +366,7 @@ async def process_level_change(guild: nextcord.Guild, member: nextcord.Member, l
                     if not silent:
                         # DM Them
                         if member_settings.direct_messages_enabled:
-                            embed = nextcord.Embed(title = f"Congratulations! You leveled up in {guild.name}!", description = f"As a result, you were granted the role `@{role.name}`. Keep your levels up, or else you might loose it!", color = nextcord.Color.purple())
+                            embed = nextcord.Embed(title = f"Congratulations! You leveled up in {guild.name}!", description = f"As a result, you were granted the role `@{role.name}`. Keep your levels up, or else you might lose it!", color = nextcord.Color.purple())
                             embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
                             try:
                                 await member.send(embed = embed)

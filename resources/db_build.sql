@@ -1,5 +1,28 @@
 -- Start of File db_build.sql ---
 
+-- <IMPORTANT> =======================================================================================
+-- Tags like #optimize are used to mark tables that get optimized for size.
+-- This is done automatically by the src.db.optimize function.
+-- These "comments" are not actually comments, but are used to mark the tables for optimization.
+-- DO NOT REMOVE THEM. THEY ARE IMPORTANT FOR THE FUNCTIONALITY OF THE DATABASE.
+-- </IMPORTANT> ======================================================================================
+
+-- Simple tables are tables that are used to store simple data.
+-- They have a default state for each variable which is set when a new table entry is created.
+-- If they are marked with #optimize, then when all values for a server_id are equal to the default 
+-- value, the entry is removed from the table to save space.
+
+-- Integrated lists are tables that are used to store data that has two keys.
+-- Can be queried more efficiently for two-keyed data.
+-- They are abstracted into a dictionary in the src.core.db_manager.integrated_list class.
+-- When instantiated under a src.config.server.Server, they are automatically created and managed,
+-- filtered for the server_id and keyed by the secondary key.
+
+-- Message logs are tables that are used to store messages for log messages.
+-- They are handled by the src.config.stored_messages module.
+
+
+
 
 
 -- START OF PROFILES
@@ -144,35 +167,21 @@ CREATE TABLE IF NOT EXISTS birthdays(
 
 
 -- START of MESSAGE LOGS
--- Create embeds table (integrated list table)
-CREATE TABLE IF NOT EXISTS embeds(
+-- Create managed_messages table (integrated list table)
+CREATE TABLE IF NOT EXISTS managed_messages(
     server_id INT, -- primary key
     message_id INT, -- secondary key
     channel_id INT,
     author_id INT,
+    message_type TEXT,
+    json_data TEXT,
     PRIMARY KEY (server_id, message_id)
 )
 
--- Create reaction_roles table (integrated list table)
-CREATE TABLE IF NOT EXISTS reaction_roles(
-    server_id INT, -- primary key
-    message_id INT, -- secondary key
-    channel_id INT,
-    author_id INT,
-    PRIMARY KEY (server_id, message_id)
-)
 
--- Create role_messages table (integrated list table)
-CREATE TABLE IF NOT EXISTS role_messages(
-    server_id INT, -- primary key
-    message_id INT, -- secondary key
-    channel_id INT,
-    author_id INT,
-    PRIMARY KEY (server_id, message_id)
-)
-
--- Create Message Logging table
-CREATE TABLE IF NOT EXISTS messages (
+-- Create Message Logging table (Custom table managed by src.config.stored_messages)
+-- This table is used to store messages for log messages.
+CREATE TABLE IF NOT EXISTS messages ( 
     message_id INTEGER PRIMARY KEY,
     guild_id INTEGER NOT NULL,
     channel_id INTEGER NOT NULL,

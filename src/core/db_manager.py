@@ -73,7 +73,12 @@ def cleanup_database() -> None:
     global database
     database.cleanup()
 
-class Simple_TableManager:
+class TableManager:
+    """
+    An abstract class for managing entries in a SQL table.
+    """
+
+class Simple_TableManager(TableManager):
     """
     A class for managing entries in a SQL table.
 
@@ -528,7 +533,7 @@ class Simple_TableManager:
 
         return Simple_TableManager.custom_property(property_name, getter_modifier=getter_modifier, setter_modifier=setter_modifier, **kwargs)
 
-class IntegratedList_TableManager:
+class IntegratedList_TableManager(TableManager):
     """
     Manages a list that contains complex keyed data. (Limit 2 complex keys). Primarily used for lists within SQL.
 
@@ -909,7 +914,7 @@ async def daily_database_maintenance(bot: nextcord.Client):
             return
         
 
-        # WAL checkpoint phase
+        # WAL checkpoint phase -----------------------------------------------------------------------------------
         logging.info("Starting WAL checkpoint...")
         checkpoint_start = datetime.datetime.now(datetime.timezone.utc)
         
@@ -918,7 +923,7 @@ async def daily_database_maintenance(bot: nextcord.Client):
         checkpoint_duration = datetime.datetime.now(datetime.timezone.utc) - checkpoint_start
         logging.info(f"WAL checkpoint completed in {checkpoint_duration.total_seconds():.2f}s")
 
-        # Database optimization phase
+        # Database optimization phase -----------------------------------------------------------------------------------
         logging.info("Starting database optimization...")
         optimize_start = datetime.datetime.now(datetime.timezone.utc)
         
@@ -928,41 +933,18 @@ async def daily_database_maintenance(bot: nextcord.Client):
         logging.info(f"Optimization completed in {optimize_duration.total_seconds():.2f}s")
 
 
-
-
-
-        # Message log cleanup phase
+        # Message log cleanup phase -----------------------------------------------------------------------------------
         logging.info("Starting message log cleanup...")
         message_log_cleanup_start = datetime.datetime.now(datetime.timezone.utc)
 
-        # Delete messages older than max_days_to_keep (config) days 
-        query = f"""
-        DELETE FROM messages 
-        WHERE created_at < datetime('now', '-{get_configs()['message_log_cleanup_days']["max_days_to_keep"]} days');
-        """
-        get_database().execute_query(query)
-
-        # Delete extra message log entries over max_messages_to_keep_per_guild (config) per guild
-        query = f"""DELETE FROM messages
-        WHERE rowid IN (
-            SELECT rowid
-            FROM (
-                SELECT rowid,
-                    ROW_NUMBER() OVER (PARTITION BY guild_id ORDER BY created_at DESC) AS row_num
-                FROM messages
-            )
-            WHERE row_num > {get_configs()['message_log_cleanup_days']["max_messages_to_keep_per_guild"]}
-        );"""
-        get_database().execute_query(query)
+        from config import stored_messages
+        stored_messages.cleanup()
 
         message_log_cleanup_duration = datetime.datetime.now(datetime.timezone.utc) - message_log_cleanup_start
         logging.info(f"Message log cleanup completed in {message_log_cleanup_duration.total_seconds():.2f}s")
 
 
-
-
-
-        # Guild cleanup phase
+        # Guild cleanup phase -----------------------------------------------------------------------------------
         all_guild_ids = {guild.id for guild in bot.guilds}
         logging.info(f"Scanning tables for orphaned entries")
 
@@ -970,7 +952,7 @@ async def daily_database_maintenance(bot: nextcord.Client):
             try:
                 table_start = datetime.datetime.now(datetime.timezone.utc)
                 # Get entries as list to handle length and batching
-                entries = await loop.run_in_executor(
+                entries = await loop.run_in_executor( # Entries is a list of IDs in the table
                     None,
                     lambda: list(get_database().get_table_unique_entries(table))
                 )

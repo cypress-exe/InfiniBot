@@ -2013,7 +2013,7 @@ class Dashboard(CustomView):
                                     server.leveling_profile.points_lost_per_day = int(value)
                                 
                                     await self.outer.setup(interaction)
-                                    await interaction.followup.send(embed = nextcord.Embed(title = "Points Lost Per Day Set", description = f"Every day at midnight, everyone will loose {value} points.", color = nextcord.Color.green()), ephemeral = True)
+                                    await interaction.followup.send(embed = nextcord.Embed(title = "Points Lost Per Day Set", description = f"Every day at midnight, everyone will lose {value} points.", color = nextcord.Color.green()), ephemeral = True)
                                 
                                 else:
                                     server.leveling_profile.points_lost_per_day = 0
@@ -2881,6 +2881,12 @@ class Dashboard(CustomView):
                                 "Timezone affects how we determine the actual date for birthday messages.",
                         color=nextcord.Color.red()
                     )
+                    back_btn = nextcord.ui.Button(
+                        label="Back",
+                        style=nextcord.ButtonStyle.danger,
+                        custom_id="back_btn"
+                    )
+                    back_btn.callback = lambda i: self.outer.setup(i)
                     configure_btn = nextcord.ui.Button(
                         label="Configure Timezone", 
                         style=nextcord.ButtonStyle.green,
@@ -2889,6 +2895,7 @@ class Dashboard(CustomView):
                     configure_btn.callback = lambda i: self.outer.configure_timezone_btn.callback(i)
                     
                     view = CustomView(timeout=None)
+                    view.add_item(back_btn)
                     view.add_item(configure_btn)
                     await interaction.response.edit_message(embed=embed, view=view)
                     return

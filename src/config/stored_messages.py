@@ -3,6 +3,7 @@ import datetime
 import logging
 
 from core.db_manager import get_database
+from config.global_settings import get_configs
 
 
 class StoredMessage:
@@ -123,6 +124,9 @@ def store_message(message: nextcord.Message):
     INSERT INTO messages 
         (message_id, guild_id, channel_id, author_id, content, created_at)
         VALUES (:message_id, :guild_id, :channel_id, :author_id, :content, :created_at)
+    ON CONFLICT(message_id) DO UPDATE SET
+        original_data = excluded.original_data,
+        last_updated = CURRENT_TIMESTAMP
     """
     get_database().execute_query(query, {
         'message_id': message.id,
@@ -196,3 +200,24 @@ def remove_message(message_id: int):
     """
     query = "DELETE FROM messages WHERE message_id = :message_id"
     get_database().execute_query(query, {'message_id': message_id}, commit=True)
+
+def cleanup():
+    # Delete messages older than max_days_to_keep (config) days 
+    query = f"""
+    DELETE FROM messages 
+    WHERE created_at < datetime('now', '-{get_configs()['message_log_cleanup_days']["max_days_to_keep"]} days');
+    """
+    get_database().execute_query(query)
+
+    # Delete extra message log entries over max_messages_to_keep_per_guild (config) per guild
+    query = f"""DELETE FROM messages
+    WHERE rowid IN (
+        SELECT rowid
+        FROM (
+            SELECT rowid,
+                ROW_NUMBER() OVER (PARTITION BY guild_id ORDER BY created_at DESC) AS row_num
+            FROM messages
+        )
+        WHERE row_num > {get_configs()['message_log_cleanup_days']["max_messages_to_keep_per_guild"]}
+    );"""
+    get_database().execute_query(query)

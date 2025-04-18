@@ -2,7 +2,7 @@ import logging
 
 from nextcord import Guild as NextcordGuild
 
-from core.db_manager import get_database, Simple_TableManager, IntegratedList_TableManager
+from core.db_manager import get_database, Simple_TableManager, IntegratedList_TableManager, TableManager
 
 class Server_Simple_TableManager(Simple_TableManager):
     def __init__(self, *args, **kwargs):
@@ -44,7 +44,7 @@ class Server:
         self._birthdays = None
         self._autobans = None
         
-        self._embeds = None
+        self._managed_messages = None
         self._reaction_roles = None
         self._role_messages = None
 
@@ -68,8 +68,27 @@ class Server:
     def remove_all_data(self):
         '''Removes all data relating to this server from the database.'''
         database = get_database()
-        for table in database.tables:
-            database.force_remove_entry(table, self.server_id)
+
+        # Attributes are lazy loaded, so this accesses them to trigger their loading so that
+        # it is possible to programmatically check their tables. Else, there would have to
+        # be a manual list of all the tables to check, which would need to be updated anytime
+        # a new table is added.
+
+        table_names = []
+        for attr_name in dir(self):
+            if attr_name.startswith('_') or attr_name.startswith('__'):
+                continue
+            try:
+                attr = getattr(self, attr_name)
+                if isinstance(attr, TableManager):
+                    table_names.append(attr.table_name)
+            except Exception as e:
+                logging.error(f"Skipping attribute {attr_name} due to error: {e}")
+                continue  # skip properties that throw on access
+
+        for table_name in table_names:
+            database.force_remove_entry(table_name, self.server_id)
+            logging.debug(f"Removed all data from {table_name} for server {self.server_id}")
 
     # PROFILES
     @property
@@ -299,35 +318,19 @@ class Server:
         def __init__(self, server_id):
             super().__init__("birthdays", "server_id", server_id, "member_id")
 
-    @property
-    def autobans(self):
-        if self._autobans is None: self._autobans = self.AutoBans(self.server_id)
-        return self._autobans
-    class AutoBans(Server_IntegratedList_TableManager):
-        def __init__(self, server_id):
-            super().__init__("auto_bans", "server_id", server_id, "member_id")
+    # @property
+    # def autobans(self):
+    #     if self._autobans is None: self._autobans = self.AutoBans(self.server_id)
+    #     return self._autobans
+    # class AutoBans(Server_IntegratedList_TableManager):
+    #     def __init__(self, server_id):
+    #         super().__init__("auto_bans", "server_id", server_id, "member_id")
 
-    # MESSAGE LOGS
+    # MANAGED MESSAGES
     @property
-    def embeds(self):
-        if self._embeds is None: self._embeds = self.Embeds(self.server_id)
-        return self._embeds
-    class Embeds(Server_IntegratedList_TableManager):
+    def managed_messages(self):
+        if self._managed_messages is None: self._managed_messages = self.ManagedMessages(self.server_id)
+        return self._managed_messages
+    class ManagedMessages(Server_IntegratedList_TableManager):
         def __init__(self, server_id):
-            super().__init__("embeds", "server_id", server_id, "message_id")
-
-    @property
-    def reaction_roles(self):
-        if self._reaction_roles is None: self._reaction_roles = self.ReactionRoles(self.server_id)
-        return self._reaction_roles
-    class ReactionRoles(Server_IntegratedList_TableManager):
-        def __init__(self, server_id):
-            super().__init__("reaction_roles", "server_id", server_id, "message_id")
-
-    @property
-    def role_messages(self):
-        if self._role_messages is None: self._role_messages = self.RoleMessages(self.server_id)
-        return self._role_messages
-    class RoleMessages(Server_IntegratedList_TableManager):
-        def __init__(self, server_id):
-            super().__init__("role_messages", "server_id", server_id, "message_id")
+            super().__init__("managed_messages", "server_id", server_id, "message_id")

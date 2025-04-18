@@ -651,7 +651,7 @@ async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry
         if found_role == False:
             deleted_roles.append(before_role)
 
-    if guild.premium_subscriber_role:  # Do not log when a user gets / looses the boost role
+    if guild.premium_subscriber_role:  # Do not log when a user gets / loses the boost role
         if guild.premium_subscriber_role.id in added_roles.ids():
             added_roles.remove(guild.premium_subscriber_role.id)
         if guild.premium_subscriber_role.id in deleted_roles.ids():

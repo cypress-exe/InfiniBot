@@ -170,30 +170,14 @@ async def customReactionRoleCommand(interaction: Interaction, options: str = Sla
                                     mentionRoles: bool = SlashOption(name="mention_roles", description="Mention the roles with @mention", required = False, default = True)):   
     await reaction_roles.run_custom_reaction_role_command(interaction, options, mentionRoles)
 
-# @bot.slash_command(name = "test", description = "Test command.", integration_types=[nextcord.IntegrationType.guild_install], guild_ids=[968872260557488100, 968872260557488158, 1014000756090736680])
-# async def test(interaction: Interaction):
-#     # Get all stored messages in the databases
-#     messages = get_database().get_all_messages()
+@bot.slash_command(name = "test", description = "Test command.", integration_types=[nextcord.IntegrationType.guild_install], guild_ids=[968872260557488100, 968872260557488158, 1014000756090736680])
+async def test(interaction: Interaction):
+    # Clear data from the database for this server
+    server = Server(interaction.guild.id)
+    server.remove_all_data()
 
-#     info = ""
-#     for message in messages:
-#         full_message = await message.get()
-#         block = f"""
-#         Message ID: {message.message_id}
-#         Guild ID: {message.guild_id}
-#         Channel ID: {message.channel_id}
-#         Author ID: {message.author_id}
-#         Content: {message.content}
-#         Created At: {message.created_at}
-#         {full_message.jump_url}        
-#         """
-#         block = utils.standardize_str_indention(block)
-
-#         info += block
-
-    
-#     # Respond
-#     await interaction.response.send_message(info)
+    # Respond
+    await interaction.response.send_message("Data cleared from the database for this server.", ephemeral=True)
 
 # ERROR HANDLING ==============================================================================================================================================================
 @bot.event
