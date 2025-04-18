@@ -205,7 +205,7 @@ def cleanup():
     # Delete messages older than max_days_to_keep (config) days 
     query = f"""
     DELETE FROM messages 
-    WHERE created_at < datetime('now', '-{get_configs()['message_log_cleanup_days']["max_days_to_keep"]} days');
+    WHERE created_at < datetime('now', '-{get_configs()['discord-message-logging']["max_days_to_keep"]} days');
     """
     get_database().execute_query(query)
 
@@ -218,6 +218,6 @@ def cleanup():
                 ROW_NUMBER() OVER (PARTITION BY guild_id ORDER BY created_at DESC) AS row_num
             FROM messages
         )
-        WHERE row_num > {get_configs()['message_log_cleanup_days']["max_messages_to_keep_per_guild"]}
+        WHERE row_num > {get_configs()['discord-message-logging']["max_messages_to_keep_per_guild"]}
     );"""
     get_database().execute_query(query)
