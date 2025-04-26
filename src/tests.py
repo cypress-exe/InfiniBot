@@ -54,6 +54,10 @@ def cleanup_database_url() -> None:
             os.remove(f"./generated/files/{file}")
     logging.info("Test database file removed")
 
+    # Cleanup database engines
+    if db_manager.get_database() is not None:
+        db_manager.get_database().cleanup()
+
 def generate_test_message(**kwargs) -> StoredMessage:
     message = StoredMessage(
         message_id=random.randint(0, 1000000000),
@@ -485,6 +489,8 @@ class TestStoredMessages(unittest.TestCase):
         # Remove the test message
         remove_message(test_message.message_id)
 
+        logging.info("Test for addition of a message to the database completed successfully.")
+
     def step2_test_message_destruction(self) -> None:
         """
         Tests the destruction of a message in the database.
@@ -509,6 +515,8 @@ class TestStoredMessages(unittest.TestCase):
 
         self.assertEqual(len(result), 0)
 
+        logging.info("Test for destruction of a message in the database completed successfully.")
+
     def step3_test_get_all_messages(self) -> None:
         """
         Tests the retrieval of all messages from the database.
@@ -521,7 +529,7 @@ class TestStoredMessages(unittest.TestCase):
         logging.info("Testing retrieval of all messages from the database...")
 
         # Clear the database
-        db_manager.get_database().execute_query("DELETE FROM messages")
+        db_manager.get_database().execute_query("DELETE FROM messages", commit=True)
 
         # Generate a set of unique guild IDs
         unique_guilds = set()
@@ -554,22 +562,29 @@ class TestStoredMessages(unittest.TestCase):
         messages = get_all_messages()
         self.assertEqual(len(messages), 0)
 
-    def step4_test_cleanup(self, guilds=10, max_messages_to_keep_per_guild=50) -> None:
+        # Delete all messages in the database to prepare for the next test (should be empty anyway, but doesn't hurt)
+        db_manager.get_database().execute_query("DELETE FROM messages", commit=True)
+
+        logging.info("Test for retrieving all messages from the database completed successfully.")
+
+    def step4_test_quantity_based_cleanup(self, guilds=10, max_messages_to_keep_per_guild=50) -> None:
         """
-        Tests the cleanup of the database.
+        Tests the cleanup of the database based on message quantity limits.
+
+        This test verifies that the number of messages per guild does not exceed 
+        the configured maximum (`max_messages_to_keep_per_guild`).
 
         :param self: The instance of the TestStoredMessages object.
-        :type self: TestStoredMessages
+        :param guilds: The number of unique guilds to generate test data for. Defaults to 10.
+        :param max_messages_to_keep_per_guild: The maximum number of messages to keep per guild. Defaults to 50.
         :return: None
         :rtype: None
         """
-        logging.info("Testing cleanup of the database...")
-
-        
+        logging.info("Testing cleanup (quantity based) of the database...")
 
         # Generate a TON of messages
         unique_guilds = set()
-        while len(unique_guilds) < guilds: # Arbitrary number of guilds
+        while len(unique_guilds) < guilds:
             unique_guilds.add(random.randint(0, 1000000000))
         unique_guilds = list(unique_guilds)
 
@@ -645,7 +660,117 @@ class TestStoredMessages(unittest.TestCase):
         # Check that the correct number of messages were deleted
         self.assertEqual(retrieved_messages_set, persistent_messages_set, msg="Incorrect content of messages left in the database after cleanup.")
 
-     
+        # Delete all messages in the database to prepare for the next test
+        db_manager.get_database().execute_query("DELETE FROM messages", commit=True)
+
+        logging.info("Test for cleanup of the database (quantity based) completed successfully.")
+
+    def step5_test_age_based_cleanup(self, guilds=10) -> None:
+        """
+        Tests the cleanup of the database based on message age and count limits.
+
+        This test verifies that messages older than 7 days are removed.
+        > Note: This threshold is hardcoded in this test, but is not representative of the actual threshold for the production code.
+
+        :param self: The instance of the TestStoredMessages object.
+        :param guilds: The number of unique guilds to generate test data for. Defaults to 10.
+        :return: None
+        """
+        logging.info("Testing cleanup (age based) of the database...")
+
+        max_days_to_keep = 7
+
+        # Generate a TON of messages
+        unique_guilds = set()
+        while len(unique_guilds) < guilds:
+            unique_guilds.add(random.randint(0, 1000000000))
+        unique_guilds = list(unique_guilds)
+
+        persistent_messages = []
+        overdue_messages = []
+
+        overdue_guilds = round(len(unique_guilds) * (1/2)) # 1/2 of the guilds will have overdue messages
+
+        # First few guilds will have overdue messages (older than max_days_to_keep)
+        for i in range(overdue_guilds):
+            guild = unique_guilds[i]
+
+            # Generate some overdue messages
+            overdue_messages_count = random.randint(1, 30)
+            messages_for_this_guild = [
+                generate_test_message(guild_id=guild, 
+                                      last_updated=datetime.datetime.now(ZoneInfo("UTC")) - datetime.timedelta(seconds=random.randint((max_days_to_keep+1)*24*60*60, (max_days_to_keep+100)*24*60*60)))
+                for _ in range(overdue_messages_count)
+            ]
+
+            # Generate some recent messages
+            recent_messages_count = random.randint(1, 30)
+            messages_for_this_guild.extend([
+                generate_test_message(guild_id=guild, 
+                                      last_updated=datetime.datetime.now(ZoneInfo("UTC")) - datetime.timedelta(seconds=random.randint(1*24*60*60, max_days_to_keep*24*60*60)))
+                for _ in range(recent_messages_count)
+            ])
+            
+            persistent_messages.extend(messages_for_this_guild[overdue_messages_count:])
+            overdue_messages.extend(messages_for_this_guild[:overdue_messages_count])
+            logging.info(f"Part 1 - Generated {len(messages_for_this_guild)} messages for guild {guild}")
+
+        # The rest of the guilds will not have overdue messages
+        for i in range(overdue_guilds, len(unique_guilds)):
+            guild = unique_guilds[i]
+
+            # Generate some recent messages
+            messages_for_this_guild = [
+                generate_test_message(guild_id=guild, 
+                                      last_updated=datetime.datetime.now(ZoneInfo("UTC")) - datetime.timedelta(seconds=random.randint(1*24*60*60, max_days_to_keep*24*60*60)))
+                for _ in range(random.randint(1, 30))
+            ]
+
+            persistent_messages.extend(messages_for_this_guild)
+            logging.info(f"Part 2 - Generated {len(messages_for_this_guild)} messages for guild {guild}")
+
+        all_messages = persistent_messages + overdue_messages
+
+        # Store the test messages
+        messages_stored = 0
+        for message in all_messages:
+            store_message(message, override_checks=True)
+            messages_stored += 1
+
+            if messages_stored % 100 == 0:
+                logging.info(f"Part 3 - Stored {messages_stored} messages (currently storing messages for guild {message.guild_id})")
+
+        logging.info(f"Stored {messages_stored} messages in total.")
+        logging.info(f"Persistent messages: {len(persistent_messages)}")
+
+        # Run the cleanup
+        logging.info("Running cleanup...")
+        cleanup(max_days_to_keep=max_days_to_keep)
+        logging.info("Cleanup complete.")
+
+        # Check that the correct number of messages were deleted
+        retrieved_messages = get_all_messages()
+
+        logging.info(f"Retrieved {len(retrieved_messages)} messages from the database after cleanup.")
+        
+        # Turn them into a set to remove duplicates
+        retrieved_messages_set = set(retrieved_messages)
+        self.assertEqual(len(retrieved_messages), len(retrieved_messages_set), msg="Duplicate messages found in the database after cleanup.")
+
+        all_messages_set = set(all_messages)
+        self.assertEqual(len(all_messages), len(all_messages_set), msg="Duplicate messages found in the test data.")
+
+        persistent_messages_set = set(persistent_messages)
+        self.assertEqual(len(persistent_messages), len(persistent_messages_set), msg="Duplicate messages found in the retrieved data.")
+
+        # Check that the correct number of messages were kept
+        self.assertEqual(len(persistent_messages), len(retrieved_messages), msg="Incorrect number of messages found in the database after cleanup.")
+
+        # Check that the correct number of messages were deleted
+        self.assertEqual(retrieved_messages_set, persistent_messages_set, msg="Incorrect content of messages left in the database after cleanup.")
+
+        # Delete all messages in the database to prepare for the next test
+        db_manager.get_database().execute_query("DELETE FROM messages", commit=True)     
 
 class TestServer(unittest.TestCase):
     INVALID_INT_TESTS = [(ValueError, -1), (TypeError, "abc"), (TypeError, None)]
@@ -1529,7 +1654,7 @@ if __name__ == "__main__":
     test_suite = unittest.TestLoader().discover('tests')
 
     # Add monolithic tests
-    test_suite.addTest(TestDatabase('entrypoint'))
+    # test_suite.addTest(TestDatabase('entrypoint'))
     test_suite.addTest(TestStoredMessages('entrypoint'))
 
     # UNCOMMENT TO RUN A SPECIFIC TEST

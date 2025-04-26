@@ -74,8 +74,9 @@ class Database:
         """
         Dispose of the database engine and free resources.
         """
-        if self.engine:
+        if hasattr(self, "engine") and self.engine is not None:
             self.engine.dispose()
+            self.engine = None  # Mark as disposed
             logging.info("Database engine disposed.")
 
     def __del__(self):
