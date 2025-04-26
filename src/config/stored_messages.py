@@ -192,6 +192,8 @@ def store_message(message: nextcord.Message | StoredMessage, override_checks=Fal
         'last_updated': get_var(message, 'last_updated', 'created_at') or datetime.datetime.now().isoformat()
     }, commit=True)
 
+    logging.debug(f"Stored message with ID {get_var(message, 'id', 'message_id')} in the database.")
+
 def get_message(message_id: int) -> StoredMessage | None:
     """
     Retrieve a message from the database by its ID.
@@ -216,7 +218,7 @@ def get_message(message_id: int) -> StoredMessage | None:
     )
     
 
-def get_all_messages(guild=None) -> list[StoredMessage]:
+def get_all_messages(guild:nextcord.Guild=None, guild_id=None) -> list[StoredMessage]:
     """
     USE FOR TESTING ONLY! VERY EXPENSIVE!
 
@@ -224,14 +226,19 @@ def get_all_messages(guild=None) -> list[StoredMessage]:
 
     :param guild: The guild to retrieve messages from. If None, all messages will be retrieved.
     :type guild: nextcord.Guild | None
+    :param guild_id: The ID of the guild to retrieve messages from. Ignored if guild is provided.
+    :type guild_id: int | None
 
-    :return: A list of message objects.
-    :rtype: list
+    :return: A list of StoredMessage objects.
+    :rtype: list[StoredMessage]
     """
+
+    guild_id = guild.id if guild else guild_id
+
     query = "SELECT * FROM messages"
-    if guild:
+    if guild_id:
         query += " WHERE guild_id = :guild_id"
-    result = get_database().execute_query(query, {'guild_id': guild.id} if guild else {}, multiple_values=True)
+    result = get_database().execute_query(query, {'guild_id': guild_id} if guild_id else {}, multiple_values=True)
 
     logging.debug(f"Retrieved {len(result)} messages from the database.")
 
@@ -260,6 +267,7 @@ def remove_message(message_id: int):
     """
     query = "DELETE FROM messages WHERE message_id = :message_id"
     get_database().execute_query(query, {'message_id': message_id}, commit=True)
+    logging.debug(f"Removed message with ID {message_id} from the database.")
 
 def remove_messages_from_guild(guild_id: int):
     """
@@ -270,6 +278,7 @@ def remove_messages_from_guild(guild_id: int):
     """
     query = "DELETE FROM messages WHERE guild_id = :guild_id"
     get_database().execute_query(query, {'guild_id': guild_id}, commit=True)
+    logging.debug(f"Removed all messages from guild with ID {guild_id} from the database.")
 
 def remove_messages_from_channel(channel_id: int):
     """
@@ -280,9 +289,10 @@ def remove_messages_from_channel(channel_id: int):
     """
     query = "DELETE FROM messages WHERE channel_id = :channel_id"
     get_database().execute_query(query, {'channel_id': channel_id}, commit=True)
+    logging.debug(f"Removed all messages from channel with ID {channel_id} from the database.")
 
 def cleanup(max_messages_to_keep_per_guild=None, max_days_to_keep=None):
-    
+    logging.debug("Cleaning up the database...")
     if max_messages_to_keep_per_guild is None:
         max_messages_to_keep_per_guild = get_configs()['discord-message-logging']["max_messages_to_keep_per_guild"]
 

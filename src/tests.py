@@ -874,8 +874,7 @@ class TestServer(unittest.TestCase):
 
         self.assertEqual(server.join_message_profile.active, False)
 
-        self.assertEqual(get_all_messages(), [])
-
+        self.assertEqual(get_all_messages(guild_id=server_id), [])
 
 
     def run_test_on_property(self, primary_server_instance, table_name, property_name: str, default_value, test_values, invalid_values) -> None:

@@ -803,7 +803,7 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
     if spam_score >= server.spam_moderation_profile.score_threshold:
         try:
             # Time them out
-            await utils.timeout(message.author, server.spam_moderation_profile.timeout_seconds, reason=f"Spam Moderation: User exceeded spam message limit of {server.spam_moderation_profile.score_threshold}.")
+            await utils.timeout(message.author, server.spam_moderation_profile.timeout_seconds, reason=f"Spam Moderation: User exceeded spam message limit of {server.spam_moderation_profile.score_threshold} points.")
             
             # Send them a message (if they want it)
             if Member(message.author.id).direct_messages_enabled:

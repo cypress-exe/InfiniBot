@@ -443,7 +443,7 @@ async def on_guild_channel_delete(channel: nextcord.abc.GuildChannel) -> None:
     :rtype: None
     """
     # TODO Delete message info from channels that are deleted.
-    pass
+    stored_messages.remove_messages_from_channel(channel.id)
 
 @bot.event
 async def on_voice_state_update(member: nextcord.Member, before: nextcord.VoiceState, after: nextcord.VoiceState) -> None:
