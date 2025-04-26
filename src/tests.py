@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import asyncio
+import datetime
 import logging
 import os
 import random
@@ -11,9 +11,10 @@ from zoneinfo import ZoneInfo
 
 from components.utils import feature_is_active
 from config.file_manager import JSONFile
+from config.global_settings import get_global_kill_status, get_persistent_data, get_configs
 from config.member import Member
 from config.server import Server
-from config.global_settings import get_global_kill_status, get_persistent_data
+from config.stored_messages import StoredMessage, store_message, get_message, get_all_messages, remove_message, cleanup
 import core.db_manager as db_manager
 from core.log_manager import setup_logging
 from modules.custom_types import UNSET_VALUE
@@ -53,8 +54,35 @@ def cleanup_database_url() -> None:
             os.remove(f"./generated/files/{file}")
     logging.info("Test database file removed")
 
+def generate_test_message(**kwargs) -> StoredMessage:
+    message = StoredMessage(
+        message_id=random.randint(0, 1000000000),
+        guild_id=random.randint(0, 1000000000),
+        channel_id=random.randint(0, 1000000000),   
+        author_id=random.randint(0, 1000000000),
+        content="".join([random.choice(r"abcdefghijklmnopqrstuvwxyz!@#$%^&*()_+-=[]{};:'<>,./? ") for _ in range(random.randint(1, 4000))]),
+        last_updated=datetime.datetime.now(ZoneInfo("UTC"))
+    )
+
+    for key, value in kwargs.items():
+        setattr(message, key, value)
+
+    return message
+
 # Database Tests
 class TestDatabase(unittest.TestCase):
+    def _steps(self):
+        for name in dir(self): # dir() result is implicitly sorted
+            if name.startswith("step"):
+                yield name, getattr(self, name) 
+
+    def entrypoint(self):
+        for name, step in self._steps():
+            try:
+                step()
+            except Exception as e:
+                self.fail("{} failed ({}: {})".format(name, type(e), e))
+
     def get_memory_database(self) -> Database:
         """
         Retrieves an instance of the `Database` class, but with the database
@@ -66,6 +94,10 @@ class TestDatabase(unittest.TestCase):
         """
         return Database("sqlite://", "resources/test_db_build.sql")
     
+    def teardown(self, database: Database) -> None:
+        """Cleanup after test"""
+        database.cleanup()
+
     def create_test_row(self, database: Database, table: str, id: int) -> None:
         """
         Creates a test row in the given table.
@@ -84,7 +116,7 @@ class TestDatabase(unittest.TestCase):
         query = f"INSERT OR IGNORE INTO {table} VALUES ({id}, {query_values})"
         database.execute_query(query, commit = True)
 
-    def test_setup(self) -> None:
+    def step1_test_setup(self) -> None:
         """
         Tests the setup of the database.
 
@@ -94,7 +126,9 @@ class TestDatabase(unittest.TestCase):
         logging.info("Testing database setup...")
         database = self.get_memory_database()
 
-    def test_database_integrity(self) -> None:
+        self.teardown(database)
+
+    def step2_test_database_integrity(self) -> None:
         """
         Tests the integrity of the database.
 
@@ -121,7 +155,9 @@ class TestDatabase(unittest.TestCase):
                                                      'table_3': ['primary_key', 'example_bool', 'example_channel', 'example_integer', 'example_list']})
         self.assertEqual(database.all_primary_keys, {'table_1': 'primary_key', 'table_2': 'primary_key_1', 'table_3': 'primary_key'})
 
-    def test_execute_query(self) -> None:
+        self.teardown(database)
+
+    def step3_test_execute_query(self) -> None:
         """
         Tests that the database can execute queries properly.
 
@@ -139,7 +175,9 @@ class TestDatabase(unittest.TestCase):
 
         self.assertEqual(result, [(1234, 0, '{"status": "UNSET", "value": null}', 3, '[]')])
 
-    def test_optimization(self) -> None:
+        self.teardown(database)
+
+    def step4_test_optimization(self) -> None:
         """
         Tests database optimization.
 
@@ -175,8 +213,9 @@ class TestDatabase(unittest.TestCase):
             results = database.execute_query(f"SELECT * FROM table_1 WHERE primary_key = {test_server}", multiple_values=True)
             self.assertEqual(results, [])
 
+        self.teardown(database)
 
-    def test_force_remove_entry(self) -> None:
+    def step5_test_force_remove_entry(self) -> None:
         """
         Tests database force remove entry.
 
@@ -201,7 +240,9 @@ class TestDatabase(unittest.TestCase):
         results = database.execute_query(f"SELECT * FROM table_1 WHERE primary_key = 123456789", multiple_values=True)
         self.assertEqual(results, [])
 
-    def test_get_column_default(self) -> None:
+        self.teardown(database)
+
+    def step6_test_get_column_default(self) -> None:
         """
         Tests the `get_column_default` method of the `Database` class.
 
@@ -260,7 +301,9 @@ class TestDatabase(unittest.TestCase):
                 value = database.get_column_default(table, column, format = True)
                 self.assertEqual(value, test_values_with_format[table][column])
 
-    def test_does_entry_exist(self) -> None:
+        self.teardown(database)
+
+    def step7_test_does_entry_exist(self) -> None:
         """
         Tests the does_entry_exist function of the database.
 
@@ -282,7 +325,9 @@ class TestDatabase(unittest.TestCase):
         result = database.does_entry_exist("table_1", 123456788)
         self.assertEqual(result, False)
 
-    def test_get_table_unique_entries(self) -> None:
+        self.teardown(database)
+
+    def step8_test_get_table_unique_entries(self) -> None:
         """
         Tests the get_table_unique_entries function of the database.
 
@@ -302,18 +347,21 @@ class TestDatabase(unittest.TestCase):
         # Get unique entries
         unique_entries_generator = database.get_table_unique_entries("table_1")
         unique_entries = [server for server in unique_entries_generator] # generator to list
-        self.assertEqual(unique_entries, test_servers)
 
-    def test_get_table_unique_entries(self) -> None:
+        self.assertEqual(sorted(unique_entries), sorted(test_servers))
+        
+        self.teardown(database)
+
+    def step9_test_get_unique_entries_for_database(self) -> None:
         """
-        Tests the get_table_unique_entries function of the database.
+        Tests the get_unique_entries_for_database function of the database.
 
         :param self: The instance of the TestDatabase object.
         :type self: TestDatabase
         :return: None
         :rtype: None
         """
-        logging.info("Testing database get table unique entries...")
+        logging.info("Testing database get unique entries for database...")
         database = self.get_memory_database()
 
         test_servers = [random.randint(100000, 199999) for _ in range(20)]
@@ -344,7 +392,9 @@ class TestDatabase(unittest.TestCase):
         # Check that the unique entries are the same as the test servers
         self.assertEqual(set(unique_entries), set(test_servers + test_servers_unique_table_1 + test_servers_unique_table_3))
 
-    def test_get_id_sql_name(self) -> None:
+        self.teardown(database)
+
+    def step10_test_get_id_sql_name(self) -> None:
         """
         Tests the get_id_sql_name function of the database.
 
@@ -365,6 +415,237 @@ class TestDatabase(unittest.TestCase):
         for table in answers:
             result = database.get_id_sql_name(table)
             self.assertEqual(result, answers[table])
+
+        self.teardown(database)
+
+class TestStoredMessages(unittest.TestCase):
+    def _steps(self):
+        for name in dir(self): # dir() result is implicitly sorted
+            if name.startswith("step"):
+                yield name, getattr(self, name) 
+
+    def entrypoint(self):
+        for name, step in self._steps():
+            try:
+                step()
+            except Exception as e:
+                self.fail("{} failed ({}: {})".format(name, type(e), e))
+
+    def step1_test_add_message(self) -> None:
+        """
+        Tests the addition of a message to the database.
+
+        :param self: The instance of the TestStoredMessages object.
+        :type self: TestStoredMessages
+        :return: None
+        :rtype: None
+        """
+        logging.info("Testing addition of a message to the database...")
+
+        # Test a large message
+        content = "".join([random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(4000)]) # Max 4000 characters size for discord messages
+
+        # Other data
+        message_id = random.randint(0, 1000000000)
+        guild_id = random.randint(0, 1000000000)
+        channel_id = random.randint(0, 1000000000)
+        author_id = random.randint(0, 1000000000)
+        last_updated = datetime.datetime.now(ZoneInfo("UTC"))
+
+        # Create a test message
+        test_message = StoredMessage(
+            message_id=message_id,
+            guild_id=guild_id,
+            channel_id=channel_id,
+            author_id=author_id,
+            content=content,
+            last_updated=last_updated
+        )
+
+        # Check that StoredMessage behaves correctly
+        self.assertEqual(test_message.message_id, message_id)
+        self.assertEqual(test_message.guild_id, guild_id)
+        self.assertEqual(test_message.channel_id, channel_id)
+        self.assertEqual(test_message.author_id, author_id)
+        self.assertEqual(test_message.content, content)
+        self.assertEqual(test_message.last_updated, last_updated)
+
+        # Store the message
+        store_message(test_message, override_checks=True)
+
+        # Check that the message was stored correctly
+        message_result = get_message(test_message.message_id)
+
+        self.assertEqual(message_result.message_id, test_message.message_id)
+        self.assertEqual(message_result.guild_id, test_message.guild_id)
+        self.assertEqual(message_result.channel_id, test_message.channel_id)
+        self.assertEqual(message_result.author_id, test_message.author_id)
+        self.assertEqual(message_result.content, test_message.content)
+
+        # Remove the test message
+        remove_message(test_message.message_id)
+
+    def step2_test_message_destruction(self) -> None:
+        """
+        Tests the destruction of a message in the database.
+
+        :param self: The instance of the TestStoredMessages object.
+        :type self: TestStoredMessages
+        :return: None
+        :rtype: None
+        """
+        logging.info("Testing destruction of a message in the database...")
+
+        # Create a test message
+        test_message = generate_test_message()
+
+        store_message(test_message, override_checks=True)
+
+        remove_message(test_message.message_id)
+
+        # Check that the message was removed
+        query = f"SELECT * FROM messages WHERE message_id = {test_message.message_id}"
+        result = db_manager.get_database().execute_query(query, multiple_values=True)
+
+        self.assertEqual(len(result), 0)
+
+    def step3_test_get_all_messages(self) -> None:
+        """
+        Tests the retrieval of all messages from the database.
+
+        :param self: The instance of the TestStoredMessages object.
+        :type self: TestStoredMessages
+        :return: None
+        :rtype: None
+        """
+        logging.info("Testing retrieval of all messages from the database...")
+
+        # Clear the database
+        db_manager.get_database().execute_query("DELETE FROM messages")
+
+        # Generate a set of unique guild IDs
+        unique_guilds = set()
+        while len(unique_guilds) < 17: # Arbitrary number of guilds
+            unique_guilds.add(random.randint(0, 1000000000))
+        unique_guilds = list(unique_guilds)
+
+        # Create some test messages
+        test_messages = [generate_test_message(guild_id=random.choice(unique_guilds)) for _ in range(250)]
+
+        test_messages_to_store = test_messages
+        random.shuffle(test_messages_to_store)
+
+        # Store the test messages
+        for message in test_messages_to_store:
+            store_message(message, override_checks=True)
+
+        # Retrieve all messages
+        messages = get_all_messages()
+
+        # Check that all messages were retrieved
+        for message in test_messages:
+            self.assertIn(message, messages)
+
+        # Remove the test messages
+        for message in test_messages:
+            remove_message(message.message_id)
+
+        # Ensure the database is empty
+        messages = get_all_messages()
+        self.assertEqual(len(messages), 0)
+
+    def step4_test_cleanup(self, guilds=10, max_messages_to_keep_per_guild=50) -> None:
+        """
+        Tests the cleanup of the database.
+
+        :param self: The instance of the TestStoredMessages object.
+        :type self: TestStoredMessages
+        :return: None
+        :rtype: None
+        """
+        logging.info("Testing cleanup of the database...")
+
+        
+
+        # Generate a TON of messages
+        unique_guilds = set()
+        while len(unique_guilds) < guilds: # Arbitrary number of guilds
+            unique_guilds.add(random.randint(0, 1000000000))
+        unique_guilds = list(unique_guilds)
+
+        persistent_messages = []
+        overflow_messages = []
+
+        overflowed_guilds = round(len(unique_guilds) * (1/2)) # 1/2 of the guilds will be over-filled
+
+        # First few guilds will be over-filled (more than discord-message-logging.max_messages_to_keep_per_guild)
+        for i in range(overflowed_guilds):
+            guild = unique_guilds[i]
+
+            # Generate a TON of messages
+            extra_messages = random.randint(1, round(max_messages_to_keep_per_guild/10))
+            messages_for_this_guild = [
+                generate_test_message(guild_id=guild)
+                for _ in range(max_messages_to_keep_per_guild + extra_messages)
+            ]
+            
+            persistent_messages.extend(messages_for_this_guild[-max_messages_to_keep_per_guild:])
+            overflow_messages.extend(messages_for_this_guild[:-max_messages_to_keep_per_guild])
+            logging.info(f"Part 1 - Generated {len(messages_for_this_guild)} messages for guild {guild}")
+
+        # The rest of the guilds will be under-filled (less than discord-message-logging.max_messages_to_keep_per_guild)
+        for i in range(overflowed_guilds, len(unique_guilds)):
+            guild = unique_guilds[i]
+
+            # Generate a TON of messages (but less than max_messages_to_keep_per_guild)
+            messages_for_this_guild = []
+            for _ in range(random.randint(1, max_messages_to_keep_per_guild - 1)):
+                messages_for_this_guild.append(generate_test_message(guild_id=guild))
+
+            persistent_messages.extend(messages_for_this_guild)
+            logging.info(f"Part 2 - Generated {len(messages_for_this_guild)} messages for guild {guild}")
+
+        all_messages = persistent_messages + overflow_messages
+
+        # Store the test messages
+        messages_stored = 0
+        for message in all_messages:
+            store_message(message, override_checks=True)
+            messages_stored += 1
+
+            if messages_stored % 100 == 0:
+                logging.info(f"Part 3 - Stored {messages_stored} messages (currently storing messages for guild {message.guild_id})")
+
+        logging.info(f"Stored {messages_stored} messages in total.")
+        logging.info(f"Persistent messages: {len(persistent_messages)}")
+
+        # Run the cleanup
+        logging.info("Running cleanup...")
+        cleanup(max_messages_to_keep_per_guild=max_messages_to_keep_per_guild)
+        logging.info("Cleanup complete.")
+
+        # Check that the correct number of messages were deleted
+        retrieved_messages = get_all_messages()
+
+        logging.info(f"Retrieved {len(retrieved_messages)} messages from the database after cleanup.")
+        
+        # Turn them into a set to remove duplicates
+        retrieved_messages_set = set(retrieved_messages)
+        self.assertEqual(len(retrieved_messages), len(retrieved_messages_set), msg="Duplicate messages found in the database after cleanup.")
+
+        all_messages_set = set(all_messages)
+        self.assertEqual(len(all_messages), len(all_messages_set), msg="Duplicate messages found in the test data.")
+
+        persistent_messages_set = set(persistent_messages)
+        self.assertEqual(len(persistent_messages), len(persistent_messages_set), msg="Duplicate messages found in the retrieved data.")
+
+        # Check that the correct number of messages were kept
+        self.assertEqual(len(persistent_messages), len(retrieved_messages), msg="Incorrect number of messages found in the database after cleanup.")
+
+        # Check that the correct number of messages were deleted
+        self.assertEqual(retrieved_messages_set, persistent_messages_set, msg="Incorrect content of messages left in the database after cleanup.")
+
+     
 
 class TestServer(unittest.TestCase):
     INVALID_INT_TESTS = [(ValueError, -1), (TypeError, "abc"), (TypeError, None)]
@@ -391,6 +672,86 @@ class TestServer(unittest.TestCase):
         self.assertEqual(server.server_id, server_id)
 
         server.remove_all_data()
+
+    def test_server_destruction(self) -> None:
+        """
+        Tests the destruction of a Server instance and its functionalities.
+
+        :param self: The instance of the TestServer object.
+        :type self: TestServer
+        :return: None
+        :rtype: None
+        """
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+        
+        # Set some random data for the server
+        server.profanity_moderation_profile.active = True
+        server.profanity_moderation_profile.channel = 123456789
+        server.profanity_moderation_profile.strike_system_active = True
+        server.profanity_moderation_profile.max_strikes = 3
+
+        server.spam_moderation_profile.active = True
+        server.spam_moderation_profile.score_threshold = 100
+
+        server.leveling_profile.active = True
+        server.leveling_profile.channel = 123456789
+        
+        level_up_embed = server.leveling_profile.level_up_embed
+        level_up_embed["title"] = "Changed Title"
+        level_up_embed["description"] = "Changed Description"
+        level_up_embed["color"] = 0x00FF00
+        server.leveling_profile.level_up_embed = level_up_embed
+        
+        server.leveling_profile.points_lost_per_day = 0
+
+        server.birthdays.add(member_id="123456789", birth_date="2023-01-01", real_name=None)
+        server.birthdays.add(member_id="987654321", birth_date="2023-01-02", real_name="John Doe")
+
+        default_roles:list = server.default_roles.default_roles
+        default_roles.append("123456789")
+        server.default_roles.default_roles = default_roles
+
+        server.join_message_profile.active = True
+
+        # Add some messages
+        for _ in range(5):
+            store_message(generate_test_message(guild_id=server_id), override_checks=True)
+
+        server.remove_all_data()
+
+        del server
+
+        server = Server(server_id)
+
+        self.assertEqual(server.profanity_moderation_profile.active, False)
+        self.assertEqual(server.profanity_moderation_profile.channel, UNSET_VALUE)
+        self.assertEqual(server.profanity_moderation_profile.strike_system_active, True)
+        self.assertEqual(server.profanity_moderation_profile.max_strikes, 3)
+
+        self.assertEqual(server.spam_moderation_profile.active, False)
+        self.assertEqual(server.spam_moderation_profile.score_threshold, 100)
+
+        self.assertEqual(server.leveling_profile.active, False)
+        self.assertEqual(server.leveling_profile.channel, UNSET_VALUE)
+
+        level_up_embed = server.leveling_profile.level_up_embed
+        self.assertEqual(level_up_embed["title"], "Congratulations, @displayname!")
+        self.assertEqual(level_up_embed["description"], "Congrats @mention! You reached level [level]!")
+        self.assertEqual(level_up_embed["color"], "White")
+
+        self.assertEqual(server.leveling_profile.points_lost_per_day, 0)
+
+        self.assertEqual(len(server.birthdays), 0)
+
+        self.assertEqual(len(server.default_roles.default_roles), 0)
+
+        self.assertEqual(server.join_message_profile.active, False)
+
+        self.assertEqual(get_all_messages(), [])
+
+
 
     def run_test_on_property(self, primary_server_instance, table_name, property_name: str, default_value, test_values, invalid_values) -> None:
         """
@@ -795,7 +1156,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "leveling_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE, 0, None], self.INVALID_CHANNEL_TESTS)
         self.run_test_on_property(server, "leveling_profile", "level_up_embed[title]", "Congratulations, @displayname!", ["Title_Changed", None], [])
         self.run_test_on_property(server, "leveling_profile", "level_up_embed[description]", "Congrats @mention! You reached level [level]!", ["Description_Changed"], [])
-        self.run_test_on_property(server, "leveling_profile", "level_up_embed[color]", "White", ["Red", "Orange", "Yellow", "Green"], [])
+        self.run_test_on_property(server, "leveling_profile", "level_up_embed[color]", "White", ["Red", "Orange", "Yellow", "Green", 0x00FF00, 0x0000FF], [])
         self.run_test_on_property(server, "leveling_profile", "points_lost_per_day", 0, [12, 0, 1], self.INVALID_INT_TESTS)
         self.run_test_on_property(server, "leveling_profile", "max_points_per_message", 40, [200, None, 0, 20, 500], [i for i in self.INVALID_INT_TESTS if i != (TypeError, None)]) # Allow None values
         self.run_test_on_property(server, "leveling_profile", "exempt_channels", [], [[1234567989, 256468532], [1234567989, 256468532, 494621612]], [(ValueError, [1234, 9876, 1234])]) # No duplicates
@@ -813,7 +1174,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "join_message_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE], self.INVALID_CHANNEL_TESTS + [(TypeError, None)])
         self.run_test_on_property(server, "join_message_profile", "embed[title]", "@displayname just joined the server!", ["Title_Changed", None], [])
         self.run_test_on_property(server, "join_message_profile", "embed[description]", "Welcome to the server, @mention!", ["Description_Changed"], [])
-        self.run_test_on_property(server, "join_message_profile", "embed[color]", "Blurple", ["Red", "Orange", "Yellow", "Green"], [])
+        self.run_test_on_property(server, "join_message_profile", "embed[color]", "Blurple", ["Red", "Orange", "Yellow", "Green", 0x00FF00, 0x0000FF], [])
         self.run_test_on_property(server, "join_message_profile", "allow_join_cards", True, [False, True], self.INVALID_BOOL_TESTS)
 
         server.remove_all_data()
@@ -828,7 +1189,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "leave_message_profile", "channel", UNSET_VALUE, [1234567989, UNSET_VALUE], self.INVALID_CHANNEL_TESTS + [(TypeError, None)])
         self.run_test_on_property(server, "leave_message_profile", "embed[title]", "@displayname just left the server.", ["Title_Changed", None], [])
         self.run_test_on_property(server, "leave_message_profile", "embed[description]", "@mention left.", ["Description_Changed"], [])
-        self.run_test_on_property(server, "leave_message_profile", "embed[color]", "Blurple", ["Red", "Orange", "Yellow", "Green"], [])
+        self.run_test_on_property(server, "leave_message_profile", "embed[color]", "Blurple", ["Red", "Orange", "Yellow", "Green", 0x00FF00, 0x0000FF], [])
 
         server.remove_all_data()
 
@@ -841,7 +1202,7 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "birthdays_profile", "channel", UNSET_VALUE, [1234567989, None, UNSET_VALUE], self.INVALID_CHANNEL_TESTS)
         self.run_test_on_property(server, "birthdays_profile", "embed[title]", "Happy Birthday, [realname]!", ["Title_Changed", None], [])
         self.run_test_on_property(server, "birthdays_profile", "embed[description]", "@mention just turned [age]!", ["Description_Changed"], [])
-        self.run_test_on_property(server, "birthdays_profile", "embed[color]", "Gold", ["Red", "Orange", "Yellow", "Green"], [])
+        self.run_test_on_property(server, "birthdays_profile", "embed[color]", "Gold", ["Red", "Orange", "Yellow", "Green", 0x00FF00, 0x0000FF], [])
         self.run_test_on_property(server, "birthdays_profile", "runtime", UNSET_VALUE, ["12:00 MDT", "8:00 PDT", "18:00 UTC", "0:00 EST", UNSET_VALUE], [(TypeError, None)])
 
         server.remove_all_data()
@@ -927,40 +1288,6 @@ class TestServer(unittest.TestCase):
 
         server.remove_all_data()
 
-    # MESSAGE LOGS
-    def test_embeds(self):
-        server_id = random.randint(0, 1000000000)
-
-        server = Server(server_id)
-
-        # Using run_test_on_integrated_list_property
-        test = self.RunTestOnIntegratedListProperty(server, "embeds", ["message_id:int", "channel_id:int", "author_id:int"], [3, 10], extra_keys_to_query=["channel_id"])
-        test.run(self)
-
-        server.remove_all_data()
-
-    def test_reaction_roles(self):
-        server_id = random.randint(0, 1000000000)
-
-        server = Server(server_id)
-
-        # Using run_test_on_integrated_list_property
-        test = self.RunTestOnIntegratedListProperty(server, "reaction_roles", ["message_id:int", "channel_id:int", "author_id:int"], [3, 10], extra_keys_to_query=["channel_id"])
-        test.run(self)
-
-        server.remove_all_data()
-
-    def test_role_messages(self):
-        server_id = random.randint(0, 1000000000)
-
-        server = Server(server_id)
-
-        # Using run_test_on_integrated_list_property
-        test = self.RunTestOnIntegratedListProperty(server, "role_messages", ["message_id:int", "channel_id:int", "author_id:int"], [3, 10], extra_keys_to_query=["channel_id"])
-        test.run(self)
-
-        server.remove_all_data()
-
 class TestMember(unittest.TestCase):
     def __init__(self, methodName:str = ...) -> None:
         super().__init__(methodName)
@@ -1040,10 +1367,10 @@ class TestMember(unittest.TestCase):
         self.run_test_on_property(member, "join_card_enabled", False, [True, False])
         self.run_test_on_property(member, "level_up_card_embed[title]", "Yum... Levels", ["Title_Changed", None])
         self.run_test_on_property(member, "level_up_card_embed[description]", "I am level [level]!", ["Description_Changed"])
-        self.run_test_on_property(member, "level_up_card_embed[color]", "Purple", ["Red", "Green", "White", None])
+        self.run_test_on_property(member, "level_up_card_embed[color]", "Purple", ["Red", "Green", "White", None, 0x00FF00, 0x0000FF])
         self.run_test_on_property(member, "join_card_embed[title]", "About Me", ["Title_Changed", None])
         self.run_test_on_property(member, "join_card_embed[description]", "I am human", ["Description_Changed"])
-        self.run_test_on_property(member, "join_card_embed[color]", "Green", ["Red", "Purple", "White", None])
+        self.run_test_on_property(member, "join_card_embed[color]", "Green", ["Red", "Purple", "White", None, 0x00FF00, 0x0000FF])
         self.run_test_on_property(member, "direct_messages_enabled", True, [False, True])
 
         member.remove_all_data()
@@ -1191,12 +1518,25 @@ if __name__ == "__main__":
     print("RUNNING ---------------------------------------------------------------------------------------------------------")
     setup_logging(logging.DEBUG)
 
+    # Ensure that the test db file doesn't exist
+    cleanup_database_url()
+
     update_database_url()
 
     logging.info(f"{'#'*50} Running Tests {'#'*50}")
     
     # Create test suite and runner
-    test_suite = unittest.TestLoader().discover('tests') 
+    test_suite = unittest.TestLoader().discover('tests')
+
+    # Add monolithic tests
+    test_suite.addTest(TestDatabase('entrypoint'))
+    test_suite.addTest(TestStoredMessages('entrypoint'))
+
+    # UNCOMMENT TO RUN A SPECIFIC TEST
+    # test_suite = unittest.TestSuite()
+    # test_suite.addTest(TestStoredMessages('my_test_method_name'))
+    # </UNCOMMENT>
+
     runner = unittest.TextTestRunner()
     test_result = runner.run(test_suite)
 
@@ -1214,3 +1554,5 @@ if __name__ == "__main__":
     print(f"Skipped: {len(test_result.skipped)}")
 
     print('#'*(50 * 2 + 2 + len(header)))
+
+    exit()

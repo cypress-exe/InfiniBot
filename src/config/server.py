@@ -2,6 +2,7 @@ import logging
 
 from nextcord import Guild as NextcordGuild
 
+from config.stored_messages import remove_messages_from_guild
 from core.db_manager import get_database, Simple_TableManager, IntegratedList_TableManager, TableManager
 
 class Server_Simple_TableManager(Simple_TableManager):
@@ -89,6 +90,10 @@ class Server:
         for table_name in table_names:
             database.force_remove_entry(table_name, self.server_id)
             logging.debug(f"Removed all data from {table_name} for server {self.server_id}")
+
+        # Remove messages
+        remove_messages_from_guild(self.server_id)
+        logging.debug(f"Removed all stored messages for server {self.server_id}")
 
     # PROFILES
     @property

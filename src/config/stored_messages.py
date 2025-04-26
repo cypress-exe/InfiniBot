@@ -1,6 +1,7 @@
 import nextcord
 import datetime
 import logging
+from typing import Any
 
 from core.db_manager import get_database
 from config.global_settings import get_configs
@@ -25,15 +26,15 @@ class StoredMessage:
         :type author_id: int
         :param content: The content of the message.
         :type content: str
-        :param created_at: The timestamp when the message was created.
-        :type created_at: datetime.datetime
+        :param last_updated: The timestamp when the message was created.
+        :type last_updated: datetime.datetime
         """
         self.message_id = None
         self.channel_id = None
         self.guild_id = None
         self.author_id = None
         self.content = None
-        self.created_at = None
+        self.last_updated = None
 
         # Added for compatibility reasons. Not stored in db, and will always be empty.
         self.embeds = []
@@ -105,10 +106,42 @@ class StoredMessage:
         :rtype: str
         """
         return (f"StoredMessage(message_id={self.message_id}, channel_id={self.channel_id}, guild_id={self.guild_id}, "
-                f"author_id={self.author_id}, content={self.content}, created_at={self.created_at})")
+                f"author_id={self.author_id}, content={self.content}, last_updated={self.last_updated})")
 
+    def __eq__(self, other):
+        """
+        Check if two StoredMessage objects are equal based on their attributes.
 
-def store_message(message: nextcord.Message):
+        :param other: The other object to compare with.
+        :type other: object
+        :return: True if all attributes are equal, False otherwise.
+        :rtype: bool
+        """
+        if not isinstance(other, StoredMessage):
+            return False
+        
+        # STart removing one by one to see whwere the issue is.
+        
+        if str(self.message_id) != str(other.message_id): return False
+        if str(self.channel_id) != str(other.channel_id): return False
+        if str(self.guild_id) != str(other.guild_id): return False
+        if str(self.author_id) != str(other.author_id): return False
+        if str(self.content) != str(other.content): return False
+        if str(self.last_updated) != str(other.last_updated): return False
+
+        return True
+    
+    def __hash__(self):
+        return hash(
+            (str(self.message_id), 
+             str(self.channel_id), 
+             str(self.guild_id), 
+             str(self.author_id), 
+             str(self.content), 
+             str(self.last_updated))
+            )
+
+def store_message(message: nextcord.Message | StoredMessage, override_checks=False):
     """
     Store a message in the database.
 
@@ -116,25 +149,47 @@ def store_message(message: nextcord.Message):
     :type message: nextcord.Message
     """
 
-    if message == None: return
-    if message.guild == None: return
-    if message.author.bot == True: return # Don't store bot messages
+    if not override_checks:
+        if message == None: return
+        if message.guild == None: return
+        if message.author.bot == True: return # Don't store bot messages
+
+    def get_var(message, main_name, fallback_name) -> Any:
+        """
+        Get the value of a variable from the message or fallback to the fallback name.
+
+        :param main_name: The main variable name to check.
+        :type main_name: str
+        :param fallback_name: The fallback variable name to use if the main variable is None.
+        :type fallback_name: str
+        :return: The value of the variable.
+        :rtype: Any
+        """
+        def getattr_recursive(name, obj):
+            parts = name.split('.')
+            for part in parts:
+                obj = getattr(obj, part, None)
+                if obj is None:
+                    return None
+            return obj
+        
+        return getattr_recursive(main_name, message) or getattr_recursive(fallback_name, message)
 
     query = """
     INSERT INTO messages 
-        (message_id, guild_id, channel_id, author_id, content, created_at)
-        VALUES (:message_id, :guild_id, :channel_id, :author_id, :content, :created_at)
+        (message_id, guild_id, channel_id, author_id, content, last_updated)
+        VALUES (:message_id, :guild_id, :channel_id, :author_id, :content, :last_updated)
     ON CONFLICT(message_id) DO UPDATE SET
-        original_data = excluded.original_data,
+        content = excluded.content,
         last_updated = CURRENT_TIMESTAMP
     """
     get_database().execute_query(query, {
-        'message_id': message.id,
-        'guild_id': message.guild.id,
-        'channel_id': message.channel.id,
-        'author_id': message.author.id,
+        'message_id': get_var(message, 'id', 'message_id'),
+        'guild_id': get_var(message, 'guild.id', 'guild_id'),
+        'channel_id': get_var(message, 'channel.id', 'channel_id'),
+        'author_id': get_var(message, 'author.id', 'author_id'),
         'content': message.content,
-        'created_at': datetime.datetime.now().isoformat()
+        'last_updated': get_var(message, 'last_updated', 'created_at') or datetime.datetime.now().isoformat()
     }, commit=True)
 
 def get_message(message_id: int) -> StoredMessage | None:
@@ -157,23 +212,28 @@ def get_message(message_id: int) -> StoredMessage | None:
         channel_id=result[2],
         author_id=result[3],
         content=result[4],
-        created_at=datetime.datetime.fromisoformat(result[5])
+        last_updated=datetime.datetime.fromisoformat(result[5])
     )
     
 
-def get_all_messages() -> list[StoredMessage]:
+def get_all_messages(guild=None) -> list[StoredMessage]:
     """
     USE FOR TESTING ONLY! VERY EXPENSIVE!
 
     Retrieve all messages from the database.
 
+    :param guild: The guild to retrieve messages from. If None, all messages will be retrieved.
+    :type guild: nextcord.Guild | None
+
     :return: A list of message objects.
     :rtype: list
     """
     query = "SELECT * FROM messages"
-    result = get_database().execute_query(query, multiple_values=True)
+    if guild:
+        query += " WHERE guild_id = :guild_id"
+    result = get_database().execute_query(query, {'guild_id': guild.id} if guild else {}, multiple_values=True)
 
-    logging.info(f"Retrieved {len(result)} messages from the database.")
+    logging.debug(f"Retrieved {len(result)} messages from the database.")
 
     messages = []
     for message_data in result:
@@ -183,7 +243,7 @@ def get_all_messages() -> list[StoredMessage]:
             channel_id=message_data[2],
             author_id=message_data[3],
             content=message_data[4],
-            created_at=datetime.datetime.fromisoformat(message_data[5])
+            last_updated=datetime.datetime.fromisoformat(message_data[5])
         )
         messages.append(message)
 
@@ -201,13 +261,40 @@ def remove_message(message_id: int):
     query = "DELETE FROM messages WHERE message_id = :message_id"
     get_database().execute_query(query, {'message_id': message_id}, commit=True)
 
-def cleanup():
+def remove_messages_from_guild(guild_id: int):
+    """
+    Remove all messages from the database for a specific guild.
+
+    :param guild_id: The ID of the guild to remove messages from.
+    :type guild_id: int
+    """
+    query = "DELETE FROM messages WHERE guild_id = :guild_id"
+    get_database().execute_query(query, {'guild_id': guild_id}, commit=True)
+
+def remove_messages_from_channel(channel_id: int):
+    """
+    Remove all messages from the database for a specific channel.
+
+    :param channel_id: The ID of the channel to remove messages from.
+    :type channel_id: int
+    """
+    query = "DELETE FROM messages WHERE channel_id = :channel_id"
+    get_database().execute_query(query, {'channel_id': channel_id}, commit=True)
+
+def cleanup(max_messages_to_keep_per_guild=None, max_days_to_keep=None):
+    
+    if max_messages_to_keep_per_guild is None:
+        max_messages_to_keep_per_guild = get_configs()['discord-message-logging']["max_messages_to_keep_per_guild"]
+
+    if max_days_to_keep is None:
+        max_days_to_keep = get_configs()['discord-message-logging']["max_days_to_keep"]
+
     # Delete messages older than max_days_to_keep (config) days 
     query = f"""
     DELETE FROM messages 
-    WHERE created_at < datetime('now', '-{get_configs()['discord-message-logging']["max_days_to_keep"]} days');
+    WHERE last_updated < datetime('now', '-{max_days_to_keep} days');
     """
-    get_database().execute_query(query)
+    get_database().execute_query(query, commit=True)
 
     # Delete extra message log entries over max_messages_to_keep_per_guild (config) per guild
     query = f"""DELETE FROM messages
@@ -215,9 +302,9 @@ def cleanup():
         SELECT rowid
         FROM (
             SELECT rowid,
-                ROW_NUMBER() OVER (PARTITION BY guild_id ORDER BY created_at DESC) AS row_num
+                ROW_NUMBER() OVER (PARTITION BY guild_id ORDER BY last_updated DESC) AS row_num
             FROM messages
         )
-        WHERE row_num > {get_configs()['discord-message-logging']["max_messages_to_keep_per_guild"]}
+        WHERE row_num > {max_messages_to_keep_per_guild}
     );"""
-    get_database().execute_query(query)
+    get_database().execute_query(query, commit=True)

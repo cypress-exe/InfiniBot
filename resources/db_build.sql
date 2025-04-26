@@ -187,8 +187,8 @@ CREATE TABLE IF NOT EXISTS messages (
     channel_id INTEGER NOT NULL,
     author_id INTEGER NOT NULL,
     content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Indexes for faster queries
-CREATE INDEX IF NOT EXISTS idx_guild_time ON messages (guild_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_guild_time ON messages (guild_id, last_updated);
