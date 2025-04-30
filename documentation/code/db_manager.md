@@ -241,6 +241,14 @@ Deletes an entry based on the secondary key value.
 - **Parameters**:
   - `secondary_key_value` (str): The secondary key value.
 
+##### `delete_all_matching`
+Deletes all entries matching a given criteria.
+- **Parameters**:
+  - `kwargs`: Key-value pairs for the criteria to match. Corresponds with table columns.
+
+##### `delete_all`
+Deletes all entries (for the associated primary key)
+
 #### Viewing Data
 
 ##### Access an Entry

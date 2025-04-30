@@ -2,8 +2,9 @@ import re
 import nextcord
 from nextcord import Interaction
 import logging
-from config.server import Server
+import json
 
+from config.server import Server
 from components import utils
 
 class ReactionRoleModal(nextcord.ui.Modal):
@@ -273,12 +274,19 @@ async def create_reaction_role(interaction: Interaction, title: str, message: st
                 await utils.send_error_message_to_server_owner(interaction.guild, "Add Reactions")
             break
     
-    # Add the Reaction Role to Active Messages for Future Editing TODO
-    # server = Server(interaction.guild.id)
-    # try: parameters = [REACTIONROLETYPES.index(_type), ("1" if mention_roles else "0")]
-    # except ValueError: parameters = []
-    # server.messages.add("Reaction Role", interaction.channel.id, partial_message.id, interaction.user.id, parameters = parameters)
-    # server.messages.save()
+    # Add the Reaction Role to Active Messages for Future Editing
+    server = Server(interaction.guild.id)
+    data = {
+        "v": 1, # Version
+        "type": REACTIONROLETYPES.index(_type),
+        "mention_roles": ("1" if mention_roles else "0"),
+    }
+    server.managed_messages.add(
+        message_id = partial_message.id,
+        author_id = interaction.user.id,
+        message_type = "reaction_role",
+        json_data = json.dumps(data)
+    )
     
 async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: nextcord.Client):
     emoji = payload.emoji

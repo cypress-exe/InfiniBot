@@ -1121,10 +1121,9 @@ class TestServer(unittest.TestCase):
                         test_case.assertEqual(getattr(row, ektq_row_name), ektq_row_value, msg = "Integrated List Failure: class.get_maching returned at least one incorrect row. Expected: " + str(ektq_row_value) + " Actual: " + str(getattr(row, ektq_row_name)))
                     logging.debug(f"Extra Keys To Query (etkq) successful for iteration {iteration_number + 1}.")
 
-
             logging.debug(f"Editing entries in integrated list property \"{self.table_name}\" successful.")
 
-            # Test deletions
+            # Test deletions using individual delete
             for test_entry in default_test_data:
                 secondary_key_value = list(test_entry.values())[0]
                 property.delete(secondary_key_value)
@@ -1136,6 +1135,36 @@ class TestServer(unittest.TestCase):
             del new_server_instance
 
             logging.debug(f"Deleting entries in integrated list property \"{self.table_name}\" successful.")
+
+            # Test delete_all_matching and delete_all
+            # Re-add entries to test new deletion methods
+            for test_entry in default_test_data:
+                getattr(self.server, self.table_name).add(**test_entry)
+
+            # Verify entries are re-added
+            self._verify_entries(test_case, getattr(self.server, self.table_name), default_test_data)
+
+            # Test delete_all_matching with a sample field and value
+            if default_test_data:
+                sample_entry = default_test_data[0]
+                field_name = list(sample_entry.keys())[0]
+                field_value = sample_entry[field_name]
+                getattr(self.server, self.table_name).delete_all_matching(**{field_name: field_value})
+
+                # Verify entries matching the field are deleted
+                remaining_entries = [entry for entry in default_test_data if entry.get(field_name) != field_value]
+                self._verify_entries(test_case, getattr(self.server, self.table_name), remaining_entries)
+
+                # Test delete_all to remove remaining entries
+                getattr(self.server, self.table_name).delete_all()
+
+                # Verify all entries are deleted again
+                new_server_instance = Server(self.server.server_id)
+                property = getattr(new_server_instance, self.table_name)
+                test_case.assertEqual(len(property), 0)
+                del new_server_instance
+
+            logging.debug(f"Tests for delete_all_matching and delete_all successful.")
 
             logging.info("Finished running tests on integrated list property: " + self.table_name)
 
@@ -1408,6 +1437,17 @@ class TestServer(unittest.TestCase):
 
         # Using run_test_on_integrated_list_property
         test = self.RunTestOnIntegratedListProperty(server, "birthdays", ["member_id:int", "birth_date:date", "real_name:str"], [5, 20])
+        test.run(self)
+
+        server.remove_all_data()
+
+    def test_managed_messages(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_integrated_list_property
+        test = self.RunTestOnIntegratedListProperty(server, "managed_messages", ["message_id:int", "channel_id:int", "author_id:int", "message_type:str", "json_data:str"], [5, 20])
         test.run(self)
 
         server.remove_all_data()

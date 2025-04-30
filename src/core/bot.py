@@ -126,7 +126,7 @@ async def create_infinibot_mod_role(interaction: Interaction):
                                color = nextcord.Colour.red())
         await interaction.response.send_message(embed = embed, ephemeral = True, view=ui_components.SupportView())
 
-
+# Moderation Commands
 @view.subcommand(name = "my-strikes", description = "View your strikes")
 async def my_strikes(interaction: Interaction):
     await moderation.run_my_strikes_command(interaction)
@@ -143,7 +143,7 @@ async def set_admin_channel(interaction: Interaction):
 async def set_log_channel(interaction: Interaction):
     await action_logging.run_set_log_channel_command(interaction)
 
-
+# Leveling Commands
 @bot.slash_command(name = "leaderboard", description = "Get your level and the level of everyone on the server.", contexts=[nextcord.InteractionContextType.guild])
 async def leaderboard(interaction: Interaction):
     await leveling.run_leaderboard_command(interaction)
@@ -158,15 +158,15 @@ async def set_level(interaction: Interaction,
                     level: int = SlashOption(description="The level to set.", required=True)):
     await leveling.run_set_level_command(interaction, member, level)
 
-
+# Reaction Role Commands
 REACTIONROLETYPES = ["Letters", "Numbers", "Custom"]
 @create.subcommand(name = "reaction-role", description = "Legacy: Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
-async def reactionRoleCommand(interaction: Interaction, type: str = SlashOption(choices=["Letters", "Numbers"]), 
+async def reaction_role_command(interaction: Interaction, type: str = SlashOption(choices=["Letters", "Numbers"]), 
                               mention_roles: bool = SlashOption(name="mention-roles", description="Mention the roles with @mention", required=False, default=True)):
     await reaction_roles.run_reaction_role_command(interaction, type, mention_roles)
 
 @create.subcommand(name = "create-custom-reaction-role", description = "Legacy: Create a reaction role with customized emojis. (Requires Infinibot Mod)")
-async def customReactionRoleCommand(interaction: Interaction, options: str = SlashOption(description="Format: \"👍 = @Member, 🥸 = @Gamer\""), 
+async def custom_reaction_role_command(interaction: Interaction, options: str = SlashOption(description="Format: \"👍 = @Member, 🥸 = @Gamer\""), 
                                     mentionRoles: bool = SlashOption(name="mention_roles", description="Mention the roles with @mention", required = False, default = True)):   
     await reaction_roles.run_custom_reaction_role_command(interaction, options, mentionRoles)
 
@@ -442,8 +442,8 @@ async def on_guild_channel_delete(channel: nextcord.abc.GuildChannel) -> None:
     :return: None
     :rtype: None
     """
-    # TODO Delete message info from channels that are deleted.
     stored_messages.remove_messages_from_channel(channel.id)
+    Server(channel.guild.id).managed_messages.delete_all_matching(channel_id = channel.id)
 
 @bot.event
 async def on_voice_state_update(member: nextcord.Member, before: nextcord.VoiceState, after: nextcord.VoiceState) -> None:

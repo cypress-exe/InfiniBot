@@ -844,6 +844,37 @@ class IntegratedList_TableManager(TableManager):
         query = f"DELETE FROM {self.table_name} WHERE {self.primary_key_sql_name} = :primary_key_value AND {self.secondary_key_sql_name} = :secondary_key_value"
         self.database.execute_query(query, {'primary_key_value': self.primary_key_value, 'secondary_key_value': secondary_key_value}, commit=True)
 
+    def delete_all_matching(self, **kwargs):
+        """
+        Delete all entries from the list that match the given criteria.
+
+        Args:
+            **kwargs: Keyword arguments representing the criteria to match. Matches to columns in the db.
+
+        Returns:
+            list: A list of dataclasses representing the deleted entries.
+        """
+        # Validate kwargs
+        all_column_names = self.database.all_column_names[self.table_name]
+        for key in kwargs.keys():
+            if key not in all_column_names:
+                raise KeyError(f"Kwarg \"{key}\" not found in database.")
+
+        # Get all entries in the table
+        query = f"DELETE FROM {self.table_name} WHERE {self.primary_key_sql_name} = :primary_key_value"
+        for key, value in kwargs.items():
+            query += f" AND {key} = :{key}"
+        self.database.execute_query(query, {'primary_key_value': self.primary_key_value, **kwargs}, commit=True)
+        
+
+    def delete_all(self):
+        """
+        Delete all entries from the list for the primary key.
+        """
+        query = f"DELETE FROM {self.table_name} WHERE {self.primary_key_sql_name} = :primary_key_value"
+        self.database.execute_query(query, {'primary_key_value': self.primary_key_value}, commit=True)
+
+
     def __len__(self):
         """
         Return the length of the list.
