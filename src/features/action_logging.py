@@ -271,11 +271,11 @@ async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Mes
             embed.add_field(name = "Embed(s)", value = "One or more embeds were modified. Here's a list of modifications:\n\nPlease Wait...\n\nNote: Edited embeds will appear as them being deleted then added.", inline = False)
             
             # Loop through embeds
-            for embed in deleted_embeds:
-                embed_tasks.append(["Deleted", embed])
+            for _embed in deleted_embeds:
+                embed_tasks.append(["Deleted", _embed])
             
-            for embed in added_embeds:
-                embed_tasks.append(["Added", embed])
+            for _embed in added_embeds:
+                embed_tasks.append(["Added", _embed])
                 
     
     # Add the extra stuff in the message

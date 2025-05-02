@@ -710,7 +710,7 @@ class IntegratedList_TableManager(TableManager):
         column_names = self.database.all_column_names[self.table_name][2:] # Ignore primary key and secondary key
         for column_name in column_names:
             if column_name not in data_dict.keys():
-                raise KeyError(f"Column \"{column_name}\" not found.")
+                raise KeyError(f"Column \"{column_name}\" not found in data. Did you forget to add it?")
 
         return data_dict
 

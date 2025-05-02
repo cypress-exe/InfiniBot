@@ -1,9 +1,11 @@
+import nextcord
 import logging
 
 from config.file_manager import JSONFile
 
 shards_loaded = []
 bot_loaded = False
+bot_id = None
 
 # Feature dependencies are used to determine if a feature should be enabled or disabled.
 # The bot will check if the dependency is enabled or disabled, and if it is disabled, the
@@ -11,6 +13,9 @@ bot_loaded = False
 feature_dependencies = {
     "dashboard": {"global_kill": "dashboard"},
     "profile": {"global_kill": "profile"},
+    "options_menu": {"global_kill": "options_menu"},
+    "options_menu.banning": {"global_kill": "options_menu.banning"},
+    "options_menu.editing": {"global_kill": "options_menu.editing"},
     # ------------------------------------------------------------------------------------------------------
     "profanity_moderation": {
         "global_kill": "profanity_moderation",
@@ -149,6 +154,9 @@ class GlobalKillStatus(GlobalSetting):
             "dashboard": False,
             "profile": False,
             "delete_invite_links": False,
+            "options_menu": False,
+            "options_menu.banning": False,
+            "options_menu.editing": False
         }
 
 
@@ -258,6 +266,14 @@ def set_bot_load_status(status: bool) -> None:
     """
     global bot_loaded
     bot_loaded = status
+
+
+def get_bot_id() -> int | None:
+    return bot_id
+
+def update_bot_id(bot: nextcord.Client):
+    global bot_id
+    bot_id = bot.application_id
 
 class ShardLoadedStatus: # Context manager
     """

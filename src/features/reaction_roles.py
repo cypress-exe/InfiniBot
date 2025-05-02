@@ -283,6 +283,7 @@ async def create_reaction_role(interaction: Interaction, title: str, message: st
     }
     server.managed_messages.add(
         message_id = partial_message.id,
+        channel_id = interaction.channel.id,
         author_id = interaction.user.id,
         message_type = "reaction_role",
         json_data = json.dumps(data)
