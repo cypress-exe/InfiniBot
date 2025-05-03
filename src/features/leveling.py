@@ -429,13 +429,6 @@ async def run_leaderboard_command(interaction: Interaction):
     embed = add_leaderboard_ranking_to_embed(interaction.guild, embed)
     
     await interaction.response.send_message(embed=embed, view=ui_components.InviteView())
-    server = Server(interaction.guild.id)
-    if not await check_leveling_enabled_and_warn_if_not(interaction, server): return
-    
-    embed = nextcord.Embed(title = "Leaderboard", color = nextcord.Color.blue())
-    embed = add_leaderboard_ranking_to_embed(interaction.guild, embed)
-    
-    await interaction.response.send_message(embed = embed, view = ui_components.InviteView())
     
 async def run_view_level_command(interaction: Interaction, member: nextcord.Member):
     """
