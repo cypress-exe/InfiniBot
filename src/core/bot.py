@@ -166,7 +166,7 @@ async def reaction_role_command(interaction: Interaction, type: str = SlashOptio
                               mention_roles: bool = SlashOption(name="mention-roles", description="Mention the roles with @mention", required=False, default=True)):
     await reaction_roles.run_reaction_role_command(interaction, type, mention_roles)
 
-@create.subcommand(name="create-custom-reaction-role", description="Legacy: Create a reaction role with customized emojis. (Requires Infinibot Mod)")
+@create.subcommand(name="custom-reaction-role", description="Legacy: Create a reaction role with customized emojis. (Requires Infinibot Mod)")
 async def custom_reaction_role_command(interaction: Interaction, options: str = SlashOption(description="Format: \"👍 = @Member, 🥸 = @Gamer\""), 
                                     mentionRoles: bool = SlashOption(name="mention_roles", description="Mention the roles with @mention", required = False, default = True)):   
     await reaction_roles.run_custom_reaction_role_command(interaction, options, mentionRoles)
@@ -371,7 +371,13 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
         await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id)
 
     # Remove the message if we're storing it
-    stored_messages.remove_message(payload.message_id)
+    with LogIfFailure(feature="stored_messages.remove_message"):
+        if utils.feature_is_active(guild = guild, feature = "logging"):
+            stored_messages.remove_message(payload.message_id)
+
+    with LogIfFailure(feature="managed_messages.delete"):
+        if utils.feature_is_active(guild = guild, feature = "logging"):
+            Server(guild.id).managed_messages.delete(payload.message_id, fail_silently=True)
 
 @bot.event
 async def on_member_update(before: nextcord.Member, after: nextcord.Member) -> None:

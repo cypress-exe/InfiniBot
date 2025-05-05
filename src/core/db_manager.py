@@ -828,7 +828,7 @@ class IntegratedList_TableManager(TableManager):
 
         self._update_entry_using_dict(secondary_key_value, kwargs)
 
-    def delete(self, secondary_key_value):
+    def delete(self, secondary_key_value, fail_silently=False):
         """
         Delete an entry from the list.
 
@@ -839,6 +839,7 @@ class IntegratedList_TableManager(TableManager):
             ValueError: If the entry does not exist.
         """
         if not self._check_entry_existence(secondary_key_value):
+            if fail_silently: return
             raise ValueError(f"{self.primary_key_value}, {secondary_key_value} does not exist in database.")
 
         query = f"DELETE FROM {self.table_name} WHERE {self.primary_key_sql_name} = :primary_key_value AND {self.secondary_key_sql_name} = :secondary_key_value"

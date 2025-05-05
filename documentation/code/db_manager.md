@@ -240,6 +240,7 @@ Edits an existing entry.
 Deletes an entry based on the secondary key value.
 - **Parameters**:
   - `secondary_key_value` (str): The secondary key value.
+  - `fail-silently` (bool, optional): Whether to silently fail if the entry does not exist. Defaults to False. 
 
 ##### `delete_all_matching`
 Deletes all entries matching a given criteria.
