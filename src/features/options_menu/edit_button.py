@@ -19,9 +19,17 @@ class EditButton(nextcord.ui.Button):
         # Check Message Compatibility
         if not interaction.guild: return
         
-        if (interaction.guild and self.message.author == interaction.guild.me
-            and self.message_info and interaction.user.id == self.message_info.author_id):
+        if self.determine_editability(interaction):
             self.outer.add_item(self)
+
+    def determine_editability(self, interaction: Interaction):
+        if not interaction.guild: return
+        if not self.message.author == interaction.guild.me: return
+        if not self.message_info: return
+        if not interaction.user.id == self.message_info.author_id: 
+            if not interaction.user.guild_permissions.administrator: return
+        
+        return True
             
     async def callback(self, interaction: Interaction):
         if self.message_info.message_type == "embed":
