@@ -3,7 +3,7 @@ import nextcord
 
 from config.server import Server
 
-from features.options_menu.editing import reaction_roles
+from features.options_menu.editing import reaction_roles, embeds
 
 class EditButton(nextcord.ui.Button):
     def __init__(self, outer, interaction: Interaction):
@@ -24,9 +24,9 @@ class EditButton(nextcord.ui.Button):
             self.outer.add_item(self)
             
     async def callback(self, interaction: Interaction):
-        # if self.message_info.message_type == "embed":
-        #     await EditEmbed(self.message.id).setup(interaction)
-        if self.message_info.message_type == "reaction_role":
+        if self.message_info.message_type == "embed":
+            await embeds.EditEmbed(self.message.id).setup(interaction)
+        elif self.message_info.message_type == "reaction_role":
             await reaction_roles.EditReactionRole(self.message.id).setup(interaction)
         # elif self.message_info.message_type == "role_message":
         #     await EditRoleMessage(self.message.id).setup(interaction)

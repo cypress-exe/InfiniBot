@@ -2,7 +2,6 @@ from nextcord import Interaction
 import nextcord
 import re
 import json
-import logging
 
 from config.server import Server
 from components import utils, ui_components

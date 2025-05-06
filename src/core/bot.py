@@ -13,7 +13,23 @@ from core import log_manager
 from core.log_manager import LogIfFailure
 from core.scheduling import start_scheduler, stop_scheduler
 from core.view_manager import init_views
-from features import action_logging, admin_commands, birthdays, dashboard, default_roles, dm_commands, join_leave_messages, join_to_create_vcs, leveling, moderation, profile, reaction_roles
+
+from features import (
+    action_logging,
+    admin_commands,
+    birthdays,
+    dashboard,
+    default_roles,
+    dm_commands,
+    embeds,
+    join_leave_messages,
+    join_to_create_vcs,
+    leveling,
+    moderation,
+    profile,
+    reaction_roles,
+)
+
 from features.options_menu import entrypoint_ui
 
 # INIT BOT ==============================================================================================================================================================
@@ -170,6 +186,11 @@ async def reaction_role_command(interaction: Interaction, type: str = SlashOptio
 async def custom_reaction_role_command(interaction: Interaction, options: str = SlashOption(description="Format: \"👍 = @Member, 🥸 = @Gamer\""), 
                                     mentionRoles: bool = SlashOption(name="mention_roles", description="Mention the roles with @mention", required = False, default = True)):   
     await reaction_roles.run_custom_reaction_role_command(interaction, options, mentionRoles)
+
+# Embed Commands
+@create.subcommand(name = "embed", description = "Create a beautiful embed!")
+async def create_embed(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Role to Ping", required = False)):
+    await embeds.run_create_embed_command(interaction, role)
 
 @bot.slash_command(name="test", description="Test command.", contexts=[nextcord.InteractionContextType.guild], guild_ids=[968872260557488100, 968872260557488158, 1014000756090736680])
 async def test(interaction: Interaction):
