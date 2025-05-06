@@ -1,4 +1,3 @@
-import dateparser
 import datetime
 import logging
 import nextcord

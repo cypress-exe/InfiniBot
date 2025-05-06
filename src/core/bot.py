@@ -17,7 +17,6 @@ from core.view_manager import init_views
 from features import (
     action_logging,
     admin_commands,
-    birthdays,
     dashboard,
     default_roles,
     dm_commands,

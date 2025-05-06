@@ -1,8 +1,6 @@
 from nextcord import Interaction
 import nextcord
 
-from config.server import Server
-
 from features.options_menu.editing import reaction_roles, embeds
 
 class EditButton(nextcord.ui.Button):

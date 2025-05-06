@@ -1,6 +1,5 @@
 import copy
 import logging
-import uuid
 
 import nextcord
 from nextcord import Interaction

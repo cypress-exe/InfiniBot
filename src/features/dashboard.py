@@ -13,7 +13,7 @@ from components import ui_components, utils
 from components.ui_components import CustomView, CustomModal
 from config.global_settings import ShardLoadedStatus
 from config.server import Server
-from features import help_commands, leveling
+from features import leveling
 from features.moderation import str_is_profane
 from modules.custom_types import UNSET_VALUE
 

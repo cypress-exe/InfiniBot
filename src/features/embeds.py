@@ -1,7 +1,7 @@
 from nextcord import Interaction
 import nextcord
 
-from components import utils, ui_components
+from components import utils
 from config.server import Server
 
 COLOR_OPTIONS = ["Red", "Green", "Blue", "Yellow", "White", "Blurple", "Greyple", "Teal", "Purple", "Gold", "Magenta", "Fuchsia"]

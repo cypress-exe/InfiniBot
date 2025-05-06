@@ -1,5 +1,4 @@
 import threading
-import nextcord
 
 class FalseType(type):
     # Override __bool__ to make the class itself falsy

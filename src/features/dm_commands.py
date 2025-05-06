@@ -1,5 +1,4 @@
 import nextcord
-import logging
 
 async def check_and_run_dm_commands(bot: nextcord.Client, message: nextcord.Message) -> None:
     """
