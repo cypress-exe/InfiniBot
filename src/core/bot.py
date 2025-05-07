@@ -27,6 +27,7 @@ from features import (
     moderation,
     profile,
     reaction_roles,
+    role_messages
 )
 
 from features.options_menu import entrypoint_ui
@@ -190,6 +191,11 @@ async def custom_reaction_role_command(interaction: Interaction, options: str = 
 @create.subcommand(name = "embed", description = "Create a beautiful embed!")
 async def create_embed(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Role to Ping", required = False)):
     await embeds.run_create_embed_command(interaction, role)
+
+# Role Message Commands
+@create.subcommand(name = "role_message", description = "Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
+async def create_role_message(interaction: Interaction):
+    await role_messages.run_role_message_command(interaction)
 
 @bot.slash_command(name="test", description="Test command.", contexts=[nextcord.InteractionContextType.guild], guild_ids=[968872260557488100, 968872260557488158, 1014000756090736680])
 async def test(interaction: Interaction):

@@ -1,10 +1,8 @@
 from nextcord import Interaction
 import nextcord
 
-from components import utils
+from components import utils, ui_components
 from config.server import Server
-
-COLOR_OPTIONS = ["Red", "Green", "Blue", "Yellow", "White", "Blurple", "Greyple", "Teal", "Purple", "Gold", "Magenta", "Fuchsia"]
 
 class EmbedModal(nextcord.ui.Modal):        
     def __init__(self):
@@ -26,7 +24,7 @@ class EmbedColorView(nextcord.ui.View):
         super().__init__()
                 
         select_options = []
-        for option in COLOR_OPTIONS:
+        for option in utils.COLOR_OPTIONS:
             select_options.append(nextcord.SelectOption(label=option, value=option))
         
         self.select = nextcord.ui.Select(placeholder="Choose a color", options=select_options)
@@ -46,17 +44,6 @@ class EmbedColorView(nextcord.ui.View):
 
         await interaction.response.edit_message(view=self, delete_after=1.0)
         self.stop()
-
-def get_colors_available_ui_component():
-    description = ""
-    for i, color in enumerate(COLOR_OPTIONS):
-        description += f"{color}"
-        if i != len(COLOR_OPTIONS) - 1:
-            description += ", "
-        if (i+1) % 4 == 0:
-            description += "\n"
-
-    return description
 
 async def run_create_embed_command(interaction: Interaction, role: nextcord.Role):
     if not utils.feature_is_active(guild_id=interaction.guild.id, feature="embeds"):
@@ -88,7 +75,7 @@ async def run_create_embed_command(interaction: Interaction, role: nextcord.Role
     **Colors Available**
     """
     
-    description += get_colors_available_ui_component();
+    description += ui_components.get_colors_available_ui_component();
     
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = utils.standardize_str_indention(description)

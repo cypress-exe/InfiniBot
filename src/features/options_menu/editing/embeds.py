@@ -5,8 +5,6 @@ from config.server import Server
 from components import utils, ui_components
 from features.action_logging import trigger_edit_log
 
-from features.embeds import COLOR_OPTIONS, get_colors_available_ui_component
-
 class EditEmbed(nextcord.ui.View):
     def __init__(self, message_id: int):
         super().__init__(timeout = None)
@@ -83,7 +81,7 @@ class EditEmbed(nextcord.ui.View):
                 
                 original_color = utils.get_string_from_discord_color(self.outer.message.embeds[0].color)        
                 select_options = []
-                for option in COLOR_OPTIONS:
+                for option in utils.COLOR_OPTIONS:
                     select_options.append(nextcord.SelectOption(label=option, value=option, default=(option is original_color)))
                 
                 self.select = nextcord.ui.Select(placeholder="Choose a color", options=select_options)
@@ -103,7 +101,7 @@ class EditEmbed(nextcord.ui.View):
                 
                 **Colors Available**
                 """
-                description += get_colors_available_ui_component()
+                description += ui_components.get_colors_available_ui_component()
                 description = utils.standardize_str_indention(description)
 
                 embed = nextcord.Embed(title="Edit Color", description=description, color=nextcord.Color.yellow())

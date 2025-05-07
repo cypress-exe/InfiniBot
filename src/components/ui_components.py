@@ -4,6 +4,7 @@ import logging
 import nextcord
 from nextcord import Interaction
 
+from components import utils
 from config.global_settings import get_configs, required_permissions
 from core.log_manager import get_uuid_for_logging
 
@@ -60,6 +61,17 @@ async def infinibot_loading_override(self: nextcord.ui.View, interaction: Intera
     try: await interaction.response.edit_message(embed = embed, view = self)
     except: await interaction.response.send_message(embed = embed, view = self, ephemeral=True)
 
+# Components
+def get_colors_available_ui_component():
+    description = ""
+    for i, color in enumerate(utils.COLOR_OPTIONS):
+        description += f"{color}"
+        if i != len(utils.COLOR_OPTIONS) - 1:
+            description += ", "
+        if (i+1) % 4 == 0:
+            description += "\n"
+
+    return description
 
 # Views and Modals for everything
 class CustomView(nextcord.ui.View):

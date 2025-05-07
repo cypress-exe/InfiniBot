@@ -15,7 +15,7 @@ class ReactionRoleModal(nextcord.ui.Modal):
         self.description_value = None
         
         self.title_text_input = nextcord.ui.TextInput(label="Title", style=nextcord.TextInputStyle.short, placeholder="Get access to the server", required=True)
-        self.description_text_input = nextcord.ui.TextInput(label="Description", style=nextcord.TextInputStyle.paragraph, 
+        self.description_text_input = nextcord.ui.TextInput(label="Description", style=nextcord.TextInputStyle.paragraph, max_length=4000,
                                                             placeholder="Grab your roles below:", required=False)
         
         self.add_item(self.title_text_input)

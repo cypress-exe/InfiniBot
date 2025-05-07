@@ -8,6 +8,7 @@ from nextcord import Interaction
 from components.ui_components import ErrorWhyAdminPrivilegesButton
 from config.global_settings import feature_dependencies, get_global_kill_status
 
+COLOR_OPTIONS = ["Red", "Green", "Blue", "Yellow", "White", "Blurple", "Greyple", "Teal", "Purple", "Gold", "Magenta", "Fuchsia"]
 
 def asci_to_emoji(letter, fallback_letter = "1"):
     letter = str(letter)
