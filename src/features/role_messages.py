@@ -674,7 +674,7 @@ class RoleMessageSetup(nextcord.ui.View):
                                 message_id=message.id,
                                 channel_id=interaction.channel.id,
                                 author_id=interaction.user.id,
-                                message_type="reaction_role",
+                                message_type="role_message",
                                 json_data=None
                             )
                         
