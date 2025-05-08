@@ -25,6 +25,7 @@ from features import (
     join_to_create_vcs,
     leveling,
     moderation,
+    motivational_statements,
     profile,
     reaction_roles,
     role_messages
@@ -196,6 +197,11 @@ async def create_embed(interaction: Interaction, role: nextcord.Role = SlashOpti
 @create.subcommand(name = "role_message", description = "Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
 async def create_role_message(interaction: Interaction):
     await role_messages.run_role_message_command(interaction)
+
+# MISC
+@bot.slash_command(name = "motivational_statement", description = "Get, uh, a motivational statement", contexts=[nextcord.InteractionContextType.guild])
+async def motivational_statement(interaction: Interaction):
+    await motivational_statements.run_motivational_statement_command(interaction)
 
 @bot.slash_command(name="test", description="Test command.", contexts=[nextcord.InteractionContextType.guild], guild_ids=[968872260557488100, 968872260557488158, 1014000756090736680])
 async def test(interaction: Interaction):
