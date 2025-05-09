@@ -1,0 +1,28 @@
+{
+    "jokes": [
+        {
+            "title": "The Chicken and the Road",
+            "body": "Why did the chicken cross the road?",
+            "punchline": "To get to the other side!"
+        },
+        {
+            "title": "Light Bulb",
+            "body": "How many programmers does it take to change a light bulb?\nOther words.",
+            "punchline": "None, that's a hardware problem."
+        },
+        {
+            "title": "Time Flies",
+            "body": "Time flies like an arrow, fruit flies like a banana."
+        },
+        {
+            "title": "Math Problem",
+            "body": "Why was the equal sign so humble?",
+            "punchline": "Because it knew it wasn't less than or greater than anyone else."
+        },
+        {
+            "title": "The Dentist",
+            "body": "What did the dentist say to the golfer?",
+            "punchline": "You have a hole in one."
+        }
+    ]
+}

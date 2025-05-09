@@ -62,6 +62,7 @@ def create_environment():
     
     # Copy default files
     copy_file("defaults/default_profane_words.txt", "generated/configure/default_profane_words.txt")
+    copy_file("defaults/default_jokes.json", "generated/files/jokes.json")
 
     # Validate environment variables
     get_token()

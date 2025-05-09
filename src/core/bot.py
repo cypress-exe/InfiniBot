@@ -23,6 +23,7 @@ from features import (
     embeds,
     join_leave_messages,
     join_to_create_vcs,
+    jokes,
     leveling,
     moderation,
     motivational_statements,
@@ -201,7 +202,11 @@ async def create_role_message(interaction: Interaction):
 # MISC
 @bot.slash_command(name = "motivational_statement", description = "Get, uh, a motivational statement", contexts=[nextcord.InteractionContextType.guild])
 async def motivational_statement(interaction: Interaction):
-    await motivational_statements.run_motivational_statement_command(interaction)
+    await motivational_statements.run_motivational_statement(interaction)
+
+@bot.slash_command(name = "joke", description = "Get a joke")
+async def jokeCommand(interaction: Interaction):
+    await jokes.run_joke_command(interaction)
 
 @bot.slash_command(name="test", description="Test command.", contexts=[nextcord.InteractionContextType.guild], guild_ids=[968872260557488100, 968872260557488158, 1014000756090736680])
 async def test(interaction: Interaction):
