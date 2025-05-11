@@ -556,7 +556,7 @@ async def send_error_message_to_server_owner(
     """
     
     if not guild:
-        logging.warning("No guild found for send_error_message_to_server_owner")
+        logging.error("No guild found for send_error_message_to_server_owner. Exiting... DID NOT WARN OWNER!!!")
         return
     
     logging.info(f"Sending error message to server owner (guild_id: {guild.id}). ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
@@ -583,9 +583,9 @@ async def send_error_message_to_server_owner(
     
     if message == None:
         if permission != None: 
-            embed = nextcord.Embed(title = f"Missing Permissions in in \"{guild.name}\" Server", description = f"InfiniBot is missing the **{permission}** permission{in_channels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.", color = nextcord.Color.red())
+            embed = nextcord.Embed(title = f"Missing Permissions in in \"{guild.name}\" Server", description = f"InfiniBot is missing the **{permission}** permission{in_channels}.{"\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern." if administrator else ""}", color = nextcord.Color.red())
         else:
-            embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"InfiniBot is missing a permission{in_channels}.\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern.", color = nextcord.Color.red())
+            embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"InfiniBot is missing a permission{in_channels}.{"\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern." if administrator else ""}", color = nextcord.Color.red())
     else:
         embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"{message}", color = nextcord.Color.red())
 

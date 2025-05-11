@@ -11,6 +11,7 @@ import nextcord
 
 from components import ui_components
 from components import utils
+from config.global_settings import is_channel_purging
 from config.server import Server
 from modules.custom_types import UNSET_VALUE, ExpiringSet
 
@@ -802,7 +803,14 @@ async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, ch
 
     # Do not trigger if confident that the message was InfiniBot's
     if message:
-        if message.author.id == bot.application_id: return
+        if message.author.id == bot.application_id: 
+            logging.debug(f"Message {message_id}'s author is InfiniBot; skipping delete log.")
+            return
+
+    # Do not trigger if this channel is puring
+    if is_channel_purging(channel.id): 
+        logging.debug(f"Channel {channel.id} is purging; skipping delete log.")
+        return
     
     await trigger_delete_log(bot, channel, guild, message, message_id)
 

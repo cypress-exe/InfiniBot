@@ -7,6 +7,8 @@ shards_loaded = []
 bot_loaded = False
 bot_id = None
 
+channels_purging = []
+
 # Feature dependencies are used to determine if a feature should be enabled or disabled.
 # The bot will check if the dependency is enabled or disabled, and if it is disabled, the
 # feature will be disabled as well.
@@ -217,6 +219,7 @@ class Configs(GlobalSetting):
 
         super().__init__("config", variable_list)
 
+
 def get_global_kill_status() -> GlobalKillStatus:
     """
     Retrieve the global kill status.
@@ -269,11 +272,75 @@ def set_bot_load_status(status: bool) -> None:
 
 
 def get_bot_id() -> int | None:
+    """
+    Retrieve the bot id.
+
+    :return: The bot id.
+    :rtype: int | None
+    """
     return bot_id
 
 def update_bot_id(bot: nextcord.Client):
+    """
+    Update the bot id.
+
+    :param bot: The bot instance.
+    :type bot: nextcord.Client
+    :return: None
+    :rtype: None
+    """
     global bot_id
     bot_id = bot.application_id
+
+
+def is_channel_purging(channel_id: int) -> bool:
+    """
+    Check if a channel is being purged.
+
+    :param channel_id: The id of the channel to check.
+    :type channel_id: int
+    :return: Whether the channel is being purged.
+    :rtype: bool
+    """
+    global channels_purging
+    return channel_id in channels_purging
+
+def add_channel_to_purging(channel_id: int):
+    """
+    Add a channel to the list of channels that are being purged.
+
+    :param channel_id: The id of the channel to add.
+    :type channel_id: int
+    :return: None
+    :rtype: None
+    """
+    global channels_purging
+    channels_purging.append(channel_id)
+
+def remove_channel_from_purging(channel_id: int):
+    """
+    Remove a channel from the list of channels that are being purged.
+
+    :param channel_id: The id of the channel to remove.
+    :type channel_id: int
+    :raises ValueError: If the channel is not in the list of channels to purge.
+    :return: None
+    :rtype: None
+    """
+    global channels_purging
+    channels_purging.remove(channel_id)
+
+def reset_purging():
+    """
+    Reset the list of channels that are being purged.
+
+    :return: None
+    :rtype: None
+    """
+    global channels_purging
+    channels_purging = []
+
+
 
 class ShardLoadedStatus: # Context manager
     """

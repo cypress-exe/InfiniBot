@@ -28,6 +28,7 @@ from features import (
     moderation,
     motivational_statements,
     profile,
+    purging,
     reaction_roles,
     role_messages
 )
@@ -200,7 +201,7 @@ async def create_role_message(interaction: Interaction):
     await role_messages.run_role_message_command(interaction)
 
 # MISC
-@bot.slash_command(name = "motivational_statement", description = "Get, uh, a motivational statement", contexts=[nextcord.InteractionContextType.guild])
+@bot.slash_command(name = "motivational_statement", description = "Get, uh, a motivational statement")
 async def motivational_statement(interaction: Interaction):
     await motivational_statements.run_motivational_statement(interaction)
 
@@ -208,7 +209,11 @@ async def motivational_statement(interaction: Interaction):
 async def jokeCommand(interaction: Interaction):
     await jokes.run_joke_command(interaction)
 
-@bot.slash_command(name="test", description="Test command.", contexts=[nextcord.InteractionContextType.guild], guild_ids=[968872260557488100, 968872260557488158, 1014000756090736680])
+@bot.slash_command(name="purge", description="Purge any channel (requires manage messages permission and Infinibot Mod)", contexts=[nextcord.InteractionContextType.guild], guild_ids=[1367887634852220969])
+async def purge(interaction: Interaction, amount: str=SlashOption(description="The amount of messages you want to delete. \"All\" purges the whole channel")):
+    await purging.run_purge_command(interaction, amount)
+
+@bot.slash_command(name="test", description="Test command.", contexts=[nextcord.InteractionContextType.guild], guild_ids=[1367887634852220969])
 async def test(interaction: Interaction):
     # Clear data from the database for this server
     server = Server(interaction.guild.id)
