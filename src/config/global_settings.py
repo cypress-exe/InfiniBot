@@ -319,16 +319,16 @@ def add_channel_to_purging(channel_id: int):
 
 def remove_channel_from_purging(channel_id: int):
     """
-    Remove a channel from the list of channels that are being purged.
+    Remove a channel from the list of channels that are being purged if it exists.
 
     :param channel_id: The id of the channel to remove.
     :type channel_id: int
-    :raises ValueError: If the channel is not in the list of channels to purge.
     :return: None
     :rtype: None
     """
     global channels_purging
-    channels_purging.remove(channel_id)
+    if channel_id in channels_purging:
+        channels_purging.remove(channel_id)
 
 def reset_purging():
     """

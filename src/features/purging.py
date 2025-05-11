@@ -5,311 +5,315 @@ import asyncio
 import datetime
 
 from components import utils, ui_components
-from config.global_settings import is_channel_purging, add_channel_to_purging, remove_channel_from_purging, ShardLoadedStatus
+from config.global_settings import (
+    is_channel_purging,
+    add_channel_to_purging,
+    remove_channel_from_purging,
+    ShardLoadedStatus
+)
 from config.server import Server
+
+# ---------------------------
+# Helper Classes
+# ---------------------------
 
 class ConfirmationView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-        
         self.choice = None
-        
-        self.no_btn = nextcord.ui.Button(label="No", style=nextcord.ButtonStyle.red)
-        self.no_btn.callback = self.no_btn_callback
-        self.add_item(self.no_btn)
-        
-        self.yes_btn = nextcord.ui.Button(label="Yes", style=nextcord.ButtonStyle.green)
-        self.yes_btn.callback = self.yes_btn_callback
-        self.add_item(self.yes_btn)
 
-    async def no_btn_callback(self, interaction: Interaction):
-        self.choice = False
-        self.disable_buttons()
+        self._create_button("Cancel", nextcord.ButtonStyle.red, self.no_callback)
+        self._create_button("Continue", nextcord.ButtonStyle.green, self.yes_callback)
 
+    def _create_button(self, label: str, style: nextcord.ButtonStyle, callback):
+        button = nextcord.ui.Button(
+            label=label, 
+            style=style
+        )
+        button.callback = callback
+        self.add_item(button)
+
+    async def no_callback(self, interaction: Interaction):
+        await self._handle_response(interaction, False)
+
+    async def yes_callback(self, interaction: Interaction):
+        await self._handle_response(interaction, True)
+
+    async def _handle_response(self, interaction: Interaction, choice: bool):
+        self.choice = choice
+        self.disable_all_buttons()
         await interaction.response.edit_message(view=self, delete_after=1.0)
         self.stop()
 
-    async def yes_btn_callback(self, interaction: Interaction):
-        self.choice = True
-        self.disable_buttons()
+    def disable_all_buttons(self):
+        """Disables all buttons in the view"""
+        for child in self.children:
+            if isinstance(child, nextcord.ui.Button):
+                child.disabled = True
 
-        await interaction.response.edit_message(view=self, delete_after=1.0)
-        self.stop()
+# ---------------------------
+# Helper Functions
+# ---------------------------
 
-    def disable_buttons(self):
-        self.no_btn.disabled = True
-        self.yes_btn.disabled = True
+async def _send_error(interaction: Interaction, title: str, description: str) -> None:
+    """Helper to send error embeds"""
+    embed = nextcord.Embed(title=title, description=description, color=nextcord.Color.red())
+    if interaction.response.is_done():
+        await interaction.followup.send(embed=embed, ephemeral=True)
+    else:
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
-async def run_purge_command(interaction: Interaction, amount: str):
+def _create_confirmation_embed(title: str, description: str) -> nextcord.Embed:
+    """Creates a standardized confirmation embed"""
+    return nextcord.Embed(
+        title=title,
+        description=description,
+        color=nextcord.Color.orange()
+    )
+
+async def _get_user_confirmation(interaction: Interaction, embed: nextcord.Embed) -> bool:
+    """Gets user confirmation through a view"""
+    view = ConfirmationView()
+    await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
+    await view.wait()
+    return view.choice or False
+
+# ---------------------------
+# Permission Checks
+# ---------------------------
+
+async def _check_permissions(interaction: Interaction) -> bool:
+    """Validates required permissions and bot status"""
+    # User permissions
     if not interaction.user.guild_permissions.manage_messages:
-        await interaction.response.send_message(
-            embed=nextcord.Embed(
-                title="Permission Error", 
-                description="You do not have the \"manage messages\" permission which is required to use this command.", 
-                color=nextcord.Color.red()
-            ), 
-            ephemeral=True
+        await _send_error(
+            interaction,
+            "Permission Error",
+            "You need the \"manage messages\" permission to use this command."
+        )
+        return False
+
+    # Bot shard status
+    with ShardLoadedStatus() as shards_loaded:
+        if interaction.guild.shard_id not in shards_loaded:
+            await _send_error(
+                interaction,
+                "InfiniBot Still Loading",
+                "Please try again in a few minutes."
+            )
+            return False
+
+    return True
+
+async def _check_feature_status(interaction: Interaction) -> bool:
+    """Checks if purging feature is enabled"""
+    if not utils.feature_is_active(feature="purging", guild_id=interaction.guild.id):
+        await _send_error(
+            interaction,
+            "Purging Disabled",
+            "Purging is temporarily disabled due to stability issues. Please check back later."
+        )
+        return False
+    return True
+
+# ---------------------------
+# Purge Handlers
+# ---------------------------
+
+async def _handle_purge_all(interaction: Interaction) -> None:
+    """Handles complete channel purge through cloning"""
+    # Validate bot permissions
+    if not interaction.channel.permissions_for(interaction.guild.me).manage_channels:
+        await _send_error(
+            interaction,
+            "Permission Error",
+            "InfiniBot needs Manage Channels permission to purge entire channels."
         )
         return
-    
-    # Ensure InfiniBot loaded
-    with ShardLoadedStatus() as shards_loaded_status:
-        if not interaction.guild.shard_id in shards_loaded_status:
-            await interaction.response.send_message(
-                embed=nextcord.Embed(
-                    title="InfiniBot Still Loading", 
-                    description="InfiniBot is still loading. Please try again in a few minutes.", 
-                    color=nextcord.Color.red()
-                ), 
-                ephemeral=True
+
+    try:
+        # Clone channel
+        new_channel = await interaction.channel.clone(
+            reason="Purging Channel"
+        )
+        await new_channel.edit(
+            position=interaction.channel.position + 1,
+            reason="Purging Channel"
+        )
+    except nextcord.Forbidden:
+        await _send_error(
+            interaction,
+            "Cloning Failed",
+            "Missing permissions to clone channel. Please check bot permissions."
+        )
+        return
+
+    # Update server configurations
+    try:
+        server = Server(interaction.guild.id)
+        _update_server_configurations(server, interaction.channel.id, new_channel.id)
+        await _update_system_channel(interaction.guild, interaction.channel, new_channel)
+    except Exception as e:
+        logging.error(f"Configuration update error: {e}")
+
+    # Delete original channel
+    try:
+        await interaction.channel.delete(reason="Purging Channel")
+    except nextcord.Forbidden:
+        await _send_error(
+            interaction,
+            "Deletion Failed",
+            "Failed to delete original channel. You may need to manually remove cloned channels."
+        )
+        return
+
+    # Send confirmation message
+    await new_channel.send(
+        embed=nextcord.Embed(
+            title="Purged Messages",
+            description=f"{interaction.user} has instantly purged {new_channel.mention}",
+            color=nextcord.Color.orange(),
+            timestamp=datetime.datetime.now(tz=datetime.timezone.utc)
+        ),
+        view=ui_components.InviteView()
+    )
+
+def _update_server_configurations(server: Server, old_id: int, new_id: int) -> None:
+    """Updates server configurations with new channel ID"""
+    config_paths = [
+        "profanity_moderation_profile.channel",
+        "logging_profile.channel",
+        "leveling_profile.channel",
+        "join_message_profile.channel",
+        "leave_message_profile.channel",
+        "birthdays_profile.channel"
+    ]
+    list_paths = [
+        "leveling_profile.exempt_channels", 
+        "join_to_create_vcs.channels"
+    ]
+
+    # Update direct references
+    for path in config_paths:
+        if _get_nested_attr(server, path) == old_id:
+            _set_nested_attr(server, path, new_id)
+
+    # Update list references
+    for path in list_paths:
+        items = _get_nested_attr(server, path)
+        if old_id in items:
+            items = [new_id if x == old_id else x for x in items]
+            _set_nested_attr(server, path, items)
+
+def _get_nested_attr(obj, path: str):
+    parts = path.split('.')
+    for part in parts:
+        obj = getattr(obj, part)
+    return obj
+
+def _set_nested_attr(obj, path: str, value):
+    parts = path.split('.')
+    for part in parts[:-1]:
+        obj = getattr(obj, part)
+    setattr(obj, parts[-1], value)
+
+async def _update_system_channel(guild: nextcord.Guild, old_channel: nextcord.TextChannel, new_channel: nextcord.TextChannel) -> None:
+    """Updates system channel if needed"""
+    if guild.system_channel and guild.system_channel.id == old_channel.id:
+        if not guild.me.guild_permissions.manage_guild:
+            await utils.send_error_message_to_server_owner(
+                guild,
+                "Manage Server",
+                "InfiniBot needs Manage Server permission to update system channel."
             )
-            return
-
-    if await utils.user_has_config_permissions(interaction):
-        if not utils.feature_is_active(feature="purging", guild_id=interaction.guild.id):
-            await interaction.response.send_message(
-                embed=nextcord.Embed(
-                    title="Purging Disabled", 
-                    description="Purging has been disabled by the developers of InfiniBot. This is likely due \
-                    to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", 
-                    color=nextcord.Color.red()
-                ), 
-                ephemeral=True
-            )
-            return
-        
-        def is_valid_input(input: str):
-            if not input: return False
-            if input.isdigit(): 
-                if int(input) <= 0: return False
-                return True
-            if input.lower() == "all": return True
-            return False
-        
-        if not is_valid_input(amount):
-            await interaction.response.send_message(
-                embed=nextcord.Embed(
-                    title="Invalid Purge Amount", 
-                    description="The purge amount must be a positive number or \"all\".", 
-                    color=nextcord.Color.red()
-                ), 
-                ephemeral=True
-            )
-            return
-        
-        if amount.lower() == "all":
-            # Show confirmation view
-            embed = nextcord.Embed(
-                title="Are you sure?", 
-                description="Are you sure you want to purge (delete) all messages in this channel?\n\n\
-                **WARNING**\nInfiniBot will replace this channel with an identical copy to instantly purge it. \
-                InfiniBot will try to preserve configurations for this channel, but third-party services that \
-                store their own data may be affected.\n\nIf you still would like to continue, click \"Yes\".", 
-                color=nextcord.Color.orange()
-            )
-
-            embed.set_footer(text="This action cannot be undone. Use with caution.")
-
-            view = ConfirmationView()
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
-            await view.wait()
-
-            if not view.choice:
-                return
-            
-            if not interaction.channel.permissions_for(interaction.guild.me).manage_channels:
-                await interaction.followup.send(
-                    embed=nextcord.Embed(
-                        title="Permission Error", 
-                        description="InfiniBot needs to have the Manage Channels permission in this channel to use this command.", 
-                        color=nextcord.Color.red()
-                    ), 
-                    ephemeral=True
-                )
-                return
-            
-            # Create a channel, and move it to where it should
-            try:
-                new_channel: nextcord.TextChannel = await interaction.channel.clone(reason="Purging Channel")
-                await new_channel.edit(position=interaction.channel.position + 1, reason="Purging Channel")
-            except nextcord.errors.Forbidden:
-                await interaction.followup.send(
-                    embed=nextcord.Embed(
-                        title="Unknown Error", 
-                        description="An unknown error occurred when purging the channel. Please double check InfiniBot's \
-                        permissions and try again.\n\nNote: It is possible that InfiniBot started the purging process but \
-                        failed to finish. There might be an extra cloned channel that needs to be deleted. You may want to double check.", 
-                        color=nextcord.Color.red()
-                    ), 
-                    ephemeral=True
-                )
-                return
-            
-
-
-            # Check for if the channel is connected to anything. And if so, replace it:
-            try:
-                server = Server(interaction.guild.id)
-
-                def get_attr(parent,attr_name):
-                    attr_parts = attr_name.split(".")
-                    attr = parent
-                    for part in attr_parts:
-                        attr = getattr(attr, part)
-                    return attr
-                
-                def set_attr(parent, attr_name, value):
-                    attr_parts = attr_name.split(".")
-                    attr = parent
-                    for part in attr_parts[:-1]:
-                        attr = getattr(attr, part)
-                    setattr(attr, attr_parts[-1], value)
-
-                items_to_check = [
-                    "profanity_moderation_profile.channel",
-                    "logging_profile.channel",
-                    "leveling_profile.channel",
-                    "join_message_profile.channel",
-                    "leave_message_profile.channel"
-                ]
-
-                recursive_items_to_check = [
-                    "leveling_profile.exempt_channels"
-                ]
-
-                for item in items_to_check:
-                    if get_attr(server, item) == interaction.channel.id:
-                        set_attr(server, item, new_channel.id)
-
-                for item in recursive_items_to_check:
-                    changed = False
-                    attr = get_attr(server, item)
-                    for channel_id in attr:
-                        if channel_id == interaction.channel.id:
-                            channel_id = new_channel.id
-                            changed = True
-                            break
-                    
-                    if changed:
-                        set_attr(server, item, attr)
-
-            except Exception as e:
-                logging.error(f"Failed to update server: {e}")
-
-            try:
-                # Update the System Messages Channel
-                if interaction.guild._system_channel_id == interaction.channel.id:
-                    if not interaction.guild.me.guild_permissions.manage_guild:
-                        await utils.send_error_message_to_server_owner(interaction.guild, "Manage Server", message="InfiniBot is missing the Manage Server permission. This means that it can't transfer the System Messages Channel to the new, cloned channel automatically that it created when purging. Please transfer the System Messages Channel to the new channel manually, and give InfiniBot the Manage Server permission for the future.")
-                    await interaction.guild.edit(system_channel=new_channel, reason="Purging Channel. Transfered System Messages Channel to new, cloned channel.")
-
-            except Exception as e:
-                logging.error(f"Failed to update system channel: {e}")
-            
-            # Delete old channel
-            try:
-                await interaction.channel.delete(reason="Purging Channel")
-            except nextcord.errors.Forbidden:
-                await interaction.followup.send(
-                    embed=nextcord.Embed(
-                        title="Unknown Error", 
-                        description="An unknown error occurred when purging the channel. Please double check InfiniBot's \
-                        permissions and try again.\n\nNote: It is possible that InfiniBot cloned this channel. You may want to double check.", 
-                        color=nextcord.Color.red()
-                    ), 
-                    ephemeral=True
-                )
-                return
-            
-            await new_channel.send(
-                embed=nextcord.Embed(
-                    title="Purged Messages", 
-                    description=f"{interaction.user} has instantly purged {new_channel.mention} of all messages", 
-                    color=nextcord.Color.orange(),
-                    timestamp=datetime.datetime.now(tz=datetime.timezone.utc)
-                ), 
-                view=ui_components.InviteView()
-            )
-        
         else:
-            # Purging a specified amount of messages
-            try:
-                int(amount)
-            except TypeError:
-                interaction.response.send_message(
-                    embed=nextcord.Embed(
-                        title="Format Error", 
-                        description="\"Amount\" needs to be a number", 
-                        color=nextcord.Color.red()
-                    ), 
-                    ephemeral=True
-                )
-                return
-
-            # Get confirmation
-            embed = nextcord.Embed(
-                title="Are you sure?", 
-                description=f"Are you sure you want to purge (delete) {amount} messages in this channel?\n\nThis action cannot \
-                be undone.", 
-                color=nextcord.Color.orange()
+            await guild.edit(
+                system_channel=new_channel,
+                reason="Purging Channel - System Channel Transfer"
             )
 
-            view = ConfirmationView()
-            await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
-            await view.wait()
+async def _handle_purge_amount(interaction: Interaction, amount: int) -> None:
+    """Handles purging a specific number of messages"""
+    if is_channel_purging(interaction.guild_id):
+        await _send_error(
+            interaction,
+            "Purging Error",
+            "This channel is already being purged."
+        )
+        return
 
-            if not view.choice:
-                return
-            
-            if is_channel_purging(interaction.guild_id):
-                await interaction.response.send_message(
-                    embed=nextcord.Embed(
-                        title="Purging Error", 
-                        description="This channel is already being purged.", 
-                        color=nextcord.Color.red()
-                    )
-                )
-                return
+    add_channel_to_purging(interaction.guild_id)
+    
+    try:
+        deleted = await interaction.channel.purge(limit=amount)
+    except Exception as e:
+        remove_channel_from_purging(interaction.guild_id)
+        logging.error(f"Purge error: {e}")
+        await _send_error(
+            interaction,
+            "Purge Failed",
+            "An error occurred during message deletion. Please check bot permissions."
+        )
+        return
+    finally:
+        await asyncio.sleep(1)
+        remove_channel_from_purging(interaction.guild_id)
 
-            add_channel_to_purging(interaction.guild_id)
+    # Send purge confirmation
+    await interaction.channel.send(
+        embed=nextcord.Embed(
+            title="Purged Messages",
+            description=f"{interaction.user} purged {len(deleted)} messages in {interaction.channel.mention}",
+            color=nextcord.Color.orange(),
+            timestamp=datetime.datetime.now(tz=datetime.timezone.utc)
+        ),
+        view=ui_components.InviteView()
+    )
 
-            deleted = []
+# ---------------------------
+# Main Command Handler
+# ---------------------------
 
-            try:
-                deleted = await interaction.channel.purge(limit=int(amount))
-            except nextcord.errors.NotFound:
-                # We reached the end of all the messages that we can purge.
-                pass
-            except Exception as e:
-                # Remove it from the purging list
-                if is_channel_purging(interaction.guild_id):
-                    remove_channel_from_purging(interaction.guild_id)
-                    
-                # Throw error
-                await interaction.response.send_message(
-                    embed=nextcord.Embed(
-                        title="Unknown Error", 
-                        description="An unknown error occurred when purging. Please double check InfiniBot's permissions and try again.", 
-                        color=nextcord.Color.red()
-                    ), 
-                    ephemeral=True
-                )
-                
-                # Log error
-                logging.error(f"Failed to purge channel: {e}")
-                return
+async def run_purge_command(interaction: Interaction, amount: str) -> None:
+    # Initial validations
+    if not await _check_permissions(interaction):
+        return
 
-            await asyncio.sleep(1)
+    if not await utils.user_has_config_permissions(interaction):
+        return
 
-            if is_channel_purging(interaction.guild_id):
-                remove_channel_from_purging(interaction.guild_id)
+    if not await _check_feature_status(interaction):
+        return
 
-            await interaction.channel.send(
-                embed=nextcord.Embed(
-                    title="Purged Messages", 
-                    description=f"{interaction.user} has purged {interaction.channel.mention} of {str(len(deleted))} messages", 
-                    color=nextcord.Color.orange(),
-                    timestamp=datetime.datetime.now(tz=datetime.timezone.utc)
-                ), 
-                view=ui_components.InviteView()
-            )
+    # Input validation
+    if not amount or (not amount.isdigit() and amount.lower() != "all") or (amount.isdigit() and int(amount) < 1):
+        await _send_error(
+            interaction,
+            "Invalid Amount",
+            "Please specify a positive number or 'all' to purge messages."
+        )
+        return
+
+    # Handle purge type
+    if amount.lower() == "all":
+        confirm_embed = _create_confirmation_embed(
+            "Confirm Complete Purge",
+            "**WARNING**: This will clone the channel and delete the original!\n"
+            "Third-party integrations may be affected. This action cannot be undone."
+        )
+        confirm_embed.set_footer(text="Use with caution - this is irreversible")
+        
+        if not await _get_user_confirmation(interaction, confirm_embed):
+            return
+
+        await _handle_purge_all(interaction)
+    else:
+        confirm_embed = _create_confirmation_embed(
+            "Confirm Message Purge",
+            f"You're about to delete {amount} messages. This cannot be undone."
+        )
+        
+        if not await _get_user_confirmation(interaction, confirm_embed):
+            return
+
+        await _handle_purge_amount(interaction, int(amount))
