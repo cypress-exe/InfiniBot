@@ -1,7 +1,22 @@
 title: InfiniBot
-description: Documentation for InfiniBot
-theme: jekyll-theme-midnight
-remote_theme: pages-themes/midnight@v0.2.0
+description: A powerful, feature-rich Discord bot for your community
+author: InfiniBot Team
+theme: minima
+show_excerpts: true
+
+minima:
+  skin: dark
+  date_format: "%b %-d, %Y"
+  social_links:
+    twitter: infinibot
+    github: infinibot
+    discord: infinibot
+
+header_pages:
+  - about.md
+  - features.md
+  - docs.md
+
 plugins:
-- jekyll-remote-theme
-- jekyll-seo-tag
+  - jekyll-feed
+  - jekyll-seo-tag
