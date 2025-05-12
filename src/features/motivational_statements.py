@@ -20,7 +20,7 @@ async def run_motivational_statement(interaction: Interaction):
     messages = [
         "Don't stress over something today; it will be worse tomorrow.",
         "Time to leave the past behind and start over in life; your existence didn't mean anything anyway.",
-        "If you think life is horrible right now, you're wrong. It will always get worse count on it.",
+        "If you think life is horrible right now, you're wrong. It will always get worse... count on it.",
         "Keep working. Though you will never find success, your family might remember your meaningless life.",
         "If you fail to find success over and over, give up. You're not good enough to do it anyway, and you never will be.",
         "The cookies you were looking foreward to all day burned to a crisp.",
