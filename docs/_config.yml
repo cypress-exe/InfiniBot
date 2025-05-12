@@ -1,3 +1,7 @@
 title: InfiniBot
 description: Documentation for InfiniBot
-theme: jekyll-theme-minimal
+theme: jekyll-theme-midnight
+remote_theme: pages-themes/midnight@v0.2.0
+plugins:
+- jekyll-remote-theme
+- jekyll-seo-tag

@@ -1,0 +1,89 @@
+@import "{{ site.theme }}";
+
+/* Custom styles to enhance the dark theme */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+}
+
+a {
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: #03a9f4;
+  text-decoration: none;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #03a9f4;
+  margin-top: 1.5em;
+}
+
+.wrapper {
+  max-width: 960px;
+}
+
+code, pre {
+  background-color: #1a1a1a;
+  border-radius: 4px;
+}
+
+section {
+  padding-bottom: 30px;
+}
+
+/* Navigation enhancements */
+nav {
+  margin-bottom: 30px;
+}
+
+nav a {
+  margin-right: 15px;
+  font-weight: 600;
+}
+
+/* Modern button styles */
+.btn {
+  display: inline-block;
+  padding: 8px 16px;
+  background-color: #03a9f4;
+  color: white;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: background-color 0.3s ease;
+}
+
+.btn:hover {
+  background-color: #0288d1;
+  color: white;
+}
+
+/* Modern card style */
+.card {
+  background-color: #292929;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Modern table style */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 20px 0;
+}
+
+th, td {
+  border: 1px solid #444;
+  padding: 12px;
+}
+
+th {
+  background-color: #222;
+}
+
+tr:nth-child(even) {
+  background-color: #333;
+}
