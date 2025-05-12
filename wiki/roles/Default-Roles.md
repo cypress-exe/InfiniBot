@@ -56,7 +56,13 @@ If default roles aren't being assigned:
 
 ## Best Practices
 
-- **Don't overdo it** - Assign only essential roles automatically
 - **Consider hierarchy** - Be mindful of what permissions default roles grant
 - **Combine with other features** - Works well with Join Messages to welcome new members
 - **Test the setup** - Have a friend join to test that roles are correctly assigned
+
+---
+
+**Related Pages:**
+- [Reaction Roles](Reaction-Roles.md) - Self-assignable roles via reactions
+- [Role Messages](Role-Messages.md) - Role information messages
+- [Dashboard](../core-features/Dashboard.md) - Managing server features

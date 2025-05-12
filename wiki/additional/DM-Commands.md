@@ -25,7 +25,8 @@ If you wish to stop receiving all DM notifications from InfiniBot:
 
 1. Use `/profile` in any server with InfiniBot
 2. Click on the **Settings** button
-3. Click **Toggle DMs** to disable DM notifications
+3. Click the **Direct Messages** button
+4. Clicking **Disable** will DM notifications
 
 This will prevent InfiniBot from sending you:
 - Level-up notifications

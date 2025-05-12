@@ -40,26 +40,17 @@ Messages are sent as embeds, which you can customize:
 
 ### Available Placeholders
 
-Use these placeholders in your messages to display dynamic information:
+Utilize the [generic replacements](./Generic-Replacements.md) in your messages to display dynamic information.
 
-- `[user]` - Mentions the member (@username)
-- `[username]` - Shows the member's username
-- `[servername]` - Shows the server name
-- `[membercount]` - Shows the current member count
-
-Example: `Welcome [user] to [servername]! You are member #[membercount].`
+Example: `Welcome @mention to @server! You are member @membercount.`
 
 ## Join Cards
 
-Join cards are customizable cards that can be added to join messages:
-
-1. Members can create their own join cards using `/profile → Join Card`
-2. These cards will appear alongside the server's welcome message
-3. This feature can be toggled on/off in join message settings
+Members can personalize their join messages with [custom cards](../core-features/Profile.md#join-card).
 
 ### Enable/Disable Join Cards
 
-1. Access via: `/dashboard → Join/Leave Messages → Join Messages → Allow Join Cards`
+1. Access via: `/dashboard → Join/Leave Messages → Join Messages → Enable/Disable Join Cards`
 2. Toggle whether personal join cards appear with welcome messages
 
 ## Tips for Effective Messages
@@ -69,3 +60,11 @@ Join cards are customizable cards that can be added to join messages:
 - **Mention channels** - Point to important channels like #rules or #welcome
 - **Consider mobile users** - Format carefully for mobile device compatibility
 - **Test your messages** - Preview how they'll look to ensure formatting is correct
+
+---
+
+**Related Pages:**
+- [Embeds](Embeds.md) - More information about embed formatting
+- [Profile](../core-features/Profile.md) - Configure your personal join card
+- [Dashboard](../core-features/Dashboard.md) - General bot configuration
+- [Birthday Messages](Birthdays.md) - Similar messaging feature

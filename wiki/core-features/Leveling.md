@@ -14,11 +14,10 @@ As members accumulate XP, they level up at certain thresholds. Each level requir
 ## Setup
 
 1. Access via: `/dashboard → Leveling`
-2. Enable the feature with the **Enable Leveling** button
+2. Enable the feature with the **Enable** button (if applicable)
 3. Configure your settings:
-   - XP rates
    - Level-up notification settings
-   - Role rewards
+   - Level rewards
 
 ## Commands
 
@@ -34,26 +33,27 @@ When enabled, InfiniBot sends level-up messages when members reach new levels:
 
 ### Configuring Level-Up Notifications
 
-1. Access via: `/dashboard → Leveling → Level-Up Messages`
-2. Choose where to send notifications:
+1. Access via: `/dashboard → Leveling`
+2. Choose where to send notifications: `/dashboard → Leveling → Notifications Channel`
    - System channel
    - Specific channel
-3. Customize the message
+3. Customize the message: `/dashboard → Leveling → Level-Up Message`
+> Utilize the [generic replacements](../messaging/Generic-Replacements.md) available with InfiniBot.
 
-## Role Rewards
+## Level Rewards
 
 Automatically award roles when members reach specific levels:
 
 1. Access via: `/dashboard → Leveling → Level Rewards`
-2. Click **Add Level Reward**
+2. Click **Create**
 3. Select the level and role to award
-4. Choose whether previous rewards are removed
+> Note: InfiniBot automatically removes roles assigned as Level Rewards from members who do not meet the level requirement.
 
-### Managing Role Rewards
+### Managing Level Rewards
 
-- **Edit Reward** - Change the level or role for an existing reward
-- **Remove Reward** - Delete a role reward
-- **View Rewards** - See a list of all configured rewards
+- **Create** - Addd a level reward
+- **Delete** - Delete a level reward (Does not delete the Discord role)
+- **Delete All Level Rewards** - Instantly clear all level rewards (does not delete the Discord roles)
 
 ## Anti-Spam Protection
 
@@ -64,10 +64,4 @@ InfiniBot has built-in protections to prevent XP farming:
 
 ## Member Profile Level Cards
 
-Members can personalize their level-up notifications with custom cards:
-
-1. Access via: `/profile → Level-Up Card`
-2. Enable/disable personal level-up cards
-3. Customize card text and color
-
-These cards will be included with level-up notifications, adding personalization to the leveling experience.
+Members can personalize their level-up notifications with [custom cards](./Profile.md#level-up-card).

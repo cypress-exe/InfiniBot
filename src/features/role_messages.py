@@ -633,7 +633,7 @@ class RoleMessageSetup(nextcord.ui.View):
                             self.add_item(self.select)
 
                             self.create_btn = nextcord.ui.Button(
-                                label="Create Role Select",
+                                label="Create Role Message",
                                 style=nextcord.ButtonStyle.blurple
                             )
                             self.create_btn.callback = self.create_btn_callback

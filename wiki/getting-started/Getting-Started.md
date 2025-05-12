@@ -5,34 +5,26 @@ This guide helps you get started with using InfiniBot in your Discord server.
 ## Adding InfiniBot to Your Server
 
 1. Use the official invitation link to add InfiniBot to your server.
-2. Make sure to grant all requested permissions for full functionality.
+2. Make sure to grant InfiniBot the **Administrator** permission for simplest setup. Alternatively, you can grant individual permissions as listed in the [Required Permissions](#required-permissions) section below.
 3. Once invited, InfiniBot will be ready to use with default settings.
 
-## Initial Setup
+## Onboarding Process
 
-### Creating the InfiniBot Mod Role
+When InfiniBot first joins your server, it will guide you through an onboarding process:
 
-The first step after adding InfiniBot is to set up the **InfiniBot Mod** role:
+1. You'll be prompted to set up essential features based on your server's needs
+2. Each feature (like moderation, logging, leveling) can be enabled/disabled during this process
+3. The onboarding will help you configure channels and permissions for your selected features
+
+If you skip the onboarding or want to change settings later, you can always configure everything through the Dashboard.
+
+## The InfiniBot Mod Role
+
+The **InfiniBot Mod** role is central to controlling who can manage the bot:
 
 1. InfiniBot will attempt to create this role automatically.
 2. If the role wasn't created automatically, use `/create infinibot-mod-role` to manually create it.
 3. Assign this role to yourself and trusted administrators to unlock full access to InfiniBot's features.
-
-### Setting Up Admin Channel
-
-For moderation features to work properly, you'll need to set up an admin channel:
-
-1. Create a private channel that only moderators can access.
-2. Use `/set admin-channel` in that channel to designate it as InfiniBot's admin channel.
-3. This channel will receive notifications about strikes, automatic moderation actions, and more.
-
-### Configuring Log Channel
-
-For detailed logging of server activities:
-
-1. Create a private channel for logs (can be the same as admin channel).
-2. Use `/set log-channel` in that channel to set it as InfiniBot's logging channel.
-3. This channel will receive logs for message deletions, edits, member joins/leaves, and other activities.
 
 ## Using the Dashboard
 
@@ -46,15 +38,17 @@ The dashboard is your central hub for configuring InfiniBot:
 
 After completing the initial setup, explore these features:
 
-- [Moderation Features](Moderation.md) - Set up profanity filtering and spam control
-- [Leveling](Leveling.md) - Configure the member leveling system
-- [Join & Leave Messages](Join-Leave-Messages.md) - Set custom messages for when members join or leave
+- [Moderation Features](../core-features/Moderation.md) - Set up profanity filtering and spam control
+- [Leveling](../core-features/Leveling.md) - Configure the member leveling system
+- [Join & Leave Messages](../messaging/Join-Leave-Messages.md) - Set custom messages for when members join or leave
 
 For a complete list of commands, see the [Commands Overview](Commands.md).
 
 ## Required Permissions
 
-For optimal functionality, InfiniBot needs these permissions:
+For optimal functionality, we recommend giving InfiniBot the **Administrator** permission, which simplifies setup considerably.
+
+If you prefer to use more specific permissions, InfiniBot needs these permissions in every channel it operates in:
 
 - **View Channels** - To see and interact with channels
 - **Send Messages** - To respond to commands and post notifications
@@ -66,5 +60,14 @@ For optimal functionality, InfiniBot needs these permissions:
 - **View Audit Log** - For accurate action logging
 - **Timeout Members** - For moderation actions
 - **Ban Members** - For ban button functionality
+- **Read Message History** - For reaction roles and other features
 
 If you encounter permission errors, InfiniBot will notify you about the specific permissions needed.
+To check if InfiniBot has the correct permissions, run `/check_infinibot_permissions`.
+
+---
+
+**Related Pages:**
+- [Configuration](Configuration.md) - More detailed configuration options
+- [Commands Overview](Commands.md) - Full list of available commands
+- [Dashboard](../core-features/Dashboard.md) - Learn about the dashboard interface

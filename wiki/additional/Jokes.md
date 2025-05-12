@@ -26,11 +26,22 @@ Jokes appear in these formats:
 - **Riddles** - Question with the answer hidden in a spoiler tag
 - **Puns** - Wordplay jokes with entertaining titles
 
-## Enabling/Disabling the Feature
+## Submitting Your Own Jokes
 
-1. Access via: `/dashboard → Extra Features`
-2. Use the **Toggle Jokes** button to enable or disable
-3. When disabled, the command will return a notification that the feature is turned off
+InfiniBot allows community members to submit their own jokes for possible inclusion in the joke database:
+
+1. When you receive a joke, look for the **Submit a Joke** button below the joke message
+2. Click the button to open the joke submission form
+3. Enter a **Title** for your joke
+4. Write the **Body** content (the main joke)
+5. Optionally add a **Punchline** (will be displayed as a spoiler)
+6. Submit the form
+
+After submission:
+1. Your joke is sent to the InfiniBot moderation team for review
+2. Join the support server to receive DM updates about your joke's status
+3. If approved, your joke will be added to the database
+4. If rejected, you'll receive feedback about why
 
 ## Community Guidelines
 
@@ -44,3 +55,18 @@ The jokes in InfiniBot's database are:
 - Free of offensive language or topics
 
 If you ever encounter content you believe is inappropriate, please contact the support server.
+
+## Enabling/Disabling the Feature
+
+The jokes feature can be controlled through Discord's server settings:
+
+1. Go to **Server Settings → Integrations → InfiniBot**
+2. Find the `/joke` command in the list
+3. Disable the command to prevent it from being used in your server
+
+---
+
+**Related Pages:**
+- [Dashboard](../core-features/Dashboard.md) - Manage joke features
+- [Motivational Statements](Motivational-Statements.md) - Another fun text feature
+- [Commands Overview](../getting-started/Commands.md) - Other available commands

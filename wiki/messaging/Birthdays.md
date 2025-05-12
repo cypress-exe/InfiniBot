@@ -6,10 +6,10 @@ InfiniBot's Birthday Messages feature allows you to celebrate your community mem
 
 1. Access via: `/dashboard → Birthdays`
 2. Configure the following settings:
-   - **Birthday Channel** - Where announcements will be sent
-   - **Runtime** - What time of day announcements are sent
-   - **Timezone** - Server timezone for accurate timing
-   - **Birthday Message** - Customize the announcement
+   - **Configure Birthdays** - Add/remove members' birthdays
+   - **Notification Channel** - Where announcements will be sent
+   - **Message Time** - What time of day announcements are sent
+   - **Edit Message** - Customize the announcement
 
 ## Adding Birthdays
 
@@ -28,14 +28,11 @@ Birthday messages are sent as embeds, which you can customize:
 
 ### Available Placeholders
 
-Use these placeholders in your messages:
-- `[user]` - Mentions the birthday person (@username)
-- `[username]` - Shows their username
-- `[servername]` - Shows the server name
+In addition to the [generic replacements](./Generic-Replacements.md) for InfiniBot's messages, birthday messages provide additional replacements, including:
 - `[age]` - Displays their age (if birth year was provided)
 - `[realname]` - Shows their real name (if provided)
 
-Example: `Happy Birthday to [user]! [realname] is turning [age] today!`
+Example: `Happy Birthday to @mention! [realname] is turning [age] today!`
 
 ## Birthday Notifications
 
@@ -46,14 +43,14 @@ When a member's birthday arrives:
 ## Managing Birthdays
 
 ### Editing Birthdays
-1. Access via: `/dashboard → Birthdays → Manage Birthdays`
+1. Access via: `/dashboard → Birthdays → Configure Birthdays`
 2. Find the member in the list
 3. Click **Edit** to update their information
 
 ### Removing Birthdays
-1. Access via: `/dashboard → Birthdays → Manage Birthdays`
+1. Access via: `/dashboard → Birthdays → Configure Birthdays`
 2. Find the member in the list
-3. Click **Remove** to delete their birthday
+3. Click **Delete** to delete their birthday
 
 ## Required Permissions
 
@@ -63,8 +60,13 @@ For birthday messages to work properly, InfiniBot needs:
 
 ## Best Practices
 
-- **Privacy Consideration** - Only collect birth years with permission
-- **Timezone Configuration** - Set the correct timezone for your server
 - **Channel Selection** - Choose a public channel where celebrations make sense
 - **Message Timing** - Select a time when most members are active
 - **Regular Updates** - Periodically check that birthday information is current
+
+---
+
+**Related Pages:**
+- [Join & Leave Messages](Join-Leave-Messages.md) - Similar messaging feature
+- [Embeds](Embeds.md) - More information about embed formatting
+- [Dashboard](../core-features/Dashboard.md) - Managing server features

@@ -5,8 +5,8 @@ InfiniBot's Action Logging feature provides detailed tracking of activities in y
 ## Setup
 
 1. Access via: `/dashboard → Logging`
-2. Enable the feature with the **Enable Logging** button
-3. Select a logging channel with the **Select Channel** button or use `/set log-channel`
+2. Enable the feature with the **Enable** button (if applicable)
+3. Select a logging channel with the **Log Channel** button or use `/set log-channel`
 
 ## Logged Events
 
@@ -34,7 +34,7 @@ Each logged event contains:
 - Affected user(s) or channel(s)
 - Before/after information when applicable
 - User who performed the action (when available)
-- Attachments (for deleted messages with images)
+- Attachments (for deleted/edited messages with images or files)
 
 ## Permissions Required
 
@@ -43,7 +43,7 @@ For full logging functionality, InfiniBot needs these permissions:
 - **Read Message History** - To capture message content
 - **View Channels** - To monitor activities across channels
 
-If InfiniBot is missing permissions, it will notify server administrators.
+If InfiniBot is missing permissions, it will notify the server owner.
 
 ## Log Channel Security
 
@@ -54,8 +54,11 @@ It's recommended to:
 
 ## Storage Limitations
 
-Due to Discord's limitations:
+InfiniBot has some limitations on log data retention:
+
 - Deleted messages are only logged if they were sent while InfiniBot was online
+- Message data older than 7 days or beyond the last 1000 messages is deleted
+- InfiniBot logs for edited/deleted messages after the retention period will have reduced information
 - Some information may be unavailable for specific actions
 - For extensive history, consider enabling Discord's built-in audit log retention
 

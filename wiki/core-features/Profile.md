@@ -24,25 +24,12 @@ Level-up cards are personalized messages that appear when you level up.
 
 When changing text, you can use:
 - **Title** - The main heading for your card
-- **Description** - The message body (supports `[level]` placeholder)
+- **Description** - The message body
+
+In addition to the [generic replacements](./Generic-Replacements.md) for InfiniBot's messages, level-up cards provide additional replacements, including:
+- `[level]` - The new level of the member
 
 Example: "I reached level [level]! Awesome!"
-
-#### Available Colors
-
-Choose from:
-- Red
-- Green
-- Blue
-- Yellow
-- White
-- Blurple
-- Greyple
-- Teal
-- Purple
-- Gold
-- Magenta
-- Fuchsia
 
 ### Join Card
 
@@ -60,14 +47,27 @@ When changing text, you can use:
 - **Title** - The main heading for your card
 - **Description** - The message body
 
+Utilize the [generic replacements](../messaging/Generic-Replacements.md) available with InfiniBot.
+
 ### Settings
 
 The settings section lets you adjust general profile preferences.
 
 1. Click **Settings** in the profile menu
 2. Options available:
-   - **Toggle DMs** - Enable/disable direct messages from InfiniBot
-   - **Reset All Settings** - Return all profile settings to default
+   - **Direct Messages** - Enable/disable direct messages from InfiniBot
+   - **Delete My Data** - Delete your data and configurations from InfiniBot
+
+#### Data Deletion
+This button deletes all your profile information associated with InfiniBot. This action isn't reversable.
+
+> Note: This will not delete:  
+> • Any message logs inside a server  
+> • Any moderation strikes, levels, birthdays, infinibot-powered messages, etc in any server  
+
+Some information not deleted by this process may be deleted when you leave a server. Check InfiniBot's privacy policy for complete transparency and more information.
+
+Refer to InfiniBot's [Privacy Policy](../legal/Privacy-Policy.md) for details on how InfiniBot handles your data.
 
 ## DM Notifications
 
@@ -76,7 +76,7 @@ InfiniBot may send you direct messages for:
 - Birthday wishes
 - Important server announcements
 
-You can opt out of these messages using the **Toggle DMs** option.
+You can opt out of these messages using the **Direct Messages** button.
 
 ## Privacy Considerations
 

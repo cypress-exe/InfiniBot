@@ -11,8 +11,8 @@ The Join to Create VCs feature allows members to create their own temporary voic
 
 ## Setup
 
-1. Access via: `/dashboard → Join to Create VCs`
-2. Click **Add Join to Create VC**
+1. Access via: `/dashboard → Join-To-Create VCs`
+2. Click **Add Channel**
 3. Select an existing voice channel to designate as the "hub"
 
 You can set up multiple hub channels throughout your server.
@@ -21,15 +21,15 @@ You can set up multiple hub channels throughout your server.
 
 ### Adding Hub Channels
 
-1. Click **Add Join to Create VC** in the dashboard
+1. Click **Add Channel** in the dashboard
 2. Select a voice channel from the dropdown
 3. Click **Add**
 
 ### Removing Hub Channels
 
-1. Click **Remove Join to Create VC** in the dashboard
+1. Click **Delete Channel** in the dashboard
 2. Select the hub channel you want to remove
-3. Click **Remove**
+3. Click **Delete**
 
 ## Required Permissions
 

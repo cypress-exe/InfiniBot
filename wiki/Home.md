@@ -12,6 +12,7 @@ Welcome to the InfiniBot GitHub Wiki! This wiki provides user-focused guides to 
 - [Dashboard](core-features/Dashboard.md)
 - [Profile](core-features/Profile.md)
 - [Moderation](core-features/Moderation.md)
+- [Filtered Words](core-features/Filtered-Words.md)
 - [Action Logging](core-features/Logging.md)
 - [Leveling](core-features/Leveling.md)
 
@@ -19,6 +20,7 @@ Welcome to the InfiniBot GitHub Wiki! This wiki provides user-focused guides to 
 - [Join & Leave Messages](messaging/Join-Leave-Messages.md)
 - [Birthday Messages](messaging/Birthdays.md)
 - [Embeds](messaging/Embeds.md)
+- [Generic Replacements](messaging/Generic-Replacements.md)
 
 ## Role Management
 - [Default Roles](roles/Default-Roles.md)

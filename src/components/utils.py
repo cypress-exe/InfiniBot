@@ -283,11 +283,25 @@ def replace_placeholders_in_embed(
     """
     replacements = custom_replacements
 
-    # Add default replacements
+    # Add member-related replacements
     replacements["@displayname"] = member.display_name
     replacements["@mention"] = member.mention
     replacements["@username"] = member.name
+    replacements["@id"] = str(member.id)
+    replacements["@joindate"] = member.joined_at.strftime("%Y-%m-%d") if member.joined_at else "Unknown"
+    replacements["@accountage"] = f"{(datetime.datetime.now() - member.created_at).days} days" if member.created_at else "Unknown"
+    
+    # Add server-related replacements
     replacements["@server"] = guild.name
+    replacements["@serverid"] = str(guild.id)
+    replacements["@membercount"] = str(guild.member_count)
+    replacements["@owner"] = guild.owner.display_name if guild.owner else "Unknown"
+    
+    # Add time and date replacements
+    now = datetime.datetime.now()
+    replacements["@time"] = now.strftime("%H:%M:%S")
+    replacements["@date"] = now.strftime("%Y-%m-%d")
+    replacements["@datetime"] = now.strftime("%Y-%m-%d %H:%M:%S")
 
     # Replace placeholders with values
     for key, value in replacements.items():

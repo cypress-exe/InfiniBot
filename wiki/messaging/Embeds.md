@@ -17,6 +17,7 @@ Embeds are rich message formats in Discord that can include:
 2. Fill out the modal with:
    - **Title** - The main heading for your embed
    - **Description** - The main content of your embed (supports basic markdown)
+      + Utilize the [generic replacements](./Generic-Replacements.md) available with InfiniBot.
 3. Choose a color for the embed's sidebar
 4. The embed will be sent to the current channel
 
@@ -76,7 +77,7 @@ For embed creation, InfiniBot needs:
 ## Tips for Effective Embeds
 
 - **Keep it concise** - Avoid walls of text
-- **Use markdown** - Format with **bold**, *italics*, and `code blocks`
+- **Use markdown** - Format with \*\*bold\*\*, \*italics\*, and \`code blocks\`
 - **Choose appropriate colors** - Different colors can convey different message tones
 - **Test your embeds** - Check how they appear on both desktop and mobile devices
 - **Consider accessibility** - Ensure your color choices have good contrast

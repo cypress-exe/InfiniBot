@@ -19,22 +19,35 @@ Role Messages create embedded messages with buttons that members can click to op
 
 ### Step 1: Configure Message Details
 - Enter a title for your role message
-- Enter a description explaining the available roles
+- Enter a description explaining the available roles (optional)
+- You can edit the text and color until satisfactory. When ready, click Next.
 
-### Step 2: Select Mode
-Choose between two modes:
-- **Single Selection** - Members can select only one role category
-- **Multiple Selection** - Members can select multiple role categories
+**Tip:** Text and color are editable afterwards.
 
-### Step 3: Add Role Categories
-1. Click **Add Role Category**
-2. Enter a name and description for the category
-3. Select roles to include in this category
-4. Repeat to add multiple categories
+### Step 2: Add an Option
+By clicking "Next", you are automatically moved into the option creation wizard. This will show up as a clickable option for members to add or remove from themselves. Each role option can have multiple roles associated with it.
+
+1. Choose the first role to include in this option.
+**Tip:** If you don't see your role, verify that InfiniBot has permissions to manage the role.
+
+2. Add a name for the option, with an optional description describing it.
+3. Next, you have the option to edit the text or add/remove more roles.
+
+**Note:** This still describes just one option. If you want members to configure their roles with more customization, make new options for each role.
+
+4. When done with this option, click "Finish"
+5. Add more options with the "Add Option" button. Alternatively, edit or remove options with their respective buttons.
 
 ### Step 4: Finalize and Send
 1. Review your role message
-2. Click **Create Role Message** to post it to the channel
+2. Click **Finish** to move onto the final step.
+
+### Step 5: Select Mode
+Choose between two modes:
+- **Single Selection** - Members can select only one role from each category
+- **Multiple Selection** - Members can select multiple roles from each category
+
+Click "Create Role Message" when done.
 
 ## How Members Use Role Messages
 
@@ -50,7 +63,9 @@ When members interact with a role message:
 Role messages are tracked by InfiniBot. To manage them:
 
 1. Find the role message in your server
-2. Edit or delete the message to modify or remove the functionality
+2. Edit or delete the message to modify or remove the functionality.
+    + To edit, navigate to the message's options inside of Discord. (Where you normally go to edit and delete messages)
+    + Find `Apps → Options → Edit Message`
 
 ## Required Permissions
 

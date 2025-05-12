@@ -24,10 +24,19 @@ Examples of the type of content this feature provides:
 
 ## Enabling/Disabling the Feature
 
-1. Access via: `/dashboard → Extra Features`
-2. Use the **Toggle Motivational Statements** button to enable or disable
-3. When disabled, the command will return a notification that the feature is turned off
+The motivational statements feature can be controlled through Discord's server settings:
+
+1. Go to **Server Settings → Integrations → InfiniBot**
+2. Find the `/motivational_statement` command in the list
+3. Disable the command to prevent it from being used in your server
 
 ## Server Appropriateness
 
 Server administrators should consider whether this humor fits their community before enabling this feature. Some communities may prefer to keep it disabled if the humor doesn't align with their tone or values.
+
+---
+
+**Related Pages:**
+- [Commands Overview](../getting-started/Commands.md) - See all available commands
+- [Jokes](Jokes.md) - Similar humorous feature
+- [Dashboard](../core-features/Dashboard.md) - Managing server features

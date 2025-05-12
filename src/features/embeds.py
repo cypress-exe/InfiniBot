@@ -94,6 +94,10 @@ async def run_create_embed_command(interaction: Interaction, role: nextcord.Role
     
     # Now we just display the embed
     embed = nextcord.Embed(title=embed_title, description=embed_description, color=discord_color)
+
+    # Apply replacements
+    embed = utils.replace_placeholders_in_embed(embed, interaction.user, interaction.guild)
+
     interaction_response = await interaction.followup.send(content=content, embed=embed, wait=True)
     
     # Finally, add the embed to our active messages for future editing

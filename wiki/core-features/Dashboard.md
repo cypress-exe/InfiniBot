@@ -93,3 +93,11 @@ Click the **Configure Timezone** button to:
    - Click **Join/Leave Messages**
    - Click **Join Messages**
    - Enable the feature and customize the message
+
+---
+
+**Related Pages:**
+- [Getting Started](../getting-started/Getting-Started.md) - Initial setup guide
+- [Configuration](../getting-started/Configuration.md) - Basic configuration
+- [Moderation](Moderation.md) - Moderation settings
+- [Logging](Logging.md) - Action logging configuration

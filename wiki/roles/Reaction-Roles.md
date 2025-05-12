@@ -34,16 +34,38 @@ InfiniBot offers three types of reaction role setups:
 Members can:
 1. Find the reaction role message
 2. React with the emoji corresponding to their desired role
-3. The role will be instantly added
-4. Remove the reaction to remove the role
+3. The role will be instantly added/removed
+4. Their reaction will be removed
+
+### Why Are Reactions Removed?
+
+Reactions are automatically removed to prevent synchronization issues. If multiple reaction role messages reference the same role, keeping reactions might cause inconsistencies, leading to confusion. By removing reactions, InfiniBot ensures that roles are assigned or removed accurately without conflicts.
 
 ## Managing Reaction Roles
 
 Reaction role messages are tracked by InfiniBot. To manage them:
 
 1. Find the reaction role message
-2. Edit the message (requires **InfiniBot Mod**)
-3. Delete the message to remove the reaction role functionality
+2. Right-click the message
+3. Select "Apps" and then "Options"
+4. Choose "Edit" from the menu
+
+### Editing Reaction Roles
+
+Through the edit menu, you can:
+1. Change the title or description of the reaction role message
+2. Modify which roles are assigned by each reaction
+3. Add new role options
+4. Remove existing role options
+5. Change which emojis are used
+
+All changes take effect immediately, and members don't need to react again.
+
+### Removing Reaction Roles
+
+To remove reaction role functionality:
+1. Simply delete the reaction role message
+2. InfiniBot will automatically clean up
 
 ## Required Permissions
 

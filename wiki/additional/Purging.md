@@ -40,10 +40,15 @@ Clearing all messages in a channel:
 ```
 This recreates the channel to remove all messages while preserving permissions and settings.
 
+> **⚠️ Important Warning ⚠️**  
+> Using `/purge all` may cause issues with other third-party Discord integrations. While InfiniBot will automatically update its internal database to track the new channel, other bots and integrations might still reference the old, deleted channel ID.
+>
+> If you use other bots or connections with the channel, you may need to manually update their configurations after using this command.
+
 ## Important Notes
 
-- Discord limits bulk deletion to messages newer than 14 days
-- For messages older than 14 days, use the "all" option to recreate the channel
+- Discord limits that InfiniBot can delete messages
+- For bulk deletion, use the "all" option to recreate the channel
 - Channel recreation preserves:
   - Channel name
   - Topic/description
@@ -64,3 +69,10 @@ The purge command is powerful and can't be undone. Use it with caution, especial
 - **Be Specific**: Use the smallest number necessary to avoid deleting too much
 - **Inform Members**: Let members know before purging active channels
 - **Check Permissions**: Ensure the bot has Manage Messages and Manage Channels
+
+---
+
+**Related Pages:**
+- [Commands Overview](../getting-started/Commands.md) - See all available commands
+- [Moderation](../core-features/Moderation.md) - Additional moderation tools
+- [Logging](../core-features/Logging.md) - Track message deletion activities
