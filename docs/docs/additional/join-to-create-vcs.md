@@ -1,3 +1,9 @@
+---
+title: Join to Create VCs
+nav_order: 2
+parent: Additional Features
+---
+
 # Join to Create VCs
 
 The Join to Create VCs feature allows members to create their own temporary voice channels automatically.

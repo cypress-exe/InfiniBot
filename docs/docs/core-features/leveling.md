@@ -1,3 +1,9 @@
+---
+title: Leveling
+nav_order: 3
+parent: Core Features
+---
+
 # Leveling
 
 InfiniBot's leveling system provides an engaging way to reward active members in your community.

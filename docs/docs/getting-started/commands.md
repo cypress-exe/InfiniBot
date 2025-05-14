@@ -1,3 +1,9 @@
+---
+title: Commands
+nav_order: 2
+parent: Getting Started
+---
+
 # Commands Overview
 
 This page lists all available slash commands in InfiniBot, organized by command group.

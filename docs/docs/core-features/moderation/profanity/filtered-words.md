@@ -1,3 +1,10 @@
+---
+title: Filtered Words
+nav_order: 1
+parent: Profanity
+---
+
+
 # Filtered Words
 
 InfiniBot uses an advanced word filtering system that helps you maintain a clean and safe server environment.

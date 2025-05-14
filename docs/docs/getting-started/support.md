@@ -1,3 +1,9 @@
+---
+title: Support
+nav_order: 3
+parent: Getting Started
+---
+
 # Support & Feedback
 
 This page provides information on how to get help with InfiniBot and provide feedback.

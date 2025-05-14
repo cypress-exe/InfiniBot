@@ -1,3 +1,9 @@
+---
+title: Purging
+nav_order: 1
+parent: Additional Features
+---
+
 # Purging
 
 InfiniBot's Purging feature allows administrators to quickly remove multiple messages from a channel.

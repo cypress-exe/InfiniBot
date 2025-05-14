@@ -1,3 +1,9 @@
+---
+title: Dashboard
+nav_order: 1
+parent: Core Features
+---
+
 # Dashboard
 
 The Dashboard is InfiniBot's central configuration hub, providing access to all major features and settings.

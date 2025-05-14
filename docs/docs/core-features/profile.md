@@ -1,3 +1,9 @@
+---
+title: Profile
+nav_order: 99
+parent: Core Features
+---
+
 # Profile
 
 InfiniBot's Profile feature allows members to customize their personal settings and cards for a more personalized experience.

@@ -1,3 +1,9 @@
+---
+title: Motivational Statements
+nav_order: 4
+parent: Additional Features
+---
+
 # Motivational Statements
 
 InfiniBot's Motivational Statements feature provides a humorous twist on traditional motivational content.

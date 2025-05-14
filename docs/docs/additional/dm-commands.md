@@ -1,3 +1,10 @@
+---
+title: DM Commands
+nav_order: 99
+parent: Additional Features
+---
+
+
 # DM Commands
 
 InfiniBot offers several commands that can be used in direct messages (DMs).

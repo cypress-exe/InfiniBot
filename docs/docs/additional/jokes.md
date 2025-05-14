@@ -1,3 +1,9 @@
+---
+title: Jokes
+nav_order: 3
+parent: Additional Features
+---
+
 # Jokes
 
 InfiniBot's Jokes feature provides a lighthearted way to share humor in your server.
