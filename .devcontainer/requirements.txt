@@ -1,0 +1,11 @@
+APScheduler==3.11.0
+dateparser==1.2.1
+humanfriendly==10.0
+nextcord==3.0.1
+nextcord_ext_menus==1.5.7
+python-Levenshtein==0.27.1
+python-dateutil==2.9.0
+SQLAlchemy==2.0.39
+topggpy==1.4.0
+cachetools==5.5.2
+psutil==7.0.0

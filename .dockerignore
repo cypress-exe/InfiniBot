@@ -1,0 +1,17 @@
+# Exclude files and folders not needed in the Docker build
+
+# Git
+.git
+
+# Python
+__pycache__
+*.pyc
+.venv
+
+# VS Code
+.vscode
+*.code-workspace
+
+# Project
+documentation
+README.md

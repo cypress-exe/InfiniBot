@@ -1,2 +1,7 @@
 __pycache__
-CriticalFiles/*
+generated/*
+*.code-workspace
+.venv/*
+.ipynb_checkpoints
+.env
+**/.env
