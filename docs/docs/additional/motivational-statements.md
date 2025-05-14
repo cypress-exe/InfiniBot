@@ -8,6 +8,9 @@ parent: Additional Features
 
 InfiniBot's Motivational Statements feature provides a humorous twist on traditional motivational content.
 
+{: .info }
+This feature adds a touch of humor to your server while providing a fun way for members to interact with the bot.
+
 ## Using the Command
 
 Use `/motivational_statement` to receive a randomized "motivational" message.
@@ -16,9 +19,8 @@ Use `/motivational_statement` to receive a randomized "motivational" message.
 
 This lighthearted feature generates satirical anti-motivational statements that parody traditional motivational quotes. These statements are deliberately crafted to be absurd and should be taken as humor rather than actual advice.
 
-## Important Disclaimer
-
-As noted in the feature itself, these statements are **not** real motivational advice. They are intended to be humorous and are presented with a clear disclaimer to that effect.
+{: .warning }
+These statements are **not** real motivational advice. They are intended to be humorous and are presented with a clear disclaimer to that effect.
 
 For actual mental health support or genuine motivational resources, please consult professionals or reputable sources.
 

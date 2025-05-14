@@ -2,11 +2,15 @@
 title: Spam
 nav_order: 2
 parent: Moderation
+grand_parent: Core Features
 ---
 
 # Spam Moderation
 
 Spam moderation automatically detects and handles message spam.
+
+{: .warning }
+Spam protection is essential for preventing raids and maintaining channel quality. Configure this to protect your server from spam attacks.
 
 ## Setup
 

@@ -83,7 +83,7 @@ aux_links_new_tab: true
 
 # External navigation links
 nav_external_links:
-  - title: View InfiniBot's Source Code on GitHub
+  - title: InfiniBot Source Code
     url: https://github.com/cypress-exe/infinibot
 
 # Define callouts
@@ -106,3 +106,18 @@ callouts:
   danger:
     title: Careful
     color: red
+
+  titleless-red:
+    color: red
+  titleless-yellow:
+    color: yellow
+  titleless-blue:
+    color: blue
+  titleless-green:
+    color: green
+  titleless-purple:
+    color: purple
+  titleless-grey-dk:
+    color: grey-dk
+  titleless-grey-lt:
+    color: grey-lt

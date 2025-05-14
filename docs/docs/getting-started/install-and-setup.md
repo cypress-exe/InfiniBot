@@ -41,7 +41,7 @@ The dashboard is your central hub for configuring InfiniBot:
    - Timezone configuration: `/dashboard → Configure Timezone`
    - Extra options: `/dashboard → Extra Features`
 
-See the [Dashboard](../core-features/Dashboard.md) page for detailed usage.
+See the [Dashboard]({% link docs/core-features/dashboard.md %}) page for detailed usage.
 
 ---
 
@@ -49,13 +49,13 @@ See the [Dashboard](../core-features/Dashboard.md) page for detailed usage.
 
 InfiniBot offers robust configuration for core and optional features:
 
-- [Moderation](../core-features/Moderation.md) - Profanity filtering, spam control
-- [Logging](../core-features/Logging.md) - Track user and system events
-- [Leveling](../core-features/Leveling.md) - Reward member activity
-- [Join/Leave Messages](../messaging/Join-Leave-Messages.md) - Customize welcome/goodbye messages
-- [Birthdays](../messaging/Birthdays.md) - Celebrate member birthdays
-- [Default Roles](../roles/Default-Roles.md) - Auto-assign roles to new members
-- [Join to Create VCs](../additional/Join-To-Create-VCs.md) - Dynamic voice channels
+- [Moderation]({% link docs/core-features/moderation/index.md %}) - Profanity filtering, spam control
+- [Logging]({% link docs/core-features/logging.md %}) - Track user and system events
+- [Leveling]({% link docs/core-features/leveling.md %}) - Reward member activity
+- [Join/Leave Messages]({% link docs/messaging/Join-Leave-Messages.md %}) - Customize welcome/goodbye messages
+- [Birthdays]({% link docs/messaging/Birthdays.md %}) - Celebrate member birthdays
+- [Default Roles]({% link docs/roles/Default-Roles.md %}) - Auto-assign roles to new members
+- [Join to Create VCs]({% link docs/additional/join-to-create-vcs.md %}) - Dynamic voice channels
 
 ---
 
@@ -127,16 +127,16 @@ Run `/check_infinibot_permissions` to verify permissions.
 
 After setup, explore these features:
 
-- [Moderation Features](../core-features/Moderation.md)
-- [Leveling](../core-features/Leveling.md)
-- [Join & Leave Messages](../messaging/Join-Leave-Messages.md)
-- [Dashboard](../core-features/Dashboard.md)
-- [Commands Overview](Commands.md)
+- [Moderation Features]({% link docs/core-features/moderation/index.md %})
+- [Leveling]({% link docs/core-features/leveling.md %})
+- [Join & Leave Messages]({% link docs/messaging/Join-Leave-Messages.md %})
+- [Dashboard]({% link docs/core-features/dashboard.md %})
+- [Commands Overview]({% link docs/getting-started/commands.md %})
 
 ---
 
 **Related Pages:**
 
-- [Dashboard](../core-features/Dashboard.md)
-- [Commands Overview](Commands.md)
-- [Support & Feedback](Support.md)
+- [Dashboard]({% link docs/core-features/dashboard.md %})
+- [Commands Overview]({% link docs/getting-started/commands.md %})
+- [Support & Feedback]({% link docs/getting-started/support.md %})

@@ -1,6 +1,15 @@
+---
+title: Terms of Service
+parent: Legal
+nav_order: 2
+---
+
 # Terms of Service
 
 *This is a placeholder for the InfiniBot Terms of Service document.*
+
+{: .warning }
+This document is currently being finalized and is subject to change.
 
 The complete Terms of Service will be added here when finalized. This document will outline:
 
@@ -12,4 +21,4 @@ The complete Terms of Service will be added here when finalized. This document w
 - Intellectual property rights
 - Applicable laws and jurisdictions
 
-Please refer to the [Support](../getting-started/Support.md) page for information on how to contact the InfiniBot team with any questions.
+Please refer to the [Support]({% link docs/getting-started/support.md %}) page for information on how to contact the InfiniBot team with any questions.

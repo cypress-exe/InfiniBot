@@ -8,6 +8,9 @@ parent: Core Features
 
 InfiniBot's leveling system provides an engaging way to reward active members in your community.
 
+{: .success }
+Leveling encourages participation and creates friendly competition in your server, increasing overall engagement.
+
 ## How Leveling Works
 
 Members earn experience points (XP) through server activity:

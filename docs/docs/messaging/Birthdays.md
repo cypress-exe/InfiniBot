@@ -1,3 +1,9 @@
+---
+title: Birthdays
+parent: Messaging Features
+nav_order: 1
+---
+
 # Birthday Messages
 
 InfiniBot's Birthday Messages feature allows you to celebrate your community members' birthdays with automatic announcements.
@@ -28,7 +34,7 @@ Birthday messages are sent as embeds, which you can customize:
 
 ### Available Placeholders
 
-In addition to the [generic replacements](./Generic-Replacements.md) for InfiniBot's messages, birthday messages provide additional replacements, including:
+In addition to the [generic replacements]({% link docs/messaging/Generic-Replacements.md %}) for InfiniBot's messages, birthday messages provide additional replacements, including:
 - `[age]` - Displays their age (if birth year was provided)
 - `[realname]` - Shows their real name (if provided)
 
@@ -69,4 +75,4 @@ For birthday messages to work properly, InfiniBot needs:
 **Related Pages:**
 - [Join & Leave Messages](Join-Leave-Messages.md) - Similar messaging feature
 - [Embeds](Embeds.md) - More information about embed formatting
-- [Dashboard](../core-features/Dashboard.md) - Managing server features
+- [Dashboard]({% link docs/core-features/dashboard.md %}) - Managing server features

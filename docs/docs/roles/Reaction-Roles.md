@@ -1,6 +1,15 @@
+---
+title: Reaction Roles
+parent: Role Management
+nav_order: 2
+---
+
 # Reaction Roles
 
 Reaction Roles allow server members to self-assign roles by reacting to messages with emojis.
+
+{: .info }
+Reaction roles are ideal for color roles, access roles, game roles, pronoun roles, or any other opt-in role categories.
 
 ## Types of Reaction Roles
 

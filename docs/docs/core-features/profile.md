@@ -1,12 +1,15 @@
 ---
 title: Profile
-nav_order: 99
+nav_order: 4
 parent: Core Features
 ---
 
 # Profile
 
 InfiniBot's Profile feature allows members to customize their personal settings and cards for a more personalized experience.
+
+{: .note }
+Profiles add a personal touch to the user experience, making your server feel more unique and engaging for members.
 
 ## Accessing Your Profile
 

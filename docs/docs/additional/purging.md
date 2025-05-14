@@ -8,6 +8,9 @@ parent: Additional Features
 
 InfiniBot's Purging feature allows administrators to quickly remove multiple messages from a channel.
 
+{: .warning }
+This is a powerful moderation tool. Use with caution as purged messages cannot be recovered.
+
 ## Command Usage
 
 Use `/purge <amount>` to delete messages in bulk.

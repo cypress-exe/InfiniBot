@@ -2,11 +2,16 @@
 title: Profanity
 nav_order: 1
 parent: Moderation
+grand_parent: Core Features
+has_children: true
 ---
 
 # Profanity Moderation
 
 Profanity moderation automatically monitors messages for inappropriate language and takes action when violations occur.
+
+{: .info }
+InfiniBot's profanity filter uses a combination of pre-defined words and server-specific custom words to provide comprehensive coverage.
 
 ## Setup
 

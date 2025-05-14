@@ -1,6 +1,15 @@
+---
+title: Privacy Policy
+parent: Legal
+nav_order: 1
+---
+
 # Privacy Policy
 
 *This is a placeholder for the InfiniBot Privacy Policy document.*
+
+{: .warning }
+This policy is currently being finalized and is subject to change.
 
 The complete Privacy Policy will be added here when finalized. This document will outline:
 
@@ -12,4 +21,4 @@ The complete Privacy Policy will be added here when finalized. This document wil
 - Security measures
 - Policy updates procedure
 
-Please refer to the [Support](../getting-started/Support.md) page for information on how to contact the InfiniBot team with any questions regarding privacy concerns.
+Please refer to the [Support]({% link docs/getting-started/support.md %}) page for information on how to contact the InfiniBot team with any questions regarding privacy concerns.

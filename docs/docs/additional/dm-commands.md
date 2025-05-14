@@ -1,13 +1,15 @@
 ---
 title: DM Commands
-nav_order: 99
+nav_order: 5
 parent: Additional Features
 ---
-
 
 # DM Commands
 
 InfiniBot offers several commands that can be used in direct messages (DMs).
+
+{: .tip }
+DM commands allow users to interact with InfiniBot privately, which can be helpful for managing personal settings or getting information without cluttering server channels.
 
 ## Available DM Commands
 

@@ -1,3 +1,9 @@
+---
+title: Join/Leave Messages
+parent: Messaging Features
+nav_order: 3
+---
+
 # Join & Leave Messages
 
 InfiniBot can automatically send customized welcome and goodbye messages when members join or leave your server.
@@ -40,13 +46,13 @@ Messages are sent as embeds, which you can customize:
 
 ### Available Placeholders
 
-Utilize the [generic replacements](./Generic-Replacements.md) in your messages to display dynamic information.
+Utilize the [generic replacements]({% link docs/messaging/Generic-Replacements.md %}) in your messages to display dynamic information.
 
 Example: `Welcome @mention to @server! You are member @membercount.`
 
 ## Join Cards
 
-Members can personalize their join messages with [custom cards](../core-features/Profile.md#join-card).
+Members can personalize their join messages with [custom cards]({% link docs/core-features/profile.md %}#join-card).
 
 ### Enable/Disable Join Cards
 
@@ -65,6 +71,6 @@ Members can personalize their join messages with [custom cards](../core-features
 
 **Related Pages:**
 - [Embeds](Embeds.md) - More information about embed formatting
-- [Profile](../core-features/Profile.md) - Configure your personal join card
-- [Dashboard](../core-features/Dashboard.md) - General bot configuration
+- [Profile]({% link docs/core-features/profile.md %}) - Configure your personal join card
+- [Dashboard]({% link docs/core-features/dashboard.md %}) - General bot configuration
 - [Birthday Messages](Birthdays.md) - Similar messaging feature

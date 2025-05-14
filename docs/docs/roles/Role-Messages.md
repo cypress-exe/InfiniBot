@@ -1,6 +1,15 @@
+---
+title: Role Messages
+parent: Role Management
+nav_order: 3
+---
+
 # Role Messages
 
 Role Messages provide a modern, button-based alternative to reaction roles, allowing members to easily assign themselves roles through an interactive interface.
+
+{: .note }
+Role Messages are more advanced than reaction roles and offer greater customization options and a more modern user experience.
 
 ## Overview
 

@@ -103,7 +103,7 @@ Click the **Configure Timezone** button to:
 ---
 
 **Related Pages:**
-- [Getting Started](../getting-started/Getting-Started.md) - Initial setup guide
-- [Configuration](../getting-started/Configuration.md) - Basic configuration
-- [Moderation](Moderation.md) - Moderation settings
-- [Logging](Logging.md) - Action logging configuration
+- [Getting Started]({% link docs/getting-started/index.md %}) - Initial setup guide
+- [Install and Setup]({% link docs/getting-started/install-and-setup.md %}) - Basic configuration
+- [Moderation]({% link docs/core-features/moderation/index.md %}) - Moderation settings
+- [Logging]({% link docs/core-features/logging.md %}) - Action logging configuration

@@ -2,73 +2,82 @@
 title: Home
 layout: home
 nav_order: 1
+# nav_enabled: false
 ---
 
 # InfiniBot
 
-New Release
+Verified Discord Bot
+{: .label .label-blue }
+
+Open Source
 {: .label .label-green }
 
-| head1       | head 2      | head 3 |
-|:------------|:------------|:-------|
-| test        | other words |        |
-| another one | words here  | other  |
+100% Free
+{: .label .label-purple }
 
+## A powerful, multipurpose Discord bot to enhance your server
 
-## Table of Contents
-- TOC
-{:toc}
+InfiniBot is a community-driven, open-source Discord bot designed to provide a comprehensive suite of features for server management, engagement, and customization.
 
-This is a *bare-minimum* template to create a Jekyll site that uses the [Just the Docs] theme. You can easily set the created site to be published on [GitHub Pages] – the [README] file explains how to do that, along with other details.
+[Get Started]({% link docs/getting-started/index.md %}){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[View on GitHub](https://github.com/cypress-exe/InfiniBot){: .btn .fs-5 .mb-4 .mb-md-0 }
 
-## Callouts
+## Features at a Glance
 
-[Link button](https://just-the-docs.com){: .btn .btn-green }  
+| Category | Features |
+|:---------|:---------|
+| [Moderation]({% link docs/core-features/moderation/index.md %}) | Profanity filtering, anti-spam, message purging |
+| [User Engagement]({% link docs/core-features/leveling.md %}) | Leveling system, profiles, birthday celebrations |
+| [Automation]({% link docs/messaging/index.md %}) | Join/leave messages, reaction roles, scheduled events |
+| [Administration]({% link docs/core-features/logging.md %}) | Logging, role management, dashboard controls |
 
-{: .info }
-This is an informational message providing helpful context or background.  
-[Link button](https://just-the-docs.com){: .btn .mt-2 }  
+## Why Choose InfiniBot?
 
-{: .note }
-This is a note to draw attention to additional details or considerations.
+{: .titleless-blue }
+**Community Driven**  
+Built by the community, for the community. Constantly evolving with regular updates and new features.
 
-{: .tip }
-This is a tip to offer advice or a useful suggestion.
+{: .titleless-green }
+**Reliable & Performant**  
+Designed for stability with 99.9% uptime and rapid response times.
 
-{: .success }
-This is a success message to highlight a positive outcome or achievement.
+{: .titleless-purple }
+**Comprehensive Features**  
+All the features you need in one bot, eliminating the need for multiple specialized bots.
 
-{: .warning }
-This is a warning to alert users about potential issues or risks.
+{: .titleless-yellow }
+**User-Friendly**  
+Intuitive dashboard and commands make configuration simple for server owners of all experience levels.
 
-{: .danger }
-This is a danger message to indicate critical problems or errors that require immediate attention.
+## Quick Start Guide
 
-If [Jekyll] is installed on your computer, you can also build and preview the created site *locally*. This lets you test changes before committing them, and avoids waiting for GitHub Pages.[^1] And you will be able to deploy your local build to a different platform than GitHub Pages.
+1. [Add InfiniBot to your server]({% link docs/getting-started/install-and-setup.md %})
+2. Run through the initial setup wizard
+3. Use `/dashboard` to configure features
+4. Explore [commands]({% link docs/getting-started/commands.md %}) to interact with the bot
 
-More specifically, the created site:
+## Popular Features
 
-- uses a gem-based approach, i.e. uses a `Gemfile` and loads the `just-the-docs` gem
-- uses the [GitHub Pages / Actions workflow] to build and publish the site on GitHub Pages
+- **[Moderation]({% link docs/core-features/moderation/index.md %})** - Keep your server safe with powerful automated moderation tools
+- **[Leveling]({% link docs/core-features/leveling.md %})** - Encourage activity with a customizable XP system
+- **[Join/Leave Messages]({% link docs/messaging/Join-Leave-Messages.md %})** - Create a welcoming environment for new members
+- **[Role Management]({% link docs/roles/index.md %})** - Automate role assignments and let members choose their own roles
+- **[Custom Embeds]({% link docs/messaging/Embeds.md %})** - Create beautiful embed messages for announcements and information
 
-Other than that, you're free to customize sites that you create with this template, however you like. You can easily change the versions of `just-the-docs` and Jekyll it uses, as well as adding further plugins.
+---
 
-[Browse our documentation][Just the Docs] to learn more about how to use this theme.
+InfiniBot is constantly evolving! Check back regularly for new features and improvements.
 
-To get started with creating a site, simply:
+[Get Started Now]({% link docs/getting-started/index.md %}){: .btn .btn-primary .fs-5 }
 
-1. click "[use this template]" to create a GitHub repository
-2. go to Settings > Pages > Build and deployment > Source, and select GitHub Actions
+## Get Started in Minutes
 
-If you want to maintain your docs in the `docs` directory of an existing project repo, see [Hosting your docs from an existing project repo](https://github.com/just-the-docs/just-the-docs-template/blob/main/README.md#hosting-your-docs-from-an-existing-project-repo) in the template README.
+1. [Add InfiniBot to your server]({% link docs/getting-started/install-and-setup.md %})
+2. Run the `/dashboard` command to access the configuration panel
+3. Enable the features you need and customize to your liking
 
-----
+Dive deeper with our [comprehensive documentation]({% link docs/getting-started/index.md %}) or join our [support server]({% link docs/getting-started/support.md %}) for personalized assistance.
 
-[^1]: [It can take up to 10 minutes for changes to your site to publish after you push the changes to GitHub](https://docs.github.com/en/pages/setting-up-a-github-pages-site-with-jekyll/creating-a-github-pages-site-with-jekyll#creating-your-site).
-
-[Just the Docs]: https://just-the-docs.github.io/just-the-docs/
-[GitHub Pages]: https://docs.github.com/en/pages
-[README]: https://github.com/just-the-docs/just-the-docs-template/blob/main/README.md
-[Jekyll]: https://jekyllrb.com
-[GitHub Pages / Actions workflow]: https://github.blog/changelog/2022-07-27-github-pages-custom-github-actions-workflows-beta/
-[use this template]: https://github.com/just-the-docs/just-the-docs-template/generate
+[Browse Features]({% link docs/core-features/index.md %}){: .btn .btn-blue .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[Join Support Server]({% link docs/getting-started/support.md %}){: .btn .btn-outline .fs-5 .mb-4 .mb-md-0 }

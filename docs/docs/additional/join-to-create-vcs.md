@@ -8,6 +8,9 @@ parent: Additional Features
 
 The Join to Create VCs feature allows members to create their own temporary voice channels automatically.
 
+{: .tip }
+This feature helps maintain a clean server by automatically creating and removing voice channels as needed, while giving members control over their voice chat experience.
+
 ## How It Works
 
 1. Members join a designated "hub" voice channel
