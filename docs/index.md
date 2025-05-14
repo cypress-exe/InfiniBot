@@ -1,9 +1,48 @@
 ---
 title: Home
 layout: home
+nav_order: 1
 ---
 
+# InfiniBot
+
+New Release
+{: .label .label-green }
+
+| head1       | head 2      | head 3 |
+|:------------|:------------|:-------|
+| test        | other words |        |
+| another one | words here  | other  |
+
+
+## Table of Contents
+- TOC
+{:toc}
+
 This is a *bare-minimum* template to create a Jekyll site that uses the [Just the Docs] theme. You can easily set the created site to be published on [GitHub Pages] – the [README] file explains how to do that, along with other details.
+
+## Callouts
+
+[Link button](https://just-the-docs.com){: .btn .btn-green }  
+
+{: .info }
+This is an informational message providing helpful context or background.  
+[Link button](https://just-the-docs.com){: .btn .mt-2 }  
+
+{: .note }
+This is a note to draw attention to additional details or considerations.
+
+{: .tip }
+This is a tip to offer advice or a useful suggestion.
+
+{: .success }
+This is a success message to highlight a positive outcome or achievement.
+
+{: .warning }
+This is a warning to alert users about potential issues or risks.
+
+{: .danger }
+This is a danger message to indicate critical problems or errors that require immediate attention.
 
 If [Jekyll] is installed on your computer, you can also build and preview the created site *locally*. This lets you test changes before committing them, and avoids waiting for GitHub Pages.[^1] And you will be able to deploy your local build to a different platform than GitHub Pages.
 

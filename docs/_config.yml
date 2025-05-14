@@ -2,7 +2,107 @@ title: InfiniBot
 description: A community-driven, open-source, multi-purpose, verified Discord bot to enhance your server experience.
 theme: just-the-docs
 
-url: https://just-the-docs.github.io
+# Color scheme supports "light" (default) and "dark"
+# color_scheme: dark
 
+baseurl: "" # the subpath of your site, e.g. /blog
+url: "https://cypress-exe.github.io/InfiniBot/" # the base hostname & protocol for your site, e.g. http://example.com
+repository: cypress-exe/just-the-docs # for github-metadata
+
+permalink: pretty
+
+defaults:
+  - scope:
+      path: "docs" # an empty string here means all files in the project
+      type: "pages"
+    values:
+      layout: "default"
+
+
+exclude:
+  # from https://github.com/jekyll/jekyll/blob/master/lib/site_template/_config.yml:
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - Gemfile
+  - Gemfile.lock
+  - node_modules/
+  - vendor/bundle/
+  - vendor/cache/
+  - vendor/gems/
+  - vendor/ruby/
+  # specific to the theme website:
+  - bin/
+  - lib/
+  - "*.gemspec"
+  - "*.gem"
+  - LICENSE.txt
+  - package.json
+  - package-lock.json
+  - Rakefile
+  - README.md
+  - CODE_OF_CONDUCT.md
+  - docker-compose.yml
+  - Dockerfile
+  # theme test code
+  - fixtures/
+
+
+back_to_top: true
+back_to_top_text: "Back to top"
+
+footer_content: 'InfiniBot is a community-driven, open-source, multi-purpose, verified Discord bot to enhance your server experience.'
+
+# Footer last edited timestamp
+last_edit_timestamp: true # show or hide edit time - page must have `last_modified_date` defined in the frontmatter
+last_edit_time_format: "%b %e %Y at %I:%M %p" # uses ruby's time format: https://ruby-doc.org/stdlib-2.7.0/libdoc/time/rdoc/Time.html
+
+# Footer "Edit this page on GitHub" link text
+gh_edit_link: true # show or hide edit this page link
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: "https://github.com/cypress-exe/infinibot" # the github URL for your repo
+gh_edit_branch: "main" # the branch that your docs is served from
+gh_edit_source: docs # the source that your files originate from
+gh_edit_view_mode: "tree" # "tree" or "edit" if you want the user to jump into the editor immediately
+
+# logo: "/assets/images/infinibot-icon.png"
+favicon_ico: "/assets/images/icons/icon-circle.ico"
+
+# For copy button on code
+enable_copy_code_button: true
+
+# Enable or disable heading anchors
+heading_anchors: true
+
+# Aux links for the upper right navigation
 aux_links:
-  Template Repository: https://github.com/just-the-docs/just-the-docs-template
+  Add InfiniBot to Your Server: https://discord.com/oauth2/authorize?client_id=991832387015159911&permissions=1374809222364&scope=bot
+
+# Makes Aux links open in a new tab. Default is false
+aux_links_new_tab: true
+
+# External navigation links
+nav_external_links:
+  - title: View InfiniBot's Source Code on GitHub
+    url: https://github.com/cypress-exe/infinibot
+
+# Define callouts
+callouts:
+  info:
+    title: Info
+    color: blue
+  note:
+    title: Note
+    color: purple
+  tip:
+    title: Tip
+    color: grey-dk # change to grey-lt for dark mode
+  success:
+    title: Success
+    color: green
+  warning:
+    title: Warning
+    color: yellow
+  danger:
+    title: Careful
+    color: red
