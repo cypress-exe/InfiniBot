@@ -5,11 +5,16 @@ parent: Additional Features
 ---
 
 # Purging
+{: .no_toc }
 
 InfiniBot's Purging feature allows administrators to quickly remove multiple messages from a channel.
 
 {: .warning }
 This is a powerful moderation tool. Use with caution as purged messages cannot be recovered.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## Command Usage
 
@@ -28,7 +33,7 @@ When you run the purge command:
 ## Permission Requirements
 
 To use the purge command, you need:
-- The **InfiniBot Mod** role
+- The **[InfiniBot Mod]({% link docs/getting-started/install-and-setup.md %}#the-infinibot-mod-role)** role
 - **Manage Messages** permission in the channel
 
 ## Purge Modes
@@ -49,10 +54,11 @@ Clearing all messages in a channel:
 ```
 This recreates the channel to remove all messages while preserving permissions and settings.
 
-> **⚠️ Important Warning ⚠️**  
-> Using `/purge all` may cause issues with other third-party Discord integrations. While InfiniBot will automatically update its internal database to track the new channel, other bots and integrations might still reference the old, deleted channel ID.
->
-> If you use other bots or connections with the channel, you may need to manually update their configurations after using this command.
+{: .titleless-yellow }
+**⚠️ Important Warning ⚠️**  
+Using `/purge all` may cause issues with other third-party Discord integrations. While InfiniBot will automatically update its internal database to track the new channel, other bots and integrations might still reference the old, deleted channel ID.
+
+If you use other bots or connections with the channel, you may need to manually update their configurations after using this command.
 
 ## Important Notes
 
@@ -82,6 +88,6 @@ The purge command is powerful and can't be undone. Use it with caution, especial
 ---
 
 **Related Pages:**
-- [Commands Overview](../getting-started/Commands.md) - See all available commands
-- [Moderation](../core-features/Moderation.md) - Additional moderation tools
-- [Logging](../core-features/Logging.md) - Track message deletion activities
+- [Commands Overview]({% link docs/getting-started/commands.md %}) - See all available commands
+- [Moderation]({% link docs/core-features/moderation/index.md %}) - Additional moderation tools
+- [Logging]({% link docs/core-features/logging.md %}) - Track message deletion activities

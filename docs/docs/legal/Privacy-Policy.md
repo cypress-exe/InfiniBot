@@ -5,11 +5,18 @@ nav_order: 1
 ---
 
 # Privacy Policy
+{: .no_toc }
 
 *This is a placeholder for the InfiniBot Privacy Policy document.*
 
 {: .warning }
 This policy is currently being finalized and is subject to change.
+
+**Topics Covered**
+- TOC
+{:toc}
+
+## Overview
 
 The complete Privacy Policy will be added here when finalized. This document will outline:
 

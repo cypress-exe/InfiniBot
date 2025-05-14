@@ -61,9 +61,9 @@ Intuitive dashboard and commands make configuration simple for server owners of 
 
 - **[Moderation]({% link docs/core-features/moderation/index.md %})** - Keep your server safe with powerful automated moderation tools
 - **[Leveling]({% link docs/core-features/leveling.md %})** - Encourage activity with a customizable XP system
-- **[Join/Leave Messages]({% link docs/messaging/Join-Leave-Messages.md %})** - Create a welcoming environment for new members
+- **[Join/Leave Messages]({% link docs/messaging/join-leave-messages.md %})** - Create a welcoming environment for new members
 - **[Role Management]({% link docs/roles/index.md %})** - Automate role assignments and let members choose their own roles
-- **[Custom Embeds]({% link docs/messaging/Embeds.md %})** - Create beautiful embed messages for announcements and information
+- **[Custom Embeds]({% link docs/messaging/embeds.md %})** - Create beautiful embed messages for announcements and information
 
 ---
 

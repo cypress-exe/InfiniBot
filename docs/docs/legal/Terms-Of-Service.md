@@ -5,11 +5,18 @@ nav_order: 2
 ---
 
 # Terms of Service
+{: .no_toc }
 
 *This is a placeholder for the InfiniBot Terms of Service document.*
 
 {: .warning }
 This document is currently being finalized and is subject to change.
+
+**Topics Covered**
+- TOC
+{:toc}
+
+## Overview
 
 The complete Terms of Service will be added here when finalized. This document will outline:
 

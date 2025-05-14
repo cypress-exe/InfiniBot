@@ -5,11 +5,16 @@ parent: Core Features
 ---
 
 # Leveling
+{: .no_toc }
 
 InfiniBot's leveling system provides an engaging way to reward active members in your community.
 
-{: .success }
+{: .tip }
 Leveling encourages participation and creates friendly competition in your server, increasing overall engagement.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## How Leveling Works
 
@@ -32,7 +37,7 @@ As members accumulate XP, they level up at certain thresholds. Each level requir
 
 - `/leaderboard` - View the server's leaderboard and top members
 - `/view level [member]` - View your own level or another member's level
-- `/set level @member <level>` - Set a specific member's level (Requires **InfiniBot Mod**)
+- `/set level @member <level>` - Set a specific member's level (Requires **[InfiniBot Mod]({% link docs/getting-started/install-and-setup.md %}#the-infinibot-mod-role)**)
 
 ## Level-Up Notifications
 
@@ -47,7 +52,9 @@ When enabled, InfiniBot sends level-up messages when members reach new levels:
    - System channel
    - Specific channel
 3. Customize the message: `/dashboard → Leveling → Level-Up Message`
-> Utilize the [generic replacements](../messaging/Generic-Replacements.md) available with InfiniBot.
+
+{: .tip }
+Utilize the [generic replacements]({% link docs/messaging/generic-replacements.md %}) available with InfiniBot.
 
 ## Level Rewards
 

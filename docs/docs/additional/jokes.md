@@ -5,11 +5,16 @@ parent: Additional Features
 ---
 
 # Jokes
+{: .no_toc }
 
 InfiniBot's Jokes feature provides a lighthearted way to share humor in your server.
 
 {: .note }
 All jokes are family-friendly and appropriate for all audiences, making them safe to use in any server environment.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## Using the Command
 
@@ -76,6 +81,6 @@ The jokes feature can be controlled through Discord's server settings:
 ---
 
 **Related Pages:**
-- [Dashboard](../core-features/Dashboard.md) - Manage joke features
-- [Motivational Statements](Motivational-Statements.md) - Another fun text feature
-- [Commands Overview](../getting-started/Commands.md) - Other available commands
+- [Dashboard]({% link docs/core-features/dashboard.md %}) - Manage joke features
+- [Motivational Statements]({% link docs/additional/motivational-statements.md %}) - Another fun text feature
+- [Commands Overview]({% link docs/getting-started/commands.md %}) - Other available commands

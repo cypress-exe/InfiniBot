@@ -5,11 +5,16 @@ parent: Core Features
 ---
 
 # Action Logging
+{: .no_toc }
 
 InfiniBot's Action Logging feature provides detailed tracking of activities in your server, helping moderators monitor changes and maintain security.
 
 {: .info }
 Logging creates a transparent record of server activities, making moderation and administration more effective.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## Setup
 
@@ -19,22 +24,31 @@ Logging creates a transparent record of server activities, making moderation and
 
 ## Logged Events
 
-InfiniBot logs the following activities:
+InfiniBot logs the following activities, categorized into three main types:
 
 ### Message Events
-- Message deletions (with content)
-- Message edits (with before/after content)
+
+| Event Type         | Description                          |
+|---------------------|--------------------------------------|
+| Message Deletions  | Logs deleted messages, including content. |
+| Message Edits      | Logs edited messages, showing before and after content. |
 
 ### Member Events
-- Member joins
-- Member leaves
-- Nickname changes
-- Role changes
+
+| Event Type         | Description                          |
+|---------------------|--------------------------------------|
+| Member Joins       | Logs when a member joins the server. |
+| Member Leaves      | Logs when a member leaves the server. |
+| Nickname Changes   | Tracks changes to member nicknames.  |
+| Role Changes       | Logs updates to member roles.        |
 
 ### Moderation Events
-- Member timeouts
-- Member bans/unbans
-- Member kicks
+
+| Event Type         | Description                          |
+|---------------------|--------------------------------------|
+| Member Timeouts    | Logs when a member is timed out.     |
+| Member Bans/Unbans | Tracks bans and unbans of members.   |
+| Member Kicks       | Logs when a member is kicked.        |
 
 ## Log Format
 
@@ -61,6 +75,9 @@ It's recommended to:
 2. Give InfiniBot full permissions in this channel
 3. Configure the log channel by using `/set log-channel` in the desired channel or through the dashboard.
 
+{: .tip }
+To avoid frequent notifications, set the Log Channel's notification settings to "None" in Discord.
+
 ## Storage Limitations
 
 InfiniBot has some limitations on log data retention:
@@ -70,6 +87,8 @@ InfiniBot has some limitations on log data retention:
 - InfiniBot logs for edited/deleted messages after the retention period will have reduced information
 - Some information may be unavailable for specific actions
 - For extensive history, consider enabling Discord's built-in audit log retention
+
+For comprehensive details on how InfiniBot handles and retains message data, please review our [Privacy Policy]({% link docs/legal/privacy-policy.md %}).
 
 ## Tips for Effective Logging
 

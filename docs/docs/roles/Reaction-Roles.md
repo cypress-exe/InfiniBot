@@ -5,11 +5,16 @@ nav_order: 2
 ---
 
 # Reaction Roles
+{: .no_toc }
 
 Reaction Roles allow server members to self-assign roles by reacting to messages with emojis.
 
 {: .info }
-Reaction roles are ideal for color roles, access roles, game roles, pronoun roles, or any other opt-in role categories.
+Reaction roles are ideal for color roles, access roles, game roles, or any other opt-in role categories.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## Types of Reaction Roles
 
@@ -94,4 +99,4 @@ The bot's role must also be higher in the server hierarchy than any roles being 
 
 ## Legacy Feature Note
 
-Reaction Roles are a legacy feature. For a more modern alternative with enhanced UI and functionality, consider using [Role Messages](Role-Messages.md) instead.
+Reaction Roles are a legacy feature. For a more modern alternative with enhanced UI and functionality, consider using [Role Messages]({% link docs/roles/role-messages.md %}) instead.

@@ -96,7 +96,7 @@ callouts:
     color: purple
   tip:
     title: Tip
-    color: grey-dk # change to grey-lt for dark mode
+    color: green # change to grey-lt for dark mode
   success:
     title: Success
     color: green

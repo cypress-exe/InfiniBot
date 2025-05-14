@@ -1,11 +1,14 @@
 ---
 title: Core Features
 nav_order: 3
+has_toc: False
 ---
 
 # Core Features
 
 InfiniBot provides a robust set of core features to help you manage and enhance your Discord server.
+
+## Essential Features
 
 These essential features include:
 

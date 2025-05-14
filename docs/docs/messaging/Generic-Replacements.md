@@ -5,11 +5,16 @@ nav_order: 4
 ---
 
 # Generic Replacements
+{: .no_toc }
 
 This document outlines the generic replacements that can be used in most messages sent by InfiniBot. These replacements are automatically processed when messages are sent, allowing for dynamic, personalized content.
 
 {: .info }
 Generic replacements can be used in embeds, join/leave messages, role messages, and other customizable text areas throughout InfiniBot.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## User Replacements
 

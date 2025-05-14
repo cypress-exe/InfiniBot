@@ -5,11 +5,16 @@ parent: Additional Features
 ---
 
 # Motivational Statements
+{: .no_toc }
 
 InfiniBot's Motivational Statements feature provides a humorous twist on traditional motivational content.
 
 {: .info }
 This feature adds a touch of humor to your server while providing a fun way for members to interact with the bot.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## Using the Command
 
@@ -45,6 +50,6 @@ Server administrators should consider whether this humor fits their community be
 ---
 
 **Related Pages:**
-- [Commands Overview](../getting-started/Commands.md) - See all available commands
-- [Jokes](Jokes.md) - Similar humorous feature
-- [Dashboard](../core-features/Dashboard.md) - Managing server features
+- [Commands Overview]({% link docs/getting-started/commands.md %}) - See all available commands
+- [Jokes]({% link docs/additional/jokes.md %}) - Similar humorous feature
+- [Dashboard]({% link docs/core-features/dashboard.md %}) - Managing server features

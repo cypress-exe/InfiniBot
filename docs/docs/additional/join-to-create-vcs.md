@@ -5,11 +5,16 @@ parent: Additional Features
 ---
 
 # Join to Create VCs
+{: .no_toc }
 
 The Join to Create VCs feature allows members to create their own temporary voice channels automatically.
 
 {: .tip }
 This feature helps maintain a clean server by automatically creating and removing voice channels as needed, while giving members control over their voice chat experience.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## How It Works
 

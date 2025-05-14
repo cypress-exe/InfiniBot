@@ -5,11 +5,16 @@ parent: Additional Features
 ---
 
 # DM Commands
+{: .no_toc }
 
 InfiniBot offers several commands that can be used in direct messages (DMs).
 
 {: .tip }
 DM commands allow users to interact with InfiniBot privately, which can be helpful for managing personal settings or getting information without cluttering server channels.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## Available DM Commands
 

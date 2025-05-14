@@ -5,11 +5,16 @@ parent: Core Features
 ---
 
 # Profile
+{: .no_toc }
 
 InfiniBot's Profile feature allows members to customize their personal settings and cards for a more personalized experience.
 
-{: .note }
+{: .info }
 Profiles add a personal touch to the user experience, making your server feel more unique and engaging for members.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## Accessing Your Profile
 
@@ -35,7 +40,7 @@ When changing text, you can use:
 - **Title** - The main heading for your card
 - **Description** - The message body
 
-In addition to the [generic replacements](./Generic-Replacements.md) for InfiniBot's messages, level-up cards provide additional replacements, including:
+In addition to the [generic replacements](./generic-replacements.md) for InfiniBot's messages, level-up cards provide additional replacements, including:
 - `[level]` - The new level of the member
 
 Example: "I reached level [level]! Awesome!"
@@ -50,13 +55,8 @@ Join cards are personalized messages that appear when you join a server (if the 
    - **Change Text** - Customize the title and description
    - **Change Color** - Select a color for your card
 
-#### Customizing Join Card Text
-
-When changing text, you can use:
-- **Title** - The main heading for your card
-- **Description** - The message body
-
-Utilize the [generic replacements](../messaging/Generic-Replacements.md) available with InfiniBot.
+{: .tip }
+Utilize the [generic replacements]({% link docs/messaging/generic-replacements.md %}) available with InfiniBot for your Join Card's text.
 
 ### Settings
 
@@ -70,13 +70,14 @@ The settings section lets you adjust general profile preferences.
 #### Data Deletion
 This button deletes all your profile information associated with InfiniBot. This action isn't reversable.
 
-> Note: This will not delete:  
-> • Any message logs inside a server  
-> • Any moderation strikes, levels, birthdays, infinibot-powered messages, etc in any server  
+{: .warning }
+Note: This will not delete:  
+• Any message logs inside a server  
+• Any moderation strikes, levels, birthdays, infinibot-powered messages, etc in any server  
 
 Some information not deleted by this process may be deleted when you leave a server. Check InfiniBot's privacy policy for complete transparency and more information.
 
-Refer to InfiniBot's [Privacy Policy](../legal/Privacy-Policy.md) for details on how InfiniBot handles your data.
+Refer to InfiniBot's [Privacy Policy]({% link docs/legal/privacy-policy.md %}) for details on how InfiniBot handles your data.
 
 ## DM Notifications
 

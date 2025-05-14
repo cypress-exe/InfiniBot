@@ -7,11 +7,16 @@ has_children: true
 ---
 
 # Profanity Moderation
+{: .no_toc }
 
 Profanity moderation automatically monitors messages for inappropriate language and takes action when violations occur.
 
 {: .info }
 InfiniBot's profanity filter uses a combination of pre-defined words and server-specific custom words to provide comprehensive coverage.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## Setup
 
@@ -34,7 +39,7 @@ InfiniBot's profanity filter uses a combination of pre-defined words and server-
 
 InfiniBot automatically detects variations of these words, including simple letter replacements and misspellings.
 
-For detailed information about the advanced pattern matching rules in the word filter, see the [Filtered Words](Filtered-Words.md) page.
+For detailed information about the advanced pattern matching rules in the word filter, see the [Filtered Words]({% link docs/core-features/moderation/profanity/filtered-words.md %}) page.
 
 ## Testing Your Filters
 
@@ -65,4 +70,9 @@ From the Admin Channel:
 Users can check their own strikes with `/view my-strikes`
 Moderators can check any member's strikes with `/view member-strikes @member`
 
-< add related pages >
+---
+
+**Related Pages:**
+- [Filtered Words]({% link docs/core-features/moderation/profanity/filtered-words.md %}) - Details on word filtering patterns
+- [Spam Protection]({% link docs/core-features/moderation/spam.md %}) - Additional moderation features
+- [Logging]({% link docs/core-features/logging.md %}) - Track profanity incidents

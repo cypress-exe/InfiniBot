@@ -5,14 +5,20 @@ parent: Getting Started
 ---
 
 # Installing and Setting up InfiniBot
+{: .no_toc }
 
 This guide will walk you through adding InfiniBot to your server and configuring its features using the dashboard.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ---
 
 ## Adding InfiniBot to Your Server
 
-1. Use the official invitation link to add InfiniBot to your server.
+1. Click the button below to add InfiniBot to your server.  
+[Add InfiniBot to Your Server](https://discord.com/oauth2/authorize?client_id=991832387015159911&permissions=1374809222364&scope=bot){: .btn .btn-primary .mb-2 .mt-2}
 2. Grant InfiniBot the **Administrator** permission for easiest setup. Alternatively, assign individual permissions listed in the [Required Permissions](#required-permissions) section.
 3. Once added, InfiniBot is ready to use with default settings.
 
@@ -26,7 +32,7 @@ When InfiniBot joins your server:
 2. You can enable/disable features like moderation, logging, and leveling.
 3. Onboarding helps configure channels and permissions for each feature.
 
-If you skip onboarding or want to revisit settings later, use the dashboard.
+If you skip onboarding or want to revisit settings later, [use the dashboard](#using-the-dashboard).
 
 ---
 
@@ -45,48 +51,16 @@ See the [Dashboard]({% link docs/core-features/dashboard.md %}) page for detaile
 
 ---
 
-## Feature Configuration
-
-InfiniBot offers robust configuration for core and optional features:
-
-- [Moderation]({% link docs/core-features/moderation/index.md %}) - Profanity filtering, spam control
-- [Logging]({% link docs/core-features/logging.md %}) - Track user and system events
-- [Leveling]({% link docs/core-features/leveling.md %}) - Reward member activity
-- [Join/Leave Messages]({% link docs/messaging/Join-Leave-Messages.md %}) - Customize welcome/goodbye messages
-- [Birthdays]({% link docs/messaging/Birthdays.md %}) - Celebrate member birthdays
-- [Default Roles]({% link docs/roles/Default-Roles.md %}) - Auto-assign roles to new members
-- [Join to Create VCs]({% link docs/additional/join-to-create-vcs.md %}) - Dynamic voice channels
-
----
-
 ## The InfiniBot Mod Role
 
-This role grants trusted users the ability to manage InfiniBot:
+This discord role grants trusted users the ability to manage InfiniBot:
 
 1. InfiniBot tries to create the **InfiniBot Mod** role automatically.
 2. If not created, run `/create infinibot-mod-role`.
 3. Assign it to yourself or trusted admins for full access.
 
----
-
-## Server Timezone Configuration
-
-To ensure time-based features (e.g. birthdays, reminders) work correctly:
-
-1. Open `/dashboard → Configure Timezone`
-2. Choose your timezone
-3. Click **Set Timezone** (or **Change Timezone** if one is already set)
-
----
-
-## Extra Features
-
-You can toggle optional enhancements via the dashboard:
-
-- **Auto-delete invites** – Remove Discord invite links automatically
-- **Update messages** – Get notifications about InfiniBot updates
-
-Access via: `/dashboard → Extra Features`
+{: .note }
+The **InfiniBot Mod** role operates like any standard Discord role. Ensure it is positioned appropriately in the role hierarchy, as it grants administrative control over InfiniBot.
 
 ---
 
@@ -99,7 +73,7 @@ If InfiniBot isn’t behaving as expected:
 3. **Feature Conflicts**: Some features may interact.
 4. **Role Hierarchy**: InfiniBot's role must be above roles it needs to manage.
 
-For help, visit the [Support & Feedback](Support.md) page.
+For help, visit the [Support & Feedback]({% link docs/getting-started/support.md %}) page.
 
 ---
 
@@ -129,7 +103,7 @@ After setup, explore these features:
 
 - [Moderation Features]({% link docs/core-features/moderation/index.md %})
 - [Leveling]({% link docs/core-features/leveling.md %})
-- [Join & Leave Messages]({% link docs/messaging/Join-Leave-Messages.md %})
+- [Join & Leave Messages]({% link docs/messaging/join-leave-messages.md %})
 - [Dashboard]({% link docs/core-features/dashboard.md %})
 - [Commands Overview]({% link docs/getting-started/commands.md %})
 

@@ -5,11 +5,16 @@ nav_order: 1
 ---
 
 # Default Roles
+{: .no_toc }
 
 InfiniBot's Default Roles feature automatically assigns roles to new members when they join your server.
 
 {: .tip }
 Default roles are perfect for giving new members access to basic channels or identifying them as newcomers with a "New Member" role.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## Setup
 
@@ -72,6 +77,6 @@ If default roles aren't being assigned:
 ---
 
 **Related Pages:**
-- [Reaction Roles](Reaction-Roles.md) - Self-assignable roles via reactions
-- [Role Messages](Role-Messages.md) - Role information messages
+- [Reaction Roles]({% link docs/roles/reaction-roles.md %}) - Self-assignable roles via reactions
+- [Role Messages]({% link docs/roles/role-messages.md %}) - Role information messages
 - [Dashboard]({% link docs/core-features/dashboard.md %}) - Managing server features

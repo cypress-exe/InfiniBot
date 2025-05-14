@@ -1,11 +1,14 @@
 ---
 title: Additional Features
 nav_order: 99
+has_toc: False
 ---
 
 # Additional Features
 
 InfiniBot includes several additional features to further enhance your server experience.
+
+## Available Features
 
 These helpful extras include:
 

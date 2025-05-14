@@ -5,8 +5,13 @@ parent: Getting Started
 ---
 
 # Support & Feedback
+{: .no_toc }
 
 This page provides information on how to get help with InfiniBot and provide feedback.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## Getting Help
 
@@ -58,7 +63,8 @@ An administrator will review your suggestion and may follow up for more informat
 If you're unable or unwilling to join the support server, you can email:
 - **Email**: infinibotassistence@gmail.com
 
-However, joining the support server is the recommended method for faster and more effective assistance.
+{: .warning }
+Joining the support server is the recommended method for faster and more effective assistance.
 
 ## Getting Updates
 

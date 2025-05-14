@@ -6,11 +6,16 @@ grand_parent: Core Features
 ---
 
 # Spam Moderation
+{: .no_toc }
 
 Spam moderation automatically detects and handles message spam.
 
 {: .warning }
 Spam protection is essential for preventing raids and maintaining channel quality. Configure this to protect your server from spam attacks.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## Setup
 
@@ -39,4 +44,9 @@ InfiniBot calculates a spam score based on:
 
 When a user exceeds the score threshold, they receive a strike or timeout based on your configuration.
 
-< add related pages >
+---
+
+**Related Pages:**
+- [Profanity Filter]({% link docs/core-features/moderation/profanity/index.md %}) - Text content moderation
+- [Logging]({% link docs/core-features/logging.md %}) - Monitor moderation actions
+- [Dashboard]({% link docs/core-features/dashboard.md %}) - Configure moderation settings

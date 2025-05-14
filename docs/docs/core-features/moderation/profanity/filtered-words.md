@@ -6,11 +6,17 @@ grand_parent: Moderation
 ---
 
 # Filtered Words
+{: .no_toc }
 
 InfiniBot uses an advanced word filtering system that helps you maintain a clean and safe server environment.
 
-{: .tip }
+{: .titleless-green }
+**TIP**  
 The filter system is highly customizable, allowing you to add server-specific words and phrases while maintaining strong default protections.
+
+**Topics Covered**
+- TOC
+{:toc}
 
 ## Pattern Matching Options
 
@@ -26,8 +32,9 @@ Use quotes to lock matches to specific positions:
 | `test"` | "**con**test", "**123**test" | "test**ing**", "test**ed**" |
 | `"test"` | Exact word "test" only | Any partial matches |
 
-### 2. Wildcard Characters
 
+### 2. Wildcard Characters
+{: .mt-8 }
 Control character matching precision:
 
 | Symbol | Matches | Example | Valid Matches | Invalid Matches |
@@ -36,7 +43,7 @@ Control character matching precision:
 | `?` | 0-1 characters | `log?n` | "login", "logn" | "log**o**n", "log**g**n" |
 
 ### 3. Advanced Pattern Building
-
+{: .mt-8 }
 Combine elements for complex matching:
 
 **Example 1: Hybrid Pattern**  
@@ -88,6 +95,6 @@ To test your filters:
 ---
 
 **Related Pages:**
-- [Moderation](Moderation.md) - Main moderation features overview
-- [Dashboard](Dashboard.md) - Managing word filter settings
-- [Logging](Logging.md) - Tracking filtered messages
+- [Moderation]({% link docs/core-features/moderation/index.md %}) - Main moderation features overview
+- [Dashboard]({% link docs/core-features/dashboard.md %}) - Managing word filter settings
+- [Logging]({% link docs/core-features/logging.md %}) - Tracking filtered messages
