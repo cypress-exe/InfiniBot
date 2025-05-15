@@ -1,0 +1,30 @@
+name: Run Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allows manual triggering
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v2
+
+    - name: Run tests
+      run: ./run_tests.bash
+
+    - name: Check test exit code
+      run: |
+        # The exit code will be propagated from the run_tests.bash script
+        # If the Python tests pass, they exit with 0, and the script exits with 0
+        # If the Python tests fail, they exit with 1, and the script exits with 1
+        # GitHub Actions automatically marks the step as failed if the exit code is non-zero
+        echo "Tests completed"
