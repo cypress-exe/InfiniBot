@@ -53,10 +53,6 @@ back_to_top_text: "Back to top"
 
 footer_content: 'InfiniBot is a community-driven, open-source, multi-purpose, verified Discord bot to enhance your server experience.'
 
-# Footer last edited timestamp
-last_edit_timestamp: true # show or hide edit time - page must have `last_modified_date` defined in the frontmatter
-last_edit_time_format: "%b %e %Y at %I:%M %p" # uses ruby's time format: https://ruby-doc.org/stdlib-2.7.0/libdoc/time/rdoc/Time.html
-
 # Footer "Edit this page on GitHub" link text
 gh_edit_link: true # show or hide edit this page link
 gh_edit_link_text: "Edit this page on GitHub"
@@ -69,7 +65,7 @@ gh_edit_view_mode: "tree" # "tree" or "edit" if you want the user to jump into t
 favicon_ico: "/assets/images/icons/icon-circle.ico"
 
 # For copy button on code
-enable_copy_code_button: true
+enable_copy_code_button: false
 
 # Enable or disable heading anchors
 heading_anchors: true
