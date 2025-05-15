@@ -9,7 +9,7 @@ parent: Core Features
 
 InfiniBot's leveling system provides an engaging way to reward active members in your community.
 
-{: .tip }
+{: .titleless-green }
 Leveling encourages participation and creates friendly competition in your server, increasing overall engagement.
 
 **Topics Covered**
@@ -63,11 +63,13 @@ Automatically award roles when members reach specific levels:
 1. Access via: `/dashboard → Leveling → Level Rewards`
 2. Click **Create**
 3. Select the level and role to award
-> Note: InfiniBot automatically removes roles assigned as Level Rewards from members who do not meet the level requirement.
+
+{: .note }
+InfiniBot automatically removes roles assigned as Level Rewards from members who do not meet the level requirement.
 
 ### Managing Level Rewards
 
-- **Create** - Addd a level reward
+- **Create** - Add a level reward
 - **Delete** - Delete a level reward (Does not delete the Discord role)
 - **Delete All Level Rewards** - Instantly clear all level rewards (does not delete the Discord roles)
 
@@ -80,4 +82,4 @@ InfiniBot has built-in protections to prevent XP farming:
 
 ## Member Profile Level Cards
 
-Members can personalize their level-up notifications with [custom cards](./Profile.md#level-up-card).
+Members can personalize their level-up notifications with [custom cards]({% link docs/core-features/profile.md %}#level-up-card).

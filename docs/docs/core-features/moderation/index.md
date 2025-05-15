@@ -3,6 +3,7 @@ title: Moderation
 nav_order: 2
 parent: Core Features
 has_children: true
+has_toc: False
 ---
 
 # Moderation
@@ -17,7 +18,7 @@ Proper permissions are required for moderation features to work correctly. Make 
 InfiniBot provides the following moderation features:
 
 - [Profanity Filtering]({% link docs/core-features/moderation/profanity/index.md %}) - Automatically filter profanity and inappropriate language
-- [Anti-Spam]({% link docs/core-features/moderation/spam.md %}) - Prevent spam messages and raid attempts
+- [Anti-Spam]({% link docs/core-features/moderation/spam.md %}) - Prevent and punish spam messages
 - [Message Purging]({% link docs/additional/purging.md %}) - Quickly remove unwanted messages in bulk
 
 ## Configuration

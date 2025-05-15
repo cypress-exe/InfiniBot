@@ -9,7 +9,7 @@ parent: Additional Features
 
 InfiniBot's Jokes feature provides a lighthearted way to share humor in your server.
 
-{: .note }
+{: .titleless-green }
 All jokes are family-friendly and appropriate for all audiences, making them safe to use in any server environment.
 
 **Topics Covered**

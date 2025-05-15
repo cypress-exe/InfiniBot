@@ -9,7 +9,7 @@ nav_order: 3
 
 Role Messages provide a modern, button-based alternative to reaction roles, allowing members to easily assign themselves roles through an interactive interface.
 
-{: .note }
+{: .titleless-green }
 Role Messages are more advanced than reaction roles and offer greater customization options and a more modern user experience.
 
 **Topics Covered**
@@ -36,18 +36,22 @@ Role Messages create embedded messages with buttons that members can click to op
 - Enter a description explaining the available roles (optional)
 - You can edit the text and color until satisfactory. When ready, click Next.
 
-**Tip:** Text and color are editable afterwards.
+{: .tip }
+Text and color are editable afterwards.
 
 ### Step 2: Add an Option
 By clicking "Next", you are automatically moved into the option creation wizard. This will show up as a clickable option for members to add or remove from themselves. Each role option can have multiple roles associated with it.
 
 1. Choose the first role to include in this option.
-**Tip:** If you don't see your role, verify that InfiniBot has permissions to manage the role.
+
+    {: .tip }
+    If you don't see your role, verify that InfiniBot has permissions to manage the role.
 
 2. Add a name for the option, with an optional description describing it.
 3. Next, you have the option to edit the text or add/remove more roles.
 
-**Note:** This still describes just one option. If you want members to configure their roles with more customization, make new options for each role.
+    {: .note }
+    This still describes just one option. If you want members to configure their roles with more customization, make new options for each role.
 
 4. When done with this option, click "Finish"
 5. Add more options with the "Add Option" button. Alternatively, edit or remove options with their respective buttons.
@@ -88,6 +92,7 @@ For role messages to work properly, InfiniBot needs:
 - **Send Messages** - To create the role message
 - **Embed Links** - To send properly formatted messages
 
+{: .highlight }
 The bot's role must also be higher in the server hierarchy than any roles being assigned.
 
 ## Advantages Over Reaction Roles

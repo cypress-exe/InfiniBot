@@ -9,7 +9,7 @@ parent: Core Features
 
 InfiniBot's Profile feature allows members to customize their personal settings and cards for a more personalized experience.
 
-{: .info }
+{: .titleless-green }
 Profiles add a personal touch to the user experience, making your server feel more unique and engaging for members.
 
 **Topics Covered**
@@ -34,16 +34,8 @@ Level-up cards are personalized messages that appear when you level up.
    - **Change Text** - Customize the title and description
    - **Change Color** - Select a color for your card
 
-#### Customizing Level-Up Card Text
-
-When changing text, you can use:
-- **Title** - The main heading for your card
-- **Description** - The message body
-
-In addition to the [generic replacements](./generic-replacements.md) for InfiniBot's messages, level-up cards provide additional replacements, including:
-- `[level]` - The new level of the member
-
-Example: "I reached level [level]! Awesome!"
+{: .tip }
+Utilize the [generic replacements]({% link docs/messaging/generic-replacements.md %}) available with InfiniBot for your Level-Up Card's text.
 
 ### Join Card
 
@@ -75,16 +67,14 @@ Note: This will not delete:
 • Any message logs inside a server  
 • Any moderation strikes, levels, birthdays, infinibot-powered messages, etc in any server  
 
-Some information not deleted by this process may be deleted when you leave a server. Check InfiniBot's privacy policy for complete transparency and more information.
-
-Refer to InfiniBot's [Privacy Policy]({% link docs/legal/privacy-policy.md %}) for details on how InfiniBot handles your data.
+Some information not deleted by this process may be deleted when you leave a server. Check InfiniBot's [Privacy Policy]({% link docs/legal/privacy-policy.md %}) for complete transparency and more information.
 
 ## DM Notifications
 
 InfiniBot may send you direct messages for:
 - Level-up notifications
 - Birthday wishes
-- Important server announcements
+- InfiniBot errors and missing permissions (server-owner only)
 
 You can opt out of these messages using the **Direct Messages** button.
 
@@ -97,6 +87,5 @@ You can opt out of these messages using the **Direct Messages** button.
 ## Troubleshooting
 
 If you're not receiving level-up or join card messages:
-1. Check if you've disabled DMs in your profile settings
+1. Check if you've enabled your level-up card in `/profile`
 2. Verify that the server has level-up notifications or join cards enabled
-3. Make sure your privacy settings allow messages from server members

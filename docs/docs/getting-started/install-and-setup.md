@@ -42,10 +42,7 @@ The dashboard is your central hub for configuring InfiniBot:
 
 1. Open it with the `/dashboard` command.
 2. Click on the features you want to configure.
-3. Follow the prompts for setup, including:
-   - Feature settings (Moderation, Logging, Leveling, etc.)
-   - Timezone configuration: `/dashboard → Configure Timezone`
-   - Extra options: `/dashboard → Extra Features`
+3. Follow the prompts for feature setup and configuration.
 
 See the [Dashboard]({% link docs/core-features/dashboard.md %}) page for detailed usage.
 
@@ -70,8 +67,7 @@ If InfiniBot isn’t behaving as expected:
 
 1. **Permission Issues**: Check role and channel permissions.
 2. **Missing Settings**: Complete all onboarding/config steps.
-3. **Feature Conflicts**: Some features may interact.
-4. **Role Hierarchy**: InfiniBot's role must be above roles it needs to manage.
+3. **Role Hierarchy**: InfiniBot's role must be above roles it needs to manage.
 
 For help, visit the [Support & Feedback]({% link docs/getting-started/support.md %}) page.
 
@@ -81,17 +77,22 @@ For help, visit the [Support & Feedback]({% link docs/getting-started/support.md
 
 For best results, grant InfiniBot **Administrator** access. Alternatively, grant the following permissions **in every channel it operates in**:
 
-- View Channels  
-- Send Messages  
-- Manage Roles  
-- Manage Messages  
-- Embed Links  
-- Attach Files  
-- Manage Nicknames  
-- View Audit Log  
-- Timeout Members  
-- Ban Members  
-- Read Message History  
+- Manage Roles
+- Manage Channels
+- Ban Members
+- Manage Nicknames
+- View Audit Log
+- View Channels
+- Moderate Members
+- Send Messages
+- Send Messages in Threads
+- Manage Messages
+- Embed Links
+- Attach Files
+- Read Message History
+- Mention @everyone, @here and All Roles
+- Add Reactions
+- Move Members
 
 Run `/check_infinibot_permissions` to verify permissions.
 

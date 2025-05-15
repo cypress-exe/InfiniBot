@@ -11,7 +11,6 @@ grand_parent: Moderation
 InfiniBot uses an advanced word filtering system that helps you maintain a clean and safe server environment.
 
 {: .titleless-green }
-**TIP**  
 The filter system is highly customizable, allowing you to add server-specific words and phrases while maintaining strong default protections.
 
 **Topics Covered**

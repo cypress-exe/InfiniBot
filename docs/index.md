@@ -77,7 +77,7 @@ InfiniBot is constantly evolving! Check back regularly for new features and impr
 2. Run the `/dashboard` command to access the configuration panel
 3. Enable the features you need and customize to your liking
 
-Dive deeper with our [comprehensive documentation]({% link docs/getting-started/index.md %}) or join our [support server]({% link docs/getting-started/support.md %}) for personalized assistance.
+Dive deeper with our comprehensive documentation or join our [support server]({% link docs/getting-started/support.md %}) for personalized assistance.
 
 [Browse Features]({% link docs/core-features/index.md %}){: .btn .btn-blue .fs-5 .mb-4 .mb-md-0 .mr-2 }
 [Join Support Server]({% link docs/getting-started/support.md %}){: .btn .btn-outline .fs-5 .mb-4 .mb-md-0 }

@@ -9,7 +9,7 @@ nav_order: 1
 
 InfiniBot's Default Roles feature automatically assigns roles to new members when they join your server.
 
-{: .tip }
+{: .titleless-green }
 Default roles are perfect for giving new members access to basic channels or identifying them as newcomers with a "New Member" role.
 
 **Topics Covered**
@@ -50,6 +50,7 @@ You can add multiple default roles, and all of them will be applied to new membe
 For default roles to work properly, InfiniBot needs:
 - **Manage Roles** - To assign roles to new members
 
+{: .highlight }
 The bot's role must also be higher in the server hierarchy than any roles being assigned.
 
 ## Use Cases

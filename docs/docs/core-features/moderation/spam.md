@@ -10,8 +10,8 @@ grand_parent: Core Features
 
 Spam moderation automatically detects and handles message spam.
 
-{: .warning }
-Spam protection is essential for preventing raids and maintaining channel quality. Configure this to protect your server from spam attacks.
+{: .titleless-green }
+Spam protection is essential for moderating members and maintaining channel quality. Configure this to protect your server from spam attacks.
 
 **Topics Covered**
 - TOC
@@ -42,7 +42,7 @@ InfiniBot calculates a spam score based on:
 - Same image posting
 - All-caps messages
 
-When a user exceeds the score threshold, they receive a strike or timeout based on your configuration.
+When a user exceeds the score threshold, they receive a timeout based on your configuration.
 
 ---
 

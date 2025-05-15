@@ -9,7 +9,7 @@ nav_order: 2
 
 Reaction Roles allow server members to self-assign roles by reacting to messages with emojis.
 
-{: .info }
+{: .titleless-green }
 Reaction roles are ideal for color roles, access roles, game roles, or any other opt-in role categories.
 
 **Topics Covered**
@@ -88,6 +88,7 @@ For reaction roles to work properly, InfiniBot needs:
 - **Add Reactions** - To add the initial reactions
 - **Read Message History** - To track reactions
 
+{: .highlight }
 The bot's role must also be higher in the server hierarchy than any roles being assigned.
 
 ## Best Practices

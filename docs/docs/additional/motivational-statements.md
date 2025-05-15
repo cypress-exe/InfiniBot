@@ -9,7 +9,7 @@ parent: Additional Features
 
 InfiniBot's Motivational Statements feature provides a humorous twist on traditional motivational content.
 
-{: .info }
+{: .titleless-green }
 This feature adds a touch of humor to your server while providing a fun way for members to interact with the bot.
 
 **Topics Covered**

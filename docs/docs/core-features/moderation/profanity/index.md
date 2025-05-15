@@ -11,7 +11,7 @@ has_children: true
 
 Profanity moderation automatically monitors messages for inappropriate language and takes action when violations occur.
 
-{: .info }
+{: .titleless-green }
 InfiniBot's profanity filter uses a combination of pre-defined words and server-specific custom words to provide comprehensive coverage.
 
 **Topics Covered**
@@ -37,9 +37,7 @@ InfiniBot's profanity filter uses a combination of pre-defined words and server-
 3. Add new words to the filter
 4. Remove words from the filter
 
-InfiniBot automatically detects variations of these words, including simple letter replacements and misspellings.
-
-For detailed information about the advanced pattern matching rules in the word filter, see the [Filtered Words]({% link docs/core-features/moderation/profanity/filtered-words.md %}) page.
+InfiniBot automatically applies basic pattern matching words to detect simple variations of these words. For detailed information about the advanced pattern matching rules in the word filter, see the [Filtered Words]({% link docs/core-features/moderation/profanity/filtered-words.md %}) page.
 
 ## Testing Your Filters
 
@@ -67,7 +65,7 @@ From the Admin Channel:
 - Mark strikes as incorrect (refunding them to the member)
 - Review strike information
 
-Users can check their own strikes with `/view my-strikes`
+Users can check their own strikes with `/view my-strikes`  
 Moderators can check any member's strikes with `/view member-strikes @member`
 
 ---

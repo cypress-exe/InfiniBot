@@ -107,6 +107,9 @@ callouts:
     title: Careful
     color: red
 
+  highlight:
+    color: yellow
+
   titleless-red:
     color: red
   titleless-yellow:

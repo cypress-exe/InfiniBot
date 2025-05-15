@@ -9,7 +9,7 @@ parent: Core Features
 
 InfiniBot's Action Logging feature provides detailed tracking of activities in your server, helping moderators monitor changes and maintain security.
 
-{: .info }
+{: .titleless-green }
 Logging creates a transparent record of server activities, making moderation and administration more effective.
 
 **Topics Covered**
@@ -28,26 +28,24 @@ InfiniBot logs the following activities, categorized into three main types:
 
 ### Message Events
 
-| Event Type         | Description                          |
-|---------------------|--------------------------------------|
-| Message Deletions  | Logs deleted messages, including content. |
+| Event Type         | Description                                             |
+|--------------------|---------------------------------------------------------|
+| Message Deletions  | Logs deleted messages, including content.               |
 | Message Edits      | Logs edited messages, showing before and after content. |
 
 ### Member Events
 
 | Event Type         | Description                          |
-|---------------------|--------------------------------------|
-| Member Joins       | Logs when a member joins the server. |
-| Member Leaves      | Logs when a member leaves the server. |
+|--------------------|--------------------------------------|
 | Nickname Changes   | Tracks changes to member nicknames.  |
 | Role Changes       | Logs updates to member roles.        |
 
 ### Moderation Events
 
 | Event Type         | Description                          |
-|---------------------|--------------------------------------|
+|--------------------|--------------------------------------|
 | Member Timeouts    | Logs when a member is timed out.     |
-| Member Bans/Unbans | Tracks bans and unbans of members.   |
+| Member Bans        | Tracks bans and unbans of members.   |
 | Member Kicks       | Logs when a member is kicked.        |
 
 ## Log Format
@@ -80,15 +78,18 @@ To avoid frequent notifications, set the Log Channel's notification settings to 
 
 ## Storage Limitations
 
-InfiniBot has some limitations on log data retention:
+InfiniBot retains message data for a limited time to ensure effective logging while respecting privacy:
 
-- Deleted messages are only logged if they were sent while InfiniBot was online
-- Message data older than 7 days or beyond the last 1000 messages is deleted
-- InfiniBot logs for edited/deleted messages after the retention period will have reduced information
-- Some information may be unavailable for specific actions
-- For extensive history, consider enabling Discord's built-in audit log retention
+- Only messages sent while InfiniBot is online can be logged if deleted.
+- Message data older than 7 days or exceeding the last 1000 messages is removed from InfiniBot's database.
+- Logs for edited or deleted messages beyond the retention period may lack detailed information.
+- Certain actions may result in incomplete logs due to data unavailability.
+- For extended history, consider utilizing Discord's built-in audit log features.
 
-For comprehensive details on how InfiniBot handles and retains message data, please review our [Privacy Policy]({% link docs/legal/privacy-policy.md %}).
+{: .note }
+Removing message data from InfiniBot's database does NOT delete the message from Discord or alter it in any way. However, logs for older messages may contain less detailed information due to this fact.
+
+For more information on InfiniBot's data handling and retention policies, please refer to our [Privacy Policy]({% link docs/legal/privacy-policy.md %}).
 
 ## Tips for Effective Logging
 

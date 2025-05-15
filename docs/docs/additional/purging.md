@@ -62,14 +62,14 @@ If you use other bots or connections with the channel, you may need to manually 
 
 ## Important Notes
 
-- Discord limits that InfiniBot can delete messages
-- For bulk deletion, use the "all" option to recreate the channel
-- Channel recreation preserves:
-  - Channel name
-  - Topic/description
-  - Category
-  - Permission overwrites
-  - Position in the server
+Due to Discord's rate limits, InfiniBot cannot delete thousands of messages in one go. For large-scale message removal, use the "all" option, which recreates the channel to clear its contents efficiently.
+
+**Channel recreation preserves:**
+- Channel name
+- Topic/description
+- Category
+- Permission overwrites
+- Position in the server
 
 ## Safety Considerations
 
@@ -83,7 +83,7 @@ The purge command is powerful and can't be undone. Use it with caution, especial
 - **Archive First**: Consider archiving important information before purging
 - **Be Specific**: Use the smallest number necessary to avoid deleting too much
 - **Inform Members**: Let members know before purging active channels
-- **Check Permissions**: Ensure the bot has Manage Messages and Manage Channels
+- **Check Permissions**: Ensure the bot has Manage Messages, Manage Channels, and Manage Server permissions
 
 ---
 

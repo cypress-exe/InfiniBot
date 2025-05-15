@@ -45,7 +45,7 @@ If you've found a bug or issue with InfiniBot:
    - Steps to reproduce the issue
    - Screenshots (if applicable)
 
-An administrator (typically the developer) will work with you to resolve the issue.
+An administrator will work with you to resolve the issue.
 
 ## Suggesting Features
 
