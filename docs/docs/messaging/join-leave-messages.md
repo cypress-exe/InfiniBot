@@ -18,7 +18,7 @@ InfiniBot can automatically send customized welcome and goodbye messages when me
 ### Join Messages
 
 1. Access via: `/dashboard → Join/Leave Messages → Join Messages`
-2. Enable the feature with the **Enable Join Messages** button
+2. Enable the feature with the **Enable** button (if applicable)
 3. Configure your settings:
    - Channel selection
    - Message customization
@@ -27,7 +27,7 @@ InfiniBot can automatically send customized welcome and goodbye messages when me
 ### Leave Messages
 
 1. Access via: `/dashboard → Join/Leave Messages → Leave Messages`
-2. Enable the feature with the **Enable Leave Messages** button
+2. Enable the feature with the **Enable** button (if applicable)
 3. Configure your settings:
    - Channel selection
    - Message customization

@@ -28,7 +28,6 @@ Embeds are rich message formats in Discord that can include:
 2. Fill out the modal with:
    - **Title** - The main heading for your embed
    - **Description** - The main content of your embed (supports basic markdown)
-      + Utilize the [generic replacements]({% link docs/messaging/generic-replacements.md %}) available with InfiniBot.
 3. Choose a color for the embed's sidebar
 4. The embed will be sent to the current channel
 

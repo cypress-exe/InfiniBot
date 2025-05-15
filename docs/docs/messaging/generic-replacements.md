@@ -51,7 +51,7 @@ Welcome @mention to @server! Please check out #rules to get started!
 
 This would appear as:
 ```
-Welcome @username to Awesome Server! Please check out #rules to get started!
+Welcome @discord-user to Awesome Server! Please check out #rules to get started!
 ```
 
 ## Usage Notes
