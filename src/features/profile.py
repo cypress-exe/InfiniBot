@@ -29,7 +29,9 @@ class Profile(nextcord.ui.View):
             await ui_components.disabled_feature_override(self, interaction)
             return
     
-        description = f"""Welcome to your InfiniBot Profile! Choose a setting:"""
+        description = f"""Welcome to your InfiniBot Profile! Choose a setting:
+        
+        View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/core-features/profile/) for more information."""
         
         # On Mobile, extra spaces cause problems. We'll get rid of them here:
         description = utils.standardize_str_indention(description)
@@ -72,7 +74,9 @@ class Profile(nextcord.ui.View):
                     return
 
                 description = """**What is a level-up card?**
-                Whenever you level-up with InfiniBot, your level-up message will contain this card:"""
+                Whenever you level-up with InfiniBot, your level-up message will contain this card.
+                
+                Utilize InfiniBot's [generic replacements](https://cypress-exe.github.io/InfiniBot/docs/messaging/generic-replacements/) to customize your level-up card!"""
                 
                 # On Mobile, extra spaces cause problems. We'll get rid of them here:
                 description = utils.standardize_str_indention(description)
@@ -289,7 +293,9 @@ class Profile(nextcord.ui.View):
                     return
 
                 description = """**What is a join card?**
-                Whenever you join a server that uses InfiniBot, your join message will contain this card:"""
+                Whenever you join a server that uses InfiniBot, your join message will contain this card.
+                
+                Utilize InfiniBot's [generic replacements](https://cypress-exe.github.io/InfiniBot/docs/messaging/generic-replacements/) to customize your join card!"""
                 
                 # On Mobile, extra spaces cause problems. We'll get rid of them here:
                 description = utils.standardize_str_indention(description)

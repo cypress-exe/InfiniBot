@@ -67,10 +67,10 @@ class Dashboard(CustomView):
                 await ui_components.infinibot_loading_override(self, interaction)
                 return
         
-        description = """Welcome to the InfiniBot Dashboard! Choose a feature to setup / edit:"""
-        
-        # On Mobile, extra spaces cause problems. We'll get rid of them here:
-        description = utils.standardize_str_indention(description)
+        description = (
+            "Welcome to the InfiniBot Dashboard! Choose a feature to setup / edit:\n\n"
+            "For more information, view the [help docs](https://cypress-exe.github.io/InfiniBot/docs/core-features/dashboard/)"
+        )
         
         embed = nextcord.Embed(title = "Dashboard", description = description, color = nextcord.Color.blue())
         try: await interaction.response.edit_message(embed = embed, view = self)
@@ -199,8 +199,8 @@ class Dashboard(CustomView):
                         - **Admin Channel:** {admin_channel_ui_text}
                         - **Strike System:** {strike_system_active}
 
-                        For more information, use: {UNSET_VALUE}
-                        """ # TODO add shortcut for help command
+                        View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/profanity/) for more information.
+                        """
                         description = utils.standardize_str_indention(description)
                         
                         
@@ -241,28 +241,13 @@ class Dashboard(CustomView):
                             async def setup(self, interaction: Interaction):
                                 server = Server(interaction.guild.id)
 
-                                description = """
-                                InfiniBot will automatically filter messages for profane words. You can add or delete words to be filtered here:
-
-                                **INFINIBOT FILTER RULES**
-                                1. Boundaries
-                                • "test → Start match (test123 ✅ | contest ❌)
-                                • test" → End match (123test ✅ | testing ❌)
-                                • "test" → Exact word only
-
-                                2. Wildcards
-                                • * = 1 character: te\\*st → texst ✅ | test ❌
-                                • ? = 0-1 chars: colou?r → color/colour ✅
-
-                                3. Examples  
-                                • "apple → apples ✅ | pineapple ❌
-                                • cat\\* → cats ✅ | cat ❌
-                                • log?n → login/logon/logn ✅ | logout ❌
-
-                                Case-insensitive: TEST = test
-                                Handles numbers/symbols: test3! ✅
-                                """
-                                description = utils.standardize_str_indention(description)
+                                description = (
+                                    "InfiniBot will automatically filter messages for profane words. "
+                                    "You can add or delete words to be filtered here:\n\n"
+                                    "InfiniBot automatically applies basic pattern matching to detect simple variations of these words. "
+                                    "For detailed information about the advanced pattern matching rules in the word filter, see the "
+                                    "[Advanced Pattern Matching Options](https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/profanity/filtered-words/#pattern-matching-options)."
+                                )
                                 
                                 self.embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity - Filtered Words", description = description, color = nextcord.Color.blue())
                                 filtered_words = server.profanity_moderation_profile.filtered_words
@@ -1038,7 +1023,8 @@ class Dashboard(CustomView):
                         **What is Time Threshold**
                         InfiniBot will disregard messages outside of the time threshold when determining spam scores. To disable this feature, set the time threshold to 0.
                         
-                        For more information, use: {UNSET_VALUE}""" # TODO add shortcut for help command
+                        View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/spam/) for more information.
+                        """
                         
                         description = utils.standardize_str_indention(description)
                         
@@ -1281,7 +1267,8 @@ class Dashboard(CustomView):
                 **Settings**
                 - **Log Channel:** {log_channel_ui_text}
                 
-                For more information, use: {UNSET_VALUE}""" # TODO add shortcut for help command
+                View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/core-features/logging/) for more information.
+                """
                 description = utils.standardize_str_indention(description)
                 
                 embed = nextcord.Embed(title = "Dashboard - Logging", 
@@ -1489,8 +1476,10 @@ class Dashboard(CustomView):
                 **Settings:**
                 - **Notifications Channel:** {leveling_channel_ui_text}
                 - **Level-Up Message:** {leveling_message}
-                For more information, use: {UNSET_VALUE}
-                """ # TODO add shortcut for help command.
+
+                Utilize InfiniBot's [Generic Replacements](https://cypress-exe.github.io/InfiniBot/docs/messaging/generic-replacements/) to customize your level-up message.
+                View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/core-features/leveling/) for more information.
+                """
                 description = utils.standardize_str_indention(description)
                 
                 embed = nextcord.Embed(title = "Dashboard - Leveling", 
@@ -2353,6 +2342,8 @@ class Dashboard(CustomView):
                 InfiniBot can send messages to members when they join or leave the server.
                 
                 To enable / configure this feature, use the **Join Messages** or **Leave Messages** buttons below.
+
+                View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/messaging/join-leave-messages/) for more information.
                 """
                 description = utils.standardize_str_indention(description)
 
@@ -2419,8 +2410,9 @@ class Dashboard(CustomView):
                         Title: {server.join_message_profile.embed["title"]}
                         Description: {server.join_message_profile.embed["description"]}
                         ```
-                        For more information, use: {UNSET_VALUE}
-                        """ # TODO add shortcut for help command.
+                        Utilize InfiniBot's [Generic Replacements](https://cypress-exe.github.io/InfiniBot/docs/messaging/generic-replacements/) to customize your join message.
+                        View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/messaging/join-leave-messages/) for more information.
+                        """
                         description = utils.standardize_str_indention(description)
 
                         embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Messages", description = description, color = nextcord.Color.blue())
@@ -2674,8 +2666,9 @@ class Dashboard(CustomView):
                         Title: {server.leave_message_profile.embed["title"]}
                         Description: {server.leave_message_profile.embed["description"]}
                         ```
-                        For more information, use: {UNSET_VALUE}
-                        """ # TODO add shortcut for help command.
+                        Utilize InfiniBot's [Generic Replacements](https://cypress-exe.github.io/InfiniBot/docs/messaging/generic-replacements/) to customize your leave message.
+                        View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/messaging/join-leave-messages/) for more information.
+                        """
                         description = utils.standardize_str_indention(description)
 
                         embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Messages", description = description, color = nextcord.Color.blue())
@@ -2932,6 +2925,9 @@ class Dashboard(CustomView):
                 Description: {server.birthdays_profile.embed.get('description', 'No description set')}```
                 **Configure Birthdays**
                 Use the buttons below to manage birthday settings.
+
+                Utilize InfiniBot's [Generic Replacements](https://cypress-exe.github.io/InfiniBot/docs/messaging/generic-replacements/) to customize your birthday message.
+                View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/messaging/birthdays/) for more information.
                 """ + ("" if server.birthdays_profile.runtime else "\n⚠️ **You must set a message time before birthdays will work!**")
                 
                 description = utils.standardize_str_indention(description)
@@ -3533,6 +3529,8 @@ class Dashboard(CustomView):
                 
                 description = """
                 InfiniBot can automatically assign default roles to members when they join the server. Use the buttons below to add or remove default roles.
+
+                View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/roles/default-roles/) for more information.
                 """
                 description = utils.standardize_str_indention(description)
                 self.embed = nextcord.Embed(title = "Dashboard - Default Roles", 
@@ -3781,8 +3779,8 @@ class Dashboard(CustomView):
                 
                 {join_to_create_vcs_ui_text}
                 {error_message}
-                For more information, use: {UNSET_VALUE}
-                """ # TODO add shortcut for help command
+                View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/additional/join-to-create-vcs/) for more information.
+                """
                 description = utils.standardize_str_indention(description)
                 embed = nextcord.Embed(title = "Dashboard - Join-To-Create-VCs", description = description, color = nextcord.Color.blue())
                 

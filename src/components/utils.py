@@ -258,12 +258,13 @@ def get_string_from_discord_color(color: nextcord.colour.Colour) -> str | None:
     
     return None
 
-def replace_placeholders_in_embed(
+def apply_generic_replacements(
     embed: nextcord.Embed, 
     member: nextcord.Member, 
     guild: nextcord.Guild, 
     custom_replacements: dict = {}, 
-    skip_channel_replacement: bool = False
+    skip_channel_replacement: bool = False,
+    skip_placeholder_replacement: bool = False
 ) -> nextcord.Embed:
     """
     Replaces placeholders in an embed with values from a member and a guild.
@@ -278,45 +279,52 @@ def replace_placeholders_in_embed(
     :type custom_replacements: dict
     :param skip_channel_replacement: Whether to skip replacing channel mentions.
     :type skip_channel_replacement: bool
+    :param skip_placeholder_replacement: Whether to skip replacing placeholders.
+    :type skip_placeholder_replacement: bool
     :return: The modified embed with replaced placeholders.
     :rtype: nextcord.Embed
     """
-    replacements = custom_replacements
 
-    # Add member-related replacements
-    replacements["@displayname"] = member.display_name
-    replacements["@mention"] = member.mention
-    replacements["@username"] = member.name
-    replacements["@id"] = str(member.id)
-    replacements["@joindate"] = member.joined_at.strftime("%Y-%m-%d") if member.joined_at else "Unknown"
-    replacements["@accountage"] = f"{(datetime.datetime.now() - member.created_at).days} days" if member.created_at else "Unknown"
-    
-    # Add server-related replacements
-    replacements["@server"] = guild.name
-    replacements["@serverid"] = str(guild.id)
-    replacements["@membercount"] = str(guild.member_count)
-    replacements["@owner"] = guild.owner.display_name if guild.owner else "Unknown"
-    
-    # Add time and date replacements
-    now = datetime.datetime.now()
-    replacements["@time"] = now.strftime("%H:%M:%S")
-    replacements["@date"] = now.strftime("%Y-%m-%d")
-    replacements["@datetime"] = now.strftime("%Y-%m-%d %H:%M:%S")
+    if member == None:
+        skip_placeholder_replacement = True
 
-    # Replace placeholders with values
-    for key, value in replacements.items():
-        if embed.title:
-            embed.title = embed.title.replace(key, value)
-        if embed.description:
-            embed.description = embed.description.replace(key, value)
-        if embed.footer and embed.footer.text:
-            embed.footer.text = embed.footer.text.replace(key, value)
-        if embed.url:
-            embed.url = embed.url.replace(key, value)
+    if not skip_placeholder_replacement:
+        replacements = custom_replacements
+
+        # Add member-related replacements
+        replacements["@displayname"] = member.display_name
+        replacements["@mention"] = member.mention
+        replacements["@username"] = member.name
+        replacements["@id"] = str(member.id)
+        replacements["@joindate"] = member.joined_at.strftime("%Y-%m-%d") if member.joined_at else "Unknown"
+        replacements["@accountage"] = f"{(datetime.datetime.now(datetime.timezone.utc) - member.created_at).days} days" if member.created_at else "Unknown"
         
-        for field in embed.fields:
-            field.name = field.name.replace(key, value)
-            field.value = field.value.replace(key, value)
+        # Add server-related replacements
+        replacements["@serverid"] = str(guild.id)
+        replacements["@server"] = guild.name
+        replacements["@membercount"] = str(guild.member_count)
+        replacements["@owner"] = guild.owner.display_name if guild.owner else "Unknown"
+        
+        # Add time and date replacements
+        now = datetime.datetime.now()
+        replacements["@datetime"] = now.strftime("%Y-%m-%d %H:%M:%S")
+        replacements["@time"] = now.strftime("%H:%M:%S")
+        replacements["@date"] = now.strftime("%Y-%m-%d")
+
+        # Replace placeholders with values
+        for key, value in replacements.items():
+            if embed.title:
+                embed.title = embed.title.replace(key, value)
+            if embed.description:
+                embed.description = embed.description.replace(key, value)
+            if embed.footer and embed.footer.text:
+                embed.footer.text = embed.footer.text.replace(key, value)
+            if embed.url:
+                embed.url = embed.url.replace(key, value)
+            
+            for field in embed.fields:
+                field.name = field.name.replace(key, value)
+                field.value = field.value.replace(key, value)
     
     if not skip_channel_replacement:
         # Optimization: Skip channel replacement if no "#" in the embed

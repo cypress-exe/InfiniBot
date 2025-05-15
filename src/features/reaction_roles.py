@@ -69,7 +69,7 @@ class ReactionRoleView(nextcord.ui.View):
         self.stop()
 
 REACTION_ROLES_DISABLED_MESSAGE = nextcord.Embed(title="Reaction Roles Disabled", description="Reaction Roles have been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color=nextcord.Color.red())
-MISSING_PERMISSIONS_MESSAGE = nextcord.Embed(title="InfiniBot Missing Permissions", description="InfiniBot needs the \"Manage Roles\" permission in order to use this command. Grant InfiniBot this permission and try again.", color=nextcord.Color.red())
+MISSING_PERMISSIONS_MESSAGE = nextcord.Embed(title="InfiniBot Missing Permissions", description="InfiniBot needs the \"Manage Roles\" permission in order to use this command. Grant InfiniBot this permission and try again.\n\nFor more information: [Check our documentation](https://cypress-exe.github.io/InfiniBot/docs/roles/reaction-roles/)", color=nextcord.Color.red())
 
 REACTIONROLETYPES = ["Letters", "Numbers", "Custom"]
 async def run_reaction_role_command(interaction: Interaction, type: str, mention_roles: bool):
@@ -114,6 +114,8 @@ async def run_reaction_role_command(interaction: Interaction, type: str, mention
     description = """
     **Don't see your role?**
     If a role is equal to or higher than InfiniBot's highest role, InfiniBot cannot grant that role to anyone. Fix this by making InfiniBot the highest role on the server.
+    
+    For more information on reaction roles: [Check our documentation](https://cypress-exe.github.io/InfiniBot/docs/roles/reaction-roles/)
     """
     description = utils.standardize_str_indention(description)
     await interaction.followup.send(embed=nextcord.Embed(title="Choose the roles you would like to include.", description=description, color=nextcord.Color.blurple()), view=view, ephemeral=True)
@@ -176,6 +178,8 @@ async def run_custom_reaction_role_command(interaction: Interaction, options: st
                                                                 
                 `Emoji = @Role, Emoji = @Role, Emoji = @Role, Etc`                  
                 `👍 = @Member, 🥸 = @Gamer`
+                
+                For more information: [Check our documentation](https://cypress-exe.github.io/InfiniBot/docs/roles/reaction-roles/)
                 """)
                 await interaction.response.send_message(embed = nextcord.Embed(title="Woops... You Formatted that Wrong", description=description, 
                                                                                 color=nextcord.Color.red()), ephemeral=True)
@@ -248,7 +252,7 @@ async def create_reaction_role(interaction: Interaction, title: str, message: st
     
     # Ensure that at least one role is selected
     if len(roles) == 0:
-        await interaction.followup.send(embed=nextcord.Embed(title="No Roles", description="You need to have at least one role.", color=nextcord.Color.red()), ephemeral=True)
+        await interaction.followup.send(embed=nextcord.Embed(title="No Roles", description="You need to have at least one role.\n\nFor more information: [Check our documentation](https://cypress-exe.github.io/InfiniBot/docs/roles/reaction-roles/)", color=nextcord.Color.red()), ephemeral=True)
         return
     
     # Format the options
@@ -256,6 +260,7 @@ async def create_reaction_role(interaction: Interaction, title: str, message: st
 
     # Post message
     embed = nextcord.Embed(title=title, description=message, color=nextcord.Color.teal())
+    embed = utils.apply_generic_replacements(embed, None, interaction.guild)
     embed.add_field(name = "React for the following roles", value=options_formatted, inline=False)
 
     partial_message = await interaction.followup.send(embed=embed, wait=True)

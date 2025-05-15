@@ -27,6 +27,8 @@ class IncorrectButtonView(nextcord.ui.View):
     """
     def __init__(self):
         super().__init__(timeout = None)
+
+        self.add_item(nextcord.ui.Button(label="Learn More", url="https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/profanity/", style=nextcord.ButtonStyle.link))
   
     @nextcord.ui.button(label = 'Mark As Incorrect', style = nextcord.ButtonStyle.blurple, custom_id = "mark_as_incorrect")
     async def event(self, button:nextcord.ui.Button, interaction: nextcord.Interaction):

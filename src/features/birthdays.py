@@ -127,7 +127,7 @@ async def check_and_run_birthday_actions(bot: nextcord.Client, guild: nextcord.G
                 embed: nextcord.Embed = server.birthdays_profile.embed.to_embed()
                 embed.set_author(name = member.name, icon_url = member.display_avatar.url)
 
-                embed = utils.replace_placeholders_in_embed(embed, member, guild, custom_replacements={
+                embed = utils.apply_generic_replacements(embed, member, guild, custom_replacements={
                     "[age]" : str(age),
                     "[realname]" : (entry.real_name if entry.real_name != None else member.name)
                 })

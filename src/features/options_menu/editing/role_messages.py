@@ -13,6 +13,7 @@ class EditRoleMessage(nextcord.ui.View):
     def __init__(self, message_id: int):
         super().__init__(timeout=None)
         self.message_id = message_id
+        self.guild = None # Unset until load
         
         self.title = None
         self.description = None
@@ -543,6 +544,7 @@ class EditRoleMessage(nextcord.ui.View):
        
     async def load(self, interaction: Interaction):
         self.message = await interaction.channel.fetch_message(self.message_id)
+        self.guild = interaction.guild
         
         if (self.title is None and self.description is None 
                 and self.color is None and self.options == []):
@@ -637,6 +639,9 @@ class EditRoleMessage(nextcord.ui.View):
             description=description,
             color=color
         )
+
+        embed = utils.apply_generic_replacements(embed, None, self.guild)
+
         for option in options:
             self.add_field(embed, option)
 

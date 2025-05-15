@@ -334,14 +334,14 @@ async def process_level_change(guild: nextcord.Guild, member: nextcord.Member, l
             if _continue:
                 embed: nextcord.Embed = server.leveling_profile.level_up_embed.to_embed()
 
-                embed = utils.replace_placeholders_in_embed(embed, member, guild, custom_replacements={"[level]": str(level)})
+                embed = utils.apply_generic_replacements(embed, member, guild, custom_replacements={"[level]": str(level)})
                 embeds = [embed]
                 
                 # Get the card (if needed)
                 if server.leveling_profile.allow_leveling_cards:
                     if member_settings.level_up_card_enabled:
                         card_embed = member_settings.level_up_card_embed.to_embed()
-                        card = utils.replace_placeholders_in_embed(card_embed, member, guild, custom_replacements={"[level]": str(level)}, skip_channel_replacement=True)
+                        card = utils.apply_generic_replacements(card_embed, member, guild, custom_replacements={"[level]": str(level)}, skip_channel_replacement=True)
                         embeds.append(card)
                 
                 # Send message
@@ -427,6 +427,8 @@ async def run_leaderboard_command(interaction: Interaction):
     
     embed = nextcord.Embed(title="Leaderboard", color=nextcord.Color.blue())
     embed = add_leaderboard_ranking_to_embed(interaction.guild, embed)
+
+    embed.description = "\n\nTo learn more about leveling, visit [this link](https://cypress-exe.github.io/InfiniBot/docs/core-features/leveling/)."
     
     await interaction.response.send_message(embed=embed, view=ui_components.InviteView())
     
@@ -459,6 +461,8 @@ async def run_view_level_command(interaction: Interaction, member: nextcord.Memb
     
     description = f"""
     {_member.mention} is at level {str(level)} (points: {str(points)})
+
+    To learn more about leveling, visit [this link](https://cypress-exe.github.io/InfiniBot/docs/core-features/leveling/).
     """
 
     description = utils.standardize_str_indention(description)
@@ -504,6 +508,8 @@ async def run_set_level_command(interaction: Interaction, member: nextcord.Membe
         
         description = f"""
         {member.mention} is now at level {str(new_level)} (points: {str(new_points)})
+
+        To learn more about leveling, visit [this link](https://cypress-exe.github.io/InfiniBot/docs/core-features/leveling/).
         """
         description = utils.standardize_str_indention(description)
         embed = nextcord.Embed(title = "Level Changed", description = description, color = nextcord.Color.green())

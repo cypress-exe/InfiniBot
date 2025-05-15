@@ -26,7 +26,15 @@ async def trigger_join_message(member: nextcord.Member) -> None:
             channel_id = server.join_message_profile.channel
             channel = member.guild.get_channel(channel_id)
             if channel == None:
-                await utils.send_error_message_to_server_owner(member.guild, None, message = f"InfiniBot is unable to find your join message channel. The join message channel #{channel_id} either no longer exists, or is hidden from InfiniBot.")
+                await utils.send_error_message_to_server_owner(
+                    member.guild,
+                    None,
+                    message=(
+                        f"InfiniBot is unable to find your join message channel. "
+                        f"The join message channel #{channel_id} either no longer exists, "
+                        f"or is hidden from InfiniBot."
+                    )
+                )
                 return
         else:
             if member.guild.system_channel != None:
@@ -40,7 +48,7 @@ async def trigger_join_message(member: nextcord.Member) -> None:
             
         # Send message
         join_message_embed: nextcord.Embed = server.join_message_profile.embed.to_embed()
-        join_message_embed = utils.replace_placeholders_in_embed(join_message_embed, member, member.guild)
+        join_message_embed = utils.apply_generic_replacements(join_message_embed, member, member.guild)
         join_message_embed.timestamp = datetime.datetime.now()
         embeds = [join_message_embed]
         
@@ -49,7 +57,7 @@ async def trigger_join_message(member: nextcord.Member) -> None:
             member_data = Member(member.id)
             if member_data.join_card_enabled:
                 card = member_data.join_card_embed.to_embed()
-                card = utils.replace_placeholders_in_embed(card, member, member.guild, skip_channel_replacement=True)
+                card = utils.apply_generic_replacements(card, member, member.guild, skip_channel_replacement=True)
                 embeds.append(card)
         
         await channel.send(embeds = embeds)
@@ -76,7 +84,15 @@ async def trigger_leave_message(member: nextcord.Member) -> None:
             channel_id = server.leave_message_profile.channel
             channel = member.guild.get_channel(channel_id)
             if channel == None:
-                await utils.send_error_message_to_server_owner(member.guild, None, message = f"InfiniBot is unable to find your leave message channel. The leave message channel #{channel_id} either no longer exists, or is hidden from InfiniBot.")
+                await utils.send_error_message_to_server_owner(
+                    member.guild,
+                    None,
+                    message=(
+                        f"InfiniBot is unable to find your leave message channel. "
+                        f"The leave message channel #{channel_id} either no longer exists, "
+                        f"or is hidden from InfiniBot."
+                    )
+                )
                 return
         else:
             if member.guild.system_channel != None:
@@ -90,7 +106,7 @@ async def trigger_leave_message(member: nextcord.Member) -> None:
             
         # Send message
         leave_message_embed: nextcord.Embed = server.leave_message_profile.embed.to_embed()
-        leave_message_embed = utils.replace_placeholders_in_embed(leave_message_embed, member, member.guild)
+        leave_message_embed = utils.apply_generic_replacements(leave_message_embed, member, member.guild)
         leave_message_embed.timestamp = datetime.datetime.now()
         
         await channel.send(embed = leave_message_embed)

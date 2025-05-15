@@ -21,6 +21,7 @@ from features import (
     default_roles,
     dm_commands,
     embeds,
+    help_commands,
     join_leave_messages,
     join_to_create_vcs,
     jokes,
@@ -120,7 +121,8 @@ async def set(interaction: Interaction): pass
 async def create(interaction: Interaction): pass
 
 @bot.slash_command(name="help", description="Get help with InfiniBot")
-async def help(interaction: Interaction): pass
+async def help(interaction: Interaction): 
+    await help_commands.run_help_command(interaction)
 
 # SERVER COMMANDS ================================================================================================================================================================
 @bot.slash_command(name="dashboard", description="Configure InfiniBot (Requires Infinibot Mod)", contexts=[nextcord.InteractionContextType.guild])
@@ -209,18 +211,9 @@ async def motivational_statement(interaction: Interaction):
 async def jokeCommand(interaction: Interaction):
     await jokes.run_joke_command(interaction)
 
-@bot.slash_command(name="purge", description="Purge any channel (requires manage messages permission and Infinibot Mod)", contexts=[nextcord.InteractionContextType.guild], guild_ids=[1367887634852220969])
+@bot.slash_command(name="purge", description="Purge any channel (requires manage messages permission and Infinibot Mod)", contexts=[nextcord.InteractionContextType.guild])
 async def purge(interaction: Interaction, amount: str=SlashOption(description="The amount of messages you want to delete. \"All\" purges the whole channel")):
     await purging.run_purge_command(interaction, amount)
-
-@bot.slash_command(name="test", description="Test command.", contexts=[nextcord.InteractionContextType.guild], guild_ids=[1367887634852220969])
-async def test(interaction: Interaction):
-    # Clear data from the database for this server
-    server = Server(interaction.guild.id)
-    server.remove_all_data()
-
-    # Respond
-    await interaction.response.send_message("Data cleared from the database for this server.", ephemeral=True)
 
 # MESSAGE COMMANDS ============================================================================================================================================================== 
 @bot.message_command(name="Options")

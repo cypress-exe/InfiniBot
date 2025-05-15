@@ -66,6 +66,9 @@ class EditReactionRole(nextcord.ui.View):
                     description=self.description_input.value,
                     color=before_message.embeds[0].color
                 )
+
+                embed = utils.apply_generic_replacements(embed, None, interaction.guild)
+
                 for field in before_message.embeds[0].fields:
                     embed.add_field(name=field.name, value=field.value, inline=field.inline)
                     

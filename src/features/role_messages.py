@@ -171,6 +171,13 @@ class RoleMessageButton_Multiple(nextcord.ui.View):
 class RoleMessageSetup(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
+
+        link_button = nextcord.ui.Button(
+            label="Learn More",
+            url="https://cypress-exe.github.io/InfiniBot/docs/roles/role-messages/",
+            style=nextcord.ButtonStyle.link
+        )
+        self.add_item(link_button)
         
         nevermind_btn = self.NevermindButton(self)
         self.add_item(nevermind_btn)
@@ -205,7 +212,7 @@ class RoleMessageSetup(nextcord.ui.View):
                 if isinstance(child, nextcord.ui.Button):
                     child.disabled = True
                     
-            await interaction.response.edit_message(view = self.outer)
+            await interaction.response.edit_message(view=self.outer, delete_after=2.0)
         
     class GetStartedButton(nextcord.ui.Button):
         def __init__(self):
@@ -231,6 +238,8 @@ class RoleMessageSetup(nextcord.ui.View):
                     self.description = description
                     self.color = nextcord.Color.teal()
                     self.options: list[list[list[int], str, str]] = []
+
+                    self.guild = None # Set in setup
                     
                     edit_text_btn = self.EditTextButton(self)
                     self.add_item(edit_text_btn)
@@ -682,6 +691,7 @@ class RoleMessageSetup(nextcord.ui.View):
                         await self.MultiOrSingleSelectView(self.outer).setup(interaction)
             
                 async def setup(self, interaction: Interaction):
+                    self.guild = interaction.guild
                     self.validate_buttons()
                     
                     # Create two embeds depending on whether this is the first time
@@ -721,6 +731,7 @@ class RoleMessageSetup(nextcord.ui.View):
                     
                 def create_embed(self, title, description, color, options):
                     embed = nextcord.Embed(title=title, description=description, color=color)
+                    embed = utils.apply_generic_replacements(embed, None, self.guild)
                     for option in options:
                         self.add_field(embed, option)
 

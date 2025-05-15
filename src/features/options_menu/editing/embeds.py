@@ -57,9 +57,14 @@ class EditEmbed(nextcord.ui.View):
             async def callback(self, interaction: Interaction):
                 self.stop()
                 before_message = await interaction.channel.fetch_message(self.outer.message.id)
-                await before_message.edit(embed = nextcord.Embed(title=self.title_input.value, 
-                                                                 description=self.description_input.value, 
-                                                                 color=before_message.embeds[0].color))
+
+                new_embed = nextcord.Embed(title=self.title_input.value,
+                                          description=self.description_input.value, 
+                                          color=before_message.embeds[0].color)
+                
+                new_embed = utils.apply_generic_replacements(new_embed, None, interaction.guild)
+
+                await before_message.edit(embed = new_embed)
                 await self.outer.setup(interaction)
                 
                 # Trigger Edit Log

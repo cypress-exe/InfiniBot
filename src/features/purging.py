@@ -276,14 +276,9 @@ async def _handle_purge_amount(interaction: Interaction, amount: int) -> None:
 
 async def run_purge_command(interaction: Interaction, amount: str) -> None:
     # Initial validations
-    if not await _check_permissions(interaction):
-        return
-
-    if not await utils.user_has_config_permissions(interaction):
-        return
-
-    if not await _check_feature_status(interaction):
-        return
+    if not await _check_permissions(interaction): return
+    if not await utils.user_has_config_permissions(interaction): return
+    if not await _check_feature_status(interaction): return
 
     # Input validation
     if not amount or (not amount.isdigit() and amount.lower() != "all") or (amount.isdigit() and int(amount) < 1):
@@ -299,7 +294,8 @@ async def run_purge_command(interaction: Interaction, amount: str) -> None:
         confirm_embed = _create_confirmation_embed(
             "Confirm Complete Purge",
             "**WARNING**: This will clone the channel and delete the original!\n"
-            "Third-party integrations may be affected. This action cannot be undone."
+            "Third-party integrations may be affected. This action cannot be undone.\n\n"
+            "For more information: [Check our documentation](https://cypress-exe.github.io/InfiniBot/docs/additional/purging/)"
         )
         confirm_embed.set_footer(text="Use with caution - this is irreversible")
         
@@ -310,7 +306,8 @@ async def run_purge_command(interaction: Interaction, amount: str) -> None:
     else:
         confirm_embed = _create_confirmation_embed(
             "Confirm Message Purge",
-            f"You're about to delete {amount} messages. This cannot be undone."
+            f"You're about to delete {amount} messages. This cannot be undone.\n\n"
+            f"For more information: [Check our documentation](https://cypress-exe.github.io/InfiniBot/docs/additional/purging/)"
         )
         
         if not await _get_user_confirmation(interaction, confirm_embed):

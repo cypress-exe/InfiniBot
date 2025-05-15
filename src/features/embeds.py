@@ -19,6 +19,46 @@ class EmbedModal(nextcord.ui.Modal):
         self.description_value = self.description_text_input.value  
         self.stop()
 
+class EmbedInfoView(nextcord.ui.View):
+    def __init__(self):
+        super().__init__()
+
+        self.return_modal = None
+        
+        # Continue button
+        self.continue_button = nextcord.ui.Button(label="Continue", style=nextcord.ButtonStyle.success)
+        self.continue_button.callback = self.continue_callback
+        
+        # Embeds documentation button
+        embeds_docs = nextcord.ui.Button(
+            label="Embeds Documentation", 
+            style=nextcord.ButtonStyle.link, 
+            url="https://cypress-exe.github.io/InfiniBot/docs/messaging/embeds/"
+        )
+        
+        # Generic replacements documentation button
+        replacements_docs = nextcord.ui.Button(
+            label="Available Replacements", 
+            style=nextcord.ButtonStyle.link, 
+            url="https://cypress-exe.github.io/InfiniBot/docs/messaging/generic-replacements/"
+        )
+        
+        self.add_item(self.continue_button)
+        self.add_item(embeds_docs)
+        self.add_item(replacements_docs)
+        
+    async def continue_callback(self, interaction: Interaction):
+        self.continue_button.disabled = True
+
+        # Send Modal
+        modal = EmbedModal()
+        await interaction.response.send_modal(modal)
+        await modal.wait()
+
+        self.return_modal = modal
+
+        self.stop()
+
 class EmbedColorView(nextcord.ui.View):
     def __init__(self):
         super().__init__()
@@ -61,14 +101,25 @@ async def run_create_embed_command(interaction: Interaction, role: nextcord.Role
         else:
             await interaction.response.send_message(embed = nextcord.Embed(title = "Can't Ping that Role", description = "InfiniBot can't ping that role. Either *allow anyone to @mention this role*, or give InfiniBot permission to *mention @everyone, @here, and All Roles*.", color = nextcord.Color.red()), ephemeral = True)
             return
-        
-    # Create the modal
-    modal = EmbedModal()
-    await interaction.response.send_modal(modal)
-    await modal.wait()
     
-    embed_title = modal.title_value
-    embed_description = modal.description_value
+    # Display info about embeds and generic replacements before showing the modal
+    info_embed = nextcord.Embed(
+        title="Create an Embed",
+        description="You're about to create an embed message. Embeds can be customized with a title, description, and color.\n\n"
+                   "**Available Replacements**\n"
+                   "You can use placeholders in your embeds like `@mention`, `@server`, etc. Check the documentation "
+                   "for all available replacements.\n\n"
+                   "Click 'Continue' to proceed or check the documentation links below for more information.",
+        color=nextcord.Color.blue()
+    )
+    
+    # Show the info view with continue button and documentation links
+    info_view = EmbedInfoView()
+    await interaction.response.send_message(embed=info_embed, view=info_view, ephemeral=True)
+    await info_view.wait()
+    
+    embed_title = info_view.return_modal.title_value
+    embed_description = info_view.return_modal.description_value
 
     description = f"""Choose what color you would like the embed to be:
     
@@ -80,10 +131,10 @@ async def run_create_embed_command(interaction: Interaction, role: nextcord.Role
     # On Mobile, extra spaces cause problems. We'll get rid of them here:
     description = utils.standardize_str_indention(description)
     
-    embed = nextcord.Embed(title = "Choose a Color", description = description, color = nextcord.Color.blue())
+    embed = nextcord.Embed(title="Choose a Color", description=description, color=nextcord.Color.blue())
     view = EmbedColorView()
     
-    await interaction.followup.send(embed = embed, view = view, ephemeral=True)
+    await interaction.edit_original_message(embed=embed, view=view)
     
     await view.wait()
     
@@ -96,9 +147,9 @@ async def run_create_embed_command(interaction: Interaction, role: nextcord.Role
     embed = nextcord.Embed(title=embed_title, description=embed_description, color=discord_color)
 
     # Apply replacements
-    embed = utils.replace_placeholders_in_embed(embed, interaction.user, interaction.guild)
+    embed = utils.apply_generic_replacements(embed, None, interaction.guild)
 
-    interaction_response = await interaction.followup.send(content=content, embed=embed, wait=True)
+    interaction_response = await interaction.channel.send(content=content, embed=embed)
     
     # Finally, add the embed to our active messages for future editing
     server = Server(interaction.guild.id)
