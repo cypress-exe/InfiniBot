@@ -4,19 +4,20 @@ import datetime
 import logging
 import os
 import random
-from typing import Any, List, Dict
-import uuid
+import shutil
 import unittest
+import uuid
+from typing import Any, List, Dict
 from zoneinfo import ZoneInfo
 
+import core.db_manager as db_manager
 from components.utils import feature_is_active
-from config.file_manager import JSONFile
-from config.global_settings import get_global_kill_status, get_persistent_data, get_configs
+from config.file_manager import JSONFile, update_base_path as file_manager_update_base_path
+from config.global_settings import get_global_kill_status, get_persistent_data
 from config.member import Member
 from config.server import Server
-from config.stored_messages import StoredMessage, store_message, get_message, get_all_messages, remove_message, cleanup
-import core.db_manager as db_manager
-from core.log_manager import setup_logging
+from config.stored_messages import StoredMessage, cleanup, get_all_messages, get_message, remove_message, store_message
+from core.log_manager import setup_logging, update_base_path as log_manager_update_base_path
 from modules.custom_types import UNSET_VALUE
 from modules.database import Database
 
@@ -37,26 +38,8 @@ def update_database_url() -> None:
     :rtype: None
     """
     logging.warning("Updating database url to use memory database")
-    db_manager.database_url = "sqlite:///./generated/files/test.db"
+    db_manager.database_url = "sqlite:///./generated/test-files/files/test.db"
     db_manager.init_database()
-
-def cleanup_database_url() -> None:
-    """
-    Removes the test database file.
-
-    :return: None
-    :rtype: None
-    """
-    logging.warning("Removing test database file")
-    for file in os.listdir("./generated/files"):
-        logging.info(f"Checking file: {file}")
-        if "test.db" in file:
-            os.remove(f"./generated/files/{file}")
-    logging.info("Test database file removed")
-
-    # Cleanup database engines
-    if db_manager.get_database() is not None:
-        db_manager.get_database().cleanup()
 
 def generate_test_message(**kwargs) -> StoredMessage:
     message = StoredMessage(
@@ -1678,14 +1661,55 @@ class TestUtils(unittest.TestCase):
 
         logging.info("Finished testing feature_is_active...")
 
+def cleanup_environment():
+    """
+    Cleans up the environment after tests are run.
+    """
+    shutil.rmtree("./generated/test-files", ignore_errors=True)
+    logging.info("Cleaned up test environment.")
+
+def create_environment():
+    """
+    Creates the environment required for InfiniBot to run in test mode.
+    """
+    logging.info("Creating environment...")
+
+    # Clean up old environment
+    cleanup_environment()
+
+    def create_folder(folder_path):
+        os.makedirs(folder_path, exist_ok=True)
+        logging.info(f"Created folder: {folder_path}")
+    
+    def copy_file(source_path, destination_path):
+        if not os.path.exists(destination_path):
+            shutil.copy(source_path, destination_path)
+            logging.info(f"Copied file: {source_path} to {destination_path}")
+ 
+    # Create directory structure
+    create_folder("./generated")
+    create_folder("./generated/test-files")
+    create_folder("./generated/test-files/files")
+    create_folder("./generated/test-files/backups")
+    create_folder("./generated/test-files/configure")
+    
+    # Copy default files
+    copy_file("./defaults/default_profane_words.txt", "./generated/test-files/configure/default_profane_words.txt")
+    copy_file("./defaults/default_jokes.json", "./generated/test-files/files/jokes.json")
+
+    # Remap base paths
+    update_database_url()
+    file_manager_update_base_path("./generated/test-files/configure/")
+    log_manager_update_base_path("./generated/test-files/logs/")
+
+    logging.info("Environment created successfully.")
+
 if __name__ == "__main__":
     print("RUNNING ---------------------------------------------------------------------------------------------------------")
+    create_environment()
+
     setup_logging(logging.DEBUG)
 
-    # Ensure that the test db file doesn't exist
-    cleanup_database_url()
-
-    update_database_url()
 
     logging.info(f"{'#'*50} Running Tests {'#'*50}")
     
@@ -1705,13 +1729,15 @@ if __name__ == "__main__":
     test_result = runner.run(test_suite)
 
     if test_result.wasSuccessful():
-        logging.info("All tests passed! Performing full cleanup")
-        cleanup_database_url()
+        logging.info("All tests passed!")
     else:
-        logging.warning("Tests failed - preserving test artifacts")
+        logging.warning("Tests failed")
     
     header = "Finished Tests"
-    print(f"{'#'*50} {header} {'#'*50}")
+    if test_result.wasSuccessful() and len(test_result.skipped) == 0:
+        print(f"{'✅'*25} {header} {'✅'*25}")
+    else:
+        print(f"{'❌'*25} {header} {'❌'*25}")
     print(f"Tests run: {test_result.testsRun}")
     print(f"Failures: {len(test_result.failures)}")
     print(f"Errors: {len(test_result.errors)}")
@@ -1719,4 +1745,7 @@ if __name__ == "__main__":
 
     print('#'*(50 * 2 + 2 + len(header)))
 
-    exit()
+    if test_result.wasSuccessful():
+        exit(0)
+    else:
+        exit(1)

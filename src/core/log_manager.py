@@ -7,6 +7,19 @@ import uuid
 
 from config.global_settings import get_configs
 
+base_path = "./generated/logs/"
+
+def update_base_path(new_path: str) -> None:
+    """
+    Updates the base path for JSON files.
+
+    :param new_path: The new base path.
+    :type new_path: str
+    :return: None
+    :rtype: None
+    """
+    global base_path
+    base_path = new_path
 
 class LogIfFailure(ContextDecorator):
     """
@@ -49,9 +62,9 @@ def get_uuid_for_logging() -> str:
 
 def generate_logging_file_name() -> None:
     """
-    Creates a new log file name in the generated/logs directory with the current date and time as its name.
+    Creates a new log file name in the base_path directory with the current date and time as its name.
 
-    This function returns a name to a new log file in the generated/logs directory with the current date and time as its name.
+    This function returns a name to a new log file in the base_path directory with the current date and time as its name.
     It is used to generate a new log file every time the bot is restarted.
 
     :param: None
@@ -59,15 +72,15 @@ def generate_logging_file_name() -> None:
     :type: None
     :rtype: None
     """
-    if not os.path.exists("./generated/logs"):
-        os.makedirs("./generated/logs")
+    if not os.path.exists(base_path):
+        os.makedirs(base_path)
 
     # Ensure no more than max_logs_to_keep files exist
     max_logs_to_keep = get_configs()["logging"]["max_logs_to_keep"]
-    while (len(os.listdir("./generated/logs")) + 1) > max_logs_to_keep:
-        logs_in_order = os.listdir("./generated/logs")
+    while (len(os.listdir(base_path)) + 1) > max_logs_to_keep:
+        logs_in_order = os.listdir(base_path)
         logs_in_order.sort()
-        os.remove(f"./generated/logs/{logs_in_order[0]}")
+        os.remove(os.path.join(base_path, {logs_in_order[0]}))
     
     date = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     new_logfile_name = f"logfile-{date}.log"
@@ -85,7 +98,7 @@ def setup_logging(level: int = logging.INFO) -> None:
     """
     # Create logging folder
     logfile_name = generate_logging_file_name()
-    logfile_path = os.path.join("./generated/logs", logfile_name)
+    logfile_path = os.path.join(base_path, logfile_name)
     logfile_path = os.path.abspath(logfile_path)
 
     # Remove all existing handlers to avoid conflicts

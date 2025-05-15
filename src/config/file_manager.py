@@ -2,6 +2,20 @@ import json
 import logging
 import os
 
+base_path = "./generated/configure/"
+
+def update_base_path(new_path: str) -> None:
+    """
+    Updates the base path for JSON files.
+
+    :param new_path: The new base path.
+    :type new_path: str
+    :return: None
+    :rtype: None
+    """
+    global base_path
+    base_path = new_path
+
 class JSONFile:
     """
     Represents a JSON file.
@@ -21,7 +35,7 @@ class JSONFile:
     def __init__(self, name):
         self.name = name
         self.file_name = f"{name}.json"
-        self.path = f"./generated/configure/{self.file_name}"
+        self.path = os.path.join(base_path, self.file_name)
 
     def ensure_existence(self) -> None:
         """
