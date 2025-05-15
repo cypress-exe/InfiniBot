@@ -1745,6 +1745,8 @@ if __name__ == "__main__":
 
     print('#'*(50 * 2 + 2 + len(header)))
 
+    exit(1) # Exit with error code 1 to indicate that the tests were not successful TESTING
+
     if test_result.wasSuccessful():
         exit(0)
     else:
