@@ -80,7 +80,7 @@ def generate_logging_file_name() -> None:
     while (len(os.listdir(base_path)) + 1) > max_logs_to_keep:
         logs_in_order = os.listdir(base_path)
         logs_in_order.sort()
-        os.remove(os.path.join(base_path, {logs_in_order[0]}))
+        os.remove(os.path.join(base_path, logs_in_order[0]))
     
     date = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     new_logfile_name = f"logfile-{date}.log"
