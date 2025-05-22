@@ -54,7 +54,12 @@ When enabled, InfiniBot sends level-up messages when members reach new levels:
 3. Customize the message: `/dashboard → Leveling → Level-Up Message`
 
 {: .tip }
-Utilize the [generic replacements]({% link docs/messaging/generic-replacements.md %}) available with InfiniBot.
+Utilize the [generic replacements]({% link docs/messaging/generic-replacements.md %}) available with InfiniBot.  
+
+Additionally, you can use the following replacements:
+- `[level]` - The level the member has reached
+- `[points]` - The points the member has earned
+- `[rank]` - The member's rank in the server (#1 being the highest)
 
 ## Level Rewards
 

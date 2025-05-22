@@ -66,18 +66,15 @@ def get_points_from_level(level: int) -> int:
     
     return(points) #levels are calculated by x^0.65
 
-def add_leaderboard_ranking_to_embed(guild: nextcord.Guild, embed: nextcord.Embed, include_ranked_members: bool = False) -> nextcord.Embed:
+def get_ranked_members(guild: nextcord.Guild) -> list[list[nextcord.Member, int]]:
     """
-    Add a leaderboard ranking to an embed.
+    Get a list of ranked members in a guild sorted by level points.  
+    Note: Returned list is sorted by points but index does not necessarily represent rank.
 
-    :param guild: The guild to get the leaderboard from.
+    :param guild: The guild to get the ranked members from.
     :type guild: nextcord.Guild
-    :param embed: The embed to add the leaderboard to.
-    :type embed: nextcord.Embed
-    :param include_ranked_members: Whether or not to include the ranked members in the embed. Defaults to False.
-    :type include_ranked_members: bool, optional
-    :return: The embed with the leaderboard added.
-    :rtype: nextcord.Embed
+    :return: A list of [member, points] lists sorted by points in descending order.
+    :rtype: list[list[nextcord.Member, int]]
     """
     ranked_members:list[list[nextcord.Member, int]] = []
     server = Server(guild.id)
@@ -91,15 +88,78 @@ def add_leaderboard_ranking_to_embed(guild: nextcord.Guild, embed: nextcord.Embe
         ranked_members.append([member, points])
 
     ranked_members = sorted(ranked_members, key=lambda x: (-x[1], x[0].name))
+    return ranked_members
+
+def calculate_rank_for_member(ranked_members: list[list[nextcord.Member, int]], member_id: int = None) -> list[tuple[int, nextcord.Member, int]]:
+    """
+    Calculate ranks for all members or find the rank of a specific member.
     
-    rank, last_points = 1, 0
+    :param ranked_members: The list of ranked members from get_ranked_members()
+    :type ranked_members: list[list[nextcord.Member, int]]
+    :param member_id: Optional member ID to find the specific rank for
+    :type member_id: int, optional
+    :return: If member_id is provided, returns a tuple (rank, points) for that member,
+             otherwise returns a list of (rank, member, points) tuples for all members
+    :rtype: list[tuple[int, nextcord.Member, int]] or tuple[int, int]
+    """
+    results = []
+    rank, last_points = 1, None
+    
     for index, package in enumerate(ranked_members):
         member = package[0]
         points = package[1]
+        
+        # Update rank if points are less than previous member's points
+        if last_points is not None and points < last_points:
+            rank += 1
+        
+        # If we're looking for a specific member and found them
+        if member_id is not None and member.id == member_id:
+            return (rank, points)
+        
+        # Otherwise, add to results list
+        results.append((rank, member, points))
+        last_points = points
+    
+    # If we were looking for a specific member and didn't find them
+    if member_id is not None:
+        return (0, 0)
+        
+    return results
 
-        if member.bot: continue
+def get_member_rank(guild: nextcord.Guild, member_id: int) -> tuple[int, int]:
+    """
+    Get a member's rank and points in a guild.
+
+    :param guild: The guild to get the rank from.
+    :type guild: nextcord.Guild
+    :param member_id: The ID of the member to get the rank for.
+    :type member_id: int
+    :return: A tuple containing (rank, points)
+    :rtype: tuple[int, int]
+    """
+    ranked_members = get_ranked_members(guild)
+    return calculate_rank_for_member(ranked_members, member_id=member_id)
+
+def add_leaderboard_ranking_to_embed(guild: nextcord.Guild, embed: nextcord.Embed, include_ranked_members: bool = False) -> nextcord.Embed:
+    """
+    Add a leaderboard ranking to an embed.
+
+    :param guild: The guild to get the leaderboard from.
+    :type guild: nextcord.Guild
+    :param embed: The embed to add the leaderboard to.
+    :type embed: nextcord.Embed
+    :param include_ranked_members: Whether or not to include the ranked members in the embed. Defaults to False.
+    :type include_ranked_members: bool, optional
+    :return: The embed with the leaderboard added.
+    :rtype: nextcord.Embed
+    """
+    ranked_members = get_ranked_members(guild)
+    ranked_results = calculate_rank_for_member(ranked_members)
+    
+    for index, (rank, member, points) in enumerate(ranked_results):
         if index >= 20:
-            remaining_members = len(ranked_members) - 20
+            remaining_members = len(ranked_results) - 20
             embed.add_field(
                 name=f"+ {remaining_members} more",
                 value="To see a specific member's level, type `/level [member]`",
@@ -113,10 +173,6 @@ def add_leaderboard_ranking_to_embed(guild: nextcord.Guild, embed: nextcord.Embe
             f"{member} ({member.nick})" if member.nick else f"{member}"
         )
 
-        if points < last_points: # Give members with the same points the same rank
-            rank += 1
-        last_points = points
-
         embed.add_field(
             name=f"**#{rank} {member_name}**",
             value=f"Level: {level}, Points: {points}",
@@ -126,6 +182,8 @@ def add_leaderboard_ranking_to_embed(guild: nextcord.Guild, embed: nextcord.Embe
     if include_ranked_members:
         return embed, ranked_members
     return embed
+
+
 
 # Actions
 async def daily_leveling_maintenance(bot: nextcord.Client, guild: nextcord.Guild) -> None:
@@ -334,7 +392,14 @@ async def process_level_change(guild: nextcord.Guild, member: nextcord.Member, l
             if _continue:
                 embed: nextcord.Embed = server.leveling_profile.level_up_embed.to_embed()
 
-                embed = utils.apply_generic_replacements(embed, member, guild, custom_replacements={"[level]": str(level)})
+                # Get member's current rank
+                rank, _ = get_member_rank(guild, member.id)
+                
+                embed = utils.apply_generic_replacements(embed, member, guild, custom_replacements={
+                    "[level]": str(level),
+                    "[points]": str(points),
+                    "[rank]": f"#{rank}",
+                    })
                 embeds = [embed]
                 
                 # Get the card (if needed)
@@ -459,8 +524,12 @@ async def run_view_level_command(interaction: Interaction, member: nextcord.Memb
         
     level = get_level_from_points(points)
     
+    # Get member's rank
+    rank, _ = get_member_rank(interaction.guild, _member.id)
+    rank_text = f"(Rank #{rank})" if rank > 0 else "(Not ranked)"
+    
     description = f"""
-    {_member.mention} is at level {str(level)} (points: {str(points)})
+    {_member.mention} is at level {str(level)} {rank_text} (points: {str(points)})
 
     To learn more about leveling, visit [this link](https://cypress-exe.github.io/InfiniBot/docs/core-features/leveling/).
     """
