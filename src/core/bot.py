@@ -473,7 +473,7 @@ async def on_member_remove(member: nextcord.Member) -> None:
 
     # Remove levels
     with LogIfFailure(feature="leveling.handle_member_removal"):
-        leveling.handle_member_removal(member)
+        await leveling.handle_member_removal(member)
 
     # Log the removal
     with LogIfFailure(feature="action_logging.log_member_removal"):

@@ -191,6 +191,7 @@ class Configs(GlobalSetting):
                 "ids": [],
             },
             "support_server": {
+                "support_server_id": 0,
                 "issue_report_channel_id": 0,
                 "submission_channel_id": 0,
                 "updates_channel_id": 0,
