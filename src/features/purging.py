@@ -8,7 +8,8 @@ from components import utils, ui_components
 from config.global_settings import (
     is_channel_purging,
     add_channel_to_purging,
-    remove_channel_from_purging
+    remove_channel_from_purging,
+    ShardLoadedStatus
 )
 from config.server import Server
 
@@ -311,6 +312,13 @@ async def run_purge_command(interaction: Interaction, amount: str) -> None:
             "Purging has been disabled. Check the dashboard to enable it."
         )
         return
+    
+    # Check if bot is loaded
+    with ShardLoadedStatus() as shards_loaded:
+        if not interaction.guild.shard_id in shards_loaded:
+            logging.warning(f"Dashboard: Shard {interaction.guild.shard_id} is not loaded. Forwarding to inactive screen for guild {interaction.guild.id}.")
+            await _send_error(interaction, ui_components.INFINIBOT_LOADING_EMBED.title, ui_components.INFINIBOT_LOADING_EMBED.description)
+            return
 
     # Validate input
     if not amount or (not amount.isdigit() and amount.lower() != "all") or (amount.isdigit() and int(amount) < 1):
