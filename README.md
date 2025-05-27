@@ -1,9 +1,10 @@
 <div align="center">
 
-<!-- Add your header image here -->
-![InfiniBot Header](./assets/header-image.png)
-
 # InfiniBot
+
+**A powerful, multi-purpose Discord utility bot built for millions of servers**
+
+![InfiniBot Header](./assets/header-image.png)
 
 [![GitHub stars](https://img.shields.io/github/stars/cypress-exe/InfiniBot?style=for-the-badge)](https://github.com/cypress-exe/InfiniBot/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/cypress-exe/InfiniBot?style=for-the-badge)](https://github.com/cypress-exe/InfiniBot/network)
@@ -11,11 +12,10 @@
 [![GitHub license](https://img.shields.io/github/license/cypress-exe/InfiniBot?style=for-the-badge)](https://github.com/cypress-exe/InfiniBot/blob/main/LICENSE)
 [![Discord](https://img.shields.io/discord/1009127888483799110?style=for-the-badge&logo=discord&logoColor=white&label=Discord)](https://discord.gg/mWgJJ8ZqwR)
 
-**A powerful, multi-purpose Discord utility bot built for millions of servers**
-
-[![Add InfiniBot to Your Server](https://img.shields.io/badge/Add%20to%20Server-7289DA?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/oauth2/authorize?client_id=991832387015159911&permissions=1374809222364&scope=bot)
 
 [🚀 Quick Start](#-quick-start) • [📖 Documentation](#-documentation) • [🔧 Installation](#-installation) • [🤝 Support](#-support)
+
+[![Add InfiniBot to Your Server](https://img.shields.io/badge/Add%20to%20Server-7289DA?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/oauth2/authorize?client_id=991832387015159911&permissions=1374809222364&scope=bot)
 
 </div>
 
