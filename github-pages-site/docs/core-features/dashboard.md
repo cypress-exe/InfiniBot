@@ -36,7 +36,7 @@ The dashboard is divided into several feature categories, each accessible via a 
 2. **Setting up Leveling**:
    - Click **Leveling**
    - Enable the feature
-   - Configure XP settings and rewards
+   - Configure leveling settings and rewards
 
 3. **Setting up Join Messages**:
    - Click **Join/Leave Messages**

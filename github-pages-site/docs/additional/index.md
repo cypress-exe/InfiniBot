@@ -17,3 +17,9 @@ These helpful extras include:
 - [Jokes]({% link docs/additional/jokes.md %}) - Add humor to your server with a collection of jokes
 - [Motivational Statements]({% link docs/additional/motivational-statements.md %}) - Inspire your members with encouraging messages
 - [DM Commands]({% link docs/additional/dm-commands.md %}) - Commands that work in direct messages
+
+## Additional Features
+Check out these additional features:
+- [Core Features]({% link docs/core-features/index.md %}) - Explore the essential features that power InfiniBot
+- [Role Management]({% link docs/roles/index.md %}) - Manage roles with ease, including reaction roles and role rewards
+- [Messaging Features]({% link docs/messaging/index.md %}) - Enhance communication with birthday celebrations, embeds, and more
