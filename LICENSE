@@ -1,0 +1,51 @@
+InfiniBot Custom Open Source License
+Based on GNU General Public License v3.0
+
+Copyright (C) 2025 cypress.exe
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+ADDITIONAL TERMS AND CONDITIONS:
+
+1. NON-COMPETITION CLAUSE:
+   You may not use this software to create, host, or operate a publicly 
+   available Discord bot service that competes with the official InfiniBot 
+   service. This includes but is not limited to:
+   - Hosting the bot for public use by multiple unrelated Discord servers
+   - Operating the bot as a service for communities outside your personal 
+     friend groups
+   - Creating derivative works intended for public distribution as a 
+     competing bot service
+
+2. PERMITTED USES:
+   - Personal use and self-hosting for your own Discord servers
+   - Hosting for small friend groups and private communities
+   - Educational and learning purposes
+   - Contributing improvements back to the original project
+   - Creating derivative works for personal or educational use
+
+3. OPEN SOURCE REQUIREMENT:
+   Any derivative works or modifications must be made available under 
+   this same license, maintaining the open source nature of the project.
+
+4. ATTRIBUTION:
+   You must retain all copyright notices and provide appropriate credit 
+   to the original author (cypress.exe) in any derivative works.
+
+5. ENFORCEMENT:
+   Violation of these additional terms will result in immediate 
+   termination of your license to use this software.
+
+For the full text of the GNU General Public License v3.0, see:
+https://www.gnu.org/licenses/gpl-3.0.html
+
+For questions about licensing or permitted uses, please contact:
+https://github.com/cypress-exe
