@@ -156,7 +156,7 @@ def _get_infinibot_support_server():
 
     bot = get_bot()
 
-    infinibot_guild_id = get_configs()['support_server']['support_server_id']
+    infinibot_guild_id = get_configs()['support-server']['support-server-id']
 
     try:
         if guild := bot.get_guild(infinibot_guild_id):
@@ -341,7 +341,7 @@ class JokeView(nextcord.ui.View):
             if server is None: self.stop()
 
             # Get the submission channel ID
-            submission_channel_id = get_configs()['support_server']['submission_channel_id']
+            submission_channel_id = get_configs()['support-server']['submission-channel-id']
             if submission_channel_id is None or submission_channel_id == 0:
                 logging.error("Joke submission channel ID is None. Cannot send joke submission.")
                 await interaction.response.send_message(

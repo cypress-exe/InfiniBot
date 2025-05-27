@@ -162,7 +162,7 @@ def start_scheduler() -> None:
         run_scheduled_tasks,  # Make sure this matches your actual job function
         trigger=IntervalTrigger(minutes=INTERVAL_MINUTES),
         next_run_time=next_run_time,
-        misfire_grace_time=get_configs()["scheduler"]["misfire_grace_time_seconds"]
+        misfire_grace_time=get_configs()["scheduler"]["misfire-grace-time-seconds"]
     )
 
     # Configure scheduler to use UTC and start

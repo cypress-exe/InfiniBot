@@ -26,7 +26,7 @@ class EditEmbed(nextcord.ui.View):
     async def setup(self, interaction: Interaction):
         await self.load_buttons(interaction)
         
-        if not utils.feature_is_active(guild_id=interaction.guild.id, feature="options_menu.editing"):
+        if not utils.feature_is_active(guild_id=interaction.guild.id, feature="options_menu__editing"):
             await ui_components.disabled_feature_override(self, interaction)
             return
         

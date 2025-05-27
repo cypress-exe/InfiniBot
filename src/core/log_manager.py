@@ -75,8 +75,8 @@ def generate_logging_file_name() -> None:
     if not os.path.exists(base_path):
         os.makedirs(base_path)
 
-    # Ensure no more than max_logs_to_keep files exist
-    max_logs_to_keep = get_configs()["logging"]["max_logs_to_keep"]
+    # Ensure no more than max-logs-to-keep files exist
+    max_logs_to_keep = get_configs()["logging"]["max-logs-to-keep"]
     while (len(os.listdir(base_path)) + 1) > max_logs_to_keep:
         logs_in_order = os.listdir(base_path)
         logs_in_order.sort()

@@ -168,7 +168,7 @@ class Dashboard(CustomView):
                                 self.__init__(self.outer, interaction.guild.id)
                         
                         # Global Kill
-                        if not utils.feature_is_active(server = server, feature = "profanity_moderation"): # Works because we redirect to the activation screen if profanity moderation is locally disabled
+                        if not utils.feature_is_active(server = server, feature = "moderation__profanity"): # Works because we redirect to the activation screen if profanity moderation is locally disabled
                             logging.debug(f"Profanity moderation is disabled for {interaction.guild.id}. Forwarding to disabled feature override.")
                             await ui_components.disabled_feature_override(self, interaction)
                             return
@@ -1001,7 +1001,7 @@ class Dashboard(CustomView):
                         
                         server = Server(interaction.guild.id)
                         
-                        if not utils.feature_is_active(server = server, feature = "spam_moderation"):
+                        if not utils.feature_is_active(server = server, feature = "moderation__spam"):
                             await ui_components.disabled_feature_override(self, interaction)
                             return
                         

@@ -74,6 +74,36 @@ async def on_ready() -> None: # Bot load
           shard_id = guild.shard_id
           logging.debug(f"Guild: {guild.name} (ID: {guild.id}) is on shard {shard_id}")
 
+    # Check if the bot needs to notify on startup
+    if global_settings.get_configs()['notify-on-startup']['enabled']:
+        logging.info("Bot startup notification is enabled. Notifying server owner...")
+        
+        # Find channel
+        channel_id = global_settings.get_configs()['notify-on-startup']['channel-id']
+        if channel_id is None or channel_id == 0:
+            logging.warning("No channel ID specified for startup notification. Skipping notification.")
+            return
+        
+        channel = bot.get_channel(channel_id)
+
+        if channel is None:
+            logging.error(f"Channel with ID {channel_id} not found. Please check the channel ID in the configuration.")
+            return
+        
+        # Send notification
+        embed = nextcord.Embed(
+            title = "InfiniBot is online!",
+            description = "InfiniBot has successfully started and is active on all guilds.",
+            color = nextcord.Color.green()
+        )
+        try:
+            await channel.send(embed=embed)
+            logging.info("Startup notification sent successfully.")
+        except nextcord.Forbidden:
+            logging.error(f"Failed to send startup notification in channel {channel.name} (ID: {channel.id}). Check permissions.")
+    else:
+        logging.info("Bot startup notification is disabled. Skipping notification.")
+
 
 @bot.event
 async def on_shard_ready(shard_id: int) -> None:

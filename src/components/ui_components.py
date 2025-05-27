@@ -369,68 +369,68 @@ class SupportView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support_server_invite_link"])
-        self.add_item(supportServerBtn)
+        support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support-server-invite-link"])
+        self.add_item(support_server_btn)
 
 class InviteView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        inviteBtn = nextcord.ui.Button(label = "Add to Your Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot_invite_link"])
-        self.add_item(inviteBtn)
+        invite_btn = nextcord.ui.Button(label = "Add to Your Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot-invite-link"])
+        self.add_item(invite_btn)
 
 class SupportAndInviteView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support_server_invite_link"])
-        self.add_item(supportServerBtn)
+        support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support-server-invite-link"])
+        self.add_item(support_server_btn)
         
-        inviteBtn = nextcord.ui.Button(label = "Add To Your Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot_invite_link"])
-        self.add_item(inviteBtn)
+        invite_btn = nextcord.ui.Button(label = "Add To Your Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot-invite-link"])
+        self.add_item(invite_btn)
 
 class SupportInviteAndTopGGVoteView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support_server_invite_link"])
-        self.add_item(supportServerBtn)
+        support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support-server-invite-link"])
+        self.add_item(support_server_btn)
         
-        inviteBtn = nextcord.ui.Button(label = "Invite", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot_invite_link"])
-        self.add_item(inviteBtn)
+        invite_btn = nextcord.ui.Button(label = "Invite", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot-invite-link"])
+        self.add_item(invite_btn)
         
-        topGGVoteBtn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg_review_link"])
-        self.add_item(topGGVoteBtn)
+        topGG_vote_btn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg-review-link"])
+        self.add_item(topGG_vote_btn)
         
 class SupportInviteAndTopGGReviewView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        supportServerBtn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support_server_invite_link"])
-        self.add_item(supportServerBtn)
+        support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support-server-invite-link"])
+        self.add_item(support_server_btn)
         
-        inviteBtn = nextcord.ui.Button(label = "Invite", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot_invite_link"])
-        self.add_item(inviteBtn)
+        invite_btn = nextcord.ui.Button(label = "Invite", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot-invite-link"])
+        self.add_item(invite_btn)
         
-        topGGReviewBtn = nextcord.ui.Button(label = "Leave a Review", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg_review_link"])
-        self.add_item(topGGReviewBtn)
+        topGG_review_btn = nextcord.ui.Button(label = "Leave a Review", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg-review-link"])
+        self.add_item(topGG_review_btn)
 
 class TopGGVoteView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        topGGVoteBtn = nextcord.ui.Button(label = "Vote", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg_vote_link"])
-        self.add_item(topGGVoteBtn)
+        topGG_vote_btn = nextcord.ui.Button(label = "Vote", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg-vote-link"])
+        self.add_item(topGG_vote_btn)
         
 class TopGGAll(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        topGG = nextcord.ui.Button(label = "Visit on Top.GG", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg_link"])
-        self.add_item(topGG)
+        topGG_btn = nextcord.ui.Button(label = "Visit on Top.GG", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg-link"])
+        self.add_item(topGG_btn)
         
-        topGGVoteBtn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg_vote_link"])
-        self.add_item(topGGVoteBtn)
+        topGG_vote_btn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg-vote-link"])
+        self.add_item(topGG_vote_btn)
         
-        topGGReviewBtn = nextcord.ui.Button(label = "Leave a Review", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg_review_link"])
-        self.add_item(topGGReviewBtn)
+        topGG_review_btn = nextcord.ui.Button(label = "Leave a Review", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg-review-link"])
+        self.add_item(topGG_review_btn)

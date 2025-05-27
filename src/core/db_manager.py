@@ -78,6 +78,40 @@ class TableManager:
     An abstract class for managing entries in a SQL table.
     """
 
+    def serialize(self) -> dict:
+        """
+        Returns a dictionary representation of the object, including nested objects.
+        This is useful for serialization or debugging purposes.
+        """
+        result = {}
+        try:
+            for key, value in self.__dict__().items():
+                if hasattr(value, 'recursive_dict'):
+                    # If the value has a recursive_dict method, call it
+                    result[key] = value.recursive_dict()
+                    continue
+                
+                if hasattr(value, '__dict__'):
+                    # If the value has a __dict__ attribute, convert it to a dict
+                    result[key] = value.__dict__()
+                    continue
+                
+                # Otherwise, just store the value as is
+                result[key] = value
+        except (TypeError, AttributeError) as e:
+            # Handle cases where __dict__() fails (like IntegratedList_TableManager tuple indexing error)
+            # Fall back to basic object representation
+            result['error'] = f"Could not serialize object: {str(e)}"
+            result['type'] = type(self).__name__
+            if hasattr(self, 'table_name'):
+                result['table_name'] = self.table_name
+            if hasattr(self, 'primary_key_value'):
+                result['primary_key_value'] = self.primary_key_value
+            if hasattr(self, 'secondary_key_sql_name'):
+                result['secondary_key_sql_name'] = self.secondary_key_sql_name
+            
+        return result
+
 class Simple_TableManager(TableManager):
     """
     A class for managing entries in a SQL table.
@@ -115,7 +149,7 @@ class Simple_TableManager(TableManager):
 
         return "\n".join(f"{prop} ({column_names_and_types[prop]}): {getattr(self, prop)}" for prop in properties)
     
-    def __dict__(self):
+    def __dict__(self) -> dict:
         column_names_and_types = self.get_column_names_and_types()
         column_names = [*column_names_and_types]
         properties = {}
@@ -124,7 +158,7 @@ class Simple_TableManager(TableManager):
                 properties[row] = getattr(self, row)
 
         return properties
-    
+       
     def get_column_names_and_types(self):
         return self.database.all_column_types[self.table_name]
     
@@ -492,6 +526,9 @@ class Simple_TableManager(TableManager):
 
             def __str__(self):
                 return json.dumps(self.properties)
+            
+            def __dict__(self):
+                return self.properties
                 
             def to_embed(self):
                 properties = self.properties
@@ -610,7 +647,9 @@ class IntegratedList_TableManager(TableManager):
         """
         # Get all entries in the table
         for secondary_key_value in self._get_all_secondary_values():
-            yield self._get_entry(secondary_key_value)
+            data = self._get_entry(secondary_key_value)
+            if data is not None:
+                yield self._package_list_into_dataclass(data)
 
     def _get_all_secondary_values(self):
         """
@@ -766,8 +805,13 @@ class IntegratedList_TableManager(TableManager):
         Returns:
             list: A list of dataclasses representing the matching entries.
         """
-        data = self._get_all_matching_indexes(kwargs)
-        return [self._get_entry(row) for row in data]
+        secondary_key_values = self._get_all_matching_indexes(kwargs)
+        result = []
+        for secondary_key_value in secondary_key_values:
+            data = self._get_entry(secondary_key_value)
+            if data is not None:
+                result.append(self._package_list_into_dataclass(data))
+        return result
 
     def add(self, **kwargs):
         """
@@ -925,7 +969,21 @@ class IntegratedList_TableManager(TableManager):
         entries = list(self._get_all_entries())
         entries_str = ", ".join(str(entry) for entry in entries)
         return f"[{entries_str}]"
+    
+    def __dict__(self):
+        """
+        Return a dictionary representation of the list.
 
+        Returns:
+            dict: A dictionary containing the entries in the list.
+        """
+        result = {}
+        for secondary_key_value in self._get_all_secondary_values():
+            data = self._get_entry(secondary_key_value)
+            if data is not None:
+                dataclass_entry = self._package_list_into_dataclass(data)
+                result[secondary_key_value] = dataclass_entry.get_data()
+        return result
 
 async def daily_database_maintenance(bot: nextcord.Client):
     """Perform database maintenance with async optimizations and performance monitoring"""

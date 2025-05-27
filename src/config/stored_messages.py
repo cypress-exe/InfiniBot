@@ -294,19 +294,19 @@ def remove_messages_from_channel(channel_id: int):
 def cleanup(max_messages_to_keep_per_guild=None, max_days_to_keep=None):
     logging.debug("Cleaning up the database...")
     if max_messages_to_keep_per_guild is None:
-        max_messages_to_keep_per_guild = get_configs()['discord-message-logging']["max_messages_to_keep_per_guild"]
+        max_messages_to_keep_per_guild = get_configs()['discord-message-logging']["max-messages-to-keep-per-guild"]
 
     if max_days_to_keep is None:
-        max_days_to_keep = get_configs()['discord-message-logging']["max_days_to_keep"]
+        max_days_to_keep = get_configs()['discord-message-logging']["max-days-to-keep"]
 
-    # Delete messages older than max_days_to_keep (config) days 
+    # Delete messages older than max-days-to-keep (config) days 
     query = f"""
     DELETE FROM messages 
     WHERE last_updated < datetime('now', '-{max_days_to_keep} days');
     """
     get_database().execute_query(query, commit=True)
 
-    # Delete extra message log entries over max_messages_to_keep_per_guild (config) per guild
+    # Delete extra message log entries over max-messages-to-keep-per-guild (config) per guild
     query = f"""DELETE FROM messages
     WHERE rowid IN (
         SELECT rowid

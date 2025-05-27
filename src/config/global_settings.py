@@ -16,15 +16,15 @@ feature_dependencies = {
     "dashboard": {"global_kill": "dashboard"},
     "profile": {"global_kill": "profile"},
     "options_menu": {"global_kill": "options_menu"},
-    "options_menu.banning": {"global_kill": "options_menu.banning"},
-    "options_menu.editing": {"global_kill": "options_menu.editing"},
+    "options_menu__banning": {"global_kill": "options_menu__banning"},
+    "options_menu__editing": {"global_kill": "options_menu__editing"},
     # ------------------------------------------------------------------------------------------------------
-    "profanity_moderation": {
-        "global_kill": "profanity_moderation",
+    "moderation__profanity": {
+        "global_kill": "moderation__profanity",
         "server": "profanity_moderation_profile.active",
     },
-    "spam_moderation": {
-        "global_kill": "spam_moderation",
+    "moderation__spam": {
+        "global_kill": "moderation__spam",
         "server": "spam_moderation_profile.active",
     },
     "delete_invite_links": {
@@ -100,26 +100,50 @@ class GlobalSetting:
         self.file_name = file_name
         file = JSONFile(self.file_name)
 
-        for variable, value in variable_list.items():
+        self.variable_list = variable_list
+
+        for variable, value in self.variable_list.items():
             if variable not in file:
                 file.add_variable(variable, value)
                 logging.debug(f"Added {variable} to {self.file_name} with value: {value}")
 
     def __getitem__(self, name):
+        return self.get_variable(name)
+    
+    def __setitem__(self, name, value):
+        self.set_variable(name, value)
+
+    def get_variable(self, name):
+        """
+        Gets a variable from the global setting.
+
+        :param name: The name of the variable to get.
+        :type name: str
+        :return: The value of the variable.
+        :rtype: Any
+        """
         file = JSONFile(self.file_name)
 
         if name not in file:
             raise AttributeError(f"{self.__class__.__name__} object has no item {name}")
         
         return file[name]
-    
-    def __setitem__(self, name, value):
+
+    def set_variable(self, name, value):
+        """
+        Sets a variable in the global setting.
+
+        :param name: The name of the variable to set.
+        :type name: str
+        :param value: The value to set the variable to.
+        :type value: Any
+        """
         file = JSONFile(self.file_name)
 
         if name not in file:
             raise AttributeError(f"{self.__class__.__name__} object has no item {name}")
 
-        logging.debug(f"Updating global setting. Name: {name}, Value: {value}")
+        logging.info(f"Updating global setting. Name: {name}, Value: {value}")
         file[name] = value
 
     def __contains__(self, name):
@@ -137,8 +161,8 @@ class GlobalKillStatus(GlobalSetting):
     '''This class is used to store global kill settings. It is used to store global kill settings in the JSON file. '''
     def __init__(self):
         variable_list = {
-            "profanity_moderation": False,
-            "spam_moderation": False,
+            "moderation__profanity": False,
+            "moderation__spam": False,
             "logging": False,
             "leveling": False,
             "level_rewards": False,
@@ -157,8 +181,8 @@ class GlobalKillStatus(GlobalSetting):
             "profile": False,
             "delete_invite_links": False,
             "options_menu": False,
-            "options_menu.banning": False,
-            "options_menu.editing": False
+            "options_menu__banning": False,
+            "options_menu__editing": False
         }
 
 
@@ -168,53 +192,47 @@ class GlobalKillStatus(GlobalSetting):
         logging.warning("Clearing global_kill_status.json")
         super().reset()
 
-class PersistentData(GlobalSetting):
-    '''This class is used to store persistent data. It is used to store persistent data in the JSON file. '''
-    def __init__(self):
-        variable_list = {
-            "login_response_guildID": None,
-            "login_response_channelID": None
-        }
-
-        super().__init__("persistent_data", variable_list)
-
 class Configs(GlobalSetting):
     '''This class is used to store and access special channel ids for InfiniBot. Stored in config.json. '''
     def __init__(self):
         variable_list = {
             "logging": {
-                "log_level": "INFO",
-                "max_logs_to_keep": 10
+                "log-level": "INFO",
+                "max-logs-to-keep": 10
             },
-            "dev": {
-                "guilds": [],
-                "ids": [],
+            "admin-ids": {
+                'level-1-admins': [],
+                'level-2-admins': [],
+                'level-3-admins': []
             },
-            "support_server": {
-                "support_server_id": 0,
-                "issue_report_channel_id": 0,
-                "submission_channel_id": 0,
-                "updates_channel_id": 0,
-                "infinibot_updates_role_id": 0,
+            "notify-on-startup":{
+                "enabled": False,
+                "channel-id": 0,
+            },
+            "support-server": {
+                "support-server-id": 0,
+                "submission-channel-id": 0,
+                "updates-channel-id": 0,
+                "infinibot-updates-role-id": 0
             },
             "links": {
-                "support_server_invite_link": "https://example.com",
-                "topgg_link": "https://example.com",
-                "topgg_vote_link": "https://example.com",
-                "topgg_review_link": "https://example.com",
-                "bot_invite_link": "https://example.com",
-                "support_email": "unset_email@example.com"
+                "support-server-invite-link": "https://example.com",
+                "topgg-link": "https://example.com",
+                "topgg-vote-link": "https://example.com",
+                "topgg-review-link": "https://example.com",
+                "bot-invite-link": "https://example.com",
+                "support-email": "unset_email@example.com"
             },
-            "spam_moderation": {
-                "max_messages_to_check": 11,
-                "message_chars_to_check_repetition": 140,
+            "spam-moderation": {
+                "max-messages-to-check": 11,
+                "message-chars-to-check-repetition": 140
             },
             "discord-message-logging": {
-                "max_days_to_keep": 7,
-                "max_messages_to_keep_per_guild": 1000
+                "max-days-to-keep": 7,
+                "max-messages-to-keep-per-guild": 1000
             },
             "scheduler": {
-                "misfire_grace_time_seconds": 30
+                "misfire-grace-time-seconds": 30
             }
         }
 
@@ -230,15 +248,6 @@ def get_global_kill_status() -> GlobalKillStatus:
     """
 
     return GlobalKillStatus()
-
-def get_persistent_data() -> PersistentData:
-    """
-    Retrieve the persistent data.
-
-    :return: An instance representing the persistent data.
-    :rtype: PersistentData
-    """
-    return PersistentData()
 
 def get_configs() -> Configs:
     """

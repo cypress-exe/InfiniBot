@@ -95,6 +95,29 @@ class Server:
         remove_messages_from_guild(self.server_id)
         logging.debug(f"Removed all stored messages for server {self.server_id}")
 
+    def get_debug_info(self):
+        """
+        Retrieves debug information about the server.
+
+        :param self: The server instance
+        :type self: Server
+        :return: A dictionary containing debug information about the server
+        :rtype: dict
+        """
+        debug_info = {"server_id": str(self.server_id)}
+        for attr_name in dir(self):
+            if attr_name.startswith('_') or attr_name.startswith('__'):
+                continue
+            try:
+                attr = getattr(self, attr_name)
+                if isinstance(attr, TableManager):
+                    debug_info[attr_name] = attr.serialize()
+            except Exception as e:
+                logging.error(f"Skipping attribute {attr_name} due to error: {e}")
+                continue
+            
+        return debug_info
+
     # PROFILES
     @property
     def profanity_moderation_profile(self):

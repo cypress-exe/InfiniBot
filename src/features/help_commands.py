@@ -5,8 +5,8 @@ from components import utils, ui_components
 from config.global_settings import get_configs
 
 async def run_help_command(interaction: Interaction):
-    support_server_invite_link = get_configs()["links"]["support_server_invite_link"]
-    support_email = get_configs()["links"]["support_email"]
+    support_server_invite_link = get_configs()["links"]["support-server-invite-link"]
+    support_email = get_configs()["links"]["support-email"]
     docs_website = "https://cypress-exe.github.io/InfiniBot/"
 
     description = f"""For comprehensive help with InfiniBot, visit our documentation website:

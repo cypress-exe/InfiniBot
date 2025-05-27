@@ -51,7 +51,7 @@ class BanButton(nextcord.ui.Button):
             self.add_item(yesBtn)
             
         async def setup(self, interaction: Interaction):
-            if not feature_is_active(feature="options_menu.banning", guild_id=interaction.guild.id):
+            if not feature_is_active(feature="options_menu__banning", guild_id=interaction.guild.id):
                 await disabled_feature_override(self, interaction)
                 return
             

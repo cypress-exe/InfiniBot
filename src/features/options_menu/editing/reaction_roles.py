@@ -25,7 +25,7 @@ class EditReactionRole(nextcord.ui.View):
     async def setup(self, interaction: Interaction):
         await self.load_buttons(interaction)
         
-        if not utils.feature_is_active(feature="options_menu.editing", guild_id=interaction.guild.id):
+        if not utils.feature_is_active(feature="options_menu__editing", guild_id=interaction.guild.id):
             await ui_components.disabled_feature_override(self, interaction)
             return
         

@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import core.db_manager as db_manager
 from components.utils import feature_is_active
 from config.file_manager import JSONFile, update_base_path as file_manager_update_base_path
-from config.global_settings import get_global_kill_status, get_persistent_data
+from config.global_settings import get_global_kill_status
 from config.member import Member
 from config.server import Server
 from config.stored_messages import StoredMessage, cleanup, get_all_messages, get_message, remove_message, store_message
@@ -1579,41 +1579,16 @@ class TestGlobalSettings(unittest.TestCase):
         # Clear file
         get_global_kill_status().reset()
 
-        self.assertFalse(get_global_kill_status()["profanity_moderation"]) # USES PROFANITY MODERATION AS A TEST
+        self.assertFalse(get_global_kill_status()["moderation__profanity"]) # USES PROFANITY MODERATION AS A TEST
 
-        get_global_kill_status()["profanity_moderation"] = True
-        self.assertTrue(get_global_kill_status()["profanity_moderation"])
+        get_global_kill_status()["moderation__profanity"] = True
+        self.assertTrue(get_global_kill_status()["moderation__profanity"])
 
         self.assertRaises(AttributeError, get_global_kill_status().__getitem__, "fake_item")
 
         self.assertRaises(AttributeError, get_global_kill_status().__setitem__, "fake_item", True)
 
         logging.info("Finished testing GlobalKillStatus...")
-
-    def test_persistent_data(self) -> None:
-        """
-        Tests the PersistentData class.
-
-        :param self: The unittest.TestCase to run the tests on
-        :type self: unittest.TestCase
-        :return: None
-        :rtype: None
-        """
-        logging.info("Testing PersistentData...")
-
-        # Clear file
-        get_persistent_data().reset()
-
-        self.assertFalse(get_persistent_data()["login_response_guildID"]) # USES LOGIN RESPONSE GUILD ID AS A TEST
-
-        get_persistent_data()["login_response_guildID"] = True
-        self.assertTrue(get_persistent_data()["login_response_guildID"])
-
-        self.assertRaises(AttributeError, get_persistent_data().__getitem__, "fake_item")
-
-        self.assertRaises(AttributeError, get_persistent_data().__setitem__, "fake_item", True)
-
-        logging.info("Finished testing PersistentData...")
 
 class TestUtils(unittest.TestCase):
     def test_feature_is_active(self) -> None:
@@ -1631,28 +1606,28 @@ class TestUtils(unittest.TestCase):
         get_global_kill_status().reset()
 
         # BEGIN TESTING 
-        self.assertFalse(feature_is_active(server_id=1, feature="profanity_moderation"),
+        self.assertFalse(feature_is_active(server_id=1, feature="moderation__profanity"),
                         "Should have returned False as the feature is not globally killed, but the server has the feature disabled by default")
 
         # Test that if the server has the feature disabled, it will return False
         server = Server(random.randint(0, 1000000000))
         server.profanity_moderation_profile.active = True
 
-        self.assertTrue(feature_is_active(server=server, feature="profanity_moderation"),
+        self.assertTrue(feature_is_active(server=server, feature="moderation__profanity"),
                          "Should have returned True as the feature is enabled in the server and is not globally killed")
 
         server.remove_all_data()
 
         # Test that if the feature is globally killed, it will return False regardless of the server's settings
-        get_global_kill_status()["profanity_moderation"] = True
+        get_global_kill_status()["moderation__profanity"] = True
 
-        self.assertFalse(feature_is_active(server_id=1, feature="profanity_moderation"),
+        self.assertFalse(feature_is_active(server_id=1, feature="moderation__profanity"),
                          "Should have returned False as the feature is globally killed")
 
         server = Server(random.randint(0, 1000000000))
         server.profanity_moderation_profile.active = True
 
-        self.assertFalse(feature_is_active(server=server, feature="profanity_moderation"),
+        self.assertFalse(feature_is_active(server=server, feature="moderation__profanity"),
                          "Should have returned False as the feature is globally killed")
         
         server.remove_all_data()

@@ -96,10 +96,10 @@ async def check_profanity_moderation_enabled_and_warn_if_not(interaction: nextco
     :rtype: bool
     """
     server = Server(interaction.guild.id)
-    if utils.feature_is_active(server=server, feature="profanity_moderation"):
+    if utils.feature_is_active(server=server, feature="moderation__profanity"):
         return True
     else:
-        if get_global_kill_status()["profanity_moderation"]:
+        if get_global_kill_status()["moderation__profanity"]:
             await interaction.response.send_message(
                 embed=nextcord.Embed(
                     title="Moderation Tools Disabled",
@@ -151,7 +151,7 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
     
     server = Server(guild.id)
     
-    if not utils.feature_is_active(server = server, feature = "profanity_moderation"): return
+    if not utils.feature_is_active(server = server, feature = "moderation__profanity"): return
 
     profane_word = str_is_profane(nickname, server.profanity_moderation_profile.filtered_words)
     if profane_word != None:
@@ -442,7 +442,7 @@ async def check_and_trigger_profanity_moderation_for_message(
     :rtype: bool
     """
     # Checks
-    if not utils.feature_is_active(server=server, feature="profanity_moderation"):
+    if not utils.feature_is_active(server=server, feature="moderation__profanity"):
         return False
     if message.channel.type != nextcord.ChannelType.stage_voice and message.channel.is_nsfw():
         logging.debug(f"Skipped profanity check for NSFW / stage channel: {message.channel}. Guild ID: {message.guild.id}") 
@@ -727,11 +727,11 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
     :return: True if a strike was given, False otherwise.
     :rtype: bool
     """
-    max_messages_to_check = get_configs()["spam_moderation"]["max_messages_to_check"]    # The MAXIMUM messages InfiniBot will try to check for spam
-    message_chars_to_check_repetition = get_configs()["spam_moderation"]["message_chars_to_check_repetition"]    # A message requires these many characters before it is checked for repetition
+    max_messages_to_check = get_configs()["spam-moderation"]["max-messages-to-check"]    # The MAXIMUM messages InfiniBot will try to check for spam
+    message_chars_to_check_repetition = get_configs()["spam-moderation"]["message-chars-to-check-repetition"]    # A message requires these many characters before it is checked for repetition
 
     # If Spam is Enabled
-    if not utils.feature_is_active(server = server, feature = "spam_moderation"): return False
+    if not utils.feature_is_active(server=server, feature="moderation__spam"): return False
 
     # Check if InfiniBot can view the audit log
     if not message.guild.me.guild_permissions.view_audit_log:
@@ -887,7 +887,7 @@ async def daily_moderation_maintenance(bot: nextcord.Client, guild: nextcord.Gui
     :rtype: None
     """
     logging.info(f"Running midnight action for moderation in guild: {guild.name})({guild.id})")
-    if get_global_kill_status()["profanity_moderation"]:
+    if get_global_kill_status()["moderation__profanity"]:
         logging.warning("SKIPPING profanity moderation strike update because of global kill status.")
         return
     if get_bot_load_status() == False:
