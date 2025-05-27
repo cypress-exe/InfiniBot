@@ -16,6 +16,7 @@
 [🚀 Quick Start](#-quick-start) • [📖 Documentation](#-documentation) • [🔧 Installation](#-installation) • [🤝 Support](#-support)
 
 [![Add InfiniBot to Your Server](https://img.shields.io/badge/Add%20to%20Server-7289DA?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/oauth2/authorize?client_id=991832387015159911&permissions=1374809222364&scope=bot)
+[![Go to Help Docs](https://img.shields.io/badge/Go%20to%20%20Help%20Docs-ffffff?style=for-the-badge)](https://cypress-exe.github.io/InfiniBot/)
 
 </div>
 
