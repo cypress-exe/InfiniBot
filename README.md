@@ -4,7 +4,7 @@
 
 **A powerful, multi-purpose Discord utility bot built for millions of servers**
 
-![InfiniBot Header](./assets/header-image.png)
+![InfiniBot Header](./github-pages-site/assets/images/header-image.png)
 
 [![GitHub stars](https://img.shields.io/github/stars/cypress-exe/InfiniBot?style=for-the-badge)](https://github.com/cypress-exe/InfiniBot/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/cypress-exe/InfiniBot?style=for-the-badge)](https://github.com/cypress-exe/InfiniBot/network)

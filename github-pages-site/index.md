@@ -16,6 +16,8 @@ Open Source
 100% Free
 {: .label .label-purple }
 
+![InfiniBot Logo]({% link assets/images/header-image.png %})
+
 ## A powerful, multipurpose Discord bot to enhance your server
 
 InfiniBot is a community-driven, open-source Discord bot designed to provide a comprehensive suite of features for server management, engagement, and customization.
