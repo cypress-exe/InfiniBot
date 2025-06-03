@@ -15,6 +15,7 @@ from core.scheduling import start_scheduler, stop_scheduler
 from core.view_manager import init_views
 
 from features import (
+    about,
     action_logging,
     admin_commands,
     check_infinibot_permissions,
@@ -155,6 +156,10 @@ async def create(interaction: Interaction): pass
 @bot.slash_command(name="help", description="Get help with InfiniBot")
 async def help(interaction: Interaction): 
     await help_commands.run_help_command(interaction)
+
+@bot.slash_command(name="about", description="View bot version, repository, and documentation links")
+async def info(interaction: Interaction):
+    await about.run_bot_about_command(interaction)
 
 # SERVER COMMANDS ================================================================================================================================================================
 @bot.slash_command(name="dashboard", description="Configure InfiniBot (Requires Infinibot Mod)", contexts=[nextcord.InteractionContextType.guild])

@@ -30,19 +30,45 @@ You: clear-last
 InfiniBot (scheduled for auto-deletion): Cleared Last Message
 ```
 
-## Opt-Out of DM Notifications
+### /opt-into-dms
 
-If you wish to stop receiving all DM notifications from InfiniBot:
+The `/opt-into-dms` slash command allows you to opt into receiving DM notifications from InfiniBot.
 
+**Usage:**
+- Use `/opt-into-dms` in a DM with InfiniBot
+- You'll receive notifications for level-ups, birthday wishes, strike notices, and permission errors
+
+### /opt-out-of-dms
+
+The `/opt-out-of-dms` slash command allows you to opt out of receiving DM notifications from InfiniBot.
+
+**Usage:**
+- Use `/opt-out-of-dms` in a DM with InfiniBot
+- You'll stop receiving all automated DM notifications
+
+## Managing DM Notifications
+
+There are multiple ways to manage your DM notification preferences:
+
+### Method 1: Slash Commands (Recommended)
+- **Opt in:** Use `/opt-into-dms` in a DM with InfiniBot
+- **Opt out:** Use `/opt-out-of-dms` in a DM with InfiniBot
+
+### Method 2: Profile Settings
 1. Use `/profile` in any server with InfiniBot
 2. Click on the **Settings** button
 3. Click the **Direct Messages** button
-4. Clicking **Disable** will DM notifications
+4. Click **Enable** or **Disable** to manage DM notifications
 
-This will prevent InfiniBot from sending you:
-- Level-up notifications
-- Birthday wishes
-- Other automated messages
+## What DM Notifications Include
+
+When DM notifications are enabled, InfiniBot will send you:
+- **Level-up notifications** - When you reach a new level in any server
+- **Birthday wishes** - Happy birthday messages on your special day
+- **Strike notices** - Notifications when you receive moderation strikes
+- **Permission error alerts** - When InfiniBot can't perform actions due to missing permissions
+
+When DM notifications are disabled, you won't receive any of these automated messages.
 
 ## Privacy Considerations
 

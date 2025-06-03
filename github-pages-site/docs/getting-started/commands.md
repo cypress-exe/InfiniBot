@@ -16,6 +16,7 @@ This page lists all available slash commands in InfiniBot, organized by command 
 ## General Commands
 
 - `/help` - View InfiniBot's online wiki documentation
+- `/about` - View bot version, repository, and documentation links
 - `/leaderboard` - Get the leveling leaderboard for the server
 - `/motivational_statement` - Receive a randomized motivational statement
 - `/joke` - Receive a randomized joke
@@ -25,6 +26,13 @@ This page lists all available slash commands in InfiniBot, organized by command 
 
 - `/dashboard` - Configure InfiniBot using the interactive Dashboard UI (Requires **[Infinibot Mod]({% link docs/getting-started/install-and-setup.md %}#the-infinibot-mod-role)**)
 - `/profile` - Configure your InfiniBot Profile
+- `/onboarding` - Configure InfiniBot via the Onboarding Wizard (Requires **[Infinibot Mod]({% link docs/getting-started/install-and-setup.md %}#the-infinibot-mod-role)**)
+
+## DM Commands
+
+Commands available in direct messages with InfiniBot:
+- `/opt-into-dms` — Opt into receiving DM notifications from InfiniBot (level-ups, birthday wishes, etc.)
+- `/opt-out-of-dms` — Opt out of receiving DM notifications from InfiniBot
 
 ## View Commands
 
