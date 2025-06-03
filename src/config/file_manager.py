@@ -16,6 +16,36 @@ def update_base_path(new_path: str) -> None:
     global base_path
     base_path = new_path
 
+def read_txt_to_list(file_name: str) -> list:
+    """
+    Reads a text file and returns its contents as a list of lines.  
+    Commented out lines (#) and empty lines are ignored.
+
+    :param file_name: The name of the text file.
+    :type file_name: str
+    :return: A list of lines from the text file.
+    :rtype: list
+    """
+    file_path = os.path.join(base_path, file_name)
+
+    if not os.path.exists(file_path):
+        logging.error(f"{file_path} does not exist.")
+        return []
+
+    with open(file_path, "r") as file:
+        lines = file.readlines()
+    
+    result = []
+    for index, line in enumerate(lines):
+        # Ignore empty lines and lines starting with #
+        line_strip = line.strip()
+        if line_strip == "" or line_strip.startswith("#"):
+            continue
+        
+        result.append(line_strip)
+    
+    return result
+
 class JSONFile:
     """
     Represents a JSON file.

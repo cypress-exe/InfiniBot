@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
+import nextcord
 import datetime
 import logging
 import os
 import random
 import shutil
+import sys
 import unittest
 import uuid
 from typing import Any, List, Dict
@@ -12,8 +14,8 @@ from zoneinfo import ZoneInfo
 
 import core.db_manager as db_manager
 from components.utils import feature_is_active
-from config.file_manager import JSONFile, update_base_path as file_manager_update_base_path
-from config.global_settings import get_global_kill_status
+from config.file_manager import JSONFile, update_base_path as file_manager_update_base_path, read_txt_to_list
+from config.global_settings import required_permissions, get_global_kill_status
 from config.member import Member
 from config.server import Server
 from config.stored_messages import StoredMessage, cleanup, get_all_messages, get_message, remove_message, store_message
@@ -27,6 +29,10 @@ This file contains a collection of tests for the database module.
 The tests are run using the unittest framework provided by Python.
 
 The tests are run in a separate thread to prevent blocking the main thread.
+
+Available arguments:
+--run-all: Run all tests in this file, regardless of specific_tests_to_run status.
+--retry-once-on-failure: If a test fails, retry it once before returning failure.
 """
 
 
@@ -81,7 +87,7 @@ class TestDatabase(unittest.TestCase):
         """
         return Database("sqlite://", "resources/test_db_build.sql")
     
-    def teardown(self, database: Database) -> None:
+    def cleanup(self, database: Database) -> None:
         """Cleanup after test"""
         database.cleanup()
 
@@ -113,7 +119,7 @@ class TestDatabase(unittest.TestCase):
         logging.info("Testing database setup...")
         database = self.get_memory_database()
 
-        self.teardown(database)
+        self.cleanup(database)
 
     def step2_test_database_integrity(self) -> None:
         """
@@ -142,7 +148,7 @@ class TestDatabase(unittest.TestCase):
                                                      'table_3': ['primary_key', 'example_bool', 'example_channel', 'example_integer', 'example_list']})
         self.assertEqual(database.all_primary_keys, {'table_1': 'primary_key', 'table_2': 'primary_key_1', 'table_3': 'primary_key'})
 
-        self.teardown(database)
+        self.cleanup(database)
 
     def step3_test_execute_query(self) -> None:
         """
@@ -162,7 +168,7 @@ class TestDatabase(unittest.TestCase):
 
         self.assertEqual(result, [(1234, 0, '{"status": "UNSET", "value": null}', 3, '[]')])
 
-        self.teardown(database)
+        self.cleanup(database)
 
     def step4_test_optimization(self) -> None:
         """
@@ -200,7 +206,7 @@ class TestDatabase(unittest.TestCase):
             results = database.execute_query(f"SELECT * FROM table_1 WHERE primary_key = {test_server}", multiple_values=True)
             self.assertEqual(results, [])
 
-        self.teardown(database)
+        self.cleanup(database)
 
     def step5_test_force_remove_entry(self) -> None:
         """
@@ -227,7 +233,7 @@ class TestDatabase(unittest.TestCase):
         results = database.execute_query(f"SELECT * FROM table_1 WHERE primary_key = 123456789", multiple_values=True)
         self.assertEqual(results, [])
 
-        self.teardown(database)
+        self.cleanup(database)
 
     def step6_test_get_column_default(self) -> None:
         """
@@ -288,7 +294,7 @@ class TestDatabase(unittest.TestCase):
                 value = database.get_column_default(table, column, format = True)
                 self.assertEqual(value, test_values_with_format[table][column])
 
-        self.teardown(database)
+        self.cleanup(database)
 
     def step7_test_does_entry_exist(self) -> None:
         """
@@ -312,7 +318,7 @@ class TestDatabase(unittest.TestCase):
         result = database.does_entry_exist("table_1", 123456788)
         self.assertEqual(result, False)
 
-        self.teardown(database)
+        self.cleanup(database)
 
     def step8_test_get_table_unique_entries(self) -> None:
         """
@@ -337,7 +343,7 @@ class TestDatabase(unittest.TestCase):
 
         self.assertEqual(sorted(unique_entries), sorted(test_servers))
         
-        self.teardown(database)
+        self.cleanup(database)
 
     def step9_test_get_unique_entries_for_database(self) -> None:
         """
@@ -379,7 +385,7 @@ class TestDatabase(unittest.TestCase):
         # Check that the unique entries are the same as the test servers
         self.assertEqual(set(unique_entries), set(test_servers + test_servers_unique_table_1 + test_servers_unique_table_3))
 
-        self.teardown(database)
+        self.cleanup(database)
 
     def step10_test_get_id_sql_name(self) -> None:
         """
@@ -403,7 +409,7 @@ class TestDatabase(unittest.TestCase):
             result = database.get_id_sql_name(table)
             self.assertEqual(result, answers[table])
 
-        self.teardown(database)
+        self.cleanup(database)
 
 class TestStoredMessages(unittest.TestCase):
     def _steps(self):
@@ -1252,7 +1258,11 @@ class TestServer(unittest.TestCase):
         self.run_test_on_property(server, "profanity_moderation_profile", "strike_expiring_active", True, [False, True], self.INVALID_BOOL_TESTS)
         self.run_test_on_property(server, "profanity_moderation_profile", "strike_expire_days", 7, [10, 0], self.INVALID_INT_TESTS)
         self.run_test_on_property(server, "profanity_moderation_profile", "timeout_seconds", 3600, [7200, 0], self.INVALID_INT_TESTS)
-        self.run_test_on_property(server, "profanity_moderation_profile", "filtered_words", [], [["hello", "world"], ["apple", "banana", "orange", "pineapple", "grape"], []], 
+        
+        # For filtered words, there is a custom implementation where it defaults to the items stored in default_profane_words.txt
+        # Need to get this list to compare with.
+        profane_words = read_txt_to_list("default_profane_words.txt")
+        self.run_test_on_property(server, "profanity_moderation_profile", "filtered_words", profane_words, [["hello", "world"], ["apple", "banana", "orange", "pineapple", "grape"], profane_words], 
                                   [(ValueError, ["apple", "grape", "apple", "orange"])])
 
         server.remove_all_data()
@@ -1636,11 +1646,32 @@ class TestUtils(unittest.TestCase):
 
         logging.info("Finished testing feature_is_active...")
 
+    def test_required_permissions_validity(self) -> None:
+        """
+        Tests the required_permissions_validity function.
+
+        :return: None
+        :rtype: None
+        """
+        global required_permissions
+
+        for _section_name, permissions in required_permissions.items():
+            for _perm_name, backend_perm_dependencies in permissions.items():
+                for backend_perm in backend_perm_dependencies:
+                    # Ensure that it exists
+                    if not hasattr(nextcord.Permissions, backend_perm):
+                        self.fail(f"Required permission `{backend_perm}` does not exist in nextcord.Permissions")
+
+
 def cleanup_environment():
     """
     Cleans up the environment after tests are run.
     """
     shutil.rmtree("./generated/test-files", ignore_errors=True)
+
+    database = db_manager.get_database()
+    if database: database.cleanup()
+
     logging.info("Cleaned up test environment.")
 
 def create_environment():
@@ -1679,29 +1710,55 @@ def create_environment():
 
     logging.info("Environment created successfully.")
 
-if __name__ == "__main__":
+
+def main(_iteration_number: int = 0) -> None:
+    """
+    Main function to run the tests.
+    
+    :return: None
+    :rtype: None
+    """
+
     print("RUNNING ---------------------------------------------------------------------------------------------------------")
     create_environment()
 
     setup_logging(logging.DEBUG)
 
-
     logging.info(f"{'#'*50} Running Tests {'#'*50}")
-    
-    # Create test suite and runner
-    test_suite = unittest.TestLoader().discover('tests')
 
-    # Add monolithic tests
-    # test_suite.addTest(TestDatabase('entrypoint'))
-    test_suite.addTest(TestStoredMessages('entrypoint'))
+    # ===================================== <USE THIS FOR RUNNING SPECIFIC TESTS> =====================================
+    # This will disable all other tests and only run the specified ones.
+    specific_tests_to_run = [
+        # TestUtils('example_test')
+        
+    ]
+    # ===================================== </USE THIS FOR RUNNING SPECIFIC TESTS> ====================================
 
-    # UNCOMMENT TO RUN A SPECIFIC TEST
-    # test_suite = unittest.TestSuite()
-    # test_suite.addTest(TestStoredMessages('my_test_method_name'))
-    # </UNCOMMENT>
+    # Run all tests if --run-all argument is provided
+    if "--run-all" in sys.argv:
+        logging.warning("Due to --run-all argument, overriding specific_tests_to_run to run all tests.")
+        specific_tests_to_run = []
+
+    # If no specific tests are provided, run all tests
+    if not specific_tests_to_run:
+        logging.info("Running all tests...")
+        # Create test suite and runner
+        test_suite = unittest.TestLoader().discover('tests')
+
+        # Add monolithic tests
+        test_suite.addTest(TestDatabase('entrypoint'))
+        test_suite.addTest(TestStoredMessages('entrypoint'))
+
+    else:
+        logging.warning("Running only specified tests: " + ", ".join([test.id() for test in specific_tests_to_run]))
+        test_suite = unittest.TestSuite()
+        for test in specific_tests_to_run:
+            test_suite.addTest(test)
 
     runner = unittest.TextTestRunner()
     test_result = runner.run(test_suite)
+
+    cleanup_environment()
 
     if test_result.wasSuccessful():
         logging.info("All tests passed!")
@@ -1723,4 +1780,12 @@ if __name__ == "__main__":
     if test_result.wasSuccessful():
         exit(0)
     else:
-        exit(1)
+        if "--retry-once-on-failure" in sys.argv and _iteration_number == 0:
+            logging.warning("Retrying tests once due to --retry-once-on-failure argument.")
+            # Retry the tests once
+            main(_iteration_number=1)
+        else:
+            exit(1)
+
+if __name__ == "__main__":
+    main()

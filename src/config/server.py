@@ -1,7 +1,9 @@
 import logging
+import json
 
 from nextcord import Guild as NextcordGuild
 
+from config.file_manager import read_txt_to_list
 from config.stored_messages import remove_messages_from_guild
 from core.db_manager import get_database, Simple_TableManager, IntegratedList_TableManager, TableManager
 
@@ -148,7 +150,25 @@ class Server:
         @Server_Simple_TableManager.integer_property("timeout_seconds", accept_none_value=False)
         def timeout_seconds(self): pass
 
-        @Server_Simple_TableManager.list_property("filtered_words", accept_duplicate_values=False)
+        def _get_filtered_words_with_defaults(words_list):
+            """Get filtered words with default values when list is empty."""      
+            # If the list is empty, return default words
+            if not words_list:
+                default_words = read_txt_to_list("default_profane_words.txt")
+                return default_words if default_words else []
+                
+            return words_list         
+        def _set_filtered_words_with_optimization(words_list):
+            """Set filtered words with storage optimization."""
+            # Storage optimization: if the input exactly matches default values, store []
+            if words_list:  # Only optimize if list is not empty
+                default_words = read_txt_to_list("default_profane_words.txt")
+                if default_words and set(words_list) == set(default_words):
+                    # Store empty list when contents match defaults exactly
+                    return []
+            
+            return words_list
+        @Server_Simple_TableManager.list_property("filtered_words", accept_duplicate_values=False, getter_super_modifier=_get_filtered_words_with_defaults, setter_super_modifier=_set_filtered_words_with_optimization)
         def filtered_words(self): pass
 
     @property

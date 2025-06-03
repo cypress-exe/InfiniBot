@@ -9,7 +9,7 @@ from config.global_settings import get_configs, required_permissions
 from core.log_manager import get_uuid_for_logging
 
 # View overrides
-async def disabled_feature_override(view: nextcord.ui.View, interaction: Interaction) -> None:
+async def disabled_feature_override(view: nextcord.ui.View, interaction: Interaction, edit_message: bool = True) -> None:
     """
     Overrides a page if the feature was disabled.
 
@@ -17,6 +17,8 @@ async def disabled_feature_override(view: nextcord.ui.View, interaction: Interac
     :type view: nextcord.ui.View
     :param interaction: An interaction.
     :type interaction: nextcord.Interaction
+    :param edit_message: Whether to edit the message or send a new one. Defaults to True.
+    :type edit_message: bool
     :return: None
     :rtype: None
     """
@@ -36,7 +38,9 @@ async def disabled_feature_override(view: nextcord.ui.View, interaction: Interac
         a critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.",
         color=nextcord.Color.red()
     )
-    try: await interaction.response.edit_message(embed=embed, view=view)
+    try: 
+        if not edit_message: raise
+        await interaction.response.edit_message(embed=embed, view=view)
     except: await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
 
 INFINIBOT_LOADING_EMBED = nextcord.Embed(
@@ -44,7 +48,7 @@ INFINIBOT_LOADING_EMBED = nextcord.Embed(
     description = "InfiniBot has been recently restarted. It is still coming back online. Please try again in a few minutes.",
     color = nextcord.Color.red()
 )
-async def infinibot_loading_override(view: nextcord.ui.View, interaction: Interaction) -> None:
+async def infinibot_loading_override(view: nextcord.ui.View, interaction: Interaction, edit_message: bool = True) -> None:
     """
     Overrides a page if the feature is still loading
 
@@ -52,6 +56,8 @@ async def infinibot_loading_override(view: nextcord.ui.View, interaction: Intera
     :type view: nextcord.ui.View
     :param interaction: An interaction.
     :type interaction: nextcord.Interaction
+    :param edit_message: Whether to edit the message or send a new one. Defaults to True.
+    :type edit_message: bool
     :return: None
     :rtype: None
     """
@@ -65,7 +71,9 @@ async def infinibot_loading_override(view: nextcord.ui.View, interaction: Intera
                 view.remove_item(child)
     
     # Replace with error
-    try: await interaction.response.edit_message(embed=INFINIBOT_LOADING_EMBED, view=view)
+    try: 
+        if not edit_message: raise
+        await interaction.response.edit_message(embed=INFINIBOT_LOADING_EMBED, view=view)
     except: await interaction.response.send_message(embed=INFINIBOT_LOADING_EMBED, view=view, ephemeral=True)
 
 # Components
@@ -169,18 +177,20 @@ class ErrorWhyAdminPrivilegesButton(nextcord.ui.View):
         global required_permissions
 
         # Generate required permissions ui
-        required_permissions_ui = "\n**Text Channel Permissions:**"
-        for permission in required_permissions["text_channel_permissions"]:
-            required_permissions_ui += f"\n- {permission}"
-
-        required_permissions_ui += "\n\n**Voice Channel Permissions:**"
-        for permission in required_permissions["voice_channel_permissions"]:
-            required_permissions_ui += f"\n- {permission}"
-
-        required_permissions = f"{required_permissions_ui}"
+        required_permissions_ui = ""
+        for category, permissions in required_permissions:
+            required_permissions_ui += f"\n**{category}:**"
+            for permission in permissions.keys():
+                required_permissions_ui += f"\n- {permission}"
 
         # Generate general message
-        general_message = f"\n\n**Why Administrator Privileges?**\nSome of InfiniBot's features work best when it is able to view every channel and have all its required permissions in every channel. An alternative to Administrator is to give InfiniBot the following permissions in every channel: \n{required_permissions_ui}"
+        general_message = (
+            f"\n\n**Why Administrator Privileges?**\n"
+            f"InfiniBot works best when it has access to all channels and has the necessary "
+            f"permissions throughout your server. If you'd rather, instead of providing "
+            f"Administrator privileges, you can provide InfiniBot with the following specific "
+            f"permissions for the entire server and each individual channel: \n{required_permissions_ui}"
+        )
         
         embed = interaction.message.embeds[0]
         embed.description += general_message
@@ -363,13 +373,12 @@ class SelectView(CustomView):
         if len(self.select.values) == 0: return
         await self.return_command(interaction, self.select.values[0])   
 
-
 # Common Add-On Views
 class SupportView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support-server-invite-link"])
+        support_server_btn = nextcord.ui.Button(label = "Go to Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support-server-invite-link"])
         self.add_item(support_server_btn)
 
 class InviteView(nextcord.ui.View):
@@ -396,7 +405,7 @@ class SupportInviteAndTopGGVoteView(nextcord.ui.View):
         support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support-server-invite-link"])
         self.add_item(support_server_btn)
         
-        invite_btn = nextcord.ui.Button(label = "Invite", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot-invite-link"])
+        invite_btn = nextcord.ui.Button(label = "Add to Your Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot-invite-link"])
         self.add_item(invite_btn)
         
         topGG_vote_btn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg-review-link"])
@@ -409,7 +418,7 @@ class SupportInviteAndTopGGReviewView(nextcord.ui.View):
         support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support-server-invite-link"])
         self.add_item(support_server_btn)
         
-        invite_btn = nextcord.ui.Button(label = "Invite", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot-invite-link"])
+        invite_btn = nextcord.ui.Button(label = "Add to Your Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot-invite-link"])
         self.add_item(invite_btn)
         
         topGG_review_btn = nextcord.ui.Button(label = "Leave a Review", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg-review-link"])
@@ -419,8 +428,11 @@ class TopGGVoteView(nextcord.ui.View):
     def __init__(self):
         super().__init__(timeout = None)
         
-        topGG_vote_btn = nextcord.ui.Button(label = "Vote", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg-vote-link"])
+        topGG_vote_btn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg-vote-link"])
         self.add_item(topGG_vote_btn)
+
+        what_is_this = nextcord.ui.Button(label = "What is Voting?", style = nextcord.ButtonStyle.link, url = "https://cypress-exe.github.io/InfiniBot/docs/how-to-support#vote-and-review-on-bot-lists")
+        self.add_item(what_is_this)
         
 class TopGGAll(nextcord.ui.View):
     def __init__(self):
@@ -434,3 +446,6 @@ class TopGGAll(nextcord.ui.View):
         
         topGG_review_btn = nextcord.ui.Button(label = "Leave a Review", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg-review-link"])
         self.add_item(topGG_review_btn)
+
+        what_is_this = nextcord.ui.Button(label = "What is Voting?", style = nextcord.ButtonStyle.link, url = "https://cypress-exe.github.io/InfiniBot/docs/how-to-support#vote-and-review-on-bot-lists")
+        self.add_item(what_is_this)

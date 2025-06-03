@@ -3,6 +3,7 @@ import datetime
 import logging
 import os
 import sys
+import time
 import uuid
 
 from config.global_settings import get_configs
@@ -105,12 +106,31 @@ def setup_logging(level: int = logging.INFO) -> None:
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
 
+    # Custom formatter class to handle microseconds
+    class CustomFormatter(logging.Formatter):
+        def formatTime(self, record, datefmt=None):
+            ct = self.converter(record.created)
+            if datefmt:
+                # Create datetime object with microseconds
+                dt = datetime.datetime.fromtimestamp(record.created)
+                # Get the formatted string and truncate microseconds to 3 digits (milliseconds)
+                s = dt.strftime(datefmt)
+                # Replace the 6-digit microseconds with 3-digit milliseconds
+                if '.%f' in datefmt:
+                    microseconds = dt.microsecond
+                    milliseconds = microseconds // 1000  # Convert to milliseconds
+                    s = s.replace(f"{microseconds:06d}", f"{milliseconds:03d}")
+            else:
+                t = time.strftime("%Y-%m-%d %H:%M:%S", ct)
+                s = "%s.%03d" % (t, record.msecs)
+            return s
+
     # Set up file handler
     file_handler = logging.FileHandler(logfile_path)
-    formatter = logging.Formatter(
+    formatter = CustomFormatter(
         "{asctime} - {levelname} - {funcName} - {message}", 
         style="{", 
-        datefmt="%Y-%m-%d %H:%M:%S"
+        datefmt=r"%Y-%m-%d %H:%M:%S.%f"
     )
     file_handler.setFormatter(formatter)
     logging.root.addHandler(file_handler)

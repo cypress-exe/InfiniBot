@@ -69,28 +69,45 @@ feature_dependencies = {
     "jokes": {"global_kill": "jokes"},
     # ------------------------------------------------------------------------------------------------------
     "joke_submissions": {"global_kill": "joke_submissions"},
+    # ------------------------------------------------------------------------------------------------------
+    "onboarding": {"global_kill": "onboarding"},
     
 }
 
+# WHEN UPDATING, REMEMBER TO:
+# 1. Update github-pages-site/docs/getting-started/install-and-setup.md#Required Permissions
+# 2. Update join link to reflect new permissions:
+#    - Replace link in generated/configure/config.json["links"]["bot-invite-link"]
+#    - Replace link in discord developer portal
+#    - Replace link on promotion sites (top.gg, etc...) 
 required_permissions = {
-    "text_channel_permissions": [
-        "View Channels",
-        "Send Messages",
-        "Embed Links",
-        "Manage Roles",
-        "Manage Channels",
-        "Manage Messages",
-        "Manage Nicknames",
-        "View Audit Log",
-        "Add Reactions",
-        "Timeout Members",
-        "Ban Members",
-        "Read Message History"
-    ],
-    "voice_channel_permissions": [
-        "Connect",
-        "Move Members"
-    ]
+    "General Server Permissions": {
+        "View Channels": ["view_channel", "read_messages"],
+        "Manage Channels": ["manage_channels"],
+        "Manage Roles": ["manage_roles"],
+        "View Audit Log": ["view_audit_log"],
+        "Manage Server": ["manage_guild"],
+    },
+    "Membership Permissions": {
+        "Manage Nicknames": ["manage_nicknames"],
+        "Kick, Approve, and Reject Members": ["kick_members"],
+        "Ban Members": ["ban_members"],
+        "Timeout Members": ["moderate_members"],
+    },
+    "Text Channel Permissions": { # Don't change the names of this category. It's referred to by name in the code.
+        "Send Messages": ["send_messages"],
+        "Send Messages in Threads": ["send_messages_in_threads"],
+        "Embed Links": ["embed_links"],
+        "Attach Files": ["attach_files"],
+        "Add Reactions": ["add_reactions"],
+        "Mention @everyone, @here, and All Roles": ["mention_everyone"],
+        "Manage Messages": ["manage_messages"],
+        "Read Message History": ["read_message_history", "read_messages"],
+    },
+    "Voice Channel Permissions": { # Don't change the names of this category. It's referred to by name in the code.
+        "Connect": ["connect"],
+        "Move Members": ["move_members"],
+    }
 }
 
 
@@ -182,7 +199,8 @@ class GlobalKillStatus(GlobalSetting):
             "delete_invite_links": False,
             "options_menu": False,
             "options_menu__banning": False,
-            "options_menu__editing": False
+            "options_menu__editing": False,
+            "onboarding": False,
         }
 
 

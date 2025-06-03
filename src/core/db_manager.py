@@ -450,6 +450,9 @@ class Simple_TableManager(TableManager):
 
         Args:
             property_name (str): The name of the column associated with the property. Also the name of the property.
+            accept_duplicate_values (bool): Whether to accept duplicate values in the list. Default: True
+            getter_super_modifier (function, optional): A function that modifies the property when retrieved.
+            setter_super_modifier (function, optional): A function that modifies the property when set.
 
         Uses:
             ```
@@ -458,17 +461,25 @@ class Simple_TableManager(TableManager):
             ```
         """
 
+        # Support getter and setter super modifiers
+        getter_super_modifier = kwargs.get("getter_super_modifier", None)
+        setter_super_modifier = kwargs.get("setter_super_modifier", None)
+
         def getter_modifier(value):
             if value is None: # This case should never happen.
                 return None
 
             value_deserialized = json.loads(str(value))
+            if getter_super_modifier:
+                value_deserialized = getter_super_modifier(value_deserialized)
             return value_deserialized
 
         def setter_modifier(value):
             if isinstance(value, list) or value is None: 
                 if not accept_duplicate_values:
                     if len(set(value)) != len(value): raise ValueError('This variable has been modified to not accept duplicate values.')
+                if setter_super_modifier:
+                    value = setter_super_modifier(value)
                 return json.dumps(value)
             raise TypeError('Must be of type List or None')
 

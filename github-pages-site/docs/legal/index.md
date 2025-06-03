@@ -1,6 +1,6 @@
 ---
 title: Legal
-nav_order: 100
+nav_order: 99
 has_toc: False
 ---
 

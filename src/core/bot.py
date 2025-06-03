@@ -8,15 +8,16 @@ from components import ui_components, utils
 import config.global_settings as global_settings
 from config.server import Server
 from config import stored_messages
-from core.db_manager import get_database
 from core import log_manager
 from core.log_manager import LogIfFailure
+from core.server_join_and_leave_manager import handle_server_join, handle_server_remove
 from core.scheduling import start_scheduler, stop_scheduler
 from core.view_manager import init_views
 
 from features import (
     action_logging,
     admin_commands,
+    check_infinibot_permissions,
     dashboard,
     default_roles,
     dm_commands,
@@ -28,6 +29,7 @@ from features import (
     leveling,
     moderation,
     motivational_statements,
+    onboarding,
     profile,
     purging,
     reaction_roles,
@@ -244,6 +246,22 @@ async def jokeCommand(interaction: Interaction):
 @bot.slash_command(name="purge", description="Purge any channel (requires manage messages permission and Infinibot Mod)", contexts=[nextcord.InteractionContextType.guild])
 async def purge(interaction: Interaction, amount: str=SlashOption(description="The amount of messages you want to delete. \"All\" purges the whole channel")):
     await purging.run_purge_command(interaction, amount)
+
+@bot.slash_command(name = "onboarding", description = "Configure InfiniBot for the first time (Requires InfiniBot Mod)", contexts=[nextcord.InteractionContextType.guild])
+async def onboarding_command(interaction: Interaction):
+    await onboarding.run_onboarding_command(interaction)
+
+@bot.slash_command(name = "check_infinibot_permissions", description = "Check InfiniBot's permissions to help diagnose issues.", contexts=[nextcord.InteractionContextType.guild])
+async def check_infinibot_permissions_command(interaction: Interaction):
+    """
+    Check InfiniBot's permissions to help diagnose issues.
+    
+    :param interaction: The interaction in which the command was invoked.
+    :type interaction: :class:`~nextcord.Interaction`
+    :return: None
+    :rtype: None
+    """
+    await check_infinibot_permissions.run_check_infinibot_permissions(interaction)
 
 # MESSAGE COMMANDS ============================================================================================================================================================== 
 @bot.message_command(name="Options")
@@ -508,6 +526,30 @@ async def on_member_remove(member: nextcord.Member) -> None:
     # Log the removal
     with LogIfFailure(feature="action_logging.log_member_removal"):
         await action_logging.log_member_removal(member.guild, member)
+
+@bot.event
+async def on_guild_join(guild: nextcord.Guild) -> None:
+    """
+    Handles guild join events.
+
+    :param guild: The guild that was joined.
+    :type guild: nextcord.Guild
+    :return: None
+    :rtype: None
+    """
+    await handle_server_join(guild)
+
+@bot.event
+async def on_guild_remove(guild: nextcord.Guild) -> None:
+    """
+    Handles guild removal events.
+
+    :param guild: The guild that was removed.
+    :type guild: nextcord.Guild
+    :return: None
+    :rtype: None
+    """
+    await handle_server_remove(guild)
 
 @bot.event
 async def on_guild_channel_delete(channel: nextcord.abc.GuildChannel) -> None:

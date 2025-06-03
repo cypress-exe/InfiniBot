@@ -10,4 +10,4 @@ docker run --rm \
     -v "$(pwd)/./generated:/app/generated" \
     --env-file ./.env \
     infinibot \
-    python3 ./src/tests.py
+    python3 ./src/tests.py "$@"

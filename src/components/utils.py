@@ -1,12 +1,14 @@
+import asyncio
 import datetime
 import logging
+import datetime
 from typing import Any
 
 import nextcord
 from nextcord import Interaction
 
 from components.ui_components import ErrorWhyAdminPrivilegesButton
-from config.global_settings import feature_dependencies, get_global_kill_status
+from config.global_settings import feature_dependencies, required_permissions, get_global_kill_status
 
 COLOR_OPTIONS = ["Red", "Green", "Blue", "Yellow", "White", "Blurple", "Greyple", "Teal", "Purple", "Gold", "Magenta", "Fuchsia"]
 
@@ -465,6 +467,133 @@ def get_infinibot_top_role(guild: nextcord.Guild):
     else:
         return None
 
+def get_infinibot_missing_permissions(guild: nextcord.Guild) -> tuple[list[str], list[tuple[nextcord.abc.GuildChannel, list[str]]]]:
+    """
+    Returns a list of missing permissions for InfiniBot in the given guild.
+
+    :param guild: The guild to check for missing permissions.
+    :type guild: nextcord.Guild
+    :return: A tuple containing: (1) A list of missing guild permissions, (2) A list of tuples (channel, list of missing_permissions_for_channel)
+    :rtype: tuple[list[str], list[tuple[nextcord.abc.GuildChannel, list[str]]]]
+    """
+    global required_permissions # Imported from config.global_settings
+
+    if guild.me.guild_permissions.administrator:
+        return [], []
+    
+    # Convert required_permissions to a dictionary of permission names to their backend dependencies
+    required_permissions_dict: dict[str, dict[str, list[str]]] = {}
+    for category_name, permissions in required_permissions.items():
+        this_category_dict = {}
+        for permission_name, backend_permission_dependencies in permissions.items():
+            for backend_permission in backend_permission_dependencies:
+                # Check if the permission exists in nextcord.Permissions
+                if hasattr(nextcord.Permissions, backend_permission):
+                    if backend_permission not in this_category_dict:
+                        this_category_dict[backend_permission] = []
+                    this_category_dict[backend_permission].append(permission_name)
+                else:
+                    # In theory, this should never happen, because there is a test to make sure that all permissions in required_permissions are valid.
+                    # But, just in case, we can log a warning.
+                    logging.warning(f"Permission {backend_permission} not found in nextcord.Permissions. Skipping...")
+        if len(this_category_dict) > 0:
+            required_permissions_dict[category_name] = this_category_dict
+
+
+    # Check backend-permissions for the guild and each channel to ensure that InfiniBot has them.
+    # Check guild permissions
+    missing_guild_permissions = []
+
+    # Get all unique permissions across all categories
+    all_permissions = {k:v for category in required_permissions_dict.values() for k,v in category.items()}
+    
+    for permission in all_permissions:
+        if not getattr(guild.me.guild_permissions, permission, True): # Not all permissions are available in both the guild_permissions and channel_permissions objects, so default to True if the permission does not exist.
+            # Find which category this permission belongs to and get its frontend names
+            for category_permissions in required_permissions_dict.values():
+                if permission in category_permissions:
+                    frontend_permissions = category_permissions[permission]
+                    for frontend_permission in frontend_permissions:
+                        if frontend_permission not in missing_guild_permissions:
+                            missing_guild_permissions.append(frontend_permission)
+                    break
+            logging.debug(f"Missing guild permission: {permission}")
+    
+    # Check channel permissions
+    # We will check all channels, and if the channel is a category, we will skip it.
+    missing_channel_permissions = []
+    for channel in guild.channels:
+        if isinstance(channel, nextcord.CategoryChannel):
+            continue
+        
+        this_channels_missing_perms = []
+
+        if channel.type == nextcord.ChannelType.voice:
+            # For voice channels, check both Voice Channel and Text Channel permissions
+            voice_perms = required_permissions_dict.get("Voice Channel Permissions", {})
+            text_perms = required_permissions_dict.get("Text Channel Permissions", {})
+            # Merge the two dictionaries
+            this_channels_required_permissions_dict = {**text_perms, **voice_perms}
+        else:
+            # For text channels, just check Text Channel permissions
+            this_channels_required_permissions_dict = required_permissions_dict.get("Text Channel Permissions", {})
+
+        # Check if the channel has the permission
+        for permission in this_channels_required_permissions_dict:
+            if not getattr(channel.permissions_for(guild.me), permission, True): # Reasoning for defaulting to True is the same as above.
+                # If the permission is not granted, add it (the front-end name) to the missing permissions list for this channel if not already present
+                frontend_permissions = this_channels_required_permissions_dict[permission]
+                for frontend_permission in frontend_permissions:
+                    if frontend_permission not in this_channels_missing_perms:
+                        this_channels_missing_perms.append(frontend_permission)
+                logging.debug(f"Missing channel permission: {permission} in channel #{channel.name}")
+
+        if len(this_channels_missing_perms) > 0:
+            # If there are any missing permissions for this channel, add it to the list of missing channel permissions
+            missing_channel_permissions.append((channel, this_channels_missing_perms))
+            
+    return missing_guild_permissions, missing_channel_permissions
+
+async def get_channel(guild: nextcord.Guild) -> nextcord.TextChannel | None:
+    """
+    Get a text channel that InfiniBot can send messages and embeds in.
+    
+    Args:
+        guild: The guild in which to check for a suitable channel
+    
+    Returns:
+        A text channel if found, otherwise None
+    """
+    
+    if not guild or guild.unavailable:
+        logging.warning(f"Guild {guild} is unavailable or None. Cannot get a channel.")
+        return None
+    
+    # Try system channel first
+    if guild.system_channel:
+        if await check_text_channel_permissions(guild.system_channel, False):
+            return guild.system_channel
+    
+    # Try common channel names in order of preference
+    preferred_channel_names = ['general', 'welcome', 'greetings']
+    
+    for channel_name in preferred_channel_names:
+        channel = nextcord.utils.find(
+            lambda x: x.name == channel_name, 
+            guild.text_channels
+        )
+        if channel and await check_text_channel_permissions(channel, False):
+            return channel
+    
+    # Try any available text channel
+    for channel in guild.text_channels:
+        if await check_text_channel_permissions(channel, False):
+            return channel
+    
+    # No suitable channel found, notify server owner
+    await send_error_message_to_server_owner(guild, "Send Messages")
+    return None
+                
 async def check_and_warn_if_channel_is_text_channel(interaction: Interaction) -> bool:
     """
     |coro|
@@ -505,8 +634,8 @@ async def user_has_config_permissions(interaction: Interaction, notify: bool = T
     
     if interaction.guild.owner == interaction.user: return True
     
-    infinibotMod_role = nextcord.utils.get(interaction.guild.roles, name='Infinibot Mod')
-    if infinibotMod_role in interaction.user.roles:
+    infinibot_mod_role = await get_infinibot_mod_role(interaction.guild)
+    if infinibot_mod_role in interaction.user.roles:
         return True
 
     if notify: await interaction.response.send_message(embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.\n\nType `/help infinibot_mod` for more information.", color = nextcord.Color.red()), ephemeral = True)
@@ -546,7 +675,9 @@ async def check_text_channel_permissions(channel: nextcord.TextChannel, auto_war
         elif auto_warn:
             await send_error_message_to_server_owner(channel.guild, "Send Messages and/or Embed Links", channel = channel_name, administrator = False)
     elif auto_warn:
-        await send_error_message_to_server_owner(channel.guild, "View Channels", channel = channel_name, administrator = False)
+        # Commenting this out for now, because it's been sending a lot of false positives. Maybe uncomment later?
+        # await send_error_message_to_server_owner(channel.guild, "View Channels", channel = channel_name, administrator = False)
+        pass
 
     return False
 
@@ -576,6 +707,9 @@ async def send_error_message_to_server_owner(
     :return: None
     :rtype: None
     """
+
+    # Wait a second to let things settle out
+    await asyncio.sleep(1)
     
     if not guild:
         logging.error("No guild found for send_error_message_to_server_owner. Exiting... DID NOT WARN OWNER!!!")
@@ -605,7 +739,7 @@ async def send_error_message_to_server_owner(
     
     if message == None:
         if permission != None: 
-            embed = nextcord.Embed(title = f"Missing Permissions in in \"{guild.name}\" Server", description = f"InfiniBot is missing the **{permission}** permission{in_channels}.{"\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern." if administrator else ""}", color = nextcord.Color.red())
+            embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"InfiniBot is missing the **{permission}** permission{in_channels}.{"\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern." if administrator else ""}", color = nextcord.Color.red())
         else:
             embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"InfiniBot is missing a permission{in_channels}.{"\n\nWe advise that you grant InfiniBot administrator privileges so that this is no longer a concern." if administrator else ""}", color = nextcord.Color.red())
     else:
@@ -622,7 +756,31 @@ async def send_error_message_to_server_owner(
             await dm.send(embed = embed)
     except:
         return
+
+async def get_infinibot_mod_role(guild: nextcord.Guild, _iteration=0) -> nextcord.Role | None:
+    """
+    |coro|
+
+    Gets the InfiniBot Mod role from the server. If it does not exist, it will create it.
+
+    :param guild: The guild to get the InfiniBot Mod role from.
+    :type guild: nextcord.Guild
+    :return: The InfiniBot Mod role, or None if it does not exist and could not be created.
+    :rtype: nextcord.Role | None
+    """
     
+    if not guild:
+        logging.warning("No guild found for get_infinibot_mod_role")
+        return None
+    
+    role = nextcord.utils.get(guild.roles, name='Infinibot Mod')
+
+    if role is None and _iteration == 0:
+        await check_server_for_infinibot_mod_role(guild)
+        return await get_infinibot_mod_role(guild, _iteration + 1)
+
+    return role
+
 async def check_server_for_infinibot_mod_role(guild: nextcord.Guild) -> bool:
     """
     Check to see if InfiniBot Mod role exists. If not, create it.

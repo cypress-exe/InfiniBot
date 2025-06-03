@@ -2347,8 +2347,9 @@ class Dashboard(CustomView):
                 """
                 description = utils.standardize_str_indention(description)
 
+                embeds = [self.onboarding_embed] if self.onboarding_embed else []
                 embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages", description = description, color = nextcord.Color.blue())
-                await interaction.response.edit_message(embed = embed, view = self)
+                await interaction.response.edit_message(embeds = embeds, view = self)
             
             class JoinMessagesButton(nextcord.ui.Button):
                 def __init__(self, outer):
@@ -3505,9 +3506,11 @@ class Dashboard(CustomView):
             self.outer = outer
             
         class DefaultRolesView(CustomView):
-            def __init__(self, outer):
+            def __init__(self, outer, onboarding_modifier=None, onboarding_embed=None):
                 super().__init__(timeout = None)
                 self.outer = outer
+                self.onboarding_modifier = onboarding_modifier
+                self.onboarding_embed = onboarding_embed
                 
                 self.add_role_btn = self.AddRoleButton(self)
                 self.add_item(self.add_role_btn)
@@ -3526,6 +3529,10 @@ class Dashboard(CustomView):
                 if not utils.feature_is_active(server_id = interaction.guild.id, feature = "default_roles"): # server_id won't be used here, but it's required as an input
                     await ui_components.disabled_feature_override(self, interaction)
                     return
+                
+                # Apply onboarding modifier if present
+                if self.onboarding_modifier:
+                    self.onboarding_modifier(self)
                 
                 description = """
                 InfiniBot can automatically assign default roles to members when they join the server. Use the buttons below to add or remove default roles.
@@ -3553,8 +3560,15 @@ class Dashboard(CustomView):
                         
                 if default_roles == []: default_roles.append("You don't have any default roles set up. Create one!")
                 self.embed.add_field(name = "Default Roles", value = "\n".join(default_roles))
-                try: await interaction.response.edit_message(embed = self.embed, view = self)
-                except: await interaction.edit_original_message(embed = self.embed, view = self)
+                
+                # Support multiple embeds for onboarding
+                if self.onboarding_embed:
+                    embeds = [self.onboarding_embed, self.embed]
+                else:
+                    embeds = [self.embed]
+                
+                try: await interaction.response.edit_message(embeds = embeds, view = self)
+                except: await interaction.edit_original_message(embeds = embeds, view = self)
                 
             async def back_btn_callback(self, interaction: Interaction):
                 await self.outer.setup(interaction)
@@ -3790,7 +3804,7 @@ class Dashboard(CustomView):
                 await interaction.response.edit_message(embeds = embeds, view = self)
                   
             async def reload(self, interaction: Interaction):
-                self.__init__(self.outer, interaction.guild)
+                self.__init__(self.outer, interaction.guild, self.onboarding_modifier, self.onboarding_embed)
                 await self.setup(interaction)
 
             class AddButton(nextcord.ui.Button):
@@ -4055,9 +4069,11 @@ class Dashboard(CustomView):
             await view.setup(interaction)
 
         class ConfigureTimezoneView(CustomView):
-            def __init__(self, outer):
+            def __init__(self, outer, onboarding_modifier=None, onboarding_embed=None):
                 super().__init__(timeout = None)
                 self.outer = outer
+                self.onboarding_modifier = onboarding_modifier
+                self.onboarding_embed = onboarding_embed
                 
             async def setup(self, interaction: Interaction):
                 server = Server(interaction.guild.id)
@@ -4072,9 +4088,12 @@ class Dashboard(CustomView):
                     label = "Back", 
                     style = nextcord.ButtonStyle.danger
                 )
-                back_btn.callback = self.back_to_dashboard
+                # During onboarding, back button goes to OnboardingInfoView
+                if self.onboarding_modifier:
+                    back_btn.callback = lambda i: self.outer.setup(i)
+                else:
+                    back_btn.callback = self.back_to_dashboard
                 self.add_item(back_btn)
-
 
                 configure_btn = nextcord.ui.Button(
                     label = "Set Timezone" if not is_set else "Change Timezone",
@@ -4083,6 +4102,15 @@ class Dashboard(CustomView):
                 )
                 configure_btn.callback = self.start_configuration
                 self.add_item(configure_btn)
+
+                # During onboarding, add Next button only if timezone is set
+                if self.onboarding_modifier and is_set:
+                    next_btn = nextcord.ui.Button(
+                        label = "Next",
+                        style = nextcord.ButtonStyle.green
+                    )
+                    next_btn.callback = lambda i: self.outer.next_item(i)
+                    self.add_item(next_btn)
 
                 
                 # Build description
@@ -4113,15 +4141,24 @@ class Dashboard(CustomView):
                     color = nextcord.Color.blue()
                 )
 
+                # Support multiple embeds for onboarding
+                embeds = [embed]
+                if self.onboarding_embed and is_set:
+                    embeds = [self.onboarding_embed, embed]
+
                 try:
                     if interaction.response.is_done():
-                        await interaction.edit_original_message(embed = embed, view = self)
+                        await interaction.edit_original_message(embeds = embeds, view = self)
                     else:
-                        await interaction.response.edit_message(embed = embed, view = self)
+                        await interaction.response.edit_message(embeds = embeds, view = self)
                 except Exception as e:
-                    await interaction.response.send_message(embed = embed, view = self, ephemeral = True)
+                    await interaction.response.send_message(embeds = embeds, view = self, ephemeral = True)
 
             async def start_configuration(self, interaction: Interaction):
+                # Apply onboarding modifier if present
+                if self.onboarding_modifier:
+                    self.onboarding_modifier(self)
+                
                 regions = self.get_timezone_regions()
                 select_options = [nextcord.SelectOption(label = region, value = region) for region in regions]
 
@@ -4131,8 +4168,13 @@ class Dashboard(CustomView):
                     color = nextcord.Color.blue()
                 )
                 
+                # Support multiple embeds for onboarding
+                embeds = [embed]
+                if self.onboarding_embed:
+                    embeds = [self.onboarding_embed, embed]
+                
                 await ui_components.SelectView(
-                    embed,
+                    embeds[0] if len(embeds) == 1 else embeds[-1],
                     select_options,
                     self.region_selected_callback,
                     continue_button_label = "Next",
@@ -4187,14 +4229,15 @@ class Dashboard(CustomView):
                 server.infinibot_settings_profile.timezone = tz_selected
 
                 await interaction.response.defer()
-                await interaction.followup.send(
-                    embed = nextcord.Embed(
-                        title = "⏰ Timezone Updated",
-                        description = f"Successfully set server timezone to:\n`{tz_selected}`",
-                        color = nextcord.Color.green()
-                    ),
-                    ephemeral = True
-                )
+                if not self.onboarding_modifier:
+                    await interaction.followup.send(
+                        embed = nextcord.Embed(
+                            title = "⏰ Timezone Updated",
+                            description = f"Successfully set server timezone to:\n`{tz_selected}`",
+                            color = nextcord.Color.green()
+                        ),
+                        ephemeral = True
+                    )
                 await self.setup(interaction)
 
             def get_timezone_regions(self):
