@@ -25,7 +25,7 @@ class Profile(nextcord.ui.View):
         for child in self.children: del child
         self.__init__()
 
-        if not utils.feature_is_active(guild = interaction.guild, feature = "profile"):
+        if not utils.feature_is_active(feature = "profile"):
             await ui_components.disabled_feature_override(self, interaction)
             return
     

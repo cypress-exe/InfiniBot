@@ -234,7 +234,7 @@ class Onboarding(nextcord.ui.View):
                 self.last_objective_bool = False
                 
             self.onboarding_embed = nextcord.Embed(title = f"Click \"Next\" to {self.next_objective}",
-                                   description = f"Alternatively, {self.objective}.",
+                                   description = f"Alternatively, {self.objective}.\n\nNote: You can always get back to this page later by typing `/dashboard`.",
                                    color = nextcord.Color.fuchsia())
                               
         async def finished(self, interaction: Interaction):

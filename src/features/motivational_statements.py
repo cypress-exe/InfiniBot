@@ -6,7 +6,7 @@ from components import utils
 
 
 async def run_motivational_statement(interaction: Interaction):
-    if not utils.feature_is_active(guild_id=interaction.guild.id, feature="motivational_statements"):
+    if not utils.feature_is_active(feature="motivational_statements"):
         embed = nextcord.Embed(
             title="Motivational Statements Disabled",
             description="Motivational Statements have been disabled by the developers of InfiniBot. \

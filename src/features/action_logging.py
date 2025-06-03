@@ -903,11 +903,11 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.Member) -> 
     if log_channel is not None:
         if entry.action == AuditLogAction.kick:
             embed = nextcord.Embed(title = "Member Kicked", description = f"{user} kicked {member}.", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
-            embed.add_field(name = "Reason", value = f"{reason}", inline = False)
+            if reason: embed.add_field(name = "Reason", value = f"{reason}", inline = False)
             
         elif entry.action == AuditLogAction.ban:
             embed = nextcord.Embed(title = "Member Banned", description = f"{user} banned {member}.", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
-            embed.add_field(name = "Reason", value = f"{reason}", inline = False)
+            if reason: embed.add_field(name = "Reason", value = f"{reason}", inline = False)
             
         else:
             return

@@ -161,7 +161,7 @@ async def help(interaction: Interaction):
 async def dashboard_command(interaction: Interaction):
     await dashboard.run_dashboard_command(interaction)
 
-@bot.slash_command(name="profile", description="Configure Your Profile In InfiniBot", contexts=[nextcord.InteractionContextType.guild])
+@bot.slash_command(name="profile", description="Configure Your Profile In InfiniBot")
 async def profile_command(interaction: Interaction):
     await profile.run_profile_command(interaction)
 
@@ -235,11 +235,11 @@ async def create_role_message(interaction: Interaction):
     await role_messages.run_role_message_command(interaction)
 
 # MISC
-@bot.slash_command(name = "motivational_statement", description = "Get, uh, a motivational statement")
+@bot.slash_command(name="motivational_statement", description="Get, uh, a motivational statement...")
 async def motivational_statement(interaction: Interaction):
     await motivational_statements.run_motivational_statement(interaction)
 
-@bot.slash_command(name = "joke", description = "Get a joke")
+@bot.slash_command(name="joke", description="Get a joke")
 async def jokeCommand(interaction: Interaction):
     await jokes.run_joke_command(interaction)
 
@@ -247,11 +247,11 @@ async def jokeCommand(interaction: Interaction):
 async def purge(interaction: Interaction, amount: str=SlashOption(description="The amount of messages you want to delete. \"All\" purges the whole channel")):
     await purging.run_purge_command(interaction, amount)
 
-@bot.slash_command(name = "onboarding", description = "Configure InfiniBot for the first time (Requires InfiniBot Mod)", contexts=[nextcord.InteractionContextType.guild])
+@bot.slash_command(name="onboarding", description="Configure InfiniBot for the first time (Requires InfiniBot Mod)", contexts=[nextcord.InteractionContextType.guild])
 async def onboarding_command(interaction: Interaction):
     await onboarding.run_onboarding_command(interaction)
 
-@bot.slash_command(name = "check_infinibot_permissions", description = "Check InfiniBot's permissions to help diagnose issues.", contexts=[nextcord.InteractionContextType.guild])
+@bot.slash_command(name="check_infinibot_permissions", description="Check InfiniBot's permissions to help diagnose issues.", contexts=[nextcord.InteractionContextType.guild])
 async def check_infinibot_permissions_command(interaction: Interaction):
     """
     Check InfiniBot's permissions to help diagnose issues.
@@ -262,6 +262,31 @@ async def check_infinibot_permissions_command(interaction: Interaction):
     :rtype: None
     """
     await check_infinibot_permissions.run_check_infinibot_permissions(interaction)
+
+# DM Commands
+@bot.slash_command(name="opt_out_of_dms", description="Opt out of receiving DMs from InfiniBot. You can opt back in at any time.", contexts=[nextcord.InteractionContextType.bot_dm])
+async def opt_out_of_dms(interaction: Interaction):
+    """
+    Opt out of receiving DMs from InfiniBot. You can opt back in at any time.
+    
+    :param interaction: The interaction in which the command was invoked.
+    :type interaction: :class:`~nextcord.Interaction`
+    :return: None
+    :rtype: None
+    """
+    await dm_commands.run_opt_out_of_dms_command(interaction)
+
+@bot.slash_command(name="opt_into_dms", description="Opt into receiving DMs from InfiniBot. You can opt out at any time.", contexts=[nextcord.InteractionContextType.bot_dm])
+async def opt_into_dms(interaction: Interaction):
+    """
+    Opt in to receiving DMs from InfiniBot. You can opt out at any time.
+    
+    :param interaction: The interaction in which the command was invoked.
+    :type interaction: :class:`~nextcord.Interaction`
+    :return: None
+    :rtype: None
+    """
+    await dm_commands.run_opt_into_dms_command(interaction)
 
 # MESSAGE COMMANDS ============================================================================================================================================================== 
 @bot.message_command(name="Options")
