@@ -3,11 +3,14 @@ description: A community-driven, open-source, multi-purpose, verified Discord bo
 theme: just-the-docs
 
 # Color scheme supports "light" (default) and "dark"
-# color_scheme: dark
+# Implemented custom themes that should be used:
+# - custom-light
+# - custom-dark
+color_scheme: custom-dark
 
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://cypress-exe.github.io/InfiniBot/" # the base hostname & protocol for your site, e.g. http://example.com
-repository: cypress-exe/just-the-docs # for github-metadata
+repository: cypress-exe/InfiniBot # for github-metadata
 
 permalink: pretty
 
@@ -83,40 +86,43 @@ nav_external_links:
     url: https://github.com/cypress-exe/infinibot
 
 # Define callouts
+# callouts_level: loud # or quiet
 callouts:
   info:
     title: Info
-    color: blue
+    color: callout-blue
   note:
     title: Note
-    color: purple
+    color: callout-purple
   tip:
     title: Tip
-    color: green # change to grey-lt for dark mode
+    color: callout-green
   success:
     title: Success
-    color: green
+    color: callout-green
   warning:
     title: Warning
-    color: yellow
+    color: callout-yellow
   danger:
     title: Careful
-    color: red
+    color: callout-red
 
   highlight:
-    color: yellow
+    color: callout-yellow
 
   titleless-red:
-    color: red
+    color: callout-red
+  titleless-orange:
+    color: callout-orange
   titleless-yellow:
-    color: yellow
-  titleless-blue:
-    color: blue
+    color: callout-yellow
   titleless-green:
-    color: green
+    color: callout-green
+  titleless-blue:
+    color: callout-blue
   titleless-purple:
-    color: purple
+    color: callout-purple
   titleless-grey-dk:
-    color: grey-dk
+    color: callout-grey-dk
   titleless-grey-lt:
-    color: grey-lt
+    color: callout-grey-lt

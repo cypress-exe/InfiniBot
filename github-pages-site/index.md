@@ -81,5 +81,5 @@ InfiniBot is constantly evolving! Check back regularly for new features and impr
 
 Dive deeper with our comprehensive documentation or join our [support server]({% link docs/getting-started/support.md %}) for personalized assistance.
 
-[Browse Features]({% link docs/core-features/index.md %}){: .btn .btn-blue .fs-5 .mb-4 .mb-md-0 .mr-2 }
-[Join Support Server]({% link docs/getting-started/support.md %}){: .btn .btn-outline .fs-5 .mb-4 .mb-md-0 }
+[Browse Features]({% link docs/core-features/index.md %}){: .btn .btn-blue-custom .fs-5 .mb-4 .mb-md-0 .mr-2 }
+[Join Support Server]({% link docs/getting-started/support.md %}){: .btn .btn-outline-custom .fs-5 .mb-4 .mb-md-0 }

@@ -1,0 +1,22 @@
+.btn-blue-custom {
+  @include btn-color($white, $btn-blue-custom-bg);
+}
+
+.btn-outline-custom {
+  @extend .btn-outline;
+  
+  // Override the outline color with our theme-specific color
+  box-shadow: inset 0 0 0 2px $btn-outline-custom-outline-color;
+
+  &:hover,
+  &:active,
+  &.zeroclipboard-is-hover,
+  &.zeroclipboard-is-active {
+    box-shadow: inset 0 0 0 3px $btn-outline-custom-outline-color;
+  }
+
+  &:focus:hover,
+  &.selected:focus {
+    box-shadow: inset 0 0 0 2px $btn-outline-custom-outline-color;
+  }
+}

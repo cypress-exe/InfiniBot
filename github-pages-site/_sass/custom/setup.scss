@@ -1,0 +1,40 @@
+
+// =============================================================================
+// Callout Color Palettes
+// =============================================================================
+$callout-grey-dk-000: #959396 !default;
+$callout-grey-lt-000: #f5f6fa !default;
+$callout-purple-000: #7253ed !default;
+$callout-blue-000: #2c84fa !default;
+$callout-green-000: #41d693 !default;
+$callout-yellow-000: #ffeb82 !default;
+$callout-orange-000: #fdbb86 !default;
+$callout-red-000: #f77e7e !default;
+
+$callout-grey-dk-300: #27262b !default;
+$callout-grey-lt-300: #e6e1e8 !default;
+$callout-purple-300: #381885 !default;
+$callout-blue-300: #183385 !default;
+$callout-green-300: #026e57 !default;
+$callout-yellow-300: #e7af06 !default;
+$callout-orange-300: #c2410c !default;
+$callout-red-300: #dd2e2e !default;
+
+// =============================================================================
+// Color Palettes
+// =============================================================================
+
+// Orange (not included for some reason)
+$orange-000: #fdbb86 !default; // Soft apricot / light orange
+$orange-100: #fb923c !default; // Tailwind orange-400 (bright warm orange)
+$orange-200: #f97316 !default; // Tailwind orange-500 (rich orange)
+$orange-300: #c2410c !default; // Tailwind orange-700 (deep burnt orange)
+
+// Undefined-color
+$undefined-color: #ff00c8 !default; // Default color for undefined variables
+
+// ==============================================================================
+// Custom Variables that Need to be Defined Now, and are Updated in Themes
+// ==============================================================================
+$btn-blue-custom-bg: $undefined-color !default;
+$btn-outline-custom-outline-color: $undefined-color !default;
