@@ -6,7 +6,7 @@ theme: just-the-docs
 # Implemented custom themes that should be used:
 # - custom-light
 # - custom-dark
-color_scheme: custom-dark
+color_scheme: custom-light
 
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "https://cypress-exe.github.io/InfiniBot/" # the base hostname & protocol for your site, e.g. http://example.com
