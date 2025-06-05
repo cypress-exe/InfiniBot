@@ -67,10 +67,14 @@ class Dashboard(CustomView):
                 await ui_components.infinibot_loading_override(self, interaction)
                 return
         
-        description = (
-            "Welcome to the InfiniBot Dashboard! Choose a feature to setup / edit:\n\n"
-            "For more information, view the [help docs](https://cypress-exe.github.io/InfiniBot/docs/core-features/dashboard/)"
-        )
+        description = """
+        Welcome to the **InfiniBot Dashboard**! 
+        
+        Choose a feature below to configure and customize your server experience:
+        
+        📚  For detailed guides and documentation, visit our [**help docs**](https://cypress-exe.github.io/InfiniBot/docs/core-features/dashboard/)
+        """
+        description = utils.standardize_str_indention(description)
         
         embed = nextcord.Embed(title = "Dashboard", description = description, color = nextcord.Color.blue())
         try: await interaction.response.edit_message(embed = embed, view = self)
