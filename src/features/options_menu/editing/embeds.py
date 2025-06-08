@@ -3,9 +3,10 @@ import nextcord
 
 from config.server import Server
 from components import utils, ui_components
+from components.ui_components import CustomModal, CustomView
 from features.action_logging import trigger_edit_log
 
-class EditEmbed(nextcord.ui.View):
+class EditEmbed(CustomView):
     def __init__(self, message_id: int):
         super().__init__(timeout = None)
         self.message_id = message_id
@@ -40,7 +41,7 @@ class EditEmbed(nextcord.ui.View):
             super().__init__(label="Edit Text", emoji="✏️")
             self.outer = outer
         
-        class EditTextModal(nextcord.ui.Modal):
+        class EditTextModal(CustomModal):
             def __init__(self, outer):
                 super().__init__(title="Edit Text")
                 self.outer = outer
@@ -79,7 +80,7 @@ class EditEmbed(nextcord.ui.View):
             super().__init__(label="Edit Color", emoji="🎨")
             self.outer = outer
             
-        class EditColorView(nextcord.ui.View):
+        class EditColorView(CustomView):
             def __init__(self, outer):
                 super().__init__()
                 self.outer = outer

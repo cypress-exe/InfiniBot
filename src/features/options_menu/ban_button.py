@@ -2,7 +2,7 @@ from nextcord import Interaction
 import nextcord
 import logging
 
-from components.ui_components import disabled_feature_override
+from components.ui_components import CustomView, disabled_feature_override
 from components.utils import feature_is_active
 
 class BanButton(nextcord.ui.Button):
@@ -36,7 +36,7 @@ class BanButton(nextcord.ui.Button):
         
         return False
             
-    class BanView(nextcord.ui.View):
+    class BanView(CustomView):
         def __init__(self, outer, message: nextcord.Message):
             super().__init__(timeout = None)
             self.outer = outer

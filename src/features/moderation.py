@@ -19,7 +19,7 @@ from modules.custom_types import UNSET_VALUE
 
 
 # Profanity Moderation ----------------------------------------------------------------------------------------------------------
-class IncorrectButtonView(nextcord.ui.View):
+class IncorrectButtonView(ui_components.CustomView):
     """
     Handle the event when the "Mark As Incorrect" button is pressed.
 

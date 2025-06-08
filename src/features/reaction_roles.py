@@ -5,9 +5,9 @@ import logging
 import json
 
 from config.server import Server
-from components import utils
+from components import ui_components, utils 
 
-class ReactionRoleModal(nextcord.ui.Modal):
+class ReactionRoleModal(ui_components.CustomModal):
     def __init__(self):
         super().__init__(title = "Create a Reaction Role")
         
@@ -26,7 +26,7 @@ class ReactionRoleModal(nextcord.ui.Modal):
         self.description_value = self.description_text_input.value
         self.stop()
 
-class ReactionRoleView(nextcord.ui.View):
+class ReactionRoleView(ui_components.CustomView):
     def __init__(self, roles: list[nextcord.Role]):
         super().__init__()
 

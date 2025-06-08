@@ -168,7 +168,7 @@ class CustomModal(nextcord.ui.Modal):
         )
 
 # Error "Why Administrator Privileges?" Button
-class ErrorWhyAdminPrivilegesButton(nextcord.ui.View):
+class ErrorWhyAdminPrivilegesButton(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
     
@@ -374,21 +374,21 @@ class SelectView(CustomView):
         await self.return_command(interaction, self.select.values[0])   
 
 # Common Add-On Views
-class SupportView(nextcord.ui.View):
+class SupportView(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
         
         support_server_btn = nextcord.ui.Button(label = "Go to Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support-server-invite-link"])
         self.add_item(support_server_btn)
 
-class InviteView(nextcord.ui.View):
+class InviteView(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
         
         invite_btn = nextcord.ui.Button(label = "Add to Your Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot-invite-link"])
         self.add_item(invite_btn)
 
-class SupportAndInviteView(nextcord.ui.View):
+class SupportAndInviteView(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
         
@@ -398,7 +398,7 @@ class SupportAndInviteView(nextcord.ui.View):
         invite_btn = nextcord.ui.Button(label = "Add To Your Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["bot-invite-link"])
         self.add_item(invite_btn)
 
-class SupportInviteAndTopGGVoteView(nextcord.ui.View):
+class SupportInviteAndTopGGVoteView(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
         
@@ -411,7 +411,7 @@ class SupportInviteAndTopGGVoteView(nextcord.ui.View):
         topGG_vote_btn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg-review-link"])
         self.add_item(topGG_vote_btn)
         
-class SupportInviteAndTopGGReviewView(nextcord.ui.View):
+class SupportInviteAndTopGGReviewView(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
         
@@ -424,7 +424,7 @@ class SupportInviteAndTopGGReviewView(nextcord.ui.View):
         topGG_review_btn = nextcord.ui.Button(label = "Leave a Review", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["topgg-review-link"])
         self.add_item(topGG_review_btn)
 
-class TopGGVoteView(nextcord.ui.View):
+class TopGGVoteView(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
         
@@ -434,7 +434,7 @@ class TopGGVoteView(nextcord.ui.View):
         what_is_this = nextcord.ui.Button(label = "What is Voting?", style = nextcord.ButtonStyle.link, url = "https://cypress-exe.github.io/InfiniBot/docs/how-to-support#vote-and-review-on-bot-lists")
         self.add_item(what_is_this)
         
-class TopGGAll(nextcord.ui.View):
+class TopGGAll(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
         

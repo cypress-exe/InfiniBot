@@ -2,10 +2,11 @@ import nextcord
 from nextcord import Interaction
 
 from components import ui_components, utils
+from components.ui_components import CustomModal, CustomView
 from config.member import Member
 
 
-class Profile(nextcord.ui.View):
+class Profile(CustomView):
     """
     View for the profile command.
     """
@@ -46,7 +47,7 @@ class Profile(nextcord.ui.View):
             super().__init__(label = "Level-Up Card", style = nextcord.ButtonStyle.gray)
             self.outer = outer
             
-        class LevelCardView(nextcord.ui.View):
+        class LevelCardView(CustomView):
             def __init__(self, outer, interaction: Interaction):
                 super().__init__(timeout = None)
                 self.outer = outer
@@ -104,7 +105,7 @@ class Profile(nextcord.ui.View):
                     super().__init__(label = "Change Text", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
                     
-                class ChangeTextModal(nextcord.ui.Modal):
+                class ChangeTextModal(CustomModal):
                     def __init__(self, outer, interaction: Interaction):
                         super().__init__(title = "Level-Up Card", timeout = None)
                         self.outer = outer
@@ -141,7 +142,7 @@ class Profile(nextcord.ui.View):
                     super().__init__(label = "Change Color", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
                     
-                class ChangeColorView(nextcord.ui.View):
+                class ChangeColorView(CustomView):
                     def __init__(self, outer, interaction: Interaction):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -205,7 +206,7 @@ class Profile(nextcord.ui.View):
                     super().__init__(label = self.enabled, style = (nextcord.ButtonStyle.gray if enabled else nextcord.ButtonStyle.green))
                     self.outer = outer
                     
-                class EnableDisableView(nextcord.ui.View):
+                class EnableDisableView(CustomView):
                     def __init__(self, outer, enabled):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -265,7 +266,7 @@ class Profile(nextcord.ui.View):
             super().__init__(label = "Join Card", style = nextcord.ButtonStyle.gray)
             self.outer = outer
             
-        class JoinCardView(nextcord.ui.View):
+        class JoinCardView(CustomView):
             def __init__(self, outer, interaction: Interaction):
                 super().__init__(timeout = None)
                 self.outer = outer
@@ -323,7 +324,7 @@ class Profile(nextcord.ui.View):
                     super().__init__(label = "Change Text", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
                     
-                class ChangeTextModal(nextcord.ui.Modal):
+                class ChangeTextModal(CustomModal):
                     def __init__(self, outer, interaction: Interaction):
                         super().__init__(title = "Join Card", timeout = None)
                         self.outer = outer
@@ -360,7 +361,7 @@ class Profile(nextcord.ui.View):
                     super().__init__(label = "Change Color", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
                     
-                class ChangeColorView(nextcord.ui.View):
+                class ChangeColorView(CustomView):
                     def __init__(self, outer, interaction: Interaction):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -424,7 +425,7 @@ class Profile(nextcord.ui.View):
                     super().__init__(label = self.enabled, style = (nextcord.ButtonStyle.gray if enabled else nextcord.ButtonStyle.green))
                     self.outer = outer
                     
-                class EnableDisableView(nextcord.ui.View):
+                class EnableDisableView(CustomView):
                     def __init__(self, outer, enabled):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -484,7 +485,7 @@ class Profile(nextcord.ui.View):
             super().__init__(label = "Settings", style = nextcord.ButtonStyle.gray, row = 1)
             self.outer = outer
             
-        class SettingsView(nextcord.ui.View):
+        class SettingsView(CustomView):
             def __init__(self, outer):
                 super().__init__(timeout = None)
                 self.outer = outer
@@ -525,7 +526,7 @@ class Profile(nextcord.ui.View):
                     super().__init__(label = "Direct Messages", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
         
-                class DmsView(nextcord.ui.View):
+                class DmsView(CustomView):
                     def __init__(self, outer, interaction: Interaction):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -579,7 +580,7 @@ class Profile(nextcord.ui.View):
                     super().__init__(label = "Delete My Data", style = nextcord.ButtonStyle.gray)
                     self.outer = outer       
                     
-                class DataView(nextcord.ui.View):
+                class DataView(CustomView):
                     def __init__(self, outer):
                         super().__init__(timeout = None)
                         self.outer = outer

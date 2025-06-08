@@ -2,9 +2,10 @@ from nextcord import Interaction
 import nextcord
 
 from components import utils, ui_components
+from components.ui_components import CustomModal, CustomView
 from config.server import Server
 
-class EmbedModal(nextcord.ui.Modal):        
+class EmbedModal(CustomModal):        
     def __init__(self):
         super().__init__(title = "Create Embed")
    
@@ -19,7 +20,7 @@ class EmbedModal(nextcord.ui.Modal):
         self.description_value = self.description_text_input.value  
         self.stop()
 
-class EmbedInfoView(nextcord.ui.View):
+class EmbedInfoView(CustomView):
     def __init__(self):
         super().__init__()
 
@@ -59,7 +60,7 @@ class EmbedInfoView(nextcord.ui.View):
 
         self.stop()
 
-class EmbedColorView(nextcord.ui.View):
+class EmbedColorView(CustomView):
     def __init__(self):
         super().__init__()
                 

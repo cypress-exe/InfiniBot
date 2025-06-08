@@ -5,9 +5,10 @@ import json
 
 from config.server import Server
 from components import utils, ui_components
+from components.ui_components import CustomModal, CustomView
 from features.action_logging import trigger_edit_log
 
-class EditReactionRole(nextcord.ui.View):
+class EditReactionRole(CustomView):
     def __init__(self, message_id: int):
         super().__init__(timeout=None)
         self.message_id = message_id
@@ -43,7 +44,7 @@ class EditReactionRole(nextcord.ui.View):
             super().__init__(label="Edit Text", emoji="✏️")
             self.outer = outer
         
-        class EditTextModal(nextcord.ui.Modal):
+        class EditTextModal(CustomModal):
             def __init__(self, outer):
                 super().__init__(title="Edit Text")
                 self.outer = outer
@@ -89,7 +90,7 @@ class EditReactionRole(nextcord.ui.View):
             self.outer = outer
             self.message_info = message_info
         
-        class EditOptionsView(nextcord.ui.View):
+        class EditOptionsView(CustomView):
             def __init__(self, outer, message_info):
                 super().__init__(timeout=None)
                 self.outer = outer
@@ -296,7 +297,7 @@ class EditReactionRole(nextcord.ui.View):
                     else:
                         await self.outer.add_or_remove_option(interaction, None, selection)
 
-                class EmojiSelectView(nextcord.ui.View):
+                class EmojiSelectView(CustomView):
                     def __init__(self, outer, selection):
                         super().__init__(timeout = None)
                         self.outer = outer
@@ -323,7 +324,7 @@ class EditReactionRole(nextcord.ui.View):
                     async def next_btn_callback(self, interaction: Interaction):
                         await interaction.response.send_modal(self.EmojiSelectModal(self.outer, self.selection))
                    
-                    class EmojiSelectModal(nextcord.ui.Modal):
+                    class EmojiSelectModal(CustomModal):
                         def __init__(self, outer, selection):
                             super().__init__(title = "Emoji Selection")
                             self.outer = outer

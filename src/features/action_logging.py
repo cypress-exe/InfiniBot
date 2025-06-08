@@ -16,7 +16,7 @@ from config.server import Server
 from modules.custom_types import UNSET_VALUE, ExpiringSet
 
 
-class ShowMoreButton(nextcord.ui.View):
+class ShowMoreButton(ui_components.CustomView):
   """
   A View that will be used for the Action Logging feature.
   """

@@ -5,13 +5,13 @@ from features.options_menu.ban_button import BanButton
 from features.options_menu.delete_dm_message_button import DeleteDMButton
 from features.options_menu.edit_button import EditButton
 
-from components import utils
+from components import ui_components, utils
 from config.global_settings import get_bot_load_status
 from config.server import Server
 
 
 
-class MessageCommandOptionsView(nextcord.ui.View):
+class MessageCommandOptionsView(ui_components.CustomView):
     def __init__(self, interaction: Interaction, message: nextcord.Message, has_config_perms: bool):
         super().__init__(timeout = None)
         self.interaction = interaction

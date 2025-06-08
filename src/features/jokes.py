@@ -5,6 +5,7 @@ import json
 import logging
 
 from components import utils, ui_components
+from components.ui_components import CustomModal, CustomView
 from config.global_settings import get_configs
 from config.member import Member
 
@@ -295,7 +296,7 @@ def _get_member_in_support_server(member_id: int):
 
     return support_server.get_member(int(member_id))
 
-class JokeView(nextcord.ui.View):
+class JokeView(CustomView):
     def __init__(self):
         super().__init__(timeout=None)
 
@@ -307,7 +308,7 @@ class JokeView(nextcord.ui.View):
             self.button.callback = self.submit_joke_callback
             self.add_item(self.button)
 
-    class SubmitJokeModal(nextcord.ui.Modal):
+    class SubmitJokeModal(CustomModal):
         def __init__(self):
             super().__init__(title="Submit a Joke", timeout=None)
 
@@ -399,13 +400,13 @@ class JokeView(nextcord.ui.View):
 
         await interaction.response.send_modal(self.SubmitJokeModal())
 
-class JokeVerificationView(nextcord.ui.View):
+class JokeVerificationView(CustomView):
     def __init__(self):
         super().__init__(timeout=None)
 
     @nextcord.ui.button(label="Deny", custom_id="deny_joke")
     async def deny(self, button: nextcord.ui.Button, interaction: Interaction):
-        class Modal(nextcord.ui.Modal):
+        class Modal(CustomModal):
             def __init__(self, message: nextcord.Message):
                 super().__init__(title="Reason to Deny", timeout=None)
                 self.message = message
@@ -428,7 +429,7 @@ class JokeVerificationView(nextcord.ui.View):
             async def callback(self, interaction: Interaction):
                 reason = self.reason.value
 
-                class ConfirmView(nextcord.ui.View):
+                class ConfirmView(CustomView):
                     def __init__(self, message: nextcord.Message, reason: str, member: nextcord.Member | None):
                         super().__init__(timeout=None)
                         self.message = message
@@ -514,7 +515,7 @@ class JokeVerificationView(nextcord.ui.View):
 
     @nextcord.ui.button(label="Verify", custom_id="verify_joke")
     async def verify(self, button: nextcord.ui.Button, interaction: Interaction):
-        class Modal(nextcord.ui.Modal):
+        class Modal(CustomModal):
             def __init__(self, message: nextcord.Message):
                 super().__init__(title="Finalize Joke", timeout=None)
                 self.message = message
@@ -554,7 +555,7 @@ class JokeVerificationView(nextcord.ui.View):
                 body = self.joke_body.value
                 punchline = self.joke_punchline.value
 
-                class ConfirmView(nextcord.ui.View):
+                class ConfirmView(CustomView):
                     def __init__(
                         self,
                         message: nextcord.Message,

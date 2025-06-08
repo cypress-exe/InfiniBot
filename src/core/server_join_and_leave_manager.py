@@ -2,6 +2,7 @@ import nextcord
 import logging
 
 from components import utils
+from components.ui_components import CustomView
 from config.server import Server
 from config import stored_messages
 
@@ -10,7 +11,7 @@ from features.check_infinibot_permissions import run_check_infinibot_permissions
 from features.onboarding import run_onboarding_command
 
 # ======================================== SERVER JOIN ========================================
-class NewServerJoinView(nextcord.ui.View):
+class NewServerJoinView(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
         
@@ -31,7 +32,7 @@ class NewServerJoinView(nextcord.ui.View):
         start_onboarding_btn.callback = run_onboarding_command
         self.add_item(start_onboarding_btn)
 
-class ResendSetupMessageView(nextcord.ui.View):
+class ResendSetupMessageView(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
         

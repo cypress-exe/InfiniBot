@@ -1,12 +1,13 @@
 import nextcord
 from nextcord import Interaction
 
+from components.ui_components import CustomView
 from components.utils import get_infinibot_missing_permissions
 from config.global_settings import get_configs
 
 
 
-class InfiniBotPermissionsReportView(nextcord.ui.View):
+class InfiniBotPermissionsReportView(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
         

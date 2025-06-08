@@ -3,13 +3,14 @@ import nextcord
 import re
 
 from components import utils, ui_components
+from components.ui_components import CustomModal, CustomView
 from config.server import Server
 
-class RoleMessageButton_Single(nextcord.ui.View):
+class RoleMessageButton_Single(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
     
-    class View(nextcord.ui.View):
+    class View(CustomView):
         def __init__(self, user: nextcord.Member, message: nextcord.Message):
             super().__init__(timeout = None)
             self.message = message
@@ -88,11 +89,11 @@ class RoleMessageButton_Single(nextcord.ui.View):
         message = interaction.message
         await self.View(interaction.user, message).setup(interaction)
 
-class RoleMessageButton_Multiple(nextcord.ui.View):
+class RoleMessageButton_Multiple(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
     
-    class View(nextcord.ui.View):
+    class View(CustomView):
         def __init__(self, user: nextcord.Member, message: nextcord.Message):
             super().__init__(timeout = None)
             self.message = message
@@ -168,7 +169,7 @@ class RoleMessageButton_Multiple(nextcord.ui.View):
         message = interaction.message
         await self.View(interaction.user, message).setup(interaction)
 
-class RoleMessageSetup(nextcord.ui.View):
+class RoleMessageSetup(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
 
@@ -218,7 +219,7 @@ class RoleMessageSetup(nextcord.ui.View):
         def __init__(self):
             super().__init__(label = "Get Started", style = nextcord.ButtonStyle.blurple)
             
-        class Modal(nextcord.ui.Modal):
+        class Modal(CustomModal):
             def __init__(self):
                 super().__init__(title = "Role Message Creation Wizard", timeout = None)
                 
@@ -231,7 +232,7 @@ class RoleMessageSetup(nextcord.ui.View):
                                                                required=False)
                 self.add_item(self.description_input)
                 
-            class RoleSelectWizardView(nextcord.ui.View):
+            class RoleSelectWizardView(CustomView):
                 def __init__(self, title, description):
                     super().__init__(timeout = None)
                     self.title = title
@@ -262,7 +263,7 @@ class RoleMessageSetup(nextcord.ui.View):
                         super().__init__(label="Edit Text", emoji="✏️")
                         self.outer = outer
                     
-                    class EditTextModal(nextcord.ui.Modal):
+                    class EditTextModal(CustomModal):
                         def __init__(self, outer):
                             super().__init__(title="Edit Text")
                             self.outer = outer
@@ -293,7 +294,7 @@ class RoleMessageSetup(nextcord.ui.View):
                         super().__init__(label = "Edit Color", emoji = "🎨")
                         self.outer = outer
                         
-                    class EditColorView(nextcord.ui.View):
+                    class EditColorView(CustomView):
                         def __init__(self, outer):
                             super().__init__()
                             self.outer = outer
@@ -351,7 +352,7 @@ class RoleMessageSetup(nextcord.ui.View):
                         self.outer = outer
                         self.options = options
                         
-                    class AddView(nextcord.ui.View):
+                    class AddView(CustomView):
                         def __init__(self, outer, options, index = None):
                             super().__init__(timeout = None)
                             self.outer = outer
@@ -489,7 +490,7 @@ class RoleMessageSetup(nextcord.ui.View):
                             else:
                                 await self.setup(interaction)
                             
-                        class OptionTitleAndDescriptionModal(nextcord.ui.Modal):
+                        class OptionTitleAndDescriptionModal(CustomModal):
                             def __init__(self, outer):
                                 super().__init__(title = "Option Settings", timeout = None)
                                 self.outer = outer
@@ -618,7 +619,7 @@ class RoleMessageSetup(nextcord.ui.View):
                         super().__init__(label="Finish", style=nextcord.ButtonStyle.blurple, row=1, emoji="🏁")
                         self.outer = outer
                         
-                    class MultiOrSingleSelectView(nextcord.ui.View):
+                    class MultiOrSingleSelectView(CustomView):
                         def __init__(self, outer):
                             super().__init__(timeout = None)
                             self.outer = outer

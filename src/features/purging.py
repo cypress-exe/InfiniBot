@@ -14,7 +14,7 @@ from config.global_settings import (
 from config.server import Server
 
 
-class ConfirmationView(nextcord.ui.View):
+class ConfirmationView(ui_components.CustomView):
     """UI view for user confirmation with Cancel/Continue buttons.
     
     Provides a simple interface for users to confirm or cancel an action.

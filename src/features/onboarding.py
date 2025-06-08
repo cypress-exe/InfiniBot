@@ -3,11 +3,12 @@ import nextcord
 import logging
 
 from components import utils, ui_components
+from components.ui_components import CustomView
 from config.global_settings import get_configs, ShardLoadedStatus
 from config.server import Server
 from features.dashboard import Dashboard
 
-class Onboarding(nextcord.ui.View):
+class Onboarding(CustomView):
     def __init__(self):
         super().__init__(timeout=None)
         
@@ -67,7 +68,7 @@ class Onboarding(nextcord.ui.View):
             super().__init__(label="Cancel", style=nextcord.ButtonStyle.danger, row=1)
             self.outer = outer
             
-        class CancelView(nextcord.ui.View):
+        class CancelView(CustomView):
             def __init__(self, outer):
                 super().__init__(timeout=None)
                 self.outer = outer
@@ -98,7 +99,7 @@ class Onboarding(nextcord.ui.View):
             super().__init__(label="Next", style=nextcord.ButtonStyle.blurple)
             self.outer = outer
             
-        class OnboardingInfoView(nextcord.ui.View):
+        class OnboardingInfoView(CustomView):
             def __init__(self, outer, order: list):
                 super().__init__(timeout=None)
                 self.outer = outer
@@ -364,7 +365,7 @@ class Onboarding(nextcord.ui.View):
             )
             await view.setup(interaction)
 
-        class FinishedView(nextcord.ui.View):
+        class FinishedView(CustomView):
             def __init__(self, outer):
                 super().__init__(timeout=None)
                 self.outer = outer
@@ -399,14 +400,14 @@ async def run_onboarding_command(interaction: Interaction):
     """Run the onboarding command."""
     if not utils.feature_is_active(guild_id=interaction.guild.id, feature="onboarding"):
         # Create a simple view for the disabled feature override
-        disabled_view = nextcord.ui.View()
+        disabled_view = CustomView()
         await ui_components.disabled_feature_override(disabled_view, interaction, edit_message=False)
         return
     
     with ShardLoadedStatus() as shards_loaded:
         if not interaction.guild.shard_id in shards_loaded:
             logging.warning(f"Onboarding: Shard {interaction.guild.shard_id} is not loaded. Forwarding to inactive screen for guild {interaction.guild.id}.")
-            loading_view = nextcord.ui.View()
+            loading_view = CustomView()
             await ui_components.infinibot_loading_override(loading_view, interaction, edit_message=False)
             return
         
