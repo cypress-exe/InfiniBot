@@ -111,6 +111,20 @@ def _get_admin_commands():
         'level_3': list(_admin_command_registry[3].keys())
     }
     return commands
+
+def _get_command_description(command_name: str, level: int = None) -> str:
+    """Get description for a command from the registry."""
+    # First try to get from registry if level is provided
+    if level and level in _admin_command_registry and command_name in _admin_command_registry[level]:
+        return _admin_command_registry[level][command_name]['description']
+    
+    # Search through all levels if level not specified
+    for level_num in [1, 2, 3]:
+        if command_name in _admin_command_registry[level_num]:
+            return _admin_command_registry[level_num][command_name]['description']
+    
+    # If not found, return a default message
+    return f"No description available for command: {command_name}"
 # </COMMAND REGISTRY SYSTEM>
 
 
@@ -362,20 +376,6 @@ async def handle_help_command(message: nextcord.Message):
     await message.channel.send(embed=embed)
     logging.info(f"{message.author} used the help command")
 
-def _get_command_description(command_name: str, level: int = None) -> str:
-    """Get description for a command from the registry."""
-    # First try to get from registry if level is provided
-    if level and level in _admin_command_registry and command_name in _admin_command_registry[level]:
-        return _admin_command_registry[level][command_name]['description']
-    
-    # Search through all levels if level not specified
-    for level_num in [1, 2, 3]:
-        if command_name in _admin_command_registry[level_num]:
-            return _admin_command_registry[level_num][command_name]['description']
-    
-    # If not found, return a default message
-    return f"No description available for command: {command_name}"
-
 @admin_command_level_1("stats", "Display bot statistics")
 async def handle_stats_command(message: nextcord.Message):
     """Display bot statistics."""
@@ -517,13 +517,13 @@ async def handle_info_command(message: nextcord.Message, message_parts: list):
 
     logging.info(f"{message.author} requested info about the server {guild.name} ({guild.id})")
 
-@admin_command_level_2("resetserverconfigurations", "Reset a server's configurations to default")
+@admin_command_level_2("reset-server-configs", "Reset a server's configurations to default")
 async def handle_reset_server_config_command(message: nextcord.Message, message_parts: list):
     """Reset a server's configurations to default."""
     if len(message_parts) < 2 or not message_parts[1].isdigit():
         embed = nextcord.Embed(
             title="Incorrect Format", 
-            description="Format like this: `-resetserverconfigurations [serverID]`", 
+            description="Format like this: `-reset-server-configs [serverID]`", 
             color=nextcord.Color.red()
         )
         await message.channel.send(embed=embed)
@@ -537,7 +537,7 @@ async def handle_reset_server_config_command(message: nextcord.Message, message_
     if not guild:
         embed = nextcord.Embed(
             title="Server Could Not Be Found", 
-            description="Make sure you are formatting correctly: `-resetserverconfigurations [serverID]`", 
+            description="Make sure you are formatting correctly: `-reset-server-configs [serverID]`", 
             color=nextcord.Color.red()
         )
         await message.channel.send(embed=embed)
@@ -555,7 +555,7 @@ async def handle_reset_server_config_command(message: nextcord.Message, message_
     await message.channel.send(embed=embed)
     logging.info(f"{message.author} reset configurations in the server {guild.name} ({guild.id})")
 
-@admin_command_level_2("infinibotmodhelp", "Display help for InfiniBot Mod role")
+@admin_command_level_2("infinibot-mod-help", "Display help for InfiniBot Mod role")
 async def handle_infinibot_mod_help_command(message: nextcord.Message):
     """Display help for InfiniBot Mod role."""
     description = """**Why do I need the InfiniBot Mod role?**
@@ -592,13 +592,13 @@ async def handle_restart_command(message: nextcord.Message):
     python = sys.executable
     os.execl(python, python, *sys.argv)
 
-@admin_command_level_3("globalkill", "Manage global kill switches for InfiniBot features")
+@admin_command_level_3("global-kill", "Manage global kill switches for InfiniBot features")
 async def handle_global_kill_command(message: nextcord.Message, message_parts: list):
     """Manage global kill switches for InfiniBot features - dynamically generated."""
     if len(message_parts) <= 1:
         embed = nextcord.Embed(
             title="Incorrect Format", 
-            description="Please include argument(s). Use the `-globalKill list` command for a list of arguments.", 
+            description="Please include argument(s). Use the `-global-kill list` command for a list of arguments.", 
             color=nextcord.Color.red()
         )
         await message.channel.send(embed=embed)
@@ -627,7 +627,7 @@ async def handle_global_kill_command(message: nextcord.Message, message_parts: l
             "THIS GOES INTO EFFECT GLOBALLY ACROSS ALL GUILDS INSTANTLY!!!\n\n"
             "Select one of the following features to kill or revive:\n"
             f"```{"\n".join(sorted(commands.keys()))}\n\n```\n"
-            "**Usage:** `-globalKill <feature> <kill|revive>`"
+            "**Usage:** `-global-kill <feature> <kill|revive>`"
             ), 
             color=nextcord.Color.blue()
         )
@@ -687,19 +687,19 @@ async def handle_global_kill_command(message: nextcord.Message, message_parts: l
     else:
         embed = nextcord.Embed(
             title="Invalid Argument", 
-            description="Use the `-globalKill list` command for a list of arguments.", 
+            description="Use the `-global-kill list` command for a list of arguments.", 
             color=nextcord.Color.red()
         )
         await message.channel.send(embed=embed)
         return
 
-@admin_command_level_3("addadmin", "Add a new admin to the system")
+@admin_command_level_3("add-admin", "Add a new admin to the system")
 async def handle_add_admin_command(message: nextcord.Message, message_parts: list):
     """Add a new admin to the system."""
     if len(message_parts) < 3 or not message_parts[1].isdigit() or not message_parts[2].isdigit():
         embed = nextcord.Embed(
             title="Incorrect Format", 
-            description="Format like this: `-addAdmin 12345678912345689 [1-3]`", 
+            description="Format like this: `-add-admin 12345678912345689 [1-3]`", 
             color=nextcord.Color.red()
         )
         await message.channel.send(embed=embed)
@@ -749,13 +749,13 @@ async def handle_add_admin_command(message: nextcord.Message, message_parts: lis
     await message.channel.send(embed=embed)
     logging.info(f"{message.author} added {user_id} as level {user_level} admin")
 
-@admin_command_level_3("editadmin", "Edit an existing admin's level")
+@admin_command_level_3("edit-admin", "Edit an existing admin's level")
 async def handle_edit_admin_command(message: nextcord.Message, message_parts: list):
     """Edit an existing admin's level."""
     if len(message_parts) < 3 or not message_parts[1].isdigit() or not message_parts[2].isdigit():
         embed = nextcord.Embed(
             title="Incorrect Format", 
-            description="Format like this: `-editAdmin 12345678912345689 [1-3]`", 
+            description="Format like this: `-edit-admin 12345678912345689 [1-3]`", 
             color=nextcord.Color.red()
         )
         await message.channel.send(embed=embed)
@@ -813,13 +813,13 @@ async def handle_edit_admin_command(message: nextcord.Message, message_parts: li
     await message.channel.send(embed=embed)
     logging.info(f"{message.author} edited {user_id} to level {new_level} admin")
 
-@admin_command_level_3("deleteadmin", "Delete an admin from the system")
-async def handle_delete_admin_command(message: nextcord.Message, message_parts: list):
-    """Delete an admin from the system."""
+@admin_command_level_3("remove-admin", "Remove an admin from the system")
+async def handle_remove_admin_command(message: nextcord.Message, message_parts: list):
+    """Remove an admin from the system."""
     if len(message_parts) < 2 or not message_parts[1].isdigit():
         embed = nextcord.Embed(
             title="Incorrect Format", 
-            description="Format like this: `-deleteAdmin 12345678912345689`", 
+            description="Format like this: `-remove-admin 12345678912345689`", 
             color=nextcord.Color.red()
         )
         await message.channel.send(embed=embed)
@@ -853,9 +853,9 @@ async def handle_delete_admin_command(message: nextcord.Message, message_parts: 
     configs['admin-ids'] = admin_config
     
     embed = nextcord.Embed(
-        title="Admin Deleted", 
-        description=f"\"{user_id}\" was deleted as an admin.", 
+        title="Admin Removed", 
+        description=f"\"{user_id}\" was removed as an admin.", 
         color=nextcord.Color.green()
     )
     await message.channel.send(embed=embed)
-    logging.info(f"{message.author} deleted {user_id} as admin")
+    logging.info(f"{message.author} removed {user_id} as admin")
