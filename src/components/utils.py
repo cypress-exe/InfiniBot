@@ -556,6 +556,7 @@ def get_infinibot_missing_permissions(guild: nextcord.Guild) -> tuple[list[str],
 
 async def get_channel(guild: nextcord.Guild) -> nextcord.TextChannel | None:
     """
+    |coro|  
     Get a text channel that InfiniBot can send messages and embeds in.
     
     Args:
@@ -643,6 +644,7 @@ async def user_has_config_permissions(interaction: Interaction, notify: bool = T
 
 async def check_text_channel_permissions(channel: nextcord.TextChannel, auto_warn: bool, custom_channel_name: str = None) -> bool:
     """
+    |coro|  
     Ensure that InfiniBot has permissions to send messages and embeds in a channel.
 
     :param channel: The channel to check.
@@ -690,6 +692,7 @@ async def send_error_message_to_server_owner(
     guild_permission: bool = False
 ) -> None:
     """
+    |coro|  
     Sends an error message to the owner of the server via DM (Direct Message).
 
     :param guild: The guild in which the error occured.
@@ -783,6 +786,7 @@ async def get_infinibot_mod_role(guild: nextcord.Guild, _iteration=0) -> nextcor
 
 async def check_server_for_infinibot_mod_role(guild: nextcord.Guild) -> bool:
     """
+    |coro|  
     Check to see if InfiniBot Mod role exists. If not, create it.
 
     :param guild: The guild in which to check.
