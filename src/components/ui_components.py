@@ -50,16 +50,12 @@ INFINIBOT_LOADING_EMBED = nextcord.Embed(
 )
 INFINIBOT_ERROR_EMBED = nextcord.Embed(
     title = "Woops...",
-    description = utils.standardize_str_indention("""
-    An error occurred while processing your request. Please try again later or contact support if the issue persists.
-    
-    If you choose to contact support, please provide the following information:
-    - The command/feature you were trying to use
-    - A screenshot of this error message
-    - If you were interacting with a message from InfiniBot, include a screenshot of that message too
-
-    Remember to use the #support channel in the support server to get help.
-    """),
+    description = "An error occurred while processing your request. Please try again later or contact support if the issue persists.\n\n"
+                  "If you choose to contact support, please provide the following information:\n"
+                  "- The command/feature you were trying to use\n"
+                  "- A screenshot of this error message\n"
+                  "- If you were interacting with a message from InfiniBot, include a screenshot of that message too\n\n"
+                  "Remember to use the `#support` channel in the support server to get help.",
     color = nextcord.Color.red()
 )
 

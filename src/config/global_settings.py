@@ -2,7 +2,6 @@ import nextcord
 import logging
 
 from config.file_manager import JSONFile
-from components import utils
 
 shards_loaded = []
 bot_loaded = False
