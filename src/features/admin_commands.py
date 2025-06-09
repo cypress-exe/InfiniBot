@@ -697,143 +697,165 @@ async def handle_global_kill_command(message: nextcord.Message, message_parts: l
 @admin_command_level_3("send-message-to-all-servers", "Send a message to all servers. Unreversable!")
 async def handle_send_message_to_all_servers_command(message: nextcord.Message):
     """Send a message to all servers. Unreversable!"""
-    # Confirm that the bot is fully loaded
+    
+    # Early validation - ensure bot is fully loaded
     if not get_bot_load_status():
-        embed = nextcord.Embed(
+        await message.channel.send(embed=nextcord.Embed(
             title="Bot Not Fully Loaded", 
             description="InfiniBot is still loading. Please try again later.", 
             color=nextcord.Color.red()
-        )
-        await message.channel.send(embed=embed)
+        ))
         return
     
-    # Send a message with a view to build the embed
+    # Create embed creation UI components
+    class EmbedCreationModal(CustomModal):
+        def __init__(self, return_callback):
+            super().__init__(title="Create Embed Message")
+            self.return_callback = return_callback
+
+            self.embed_title = nextcord.ui.TextInput(
+                label="Embed Title",
+                style=nextcord.TextInputStyle.short,
+                required=True,
+                max_length=256,
+                placeholder="New Update: Lorem Ipsum Dolor Sit Amet"
+            )
+            self.add_item(self.embed_title)            
+
+            self.embed_description = nextcord.ui.TextInput(
+                label="Embed Description",
+                style=nextcord.TextInputStyle.paragraph,
+                required=False,
+                max_length=4000,
+                placeholder="Consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+            )
+            self.add_item(self.embed_description)
+
+        async def callback(self, interaction):
+            await self.return_callback(
+                interaction, 
+                embed_title=self.embed_title.value, 
+                embed_description=self.embed_description.value
+            )
+
     class EmbedCreationView(CustomView):
         def __init__(self, author: nextcord.User):
             super().__init__(timeout=None)
             self.author = author
-            self.data = {}
+            self.embed_data = {}
         
         @nextcord.ui.button(label="Create Embed", style=nextcord.ButtonStyle.green)
-        async def create_embed(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+        async def create_embed_button(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+            # Permission check
             if interaction.user != self.author:
                 await interaction.response.send_message(
                     embed=nextcord.Embed(
                         title="Permission Denied",
                         description="You can't use this button unless you're the one who ran the original command. If you have permissions, try running the `-send-message-to-all-servers` command yourself.",
                         color=nextcord.Color.red()
-                    ), ephemeral=True)
+                    ), 
+                    ephemeral=True
+                )
                 return
             
-            # Create the embed with the message content
-            modal = self.EmbedCreationModal(self.finish)
+            # Show modal for embed creation
+            modal = EmbedCreationModal(self._handle_modal_submission)
             await interaction.response.send_modal(modal)
             
-        class EmbedCreationModal(CustomModal):
-            def __init__(self, return_to):
-                super().__init__(title="Create Embed Message")
-                self.return_to = return_to
-
-                self.embed_title = nextcord.ui.TextInput(
-                    label="Embed Title",
-                    style=nextcord.TextInputStyle.short,
-                    required=True,
-                    max_length=256,
-                    placeholder="New Update: Lorem Ipsum Dolor Sit Amet"
-                )
-                self.add_item(self.embed_title)            
-
-                self.embed_description = nextcord.ui.TextInput(
-                    label="Embed Description",
-                    style=nextcord.TextInputStyle.paragraph,
-                    required=False,
-                    max_length=4000,
-                    placeholder="Consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
-                )
-                self.add_item(self.embed_description)
-
-            async def callback(self, interaction):
-                await self.return_to(interaction, 
-                                     embed_title=self.embed_title.value, 
-                                     embed_description=self.embed_description.value)
-
-        async def finish(self, *args, **kwargs):
-            """Stop the view and store kwargs."""
-            self.data = kwargs
+        async def _handle_modal_submission(self, interaction, **kwargs):
+            """Handle modal submission and store embed data."""
+            self.embed_data = kwargs
             self.stop()
-                
-    view = EmbedCreationView(message.author)
-    embed = nextcord.Embed(
+    
+    # Display initial embed creation interface
+    initial_embed = nextcord.Embed(
         title="Send Message to All Servers",
         description="Click the button below to create an embed message that will be sent to all servers. This is an unreversable action!",
         color=nextcord.Color.blue()
     )
-    embed.set_author(name=message.author.name, icon_url=message.author.display_avatar.url)
-    embed.set_footer(text="Note: This message may expire if not used within a reasonable time frame.")
-    status_message = await message.channel.send(
-        embed=embed,
-        view=view
-    )
+    initial_embed.set_author(name=message.author.name, icon_url=message.author.display_avatar.url)
+    initial_embed.set_footer(text="Note: This message may expire if not used within a reasonable time frame.")
+    
+    view = EmbedCreationView(message.author)
+    status_message = await message.channel.send(embed=initial_embed, view=view)
 
-    await view.wait()  # Wait for the user to finish creating the embed
+    # Wait for user to complete embed creation
+    await view.wait()
 
-    if not view.data:
-        embed = nextcord.Embed(
+    # Validate embed data was received
+    if not view.embed_data:
+        await message.channel.send(embed=nextcord.Embed(
             title="Embed Creation Failed", 
-            description="The main process did not recieve the embed data. Unknown error.", 
+            description="The main process did not receive the embed data. Unknown error.", 
             color=nextcord.Color.red()
-        )
-        await message.channel.send(embed=embed)
+        ))
         return
     
-    embed_title = view.data.get('embed_title', 'No Title')
-    embed_description = view.data.get('embed_description', 'No Description')
-
-    # Create the embed
+    # Create the embed to send
     embed_to_send = nextcord.Embed(
-        title=embed_title,
-        description=embed_description,
+        title=view.embed_data.get('embed_title', 'No Title'),
+        description=view.embed_data.get('embed_description', 'No Description'),
         color=nextcord.Color.gold()
     )
 
-    # Update status message
-    embed = nextcord.Embed(
+    # Update status message to show sending progress
+    sending_embed = nextcord.Embed(
         title="Sending Message to All Servers",
-        description=f"Sending the attached embed to all servers. This is an unreversable action!",
-        color=nextcord.Color.green()
+        description="Sending the attached embed to all servers... This is an unreversable action!",
+        color=nextcord.Color.yellow()
     )
-    await status_message.edit(
-        embeds=[embed, embed_to_send],
-        view=None  # Remove the view after sending
-    )
+    await status_message.edit(embeds=[sending_embed, embed_to_send], view=None)
     
     # Send the embed to all servers
     bot = _get_bot()
     sent_count = 0
     error_count = 0
+    support_server_config = get_configs()['support-server']
+    support_server_id = support_server_config['support-server-id']
+
     for guild in bot.guilds:
         try:
-            channel = await utils.get_channel(guild)
+            # Determine channel and role mention based on server type
+            if guild.id == support_server_id:
+                # Special handling for InfiniBot support server
+                logging.info("Running special behavior for the InfiniBot Support Server.")
+                channel = guild.get_channel(support_server_config['updates-channel-id'])
+                role = guild.get_role(support_server_config['infinibot-updates-role-id'])
+                role_mention = role.mention if role else ""
+            else:
+                # Standard server handling
+                channel = await utils.get_channel(guild)
+                role_mention = ""
+
+            # Send message if channel is available
             if channel:
-                await channel.send(embed=embed_to_send, view=ui_components.SupportAndInviteView())
+                await channel.send(
+                    content=role_mention,
+                    embed=embed_to_send, 
+                    view=ui_components.SupportAndInviteView()
+                )
                 sent_count += 1
                 logging.info(f"Sent message to {guild.name} ({guild.id})")
             else:
                 logging.warning(f"No suitable channel found in {guild.name} ({guild.id})")
+                
         except Exception as e:
             error_count += 1
             logging.error(f"Failed to send message to {guild.name} ({guild.id}): {e}")
 
-    # Create final status message
+    # Create and send final status report
+    status_description = f"Successfully sent the message to {sent_count} servers."
+    if error_count > 0:
+        status_description += f"\nFailed to send to {error_count} servers due to errors."
+    else:
+        status_description = "All messages sent successfully."
+
     final_embed = nextcord.Embed(
         title="Message Sent to All Servers",
-        description=f"Successfully sent the message to {sent_count} servers.\n"
-                    f"Failed to send to {error_count} servers due to errors." if error_count > 0 else "All messages sent successfully.",
+        description=status_description,
         color=nextcord.Color.green()
     )
-    await status_message.edit(
-        embeds=[final_embed, embed_to_send],
-    )
+    await status_message.edit(embeds=[final_embed, embed_to_send])
 
 @admin_command_level_3("add-admin", "Add a new admin to the system")
 async def handle_add_admin_command(message: nextcord.Message, message_parts: list):
