@@ -48,6 +48,21 @@ INFINIBOT_LOADING_EMBED = nextcord.Embed(
     description = "InfiniBot has been recently restarted. It is still coming back online. Please try again in a few minutes.",
     color = nextcord.Color.red()
 )
+INFINIBOT_ERROR_EMBED = nextcord.Embed(
+    title = "Woops...",
+    description = utils.standardize_str_indention("""
+    An error occurred while processing your request. Please try again later or contact support if the issue persists.
+    
+    If you choose to contact support, please provide the following information:
+    - The command/feature you were trying to use
+    - A screenshot of this error message
+    - If you were interacting with a message from InfiniBot, include a screenshot of that message too
+
+    Remember to use the #support channel in the support server to get help.
+    """),
+    color = nextcord.Color.red()
+)
+
 async def infinibot_loading_override(view: nextcord.ui.View, interaction: Interaction, edit_message: bool = True) -> None:
     """
     Overrides a page if the feature is still loading
@@ -120,11 +135,7 @@ class CustomView(nextcord.ui.View):
         logging.error(f"Error ID: {error_id} - Exception in view interaction", exc_info=error)
 
         # Inform the user about the error with the ID
-        embed = nextcord.Embed(
-            title = "Woops...",
-            description = f"An unexpected error occurred. If the issue persists, please report it to the support team.",
-            color = nextcord.Color.red()
-        )
+        embed = INFINIBOT_ERROR_EMBED
         embed.set_footer(text = f"View Interaction - Error ID: {error_id}")
         await interaction.response.send_message(
             embed=embed, ephemeral=True, view=SupportView()
@@ -157,11 +168,7 @@ class CustomModal(nextcord.ui.Modal):
         logging.error(f"Error ID: {error_id} - Exception in modal interaction", exc_info=error)
 
         # Inform the user about the error with the ID
-        embed = nextcord.Embed(
-            title = "Woops...",
-            description = f"An unexpected error occurred. If the issue persists, please report it to the support team.",
-            color = nextcord.Color.red()
-        )
+        embed = INFINIBOT_ERROR_EMBED
         embed.set_footer(text = f"Modal Interaction - Error ID: {error_id}")
         await interaction.response.send_message(
             embed=embed, ephemeral=True, view=SupportView()

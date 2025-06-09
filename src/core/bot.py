@@ -318,11 +318,7 @@ async def on_application_command_error(interaction: Interaction, error) -> None:
     logging.error(f"Error ID: {error_id} - Unhandled exception in application command", exc_info=error)
 
     # Send a user-friendly error message
-    embed = nextcord.Embed(
-        title = "Woops...",
-        description = f"An unexpected error occurred while executing the command. If the issue persists, please report it to the support team.",
-        color = nextcord.Color.red()
-    )
+    embed = ui_components.INFINIBOT_ERROR_EMBED
     embed.set_footer(text = f"Command Execution - Error ID: {error_id}")
     try:
         await interaction.response.send_message(embed=embed, ephemeral=True, view=ui_components.SupportView())

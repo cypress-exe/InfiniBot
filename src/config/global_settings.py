@@ -2,6 +2,7 @@ import nextcord
 import logging
 
 from config.file_manager import JSONFile
+from components import utils
 
 shards_loaded = []
 bot_loaded = False
@@ -298,6 +299,21 @@ def set_bot_load_status(status: bool) -> None:
     global bot_loaded
     bot_loaded = status
 
+class ShardLoadedStatus: # Context manager
+    """
+    Context manager for managing a list of loaded shards.
+    """
+    def __init__(self):
+        global shards_loaded
+        self.shards_loaded: list = shards_loaded
+
+    def __enter__(self) -> list:
+        return self.shards_loaded
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        global shards_loaded
+        shards_loaded = self.shards_loaded
+
 
 def get_bot_id() -> int | None:
     """
@@ -367,20 +383,3 @@ def reset_purging():
     """
     global channels_purging
     channels_purging = []
-
-
-
-class ShardLoadedStatus: # Context manager
-    """
-    Context manager for managing a list of loaded shards.
-    """
-    def __init__(self):
-        global shards_loaded
-        self.shards_loaded: list = shards_loaded
-
-    def __enter__(self) -> list:
-        return self.shards_loaded
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        global shards_loaded
-        shards_loaded = self.shards_loaded
