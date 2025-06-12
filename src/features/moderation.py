@@ -10,7 +10,6 @@ from typing import List
 import nextcord
 
 from components import utils, ui_components
-from config.file_manager import read_txt_to_list
 from config.global_settings import get_configs, get_global_kill_status, get_bot_load_status
 from config.member import Member
 from config.server import Server
