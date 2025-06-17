@@ -19,6 +19,7 @@ InfiniBot provides the following moderation features:
 
 - [Profanity Filtering]({% link docs/core-features/moderation/profanity/index.md %}) - Automatically filter profanity and inappropriate language
 - [Anti-Spam]({% link docs/core-features/moderation/spam.md %}) - Prevent and punish spam messages
+- [AutoBans]({% link docs/additional/autobans.md %}) - Automatically ban troublemakers before they can join your server
 - [Message Purging]({% link docs/additional/purging.md %}) - Quickly remove unwanted messages in bulk
 
 ## Configuration

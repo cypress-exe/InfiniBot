@@ -366,13 +366,13 @@ class Server:
         def __init__(self, server_id):
             super().__init__("birthdays", "server_id", server_id, "member_id")
 
-    # @property
-    # def autobans(self):
-    #     if self._autobans is None: self._autobans = self.AutoBans(self.server_id)
-    #     return self._autobans
-    # class AutoBans(Server_IntegratedList_TableManager):
-    #     def __init__(self, server_id):
-    #         super().__init__("auto_bans", "server_id", server_id, "member_id")
+    @property
+    def autobans(self):
+        if self._autobans is None: self._autobans = self.AutoBans(self.server_id)
+        return self._autobans
+    class AutoBans(Server_IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("autobans", "server_id", server_id, "member_id")
 
     # MANAGED MESSAGES
     @property

@@ -18,6 +18,7 @@ from features import (
     about,
     action_logging,
     admin_commands,
+    autobans,
     check_infinibot_permissions,
     dashboard,
     default_roles,
@@ -520,6 +521,11 @@ async def on_member_join(member: nextcord.Member) -> None:
     :return: None
     :rtype: None
     """
+    # Run AutoBan checks
+    with LogIfFailure(feature="autobans.check_and_run_autoban_for_member"):
+        if await autobans.check_and_run_autoban_for_member(member):
+            return
+
     # Trigger the welcome message
     with LogIfFailure(feature="join_leave_messages.trigger_join_message"):
         await join_leave_messages.trigger_join_message(member)
@@ -540,6 +546,11 @@ async def on_member_remove(member: nextcord.Member) -> None:
     """
     if member.id == bot.user.id: return # Don't do anything if WE are removed
     if member.guild == None: return # Can't do anything if the guild is None
+
+    # Verify that the member was not autobanned
+    if autobans.member_has_autoban(member):
+        logging.info(f"Member {member.id} ({member.name}) was autobanned, skipping leave message and removal handling.")
+        return
 
     # Trigger the farewell message
     with LogIfFailure(feature="join_leave_messages.trigger_leave_message"):

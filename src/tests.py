@@ -1434,6 +1434,17 @@ class TestServer(unittest.TestCase):
 
         server.remove_all_data()
 
+    def test_autobans(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_integrated_list_property
+        test = self.RunTestOnIntegratedListProperty(server, "autobans", ["member_id:int", "member_name:str"], [5, 20])
+        test.run(self)
+
+        server.remove_all_data()
+
     def test_managed_messages(self):
         server_id = random.randint(0, 1000000000)
 
@@ -1730,7 +1741,7 @@ def main(_iteration_number: int = 0) -> None:
     # This will disable all other tests and only run the specified ones.
     specific_tests_to_run = [
         # TestUtils('example_test')
-        
+
     ]
     # ===================================== </USE THIS FOR RUNNING SPECIFIC TESTS> ====================================
 

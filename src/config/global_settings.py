@@ -56,6 +56,8 @@ feature_dependencies = {
     # ------------------------------------------------------------------------------------------------------
     "join_to_create_vcs" : {"global_kill": "join_to_create_vcs"},
     # ------------------------------------------------------------------------------------------------------
+    "autobans": {"global_kill": "autobans"},
+    # ------------------------------------------------------------------------------------------------------
     "reaction_roles": {"global_kill": "reaction_roles"},
     # ------------------------------------------------------------------------------------------------------
     "embeds": {"global_kill": "embeds"},
@@ -187,6 +189,7 @@ class GlobalKillStatus(GlobalSetting):
             "birthdays": False,
             "default_roles": False,
             "join_to_create_vcs": False,
+            "autobans": False,
             "reaction_roles": False,
             "embeds": False,
             "role_messages": False,

@@ -44,9 +44,12 @@ class Dashboard(CustomView):
         self.default_roles_btn = self.DefaultRolesButton(self)
         self.add_item(self.default_roles_btn)
         
-        self.join_to_create_VCs_button = self.JoinToCreateVCsButton(self)
-        self.add_item(self.join_to_create_VCs_button)
-        
+        self.join_to_create_VCs_btn = self.JoinToCreateVCsButton(self)
+        self.add_item(self.join_to_create_VCs_btn)
+
+        self.autobans_btn = self.AutoBansButton(self)
+        self.add_item(self.autobans_btn)
+
         self.extra_features_btn = self.ExtraFeaturesButton(self)
         self.add_item(self.extra_features_btn)
 
@@ -2351,8 +2354,8 @@ class Dashboard(CustomView):
                 """
                 description = utils.standardize_str_indention(description)
 
-                embeds = [self.onboarding_embed] if self.onboarding_embed else []
                 embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages", description = description, color = nextcord.Color.blue())
+                embeds = [self.onboarding_embed, embed] if self.onboarding_embed else [embed]
                 await interaction.response.edit_message(embeds = embeds, view = self)
             
             class JoinMessagesButton(nextcord.ui.Button):
@@ -3943,7 +3946,268 @@ class Dashboard(CustomView):
         
         async def callback(self, interaction: Interaction):
             await self.JoinToCreateVCsView(self.outer, interaction.guild).setup(interaction)
-        
+
+    class AutoBansButton(nextcord.ui.Button):
+        def __init__(self, outer):
+            super().__init__(label="AutoBans", style=nextcord.ButtonStyle.gray, row=2)
+            self.outer = outer
+            
+        class AutoBansView(nextcord.ui.View):
+            def __init__(self, outer):
+                super().__init__(timeout=None)
+                self.outer = outer
+                
+                # Create buttons
+                self.add_btn = self.AddButton(self)
+                self.add_item(self.add_btn)
+                
+                self.revoke_btn = self.RevokeButton(self)
+                self.add_item(self.revoke_btn)
+                                    
+                self.back_btn = nextcord.ui.Button(label="Back", style=nextcord.ButtonStyle.danger, row=1)
+                self.back_btn.callback = self.back_btn_callback
+                self.add_item(self.back_btn)
+                                                            
+            async def setup(self, interaction: Interaction):
+                if interaction.guild.me.guild_permissions.ban_members:
+                    server = Server(interaction.guild.id)
+                    
+                    if not utils.feature_is_active(server=server, feature="autobans"):
+                        await ui_components.disabled_feature_override(self, interaction)
+                        return
+                    
+                    autobans = []
+                    for autoban in server.autobans:
+                        autobans.append(f"• {autoban.member_name}  (ID: {autoban.member_id})")
+                        
+                    if len(autobans) > 0:
+                        auto_bans_str = "\n".join(autobans)
+                        auto_bans_str = f"```{auto_bans_str}```"
+                        self.revoke_btn.disabled = False
+                    else:
+                        auto_bans_str = "You don't have any autobans yet."
+                        self.revoke_btn.disabled = True
+                                        
+                    description = f"""InfiniBot has the capability to ban members both in your server and after they leave.
+                    ✯ You can even ban people who haven't even joined the server yet.
+                    
+                    **How?**
+                    Just right click on a message or member, select "Apps" and click "Ban Message Author" or "Ban Member"
+                    
+                    **Ban Someone Before They Join the Server**
+                    Click the "Add" button below, and follow the instructions. You will need the user's Discord ID.
+                    
+                    **Revoking AutoBans**
+                    Click the "Revoke" button to begin revoking autobans.
+
+                    **Current Autobans**
+                    {auto_bans_str}
+
+                    View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/additional/autobans/) for more information."""
+
+                    # On Mobile, extra spaces cause problems. We'll get rid of them here:
+                    description = utils.standardize_str_indention(description)
+                            
+
+                else:
+                    description = (f"InfiniBot doesn't have the \"Ban Members\" permission. "
+                                 f"This feature requires this permission. Please give InfiniBot this "
+                                 f"permission, and then reload this page.")
+                    
+                    # Disable all buttons
+                    self.add_btn.disabled = True
+                    self.revoke_btn.disabled = True
+                
+                embed = nextcord.Embed(title="Dashboard - AutoBans", description=description, color=nextcord.Color.blue())
+                await interaction.response.edit_message(embed=embed, view=self)
+            
+            async def back_btn_callback(self, interaction: Interaction):
+                await self.outer.setup(interaction)
+            
+            class AddButton(nextcord.ui.Button):
+                def __init__(self, outer):
+                    super().__init__(label="Add", style=nextcord.ButtonStyle.gray)
+                    self.outer = outer
+                                                
+                class IDHelp(nextcord.ui.View):
+                    def __init__(self, outer):
+                        super().__init__(timeout=None)
+                        self.outer = outer
+                        
+                        self.back_btn = nextcord.ui.Button(label="Back", style=nextcord.ButtonStyle.danger)
+                        self.back_btn.callback = self.back_btn_callback
+                        self.add_item(self.back_btn)
+                        
+                        self.continue_btn = nextcord.ui.Button(label="I've Copied the ID, Continue", style=nextcord.ButtonStyle.green)
+                        self.continue_btn.callback = self.continue_btn_callback
+                        self.add_item(self.continue_btn)
+                        
+                    async def setup(self, interaction: Interaction):
+                        description = """In order to ban a member before they have joined, you need their Discord ID. 
+                        To get this, follow these steps:
+                    
+                        **On Desktop**
+                        • Go to Discord's Settings
+                        • Scroll Down to "Advanced"
+                        • Enable "Developer Mode"
+                        • Exit Settings and Right click on the member whom you would like to autoban
+                        • Click "Copy ID" (at the very bottom)
+                        • Proceed
+                        
+                        **On Mobile**
+                        • Go to Discord's Settings (by clicking your profile icon in the bottom right)
+                        • Scroll Down to "Appearance"
+                        • Enable "Developer Mode"
+                        • Exit Settings and touch and hold on the member whom you would like to autoban
+                        • Click the three dots in the top right of their profile
+                        • Click "Copy ID"
+                        • Proceed
+                        """
+                        
+                        # On Mobile, extra spaces cause problems. We'll get rid of them here:
+                        description = utils.standardize_str_indention(description)
+
+                        
+                        embed = nextcord.Embed(title="Dashboard - AutoBans - Add", description=description, color=nextcord.Color.blue())
+                        await interaction.response.edit_message(embed=embed, view=self)
+                        
+                    async def back_btn_callback(self, interaction: Interaction):
+                        await self.outer.setup(interaction)
+                        
+                    class AddModal(nextcord.ui.Modal):
+                        def __init__(self, outer):
+                            super().__init__(title="Add AutoBan", timeout=None)
+                            self.outer = outer
+                            self.user_name = None
+                            self.id = None
+                            
+                            self.user_name_input = nextcord.ui.TextInput(
+                                label="Discord Name (Not Critical)", 
+                                placeholder="billy_bob_joe", 
+                                max_length=64
+                            )
+                            self.add_item(self.user_name_input)
+                            
+                            self.id_input = nextcord.ui.TextInput(
+                                label="Discord ID (Paste It) (Critical)", 
+                                placeholder="12345678910", 
+                                max_length=30
+                            )
+                            self.add_item(self.id_input)
+                            
+                        async def callback(self, interaction: Interaction):  # saving
+                            self.stop()
+                            
+                            user_name = self.user_name_input.value
+                            user_id = self.id_input.value
+                            
+                            embed = None
+                            
+                            if not user_id.isdigit():
+                                await self.outer.setup(interaction)
+                                await interaction.followup.send(
+                                    embed=nextcord.Embed(
+                                        title="User ID must be a number", 
+                                        description="The User ID must be a number. Try again.", 
+                                        color=nextcord.Color.red()
+                                    ), 
+                                    ephemeral=True
+                                )
+                                return
+                            
+                            for member in interaction.guild.members:
+                                if member.id == int(user_id):
+                                    embed = nextcord.Embed(
+                                        title="User Already In Server", 
+                                        description=(f"InfiniBot won't add \"{user_name} (ID: {user_id})\" as an autoban "
+                                                   f"because they are already in this server ({member.mention}). "
+                                                   f"You can ban them with the /ban command."), 
+                                        color=nextcord.Color.red()
+                                    )
+                                    break
+                                
+                            if interaction.guild.me.guild_permissions.ban_members:
+                                async for ban in interaction.guild.bans():
+                                    if ban.user.id == int(user_id):
+                                        embed = nextcord.Embed(
+                                            title="User Already Banned", 
+                                            description=(f"InfiniBot won't add \"{user_name} (ID: {user_id})\" as an "
+                                                       f"autoban because they are already banned in this server."), 
+                                            color=nextcord.Color.red()
+                                        )
+                                        break
+                            
+                            if embed is None:
+                                # Save data
+                                server = Server(interaction.guild.id)
+                                
+                                # Use the correct autobans property and its methods
+                                new_autoban = {
+                                    'member_name': user_name,
+                                    'member_id': int(user_id)
+                                }
+
+                                try:
+                                    server.autobans.add(**new_autoban)
+                                except ValueError:
+                                    embed = nextcord.Embed(
+                                        title="Error Adding AutoBan", 
+                                        description="The ID you provided is already an autoban.", 
+                                        color=nextcord.Color.red()
+                                    )
+
+                            await self.outer.setup(interaction)
+                            
+                            if embed is not None:
+                                await interaction.followup.send(embed=embed, ephemeral=True)
+                                                        
+                    async def continue_btn_callback(self, interaction: Interaction):
+                        await interaction.response.send_modal(self.AddModal(self.outer))
+                                                
+                async def callback(self, interaction: Interaction):              
+                    await self.IDHelp(self.outer).setup(interaction)
+            
+            class RevokeButton(nextcord.ui.Button):
+                def __init__(self, outer):
+                    super().__init__(label="Revoke", style=nextcord.ButtonStyle.gray)
+                    self.outer = outer
+                    
+                async def callback(self, interaction: Interaction):
+                    server = Server(interaction.guild.id)
+                    
+                    auto_bans = []
+                    for auto_ban in server.autobans:
+                        label = f"{auto_ban.member_name}"
+                        auto_bans.append(nextcord.SelectOption(
+                            label=label, 
+                            description=f"ID: {auto_ban.member_id}", 
+                            value=str(auto_ban.member_id)
+                        ))
+                    
+                    embed = nextcord.Embed(
+                        title="Dashboard - AutoBans - Revoke", 
+                        description=("To revoke an autoban, select the member, and click \"Revoke AutoBan\". "
+                                   "They will then be able to join this server without being autobanned."), 
+                        color=nextcord.Color.blue()
+                    )
+                    await ui_components.SelectView(
+                        embed=embed, 
+                        options=auto_bans, 
+                        return_command=self.select_view_callback, 
+                        placeholder="Select a Member", 
+                        continue_button_label="Revoke AutoBan"
+                    ).setup(interaction)
+            
+                async def select_view_callback(self, interaction: Interaction, selection):
+                    if selection is not None:
+                        server = Server(interaction.guild.id)
+                        server.autobans.delete(int(selection))
+                    
+                    await self.outer.setup(interaction)
+            
+        async def callback(self, interaction: Interaction):
+            await self.AutoBansView(self.outer).setup(interaction)
+
     class ExtraFeaturesButton(nextcord.ui.Button):
         def __init__(self, outer):
             super().__init__(label = "Extra Features", style = nextcord.ButtonStyle.gray, row = 2)
