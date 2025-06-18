@@ -62,6 +62,8 @@ async def run_bot_about_command(interaction: Interaction) -> None:
                 repo_url = repo_url[:-4]
 
             build_flags = build_info.get('BUILD_FLAGS', 'null')
+            if build_flags == 'null' or build_flags == '':
+                build_flags = "None"
                 
             logging.info("Successfully loaded git information from build_info file")
             
