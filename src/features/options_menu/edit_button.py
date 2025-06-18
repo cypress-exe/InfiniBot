@@ -2,13 +2,11 @@ from nextcord import Interaction
 import nextcord
 
 from features.options_menu.editing import reaction_roles, embeds, role_messages
+from features.options_menu.options_btn_interface import OptionsButton
 
-class EditButton(nextcord.ui.Button):
-    def __init__(self, outer, interaction: Interaction):
-        super().__init__(label = "Edit Message")
-        
-        self.outer = outer
-        self.interaction = interaction
+class EditButton(OptionsButton):
+    def get_label(self) -> str:
+        return "Edit Message"
 
     def load(self, interaction: Interaction, data: dict):
         self.message: nextcord.Message = data["message"]

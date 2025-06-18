@@ -294,10 +294,14 @@ async def opt_into_dms(interaction: Interaction):
     """
     await dm_commands.run_opt_into_dms_command(interaction)
 
-# MESSAGE COMMANDS ============================================================================================================================================================== 
+# MESSAGE & USER COMMANDS ============================================================================================================================================================== 
 @bot.message_command(name="Options")
 async def message_command_options(interaction: Interaction, message: nextcord.Message):
     await entrypoint_ui.run_message_command(interaction, message)
+
+@bot.user_command(name="Options")
+async def user_command_options(interaction: Interaction, user: nextcord.User):
+    await entrypoint_ui.run_member_command(interaction, user)
 
 # ERROR HANDLING ==============================================================================================================================================================
 @bot.event
@@ -550,6 +554,10 @@ async def on_member_remove(member: nextcord.Member) -> None:
     # Verify that the member was not autobanned
     if autobans.member_has_autoban(member):
         logging.info(f"Member {member.id} ({member.name}) was autobanned, skipping leave message and removal handling.")
+        
+        # Log the removal
+        with LogIfFailure(feature="action_logging.log_member_removal"):
+            await action_logging.log_member_removal(member.guild, member)
         return
 
     # Trigger the farewell message

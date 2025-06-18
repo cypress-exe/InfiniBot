@@ -34,9 +34,10 @@ Generic replacements can be used in embeds, join/leave messages, role messages, 
 
 ## Time and Date Replacements
 
-- `@time` - Current time in the server's timezone
-- `@date` - Current date
-- `@datetime` - Current date and time
+- `@time` - Current time
+- `@date` - Current date (Long Format)
+- `@dateshort` - Current date (Short Format)
+- `@datelong` - Current date (Long Format. Same as `@date`)
 
 ## Channel Mentions
 

@@ -148,7 +148,7 @@ async def run_create_embed_command(interaction: Interaction, role: nextcord.Role
     embed = nextcord.Embed(title=embed_title, description=embed_description, color=discord_color)
 
     # Apply replacements
-    embed = utils.apply_generic_replacements(embed, None, interaction.guild)
+    embed = utils.apply_generic_replacements(embed, interaction.user, interaction.guild)
 
     interaction_response = await interaction.channel.send(content=content, embed=embed)
     

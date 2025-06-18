@@ -63,7 +63,7 @@ class EditEmbed(CustomView):
                                           description=self.description_input.value, 
                                           color=before_message.embeds[0].color)
                 
-                new_embed = utils.apply_generic_replacements(new_embed, None, interaction.guild)
+                new_embed = utils.apply_generic_replacements(new_embed, interaction.user, interaction.guild)
 
                 await before_message.edit(embed = new_embed)
                 await self.outer.setup(interaction)

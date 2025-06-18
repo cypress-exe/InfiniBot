@@ -3992,13 +3992,13 @@ class Dashboard(CustomView):
                     ✯ You can even ban people who haven't even joined the server yet.
                     
                     **How?**
-                    Just right click on a message or member, select "Apps" and click "Ban Message Author" or "Ban Member"
+                    Just right click on a message or member, select "Apps" and click "Options". From there, click either "Ban Message Author" or "Ban Member".
                     
                     **Ban Someone Before They Join the Server**
                     Click the "Add" button below, and follow the instructions. You will need the user's Discord ID.
                     
                     **Revoking AutoBans**
-                    Click the "Revoke" button to begin revoking autobans.
+                    Click the "Revoke" button to begin revoking autobans. Note that this won't unban anyone, it will just remove them from the autobans list.
 
                     **Current Autobans**
                     {auto_bans_str}

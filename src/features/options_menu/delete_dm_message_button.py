@@ -1,15 +1,13 @@
 from nextcord import Interaction
 import nextcord
 
+from features.options_menu.options_btn_interface import OptionsButton
 from config.global_settings import get_bot_id
 
-class DeleteDMButton(nextcord.ui.Button):
-    def __init__(self, outer, interaction: Interaction):
-        super().__init__(label = "Delete Message")
-        
-        self.outer = outer
-        self.interaction = interaction
-        
+class DeleteDMButton(OptionsButton):
+    def get_label(self) -> str:
+        return "Delete Message"
+
     def load(self, interaction: Interaction, data: dict):
         self.message: nextcord.Message = data["message"]
 

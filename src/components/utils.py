@@ -286,32 +286,32 @@ def apply_generic_replacements(
     :return: The modified embed with replaced placeholders.
     :rtype: nextcord.Embed
     """
-
-    if member == None:
-        skip_placeholder_replacement = True
-
     if not skip_placeholder_replacement:
         replacements = custom_replacements
 
-        # Add member-related replacements
-        replacements["@displayname"] = member.display_name
-        replacements["@mention"] = member.mention
-        replacements["@username"] = member.name
-        replacements["@id"] = str(member.id)
-        replacements["@joindate"] = member.joined_at.strftime("%Y-%m-%d") if member.joined_at else "Unknown"
-        replacements["@accountage"] = f"{(datetime.datetime.now(datetime.timezone.utc) - member.created_at).days} days" if member.created_at else "Unknown"
+        if member:
+            # Add member-related replacements
+            replacements["@displayname"] = member.display_name
+            replacements["@mention"] = member.mention
+            replacements["@username"] = member.name
+            replacements["@id"] = str(member.id)
+            replacements["@joindate"] = member.joined_at.strftime("%Y-%m-%d") if member.joined_at else "Unknown"
+            replacements["@accountage"] = f"{(datetime.datetime.now(datetime.timezone.utc) - member.created_at).days} days" if member.created_at else "Unknown"
         
-        # Add server-related replacements
-        replacements["@serverid"] = str(guild.id)
-        replacements["@server"] = guild.name
-        replacements["@membercount"] = str(guild.member_count)
-        replacements["@owner"] = guild.owner.display_name if guild.owner else "Unknown"
+        if guild:
+            # Add server-related replacements
+            replacements["@serverid"] = str(guild.id)
+            replacements["@server"] = guild.name
+            replacements["@membercount"] = str(guild.member_count)
+            replacements["@owner"] = guild.owner.display_name if guild.owner else "Unknown"
         
         # Add time and date replacements
-        now = datetime.datetime.now()
-        replacements["@datetime"] = now.strftime("%Y-%m-%d %H:%M:%S")
-        replacements["@time"] = now.strftime("%H:%M:%S")
-        replacements["@date"] = now.strftime("%Y-%m-%d")
+        epoch = int(datetime.datetime.now().timestamp())
+
+        replacements["@time"] = f"<t:{epoch}:t>"
+        replacements["@dateshort"] = f"<t:{epoch}:d>"
+        replacements["@datelong"] = f"<t:{epoch}:D>"
+        replacements["@date"] = f"<t:{epoch}:D>"
 
         # Replace placeholders with values
         for key, value in replacements.items():
