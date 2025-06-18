@@ -7,6 +7,14 @@
 -- DO NOT REMOVE THEM. THEY ARE IMPORTANT FOR THE FUNCTIONALITY OF THE DATABASE.
 -- </IMPORTANT> ======================================================================================
 
+-- In this database, primary keys hold a significance beyond just being unique.
+-- They are used as the primary method to identify entries in the table.
+-- Generally, the primary key should refer to the server_id, which is the unique identifier for a server.
+
+-- Available tags:
+-- #optimize: This table is optimized for size. If all values for the PRIMARY KEY are equal to the default value, the entry is removed from the table to save space.
+-- #remove-if-guild-invalid(ROW): If the ROW does NOT correspond to a valid guild, it will be removed from the table.
+
 -- Simple tables are tables that are used to store simple data.
 -- They have a default state for each variable which is set when a new table entry is created.
 -- If they are marked with #optimize, then when all values for a server_id are equal to the default 
@@ -27,7 +35,7 @@
 
 -- START OF PROFILES
 -- Create profanity_moderation_profile Table (simple table)
-CREATE TABLE IF NOT EXISTS profanity_moderation_profile( -- #optimize
+CREATE TABLE IF NOT EXISTS profanity_moderation_profile( -- #optimize #remove-if-guild-invalid(server_id)
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
@@ -40,7 +48,7 @@ CREATE TABLE IF NOT EXISTS profanity_moderation_profile( -- #optimize
 );
 
 -- Create spam_moderation_profile Table (simple table)
-CREATE TABLE IF NOT EXISTS spam_moderation_profile( -- #optimize
+CREATE TABLE IF NOT EXISTS spam_moderation_profile( -- #optimize #remove-if-guild-invalid(server_id)
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     score_threshold INT DEFAULT 100,
@@ -50,14 +58,14 @@ CREATE TABLE IF NOT EXISTS spam_moderation_profile( -- #optimize
 );
 
 -- Create logging_profile Table (simple table)
-CREATE TABLE IF NOT EXISTS logging_profile( -- #optimize
+CREATE TABLE IF NOT EXISTS logging_profile( -- #optimize #remove-if-guild-invalid(server_id)
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}'
 );
 
 -- Create leveling_profile Table (simple table)
-CREATE TABLE IF NOT EXISTS leveling_profile( -- #optimize
+CREATE TABLE IF NOT EXISTS leveling_profile( -- #optimize #remove-if-guild-invalid(server_id)
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
@@ -69,7 +77,7 @@ CREATE TABLE IF NOT EXISTS leveling_profile( -- #optimize
 );
 
 -- Create join_message_profile Table (simple table)
-CREATE TABLE IF NOT EXISTS join_message_profile( -- #optimize
+CREATE TABLE IF NOT EXISTS join_message_profile( -- #optimize #remove-if-guild-invalid(server_id)
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
@@ -78,7 +86,7 @@ CREATE TABLE IF NOT EXISTS join_message_profile( -- #optimize
 );
 
 -- Create leave_message_profile Table (simple table)
-CREATE TABLE IF NOT EXISTS leave_message_profile( -- #optimize
+CREATE TABLE IF NOT EXISTS leave_message_profile( -- #optimize #remove-if-guild-invalid(server_id)
     server_id INT PRIMARY KEY,
     active BOOLEAN DEFAULT false,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
@@ -86,7 +94,7 @@ CREATE TABLE IF NOT EXISTS leave_message_profile( -- #optimize
 );
 
 -- Create birthdays_profile Table (simple table)
-CREATE TABLE IF NOT EXISTS birthdays_profile( -- #optimize
+CREATE TABLE IF NOT EXISTS birthdays_profile( -- #optimize #remove-if-guild-invalid(server_id)
     server_id INT PRIMARY KEY,
     channel TEXT DEFAULT '{"status": "UNSET", "value": null}',
     embed TEXT DEFAULT '{"title":"Happy Birthday, [realname]!","description":"@mention just turned [age]!", "color":"Gold"}',
@@ -94,7 +102,7 @@ CREATE TABLE IF NOT EXISTS birthdays_profile( -- #optimize
 )
 
 -- Create infinibot_settings_profile Table (simple table)
-CREATE TABLE IF NOT EXISTS infinibot_settings_profile( -- #optimize
+CREATE TABLE IF NOT EXISTS infinibot_settings_profile( -- #optimize #remove-if-guild-invalid(server_id)
     server_id INT PRIMARY KEY,
     delete_invites BOOLEAN DEFAULT false,
     get_updates BOOLEAN DEFAULT true,
@@ -102,7 +110,7 @@ CREATE TABLE IF NOT EXISTS infinibot_settings_profile( -- #optimize
 )
 
 -- Create member_profile Table (simple table)
-CREATE TABLE IF NOT EXISTS member_profile( -- #optimize
+CREATE TABLE IF NOT EXISTS member_profile( -- #optimize #remove-if-guild-invalid(server_id)
     member_id INT PRIMARY KEY,
     level_up_card_enabled BOOLEAN DEFAULT false,
     join_card_enabled BOOLEAN DEFAULT false,
@@ -114,13 +122,13 @@ CREATE TABLE IF NOT EXISTS member_profile( -- #optimize
 
 -- START of SIMPLE LISTS
 -- Create join_to_create_vcs Table (simple table)
-CREATE TABLE IF NOT EXISTS join_to_create_vcs( -- #optimize
+CREATE TABLE IF NOT EXISTS join_to_create_vcs( -- #optimize #remove-if-guild-invalid(server_id)
     server_id INT PRIMARY KEY,
     channels TEXT DEFAULT '[]'
 )
 
 -- Create default_roles Table (simple table)
-CREATE TABLE IF NOT EXISTS default_roles( -- #optimize
+CREATE TABLE IF NOT EXISTS default_roles( -- #optimize #remove-if-guild-invalid(server_id)
     server_id INT PRIMARY KEY,
     default_roles TEXT DEFAULT '[]'
 )
@@ -132,7 +140,7 @@ CREATE TABLE IF NOT EXISTS default_roles( -- #optimize
 
 -- START of INTEGRATED LISTS
 -- Create moderation_strikes Table (integrated list table)
-CREATE TABLE IF NOT EXISTS moderation_strikes(
+CREATE TABLE IF NOT EXISTS moderation_strikes( -- #remove-if-guild-invalid(server_id)
     server_id INT, -- primary key
     member_id INT, -- secondary key
     strikes INT,
@@ -141,7 +149,7 @@ CREATE TABLE IF NOT EXISTS moderation_strikes(
 )
 
 -- Create member_levels Table (integrated list table)
-CREATE TABLE IF NOT EXISTS member_levels(
+CREATE TABLE IF NOT EXISTS member_levels( -- #remove-if-guild-invalid(server_id)
     server_id INT, -- primary key
     member_id INT, -- secondary key
     points INT,
@@ -149,7 +157,7 @@ CREATE TABLE IF NOT EXISTS member_levels(
 )
 
 -- Create level_rewards Table (integrated list table)
-CREATE TABLE IF NOT EXISTS level_rewards(
+CREATE TABLE IF NOT EXISTS level_rewards( -- #remove-if-guild-invalid(server_id)
     server_id INT, -- primary key
     role_id INT, -- secondary key
     level INT, -- "level" is technically an SQL keyword, but it doesn't seem to cause an issue here.
@@ -157,7 +165,7 @@ CREATE TABLE IF NOT EXISTS level_rewards(
 )
 
 -- Create birthdays Table (integrated list table)
-CREATE TABLE IF NOT EXISTS birthdays(
+CREATE TABLE IF NOT EXISTS birthdays( -- #remove-if-guild-invalid(server_id)
     server_id INT, -- primary key
     member_id INT, -- secondary key
     birth_date DATE,
@@ -166,7 +174,7 @@ CREATE TABLE IF NOT EXISTS birthdays(
 )
 
 -- Create autobans Table (integrated list table)
-CREATE TABLE IF NOT EXISTS autobans(
+CREATE TABLE IF NOT EXISTS autobans( -- #remove-if-guild-invalid(server_id)
     server_id INT, -- primary key
     member_id INT, -- secondary key
     member_name TEXT,
@@ -176,7 +184,7 @@ CREATE TABLE IF NOT EXISTS autobans(
 
 -- START of MESSAGE LOGS
 -- Create managed_messages table (integrated list table)
-CREATE TABLE IF NOT EXISTS managed_messages(
+CREATE TABLE IF NOT EXISTS managed_messages( -- #remove-if-guild-invalid(server_id)
     server_id INT, -- primary key
     message_id INT, -- secondary key
     channel_id INT,
@@ -189,7 +197,7 @@ CREATE TABLE IF NOT EXISTS managed_messages(
 
 -- Create Message Logging table (Custom table managed by src.config.stored_messages)
 -- This table is used to store messages for log messages.
-CREATE TABLE IF NOT EXISTS messages ( 
+CREATE TABLE IF NOT EXISTS messages ( -- #remove-if-guild-invalid(guild_id)
     message_id INTEGER PRIMARY KEY,
     guild_id INTEGER NOT NULL,
     channel_id INTEGER NOT NULL,

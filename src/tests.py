@@ -2,6 +2,7 @@
 
 import nextcord
 import datetime
+import json
 import logging
 import os
 import random
@@ -79,7 +80,7 @@ class TestDatabase(unittest.TestCase):
     def get_memory_database(self) -> Database:
         """
         Retrieves an instance of the `Database` class, but with the database
-        URL hijacked to use an in-memory database for testing purposes.
+        URL alterned to use an in-memory database for testing purposes.
 
         :return: An instance of the `Database` class connected to an
             in-memory database.
@@ -135,7 +136,7 @@ class TestDatabase(unittest.TestCase):
         database = self.get_memory_database()
         self.assertEqual(len(database.tables), 3)
 
-        self.assertEqual(database.tables_to_optimize, ["table_1", "table_3"])
+        self.assertEqual(database.tags, {"table_1": {"optimize": True, "remove-if-guild-invalid": "example_integer"}, "table_3": {"optimize": True, "test-tag": "argument"}})
         self.assertEqual(database.all_column_defaults, 
                         {'table_1': {'example_bool': 'false', 'example_channel': '\'{"status": "UNSET", "value": null}\'', 'example_integer': '3', 'example_list': "'[]'"}, 
                          'table_2': {'example_bool': 'false'},
@@ -1673,6 +1674,77 @@ class TestUtils(unittest.TestCase):
                     if not hasattr(nextcord.Permissions, backend_perm):
                         self.fail(f"Required permission `{backend_perm}` does not exist in nextcord.Permissions")
 
+class TestDailyDBMaintenance(unittest.TestCase):
+    # Most of the processes conducted in daily_db_maintenance are previously tested.
+    # Only the other, untested processes are tested here.
+    def test_cleanup_orphaned_guild_entries(self) -> None:
+        """
+        Tests the cleanup_orphaned_guild_entries function.
+        """
+        logging.info("Testing cleanup_orphaned_guild_entries...")
+
+        # Use test_db for testing
+        database = Database("sqlite://", "resources/test_db_build.sql")
+
+        # Generate thousands of random mock guild IDs
+        all_guild_ids = set(random.sample(range(1, 999999999999999999), 5000))
+        all_guild_ids = list(all_guild_ids)  # Convert to list for indexing
+
+        # Split into valid and invalid guild IDs
+        valid_guild_ids = all_guild_ids[:3000]
+        invalid_guild_ids = all_guild_ids[3000:]
+
+        # Generate a noisy list of guild IDs to simulate multiple existing entries in the database
+        noisy_guild_ids = all_guild_ids.copy()
+        for _ in range(10000):
+            noisy_guild_ids.append(random.choice(noisy_guild_ids))
+
+        random.shuffle(noisy_guild_ids)  # Shuffle to randomize the order
+
+        # Generate mock entries in the database
+        for index, guild_id in enumerate(noisy_guild_ids):
+            bool_val = "true" if random.choice([True, False]) else "false"
+            ch_status = random.choice(["SET", "UNSET"])
+            if ch_status == "UNSET":
+                ch_value = "null"
+            else:
+                ch_value = str(random.randint(100000, 999999))
+            ch_json = f'{{"status": "{ch_status}", "value": {ch_value}}}'
+            list_val = json.dumps([random.randint(0, 1000) for _ in range(random.randint(0, 5))])
+
+            database.execute_query(
+                f"INSERT INTO table_1 "
+                f"(primary_key, example_bool, example_channel, example_integer, example_list) "
+                f"VALUES ({index}, {bool_val}, '{ch_json}', {guild_id}, '{list_val}')",
+                commit=True
+            )
+
+        # Call cleanup_orphaned_guild_entries
+        db_manager.cleanup_orphaned_guild_entries(
+            all_guild_ids=valid_guild_ids, # Slight name mismatch. Intentional.
+            database=database
+        )
+
+        # Verify that only valid guild IDs are present in the database
+        remaining_guild_ids = database.execute_query("SELECT example_integer FROM table_1", multiple_values=True)
+        
+        for id in remaining_guild_ids:
+            self.assertIn(id[0], valid_guild_ids,
+                          msg=f"Found orphaned guild ID {id[0]} in the database, which should have been cleaned up.")
+            
+        for id in valid_guild_ids:
+            self.assertIn(id, [row[0] for row in remaining_guild_ids],
+                          msg=f"Valid guild ID {id} is missing from the database after cleanup.")
+            
+        for id in invalid_guild_ids:
+            self.assertNotIn(id, [row[0] for row in remaining_guild_ids],
+                             msg=f"Invalid guild ID {id} should not be present in the database after cleanup.")
+
+        # Cleanup
+        database.execute_query("DELETE FROM table_1", commit=True)
+        database.cleanup()
+
+        logging.info("Finished testing cleanup_orphaned_guild_entries...")
 
 def cleanup_environment():
     """

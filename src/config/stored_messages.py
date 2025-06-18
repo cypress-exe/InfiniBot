@@ -278,7 +278,7 @@ def remove_messages_from_guild(guild_id: int):
     """
     query = "DELETE FROM messages WHERE guild_id = :guild_id"
     get_database().execute_query(query, {'guild_id': guild_id}, commit=True)
-    logging.debug(f"Removed all messages from guild with ID {guild_id} from the database.")
+    logging.info(f"Removed all messages from guild with ID {guild_id} from the database.")
 
 def remove_messages_from_channel(channel_id: int):
     """
@@ -289,10 +289,23 @@ def remove_messages_from_channel(channel_id: int):
     """
     query = "DELETE FROM messages WHERE channel_id = :channel_id"
     get_database().execute_query(query, {'channel_id': channel_id}, commit=True)
-    logging.debug(f"Removed all messages from channel with ID {channel_id} from the database.")
+    logging.info(f"Removed all messages from channel with ID {channel_id} from the database.")
 
 def cleanup(max_messages_to_keep_per_guild=None, max_days_to_keep=None):
-    logging.debug("Cleaning up the database...")
+    """
+    Clean up messages from the database by removing older entries and limiting 
+    the total number of messages per guild.
+
+    :param max_messages_to_keep_per_guild: Maximum number of recent messages to keep per guild.
+    :type max_messages_to_keep_per_guild: int | None
+    :param max_days_to_keep: Maximum age (in days) for messages to remain stored.
+    :type max_days_to_keep: int | None
+    :return: The total number of messages deleted.
+    :rtype: int
+    """
+    logging.info("Cleaning up the database...")
+
+    total_deleted = 0
     if max_messages_to_keep_per_guild is None:
         max_messages_to_keep_per_guild = get_configs()['discord-message-logging']["max-messages-to-keep-per-guild"]
 
@@ -304,7 +317,7 @@ def cleanup(max_messages_to_keep_per_guild=None, max_days_to_keep=None):
     DELETE FROM messages 
     WHERE last_updated < datetime('now', '-{max_days_to_keep} days');
     """
-    get_database().execute_query(query, commit=True)
+    total_deleted += get_database().execute_query(query, commit=True, return_affected_rows=True)
 
     # Delete extra message log entries over max-messages-to-keep-per-guild (config) per guild
     query = f"""DELETE FROM messages
@@ -317,4 +330,7 @@ def cleanup(max_messages_to_keep_per_guild=None, max_days_to_keep=None):
         )
         WHERE row_num > {max_messages_to_keep_per_guild}
     );"""
-    get_database().execute_query(query, commit=True)
+    total_deleted += get_database().execute_query(query, commit=True, return_affected_rows=True)
+
+    logging.info(f"Cleanup complete. Total deleted: {total_deleted}")
+    return total_deleted

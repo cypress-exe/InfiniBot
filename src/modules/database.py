@@ -57,7 +57,7 @@ class Database:
         self.Session = sessionmaker(bind=self.engine)
         self._dburl = db_url
         self.tables:list[str] = []
-        self.tables_to_optimize:list[str] = []
+        self.tags:dict[str, any] = {}  # Dictionary to store tags for tables
         self.all_column_defaults:dict[str, dict[str, str]] = {}
         self.all_column_types:dict[str, dict[str, str]] = {}
         self.all_column_names:dict[str, list[str]] = {}
@@ -84,7 +84,7 @@ class Database:
     def get_db_url(self):
         return self._dburl
 
-    def execute_query(self, sql: str, args: dict = {}, commit: bool = False, multiple_values: bool = False):
+    def execute_query(self, sql: str, args: dict = {}, commit: bool = False, multiple_values: bool = False, return_affected_rows: bool = False, **kwargs):
         """
         Execute an SQL query and handle exceptions.
 
@@ -93,9 +93,11 @@ class Database:
             args (dict, optional): Query parameters.
             commit (bool, optional): Whether to commit changes to the database.
             multiple_values (bool, optional): Whether to return multiple query results.
+            return_affected_rows (bool, optional): Whether to return the number of affected rows instead of query results.
 
         Returns:
             any: 
+                return_affected_rows = True: Number of rows affected by INSERT/UPDATE/DELETE operations.
                 multiple_values = False: Query result(s) simplified to a single value.
                 multiple_values = True: All query results wrapped in a list.
         """
@@ -105,14 +107,24 @@ class Database:
         with session_factory() as session:
             try:
                 result = session.execute(text(sql), args)
-                data = result.fetchall() if result.returns_rows else None
-                if commit:
-                    session.commit()
+                
+                if return_affected_rows:
+                    # For INSERT/UPDATE/DELETE operations, return the number of affected rows
+                    affected_count = result.rowcount
+                    if commit:
+                        session.commit()
+                    return affected_count
+                else:
+                    # For SELECT operations, return the query results
+                    data = result.fetchall() if result.returns_rows else None
+                    if commit:
+                        session.commit()
+                    return data if multiple_values else self.get_query_first_value(data)
+                    
             except Exception as e:
                 logging.error(f"Error executing SQL query: {sql}", exc_info=True)
                 session.rollback()
                 raise Exception(e)
-            return data if multiple_values else self.get_query_first_value(data)
     
     def build_database(self, build_file_path: str) -> None:
         """
@@ -151,10 +163,12 @@ class Database:
             table_info = self.execute_query(f"PRAGMA table_info({table})", multiple_values=True)
             table_schema = self.execute_query(f"SELECT sql FROM sqlite_master WHERE type='table' AND name='{table}'",
                                                multiple_values=False)
+            
+            # Tags
+            _tags = self._extract_tags_from_line(table_schema[0].split("\n")[0]) if table_schema else {}
+            if _tags:
+                self.tags[table] = _tags
 
-            # Check for "-- #optimize" marker in the table schema
-            if "-- #optimize" in table_schema[0]:
-                self.tables_to_optimize.append(table)
 
             for col_info in table_info:
                 column_names.append(col_info[1])
@@ -172,7 +186,34 @@ class Database:
             self.all_column_types[table] = column_types
             self.all_column_names[table] = column_names
             self.all_primary_keys[table] = primary_key
-    
+
+    def _extract_tags_from_line(self, line: str) -> dict[str, any]:
+        """
+        Extract tags from a line of SQL code, including tags with arguments.
+
+        Args:
+            line (str): A line of SQL code.
+
+        Returns:
+            dict(str, any): Dictionary of tags where keys are tag names and values are either True (for simple tags) or the argument string (for tags with arguments).
+        """
+        tags = {}
+        if "--" in line:
+            parts = line.split("--")
+            for part in parts[1:]:
+                if "#" in part:
+                    tag_parts = [tag.strip() for tag in part.split("#") if tag.strip()]
+                    for tag_part in tag_parts:
+                        if "(" in tag_part and tag_part.endswith(")"):
+                            # Tag with argument: extract tag name and argument
+                            tag_name = tag_part[:tag_part.index("(")]
+                            argument = tag_part[tag_part.index("(") + 1:-1]
+                            tags[tag_name] = argument
+                        else:
+                            # Simple tag without argument
+                            tags[tag_part] = True
+        return tags
+
     def remove_extraneous_rows(self, table:str, skip_table_validation_check=False) -> None:
         """
         Check if a table has extraneous rows and remove them. (Will only run on tables marked as `#optimize`)
@@ -180,9 +221,11 @@ class Database:
         Args:
             table (str): Table name.
             skip_table_validation_check (bool, optional): If true, skips validation checks ensuring that the table is marked as `#optimize`
+        Returns:
+            int: Number of rows deleted.
         """
         if not skip_table_validation_check:
-            if table not in self.tables_to_optimize: return
+            if table not in self.tags or 'optimize' not in self.tags[table]: return 0
 
         column_defaults = self.all_column_defaults[table]
 
@@ -193,25 +236,34 @@ class Database:
         select_query = select_query.rstrip(" AND")  # Remove the trailing "AND"
 
         # Execute the query
-        self.execute_query(select_query, commit=True)
+        return self.execute_query(select_query, commit=True, return_affected_rows=True)
 
-    def optimize_database(self, throttle: bool = False, throttle_delay: float = 1.0) -> None:
+    def optimize_database(self, throttle: bool = False, throttle_delay: float = 0.1) -> None:
         """
         Synchronous database optimization with throttling and metrics
         - throttle: Enable delay between table optimizations
         - throttle_delay: Seconds to pause between tables (if throttling)
+
+        Args:
+            throttle (bool): Whether to enable throttling.
+            throttle_delay (float): Delay in seconds between table optimizations.
+        Returns:
+            int: Total number of rows deleted during optimization.
         """
+        tables_to_optimize = [table for table in self.tables if table in self.tags and 'optimize' in self.tags[table]]  
+
         start_time = time.monotonic()
-        total_tables = len(self.tables_to_optimize)
+        total_tables = len(tables_to_optimize)
         processed_tables = 0
         total_throttle_time = 0.0
+        rows_deleted = 0
 
         logging.info(f"Starting database optimization ({total_tables} tables)")
 
         try:
-            for table in self.tables_to_optimize:
+            for table in tables_to_optimize:
                 # Process table directly in main thread
-                self.remove_extraneous_rows(table)
+                rows_deleted += self.remove_extraneous_rows(table)
                 processed_tables += 1
 
                 if throttle:
@@ -236,6 +288,8 @@ class Database:
                 f"Avg time per table: {avg_per_table:.2f}s"
             )
 
+        return rows_deleted
+
     def force_remove_entry(self, table:str, id:int) -> None:
         """
         Force remove an entire entry from a table. BE VERY CAREFUL WITH THIS.
@@ -250,7 +304,7 @@ class Database:
                            commit=True)
         
     def checkpoint(self):
-        self.execute_query("PRAGMA wal_checkpoint(TRUNCATE)", commit=True)
+        self.execute_query("PRAGMA wal_checkpoint(RESTART)", commit=True)
     
     def get_column_default(self, table:str, column_name:str, format=False) -> (bool | int | str | UNSET_VALUE | Any):
         """

@@ -997,15 +997,42 @@ class IntegratedList_TableManager(TableManager):
         return result
 
 async def daily_database_maintenance(bot: nextcord.Client):
-    """Perform database maintenance with async optimizations and performance monitoring"""
+    """
+    Perform comprehensive daily database maintenance operations with performance monitoring.
+    This function executes a series of database maintenance tasks including WAL checkpointing,
+    database optimization, message log cleanup, and removal of orphaned guild entries.
+    The operation includes performance tracking and throttling to prevent system overload.
+    Args:
+        bot (nextcord.Client): The Discord bot client instance used to access guild information
+                              for orphaned entry cleanup operations.
+    Returns:
+        None
+    Raises:
+        Exception: Any fatal errors during maintenance operations are logged and handled gracefully.
+    Performance Features:
+        - CPU usage monitoring with throttling at 75% threshold
+        - Execution time tracking for each maintenance phase
+        - Memory usage reporting
+        - Batch processing for large datasets
+        - Temporary table optimization for orphaned entry cleanup
+    Maintenance Phases:
+        1. WAL Checkpoint: Flushes write-ahead log to main database
+        2. Database Optimization: Performs VACUUM and other optimization operations
+        3. Message Log Cleanup: Removes old message entries based on retention policy
+        4. Orphaned Guild Entries: Removes database entries for guilds the bot is no longer in
+    Notes:
+        - Waits for bot to be ready before starting maintenance
+        - Skips execution if bot load status prevents maintenance
+        - Logs detailed performance metrics and progress information
+        - Includes safety mechanisms to prevent maintenance from exceeding 5 minutes
+        - Uses temporary tables for efficient bulk operations
+        - Automatically cleans up resources even if errors occur
+    """
     await bot.wait_until_ready()
     
     # Initialize performance tracking
     start_time = datetime.datetime.now(datetime.timezone.utc)
     total_deleted = 0
-    throttle_events = 0
-    max_cpu = 75  # % CPU usage threshold for throttling
-    loop = asyncio.get_event_loop()
     
     logging.info(f"================================ GLOBAL DATABASE MAINTENANCE ================================")
     
@@ -1014,7 +1041,6 @@ async def daily_database_maintenance(bot: nextcord.Client):
             logging.warning("SKIPPING: Bot load status prevents maintenance")
             return
         
-
         # WAL checkpoint phase -----------------------------------------------------------------------------------
         logging.info("Starting WAL checkpoint...")
         checkpoint_start = datetime.datetime.now(datetime.timezone.utc)
@@ -1028,7 +1054,7 @@ async def daily_database_maintenance(bot: nextcord.Client):
         logging.info("Starting database optimization...")
         optimize_start = datetime.datetime.now(datetime.timezone.utc)
         
-        get_database().optimize_database(throttle=True)
+        total_deleted += get_database().optimize_database(throttle=True)
 
         optimize_duration = datetime.datetime.now(datetime.timezone.utc) - optimize_start
         logging.info(f"Optimization completed in {optimize_duration.total_seconds():.2f}s")
@@ -1039,74 +1065,28 @@ async def daily_database_maintenance(bot: nextcord.Client):
         message_log_cleanup_start = datetime.datetime.now(datetime.timezone.utc)
 
         from config import stored_messages
-        stored_messages.cleanup()
+        total_deleted += stored_messages.cleanup()
 
         message_log_cleanup_duration = datetime.datetime.now(datetime.timezone.utc) - message_log_cleanup_start
         logging.info(f"Message log cleanup completed in {message_log_cleanup_duration.total_seconds():.2f}s")
 
 
-        # Guild cleanup phase -----------------------------------------------------------------------------------
-        all_guild_ids = {guild.id for guild in bot.guilds}
-        logging.info(f"Scanning tables for orphaned entries")
+        # Orphaned Guild Entries cleanup phase -----------------------------------------------------------------------------------
+        logging.info(f"Scanning tables for orphaned guild entries...")
+        orphaned_guild_entries_cleanup_start = datetime.datetime.now(datetime.timezone.utc)
 
-        for table in get_database().tables:
-            try:
-                table_start = datetime.datetime.now(datetime.timezone.utc)
-                # Get entries as list to handle length and batching
-                entries = await loop.run_in_executor( # Entries is a list of IDs in the table
-                    None,
-                    lambda: list(get_database().get_table_unique_entries(table))
-                )
-                total_entries = len(entries)
-                logging.info(f"Processing {total_entries} entries in {table}")
-                deleted_count = 0
-                batch_size = 100
-                
-                for batch_num in range(0, total_entries, batch_size):
-                    # Throttle check
-                    if psutil.cpu_percent() > max_cpu:
-                        throttle_events += 1
-                        await asyncio.sleep(1)
-                        logging.warning(f"CPU at {psutil.cpu_percent()}% - throttling batch {batch_num//batch_size}")
-                    
-                    batch = entries[batch_num:batch_num + batch_size]
-                    
-                    # Process batch
-                    deleted_in_batch = await loop.run_in_executor(
-                        None,
-                        _process_batch,
-                        table,
-                        batch,
-                        all_guild_ids
-                    )
-                    
-                    deleted_count += deleted_in_batch
-                    total_deleted += deleted_in_batch
-                    
-                    # Progress logging every 10 batches
-                    if batch_num % (batch_size * 10) == 0:
-                        elapsed = datetime.datetime.now(datetime.timezone.utc) - table_start
-                        processed = min(batch_num + batch_size, total_entries)
-                        logging.info(
-                            f"{table}: Processed {processed}/{total_entries} "
-                            f"({processed/total_entries*100:.1f}%) | "
-                            f"Deleted: {deleted_count} | "
-                            f"Rate: {batch_size/elapsed.total_seconds():.1f} entries/s"
-                        )
-                
-                logging.info(f"Completed {table} in {datetime.datetime.now(datetime.timezone.utc) - table_start}")
+        total_deleted += cleanup_orphaned_guild_entries(set([int(guild.id) for guild in bot.guilds]), get_database())
 
-            except Exception as table_err:
-                logging.error(f"Table {table} processing failed: {table_err}", exc_info=True)
+        orphaned_guild_entries_cleanup_duration = datetime.datetime.now(datetime.timezone.utc) - orphaned_guild_entries_cleanup_start
+        logging.info(f"Orphaned guild entries cleanup completed in {orphaned_guild_entries_cleanup_duration.total_seconds():.2f}s")
 
         # Final report
         total_duration = datetime.datetime.now(datetime.timezone.utc) - start_time
         logging.info(
             f"MAINTENANCE COMPLETE\n"
             f"Duration: {total_duration}\n"
-            f"Deleted: {total_deleted} orphans\n"
-            f"Throttle events: {throttle_events}\n"
-            f"Peak CPU: {psutil.cpu_percent()}%\n"
+            f"Deleted: {total_deleted} entries\n"
+            f"Current CPU: {psutil.cpu_percent()}%\n"
             f"Memory usage: {psutil.virtual_memory().percent}%"
         )
 
@@ -1116,14 +1096,84 @@ async def daily_database_maintenance(bot: nextcord.Client):
         if (datetime.datetime.now(datetime.timezone.utc) - start_time) > datetime.timedelta(minutes=5):
             logging.warning("Database maintenance exceeded 5 minute threshold!")
 
-def _process_batch(table: str, batch: list, valid_ids: set) -> int:
-    """Helper function for batch processing (runs in executor)"""
-    deleted = 0
-    for entry_id in batch:
-        if entry_id not in valid_ids:
+def cleanup_orphaned_guild_entries(all_guild_ids:set, database:Database=None):
+    """
+    Remove database entries that reference guilds the bot is not currently in.
+
+    Args:
+        all_guild_ids (set): A set of all guild IDs to keep.
+        database (Database, optional): The database manager instance. If None, uses the default database.
+
+    Returns:
+        int: Total number of orphaned entries that were deleted.
+    """
+    total_deleted = 0
+    if database is None:
+        database = get_database()
+
+    try:
+        # Create temporary table for valid guild IDs - much more efficient than large IN clauses
+        database.execute_query("DROP TABLE IF EXISTS temp_valid_guilds")
+        database.execute_query("CREATE TEMPORARY TABLE temp_valid_guilds (guild_id INTEGER PRIMARY KEY)")
+
+        # Insert all valid guild IDs in batches to avoid parameter limits
+        batch_size = 500  # SQLite parameter limit is typically 999
+        guild_ids_list = list(all_guild_ids)
+        
+        for i in range(0, len(guild_ids_list), batch_size):
+            batch = guild_ids_list[i:i + batch_size]
+            query_values = ",".join(f"({int(gid)})" for gid in batch)
+            database.execute_query(
+            f"INSERT INTO temp_valid_guilds (guild_id) VALUES {query_values}",
+            commit=True
+            )
+
+        for table in database.tables:
             try:
-                get_database().force_remove_entry(table, entry_id)
-                deleted += 1
-            except Exception as e:
-                logging.error(f"Failed to delete {entry_id} from {table}: {e}")
-    return deleted
+                table_start = datetime.datetime.now(datetime.timezone.utc)
+
+                # Get the guild row
+                if table not in database.tags: continue
+                if "remove-if-guild-invalid" not in database.tags[table]: continue
+                guild_row = database.tags[table]["remove-if-guild-invalid"]
+
+                if guild_row not in database.all_column_names[table]:
+                    logging.warning(f"Table {table} does not have the reported guild column '{guild_row}'. Skipping.")
+                    continue
+
+                table_primary_key = database.all_primary_keys[table]
+                if table_primary_key is None:
+                    logging.warning(f"Table {table} does not have a primary key. Skipping.")
+                    continue
+                
+                logging.info(f"Processing table {table} with guild column '{guild_row}'")
+                
+                # Delete orphaned entries using LEFT JOIN - much more efficient than large IN clause
+                # SQLite will tell us how many rows were affected, so no need to count first
+                deleted_count = database.execute_query(
+                    f"""DELETE FROM {table} 
+                        WHERE {table}.{table_primary_key} IN (
+                            SELECT {table}.{table_primary_key} FROM {table} 
+                            LEFT JOIN temp_valid_guilds ON {table}.{guild_row} = temp_valid_guilds.guild_id 
+                            WHERE temp_valid_guilds.guild_id IS NULL
+                        )""",
+                    commit=True,
+                    return_affected_rows=True
+                )
+                
+                if deleted_count > 0:
+                    total_deleted += deleted_count
+                    logging.info(f"Deleted {deleted_count} orphaned entries from {table}")
+                else:
+                    logging.info(f"No orphaned entries found in {table}")
+                
+                logging.info(f"Completed {table} in {datetime.datetime.now(datetime.timezone.utc) - table_start}")
+
+            except Exception as table_err:
+                logging.error(f"Table {table} processing failed: {table_err}", exc_info=True)
+
+    finally:
+        # Cleanup temporary table
+        database.execute_query("DROP TABLE IF EXISTS temp_valid_guilds")
+
+    return total_deleted
