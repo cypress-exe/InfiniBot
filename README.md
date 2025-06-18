@@ -22,7 +22,7 @@
 
 ## ✨ Features
 
-InfiniBot is a multipurpose Discord utility bot designed to scale across thousands of servers using SQLite for storage, docker for containerization, and sharding for distribution. InfiniBot offers a variety of features including:
+InfiniBot is a multipurpose Discord utility bot designed to scale across millions of servers using SQLite for storage, docker for containerization, and sharding for distribution. InfiniBot is in thousands of servers, with hundreds of thousands of active users. It's built to be fast, efficient, and easy to use.
 
 ### 🛡️ Moderation & Security
 - **Advanced Profanity Filter** - Customizable word filtering with strike system
@@ -45,6 +45,16 @@ InfiniBot is a multipurpose Discord utility bot designed to scale across thousan
 > **Note:** External contributions are welcome! You're free to fork, contribute, and self-host for personal use or small friend groups. However, please do not create competing public instances that would conflict with the official InfiniBot service.
 
 ## 📋 Prerequisites
+
+If you just want to use the official InfiniBot, you can invite it to your server using the button below:
+
+<div align="center">
+
+[![Add InfiniBot to Your Server](https://img.shields.io/badge/Add%20to%20Server-7289DA?style=for-the-badge&logo=discord&logoColor=white)](https://discord.com/oauth2/authorize?client_id=991832387015159911&permissions=1374809222364&scope=bot)
+
+</div>
+
+If you want to self-host InfiniBot, you'll need to set up your own instance. Here's what you need:
 
 InfiniBot runs inside a Docker container, so Docker must already be installed. You can find documentation for setting up Docker [here](https://docs.docker.com/get-docker/).
 
@@ -90,7 +100,16 @@ DISCORD_AUTH_TOKEN=your_bot_token_here
 sudo bash rebuild_and_run.bash
 ```
 
-🎉 **Success!** InfiniBot should now be running. Don't forget to invite your bot to a server!
+🎉 **Success!** InfiniBot should now be running. Don't forget to invite your bot to a server!  
+
+### Troubleshooting
+Due to the way the bot works under the hood, you may need to restart InfiniBot after adding it to its first server. You can do this by running the previous command again:
+```bash
+sudo bash rebuild_and_run.bash
+```
+
+In addition, you may need to wait a few hours before all of InfiniBot's commands appear in your Discord client. This is due to Discord's caching system, which can take time to update. Try restarting your Discord client for the changes to take effect.
+
 
 ## ⚙️ Configuration
 
@@ -103,31 +122,7 @@ You can customize InfiniBot's behavior through the `./generated/configure` folde
 
 ## 🛠️ Development Scripts
 
-The following scripts are available to manage the project:
-
-### 🔨 `sudo bash build.bash`
-Builds the project Docker image without running it.
-
-**Arguments:**
-- `--use-cache` - Uses cache for faster rebuilds
-
-### 🗑️ `sudo bash remove_container.bash`
-Removes the project's container while preserving the build image.
-
-### ▶️ `sudo bash run.bash`
-Runs the project (assumes image exists and previous container is removed).
-
-**Arguments:**
-- `-d` - Detached mode (no logs shown)
-
-### 🔄 `sudo bash rebuild_and_run.bash`
-Streamlined workflow: stops container → rebuilds → restarts.
-
-**Arguments:**
-- `--no-cache` - Rebuilds without cache (slower but may resolve issues)
-
-### 🔧 `sudo bash run_tests.bash`
-Runs the project's test suite to ensure everything is functioning correctly.
+There are a few development scripts in the root directory of the repository to help you manage the docker container and environment. These scripts are designed to be run with `sudo` to ensure proper permissions for Docker operations.
 
 ## 📖 Documentation
 
