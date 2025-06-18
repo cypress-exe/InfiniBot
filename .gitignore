@@ -1,7 +1,6 @@
 __pycache__
 
 generated/*
-generated-test/*
 
 *.code-workspace
 .venv/*
