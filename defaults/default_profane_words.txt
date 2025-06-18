@@ -1,4 +1,22 @@
 # Default profane words for InfiniBot
-apple
-orange
-grape
+
+# Visit the pattern matching options to learn more about
+# the patterns that InfiniBot can monitor:
+# https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/profanity/filtered-words/#pattern-matching-options
+
+f*ck
+"p*rn
+"pron"
+shit?"
+"as?hole?"
+"b*tch
+"cunt
+"nig?er?"
+"nig?a?"
+"whore?"
+"dick?"
+"pussy"
+"cock?"
+"tit?"
+"fag?"
+"faggot?"
