@@ -57,19 +57,20 @@ for arg in "$@"; do
 done
 
 # Add GitHub Actions cache if environment variables are set
+buildx_cache_args=()
 if [ -n "$BUILDX_CACHE_FROM" ]; then
-    buildx_cache="--cache-from $BUILDX_CACHE_FROM"
+    buildx_cache_args+=("--cache-from" "$BUILDX_CACHE_FROM")
     cache_string=""  # Clear --no-cache if cache-from is set
 fi
 if [ -n "$BUILDX_CACHE_TO" ]; then
-    buildx_cache="$buildx_cache --cache-to $BUILDX_CACHE_TO"
+    buildx_cache_args+=("--cache-to" "$BUILDX_CACHE_TO")
     cache_string=""  # Clear --no-cache if cache-to is set
 fi
 
 # Build the Docker image with BuildX (for better caching)
 docker buildx build -f ./.devcontainer/Dockerfile \
     --pull ${cache_string} \
-    ${buildx_cache} \
+    "${buildx_cache_args[@]}" \
     --load \
     -t infinibot:latest \
     ./
