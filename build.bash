@@ -54,9 +54,10 @@ for arg in "$@"; do
     fi
 done
 
-# Build the Docker image with optional caching
-docker build -f ./.devcontainer/Dockerfile \
-    --pull ${cache_string} --force-rm \
+# Build the Docker image with BuildX (for better caching)
+docker buildx build -f ./.devcontainer/Dockerfile \
+    --pull ${cache_string} \
+    --load \
     -t infinibot:latest \
     ./
     

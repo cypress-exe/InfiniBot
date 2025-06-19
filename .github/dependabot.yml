@@ -1,7 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: bundler
-    directory: /
+    directory: /github-pages-site
     schedule:
       interval: weekly
     allow:
@@ -12,3 +12,11 @@ updates:
       interval: weekly
       time: "10:00"
     open-pull-requests-limit: 10
+  - package-ecosystem: docker
+    directory: /.devcontainer
+    schedule:
+      interval: weekly
+  - package-ecosystem: pip
+    directory: /.devcontainer
+    schedule:
+      interval: weekly
