@@ -128,7 +128,7 @@ def _create_welcome_embed(infinibot_mod_mention: str, infinibot_role_mention: st
     
     🎯 **Quick Setup:**
     1) Assign the role {infinibot_mod_mention} to anyone for exclusive admin features!
-    2) Ensure the {infinibot_role_mention} role is positioned high up in the roles hierarchy, or give InfiniBot Administrator permission
+    2) Ensure the {infinibot_role_mention} role is positioned high up in the roles hierarchy, or give InfiniBot the Administrator permission
     
     🚀 **Get Started:**
     Click "Start Onboarding" below to configure your server!
