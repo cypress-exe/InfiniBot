@@ -181,7 +181,7 @@ class ErrorWhyAdminPrivilegesButton(CustomView):
 
         # Generate required permissions ui
         required_permissions_ui = ""
-        for category, permissions in required_permissions:
+        for category, permissions in required_permissions.items():
             required_permissions_ui += f"\n**{category}:**"
             for permission in permissions.keys():
                 required_permissions_ui += f"\n- {permission}"

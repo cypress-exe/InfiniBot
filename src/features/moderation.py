@@ -538,7 +538,7 @@ async def check_and_trigger_profanity_moderation_for_message(
         admin_channel = message.guild.get_channel(server.profanity_moderation_profile.channel)
         if admin_channel is None: 
             description = f"InfiniBot couldn't find your server's admin channel (Moderation -> Profanity -> Admin Channel). It was either deleted, or the bot does not have permission to view it. Please go to the Moderation -> Profanity page of the `/dashboard` and configure the admin channel."
-            await utils.send_error_message_to_server_owner(message.guild, None, message=description)
+            await utils.send_error_message_to_server_owner(message.guild, None, message=description, administrator=False)
         elif await utils.check_text_channel_permissions(admin_channel, True, custom_channel_name=f"Admin Channel (#{admin_channel.name})"):
             view = IncorrectButtonView()
 
