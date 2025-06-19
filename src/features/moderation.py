@@ -117,7 +117,7 @@ async def check_profanity_moderation_enabled_and_warn_if_not(interaction: nextco
                 embed=nextcord.Embed(
                     title="Moderation Tools Disabled",
                     description=(
-                        "Moderation has been turned off. "
+                        "Moderation has been turned off."
                         "Go to the `/dashboard` to turn it back on."
                     ),
                     color=nextcord.Color.red()

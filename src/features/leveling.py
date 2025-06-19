@@ -265,7 +265,7 @@ async def check_leveling_enabled_and_warn_if_not(interaction: Interaction, serve
         return True
     else:
         if not get_global_kill_status()["leveling"]:
-            await interaction.response.send_message(embed = nextcord.Embed(title = "Leveling Disabled", description = "Leveling has been turned off. type \"/enable leveling\" to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Leveling has been turned off.", description = "Go to the `/dashboard` to turn it back on.", color = nextcord.Color.red()), ephemeral = True)
             return False
         else:
             await interaction.response.send_message(embed = nextcord.Embed(title = "Leveling Disabled", description = "Leveling has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.", color = nextcord.Color.red()), ephemeral = True)
