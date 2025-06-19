@@ -1,11 +1,13 @@
 #!/bin/bash
 
-# Create environment
+# <CREATE ENVIRONMENT> ================================================================================
 if [ ! -f ./.env ]; then
     echo "Creating .env file from template..."
     cp ./.devcontainer/env.template ./.env
 fi
+# </CREATE ENVIRONMENT> ===============================================================================
 
+# <GENERATE BUILD INFO> ===============================================================================
 # Capture git information for the container
 echo "Capturing git information..."
 mkdir -p ./generated
@@ -43,6 +45,17 @@ BUILD_FLAGS=$@
 EOF
 
 echo "Build info written to $git_info_file"
+# </GENERATE BUILD INFO> ==============================================================================
+
+
+# <DOCKER BUILD> ======================================================================================
+# Add new flag to skip Docker build (for CI cache step)
+for arg in "$@"; do
+    if [ "$arg" == "--skip-docker" ]; then
+        echo "Skipping Docker build (metadata step only)."
+        exit 0
+    fi
+done
 
 # Check if "--use-cache" flag is passed
 cache_string="--no-cache"
@@ -55,17 +68,6 @@ for arg in "$@"; do
         break
     fi
 done
-
-# Add GitHub Actions cache if environment variables are set
-buildx_cache_args=()
-if [ -n "$BUILDX_CACHE_FROM" ]; then
-    buildx_cache_args+=("--cache-from" "$BUILDX_CACHE_FROM")
-    cache_string=""  # Clear --no-cache if cache-from is set
-fi
-if [ -n "$BUILDX_CACHE_TO" ]; then
-    buildx_cache_args+=("--cache-to" "$BUILDX_CACHE_TO")
-    cache_string=""  # Clear --no-cache if cache-to is set
-fi
 
 # Build the Docker image with BuildX (for better caching)
 docker buildx build -f ./.devcontainer/Dockerfile \
@@ -80,3 +82,4 @@ if [ $? != 0 ]; then
     echo "ERROR: Docker build failed."
     exit 1
 fi
+# </DOCKER BUILD> =====================================================================================
