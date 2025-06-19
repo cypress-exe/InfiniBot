@@ -18,6 +18,7 @@ jobs:
           ruby-version: '3.3' # Not needed with a .ruby-version file
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
           cache-version: 0 # Increment this number if you need to re-download cached gems
+          working-directory: github-pages-site
       - name: Install dependencies
         run: |
           cd github-pages-site

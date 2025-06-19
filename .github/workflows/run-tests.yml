@@ -18,6 +18,14 @@ jobs:
     - name: Set up Docker
       uses: docker/setup-buildx-action@v3
 
+    - name: Cache Docker layers
+      uses: actions/cache@v3
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-docker-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-docker-
+
     - name: Run tests
       run: ./run_tests.bash --run-all --retry-once-on-failure
 
