@@ -247,13 +247,13 @@ async def _handle_purge_amount(interaction: Interaction, amount: int) -> None:
         return
 
     # Mark channel as being purged to prevent concurrent operations
-    add_channel_to_purging(interaction.guild_id)
+    add_channel_to_purging(interaction.channel_id)
     
     try:
         # Perform the message deletion
         deleted = await interaction.channel.purge(limit=amount)
     except Exception as e:
-        remove_channel_from_purging(interaction.guild_id)
+        remove_channel_from_purging(interaction.channel_id)
         logging.error(f"Purge error: {e}")
         await _send_error(
             interaction,
@@ -264,7 +264,7 @@ async def _handle_purge_amount(interaction: Interaction, amount: int) -> None:
     finally:
         # Brief delay before cleanup to ensure operation completes
         await asyncio.sleep(1)
-        remove_channel_from_purging(interaction.guild_id)
+        remove_channel_from_purging(interaction.channel_id)
 
     # Send confirmation of successful purge
     await interaction.channel.send(
