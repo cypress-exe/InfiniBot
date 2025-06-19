@@ -20,6 +20,9 @@ jobs:
 
     - name: Run tests
       run: ./run_tests.bash --run-all --retry-once-on-failure
+      env:
+        BUILDX_CACHE_FROM: type=gha
+        BUILDX_CACHE_TO: type=gha,mode=max
 
     - name: Check test exit code
       run: |
