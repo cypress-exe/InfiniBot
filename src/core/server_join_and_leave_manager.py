@@ -222,8 +222,5 @@ async def handle_server_remove(guild: nextcord.Guild):
     
     logging.info(f"InfiniBot has been removed from the server {guild.name} (ID: {guild.id}).") # Info log for now. Maybe change to debug later.
     
-    # Remove stored messages for the guild
-    stored_messages.remove_messages_from_guild(guild.id)
-    
     # Remove all other server data
     Server(guild.id).remove_all_data()
