@@ -9,9 +9,11 @@ for arg in "$@"; do
     fi
 done
 
+# Remove old container if it exists
+./remove_container.bash
+
 # Rebuild if needed (unless skipped)
 if [ "$skip_build" == "false" ]; then
-    ./remove_container.bash
     ./build.bash --use-cache
 fi
 

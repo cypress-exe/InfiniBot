@@ -2,12 +2,13 @@ name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: [ main, master ]
   pull_request:
-
+    branches: [ main, master ]
+  workflow_dispatch:  # Allows manual triggering
 jobs:
-  # Build job
-  build:
+  # Build job for Jekyll site
+  build-pages-site:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,3 +28,26 @@ jobs:
         run: |
           cd github-pages-site
           bundle exec jekyll build
+
+  run-tests:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Run tests
+      run: ./run_tests.bash --run-all --retry-once-on-failure
+      env:
+        BUILDX_CACHE_FROM: type=gha
+        BUILDX_CACHE_TO: type=gha,mode=max
+
+    - name: Check test exit code
+      run: |
+        # The exit code will be propagated from the run_tests.bash script
+        # If the Python tests pass, they exit with 0, and the script exits with 0
+        # If the Python tests fail, they exit with 1, and the script exits with 1
+        # GitHub Actions automatically marks the step as failed if the exit code is non-zero
+        echo "Tests completed"
