@@ -9,3 +9,4 @@ SQLAlchemy==2.0.41
 topggpy==1.4.0
 cachetools==6.1.0
 psutil==7.0.0
+discordlists.py==1.1.1

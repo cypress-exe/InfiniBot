@@ -9,6 +9,7 @@ import config.global_settings as global_settings
 from config.server import Server
 from config import stored_messages
 from core import log_manager
+from core.api_connections_manager import start_all_api_connections
 from core.log_manager import LogIfFailure
 from core.server_join_and_leave_manager import handle_server_join, handle_server_remove
 from core.scheduling import start_scheduler, stop_scheduler
@@ -70,6 +71,7 @@ async def on_ready() -> None: # Bot load
     global_settings.set_bot_load_status(True)
     global_settings.update_bot_id(bot)
     start_scheduler()
+    start_all_api_connections()
     init_views(bot)
 
     # Print which guilds are on which shard
