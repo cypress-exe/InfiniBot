@@ -284,7 +284,7 @@ async def create_reaction_role(interaction: Interaction, title: str, message: st
     data = {
         "v": 1, # Version
         "type": REACTIONROLETYPES.index(_type),
-        "mention_roles": ("1" if mention_roles else "0"),
+        "mention_roles": (1 if mention_roles else 0),
     }
     server.managed_messages.add(
         message_id = partial_message.id,
@@ -341,6 +341,8 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
         except nextcord.errors.Forbidden:
             await utils.send_error_message_to_server_owner(guild, None, message=f"Infinibot does not have a high enough role to assign/remove {role.name} (id: {role.id}) to/from {user} (id: {user.id}). To fix this, promote the role \"Infinibot\" to the highest role on the server or give InfiniBot administrator privileges.")
 
+    action = None
+
     # If it was our message and it was not a bot reacting,
     if message.author.id == bot.application_id and not user.bot:
         if message.embeds:
@@ -358,13 +360,15 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
                         discord_role = get_role(" ".join(line_split[1:]))
                         if discord_role: # If it exists
                             # Check the user's roles
-                            userRole = nextcord.utils.get(user.roles, id = discord_role.id)
+                            user_role = nextcord.utils.get(user.roles, id=discord_role.id)
                             # Give / Take the role
                             try:
-                                if userRole:
+                                if user_role:
                                     await user.remove_roles(discord_role)
+                                    action = "removed"
                                 else:
                                     await user.add_roles(discord_role)
+                                    action = "added"
                             except nextcord.errors.Forbidden:
                                 # No permissions. Send an error
                                 await send_no_permissions_error(discord_role, user)
@@ -380,3 +384,42 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
                             except nextcord.errors.Forbidden:
                                 pass
                             return
+    
+    # Send embed notifying the user of the action
+    if action:
+        embed = nextcord.Embed(
+            title = "🔄  Role Updated",
+            description = f"Your roles have been updated in **{guild.name}**",
+            color = nextcord.Color.green() if action == "added" else nextcord.Color.orange()
+        )
+
+        if action == "added":
+            embed.add_field(
+                name = "✅  Role Added", 
+                value = f"You now have the **{discord_role.name}** role.", 
+                inline=False
+            )
+        elif action == "removed":
+            embed.add_field(
+                name = "❌  Role Removed", 
+                value = f"The **{discord_role.name}** role has been removed from you.", 
+                inline=False
+            )
+
+        embed.set_author(name=guild.name, icon_url=guild.icon.url if guild.icon else None)
+        embed.set_footer(text="Your reaction was automatically removed by InfiniBot. React again to toggle this role.")
+
+        view = ui_components.CustomView()
+        view.add_item(nextcord.ui.Button(
+            label="Go to Reaction Role",
+            style=nextcord.ButtonStyle.link,
+            url=f"https://discord.com/channels/{guild.id}/{message.channel.id}/{message.id}"
+        ))
+
+        # Note: This DM does not respect the user's DM settings. This is because the user has explicitly
+        # interacted with the bot, so in this case, their settings are overridden.
+        try:
+            await user.send(embed=embed, view=view)
+        except nextcord.errors.Forbidden:
+            # If the user has DMs disabled, we can't send them a message.
+            return

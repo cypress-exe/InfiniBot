@@ -53,9 +53,9 @@ class EditReactionRole(CustomView):
                     placeholder="Title", default_value=outer.message.embeds[0].title
                 )
                 self.description_input = nextcord.ui.TextInput(
-                    label="Description", min_length=1, max_length=4000,
+                    label="Description", min_length=0, max_length=4000,
                     placeholder="Description", default_value=outer.message.embeds[0].description,
-                    style=nextcord.TextInputStyle.paragraph
+                    style=nextcord.TextInputStyle.paragraph, required=False
                 )
                 self.add_item(self.title_input)
                 self.add_item(self.description_input)
