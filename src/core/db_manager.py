@@ -15,6 +15,10 @@ from modules.custom_types import UNSET_VALUE
 database_url = "sqlite:///./generated/files/prod.db"
 database_build_file_path = "./resources/db_build.sql"
 
+# Constants
+MAX_SQLITE_INT = 9000000000000000000 # Technically 9223372036854775807, but brought down for margin
+MAX_SQLITE_FLOAT = 1e+308 # Technically 1.7976931348623157e+308, but brought down for margin
+
 class DatabaseForInfiniBot(Database): # Alters Database to add InfiniBot-specific functions
     """
     Retrieves all entries from the database.
@@ -288,13 +292,23 @@ class Simple_TableManager(TableManager):
                 return None
             if isinstance(value, str):
                 if value.isdigit(): value = int(value)
+            if isinstance(value, float):
+                if not value.is_integer(): logging.warning("Value is not an integer. It will be rounded to the nearest integer.")
+                value = int(round(value))
+                
             if isinstance(value, int):
                 if (not allow_negative_values) and value < 0: raise ValueError('This property has been modified to only accept positive values.')
+                
+                # SQLite INTEGER bounds checking and clamping
+                if value > MAX_SQLITE_INT:
+                    logging.warning(f"Integer value {value} exceeds SQLite maximum. Clamping to {MAX_SQLITE_INT}")
+                    value = MAX_SQLITE_INT
+                elif value < -MAX_SQLITE_INT:
+                    logging.warning(f"Integer value {value} below SQLite minimum. Clamping to {-MAX_SQLITE_INT}")
+                    value = -MAX_SQLITE_INT
+                
                 return value
-            if isinstance(value, float):
-                if (not allow_negative_values) and value < 0: raise ValueError('This property has been modified to only accept positive values.')
-                if not value.is_integer(): logging.warning("Value is not an integer. It will be rounded to the nearest integer.")
-                return int(value)
+            
             if isinstance(value, UNSET_VALUE): return value
             if data_structure and isinstance(value, data_structure): return value
             raise TypeError('Must be of type Int')
@@ -324,10 +338,18 @@ class Simple_TableManager(TableManager):
             if isinstance(value, str):
                 if value.isdigit(): value = float(value)
             if isinstance(value, int):
-                if (not allow_negative_values) and value < 0: raise ValueError('This property has been modified to only accept positive values.')
                 value = float(value)
             if isinstance(value, float):
                 if (not allow_negative_values) and value < 0: raise ValueError('This property has been modified to only accept positive values.')
+                
+                # SQLite FLOAT bounds checking and clamping
+                if value > MAX_SQLITE_FLOAT:
+                    logging.warning(f"Float value {value} exceeds SQLite maximum. Clamping to {MAX_SQLITE_FLOAT}")
+                    value = MAX_SQLITE_FLOAT
+                elif value < -MAX_SQLITE_FLOAT:
+                    logging.warning(f"Float value {value} below SQLite minimum. Clamping to {-MAX_SQLITE_FLOAT}")
+                    value = -MAX_SQLITE_FLOAT
+                
                 return value
             raise TypeError('Must be of type Float')
 
@@ -763,6 +785,38 @@ class IntegratedList_TableManager(TableManager):
                 raise KeyError(f"Column \"{column_name}\" not found in data. Did you forget to add it?")
 
         return data_dict
+    
+    def _validate_dict_values_for_sqlite(self, data_dict:dict) -> dict:
+        """
+        Validates dictionary values to ensure they are compatible with SQLite data type limits.
+        This method checks integer and float values in the provided dictionary to ensure they
+        fall within SQLite's supported ranges. Values that exceed the bounds are
+        clamped to the maximum/minimum allowed values with a warning logged. 
+        Args:
+            data_dict (dict): Dictionary containing column names as keys and their corresponding
+                                values to be validated for SQLite compatibility.
+        Returns:
+            dict: The validated dictionary with potentially modified values.
+        Note:
+            - Values exceeding bounds are automatically clamped to valid ranges
+            - A warning is logged when values are clamped
+        """
+        
+        # Check no overflowing int/float values
+        for column_name, value in data_dict.items():
+            if isinstance(value, int):
+                if value > MAX_SQLITE_INT or value < -MAX_SQLITE_INT:
+                    clamp_value = MAX_SQLITE_INT if value > 0 else -MAX_SQLITE_INT
+                    logging.warning(f"Value for column \"{column_name}\" exceeds SQLite INTEGER bounds. Clamping to {clamp_value}.")
+                    data_dict[column_name] = clamp_value
+                    
+            elif isinstance(value, float):
+                if value > MAX_SQLITE_FLOAT or value < -MAX_SQLITE_FLOAT:
+                    clamp_value = MAX_SQLITE_FLOAT if value > 0 else -MAX_SQLITE_FLOAT
+                    logging.warning(f"Value for column \"{column_name}\" exceeds SQLite FLOAT bounds. Clamping to {clamp_value}.")
+                    data_dict[column_name] = clamp_value
+
+        return data_dict
 
     def _update_entry_using_dict(self, secondary_key_value, data_dict):
         """
@@ -835,7 +889,7 @@ class IntegratedList_TableManager(TableManager):
             ValueError: If the primary key does not match or a duplicate entry exists.
             KeyError: If any required keys are missing.
         """
-        data_dict:dict = self._sync_dictionary_with_table(kwargs)
+        data_dict:dict = self._validate_dict_values_for_sqlite(self._sync_dictionary_with_table(kwargs))
         
         # Update the database
         values = {key: data_dict[key] for key in data_dict.keys()}
@@ -880,6 +934,9 @@ class IntegratedList_TableManager(TableManager):
         if self.primary_key_sql_name in kwargs.keys():
             if kwargs[self.primary_key_sql_name] != self.primary_key_value:
                 raise KeyError(f"Primary key \"{self.primary_key_sql_name}\" cannot be updated.")
+            
+        # Ensure values are valid for SQLite
+        kwargs = self._validate_dict_values_for_sqlite(kwargs)
 
         self._update_entry_using_dict(secondary_key_value, kwargs)
 
