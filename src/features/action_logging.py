@@ -775,6 +775,10 @@ async def log_raw_message_edit(guild: nextcord.Guild, original_message: nextcord
     if edited_message.content == "": return
     if original_message != None and original_message.content == "": return
     if original_message != None and edited_message.content == original_message.content: return
+
+    # Test for unloaded bot
+    if guild == None: return
+    if edited_message.author == None: return
     
     # UI Log
     await trigger_edit_log(guild, original_message, edited_message)

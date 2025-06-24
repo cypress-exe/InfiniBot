@@ -4,9 +4,8 @@ import logging
 from components import utils
 from components.ui_components import CustomView
 from config.server import Server
-from config import stored_messages
 
-from config.global_settings import get_configs
+from config.global_settings import get_configs, get_bot_load_status
 from features.check_infinibot_permissions import run_check_infinibot_permissions, create_permissions_report_embed
 from features.onboarding import run_onboarding_command
 
@@ -219,6 +218,11 @@ async def handle_server_remove(guild: nextcord.Guild):
     :return: None
     :rtype: None
     """
+
+    # Don't run if InfiniBot is still loading
+    if not get_bot_load_status():
+        logging.debug(f"Skipping server removal handling for {guild.name} (ID: {guild.id}) because InfiniBot is still loading.")
+        return
     
     logging.info(f"InfiniBot has been removed from the server {guild.name} (ID: {guild.id}).") # Info log for now. Maybe change to debug later.
     

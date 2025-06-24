@@ -8,7 +8,7 @@ import nextcord
 from nextcord import Interaction
 
 from components.ui_components import ErrorWhyAdminPrivilegesButton
-from config.global_settings import feature_dependencies, required_permissions, get_global_kill_status
+from config.global_settings import feature_dependencies, required_permissions, get_global_kill_status, get_bot_load_status
 
 COLOR_OPTIONS = ["Red", "Green", "Blue", "Yellow", "White", "Blurple", "Greyple", "Teal", "Purple", "Gold", "Magenta", "Fuchsia"]
 
@@ -713,6 +713,11 @@ async def send_error_message_to_server_owner(
 
     # Wait a second to let things settle out
     await asyncio.sleep(1)
+
+    # Skip if the bot is not fully loaded
+    if not get_bot_load_status():
+        logging.warning("Bot is not ready. Skipping send_error_message_to_server_owner.")
+        return
     
     if not guild:
         logging.error("No guild found for send_error_message_to_server_owner. Exiting... DID NOT WARN OWNER!!!")
