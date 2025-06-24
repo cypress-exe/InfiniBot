@@ -94,14 +94,12 @@ if shard_count:
     bot = commands.AutoShardedBot(intents = intents, 
                                 allowed_mentions = nextcord.AllowedMentions(everyone = True), 
                                 help_command=None,
-                                guild_ready_timeout=0.5,
                                 max_messages=100,
                                 shard_count=shard_count)
     logging.info(f"Using calculated shard count: {shard_count}")
 else:
     bot = commands.AutoShardedBot(intents = intents, 
                                 allowed_mentions = nextcord.AllowedMentions(everyone = True), 
-                                guild_ready_timeout=0.5,
                                 max_messages=100,
                                 help_command=None)
     logging.info("Using Discord's automatic shard recommendation")
@@ -210,7 +208,7 @@ async def on_ready() -> None: # Bot load
             logging.warning("No channel ID specified for startup notification. Skipping notification.")
             return
         
-        channel = bot.get_channel(channel_id)
+        channel = await bot.fetch_channel(channel_id)
 
         if channel is None:
             logging.error(f"Channel with ID {channel_id} not found. Please check the channel ID in the configuration.")
@@ -250,13 +248,6 @@ async def on_shard_ready(shard_id: int) -> None:
 
     with global_settings.ShardLoadedStatus() as shards_loaded:
         shards_loaded.append(shard_id)
-
-    # Optional: Perform shard-specific tasks, such as notifying a server or channel
-    # Example:
-    # if shard_id == 0:
-    #     admin_channel = bot.get_channel(YOUR_ADMIN_CHANNEL_ID)
-    #     if admin_channel:
-    #         await admin_channel.send(f"Shard {shard_id} is ready.")
 
 @bot.event
 async def on_close() -> None:
@@ -515,47 +506,43 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     :return: None
     :rtype: None
     """
-    # Check if guild/channel are needed
-    server = Server(payload.guild_id)
-    if (utils.feature_is_active(server=server, feature = "logging") or
-        utils.feature_is_active(server=server, feature = "moderation__profanity")):
-        # Find guild and channel
-        guild = bot.get_guild(payload.guild_id)
-        if guild is None: 
-            return
-
-        channel = guild.get_channel(payload.channel_id)
-        if channel is None: 
-            return
-        
-        if not channel.permissions_for(guild.me).read_message_history:
-            await utils.send_error_message_to_server_owner(guild, "View Message History", channel = f"one or more channels (including #{channel.name})")
-            return
-        if not guild.me.guild_permissions.view_audit_log:
-            await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
-            return
-        
-        # If we have it, grab the original message
-        original_message = payload.cached_message
-        if original_message is None:
-            # Find db cached message
-            original_message = stored_messages.get_message(payload.message_id)
-        
-        # Find the message
-        edited_message = None
-        try:
-            edited_message = await channel.fetch_message(payload.message_id)
-        except (nextcord.NotFound, nextcord.Forbidden, nextcord.HTTPException):
-            return
-        
-        # Punish profanity (if any)
-        with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
-            await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message,
-                                                                                skip_active_check=True)
-                
-        # Log the message
-        with LogIfFailure(feature="action_logging.log_raw_message_edit"):
-            await action_logging.log_raw_message_edit(guild, original_message, edited_message)
+    # Find guild and channel
+    guild = await bot.fetch_guild(payload.guild_id)
+    if guild is None: 
+        return
+    
+    channel = await guild.fetch_channel(payload.channel_id)
+    if channel is None: 
+        return
+    
+    if not channel.permissions_for(guild.me).read_message_history:
+        await utils.send_error_message_to_server_owner(guild, "View Message History", channel = f"one or more channels (including #{channel.name})")
+        return
+    if not guild.me.guild_permissions.view_audit_log:
+        await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
+        return
+    
+    # If we have it, grab the original message
+    original_message = payload.cached_message
+    if original_message is None:
+        # Find db cached message
+        original_message = stored_messages.get_message(payload.message_id)
+    
+    # Find the message
+    edited_message = None
+    try:
+        edited_message = await channel.fetch_message(payload.message_id)
+    except (nextcord.NotFound, nextcord.Forbidden, nextcord.HTTPException):
+        return
+    
+    # Punish profanity (if any)
+    with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
+        await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message,
+                                                                            skip_active_check=True)
+            
+    # Log the message
+    with LogIfFailure(feature="action_logging.log_raw_message_edit"):
+        await action_logging.log_raw_message_edit(guild, original_message, edited_message)
 
     # Update the message in the database
     with LogIfFailure(feature="stored_messages.store_message"):
