@@ -455,7 +455,7 @@ async def check_and_trigger_profanity_moderation_for_message(
         return False # Don't check NSFW channels for profanity
 
     if not isinstance(message.author, nextcord.Member): 
-        logging.warning(f"Tried to check profanity for a non-member: {message.author}. Guild ID: {message.guild.id}")
+        logging.debug(f"Tried to check profanity for a non-member: {message.author}. Guild ID: {message.guild.id}")
         return False
     
     if not skip_admin_check and message.author.guild_permissions.administrator:
