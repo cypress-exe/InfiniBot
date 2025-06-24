@@ -963,6 +963,8 @@ async def check_and_run_moderation_commands(bot: nextcord.Client, message: nextc
     :rtype: bool
     """
     if message.guild == None: return # Guild not loaded yet.
+    if message.author == None: return
+    if message.author.bot: return # Don't check messages from bots
 
     if message.author.guild_permissions.administrator: # Don't check profanity for admins
         logging.debug(f"Skipped profanity check for admin in {__name__}: {message.author}")
