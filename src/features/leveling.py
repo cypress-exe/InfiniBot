@@ -300,7 +300,14 @@ async def grant_xp_for_message(message: nextcord.Message) -> None:
     
     points_multiplier = 1
     forgiveness = 3
-    await anext(previous_messages) # Skip the first message
+
+    try:
+        await anext(previous_messages) # Skip the first message
+    except StopAsyncIteration:
+        # No previous messages, so we can just return
+        logging.debug("No previous messages found, skipping xp grant.")
+        return
+
     previous_messages_inverted_list:list[nextcord.Message] = [x async for x in previous_messages][::-1]
     for previous_message in previous_messages_inverted_list:
         if previous_message.content == None or previous_message.content == "": continue
