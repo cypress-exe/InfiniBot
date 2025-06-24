@@ -3,6 +3,7 @@ import nextcord
 from nextcord import Interaction, SlashOption
 from nextcord.ext import commands
 import os
+import json
 
 from components import ui_components, utils
 import config.global_settings as global_settings
@@ -48,9 +49,57 @@ intents.members = True
 intents.voice_states = True
 intents.reactions = True
 
-bot = commands.AutoShardedBot(intents = intents, 
-                            allowed_mentions = nextcord.AllowedMentions(everyone = True), 
-                            help_command=None)
+# Calculate optimal shard count based on configuration and previous data
+def calculate_shard_count():
+    """Calculate optimal shard count based on configuration and stored guild data"""
+    try:
+        # Check if sharding is enabled in config
+        if not global_settings.get_configs()["sharding"]["enabled"]:
+            logging.info("Auto-sharding is disabled in configuration. Using Discord's recommendation.")
+            return None
+        
+        guilds_per_shard = global_settings.get_configs()["sharding"]["guilds-per-shard"]
+        
+        # Try to read previous guild count from shard_config.json
+        shard_config_path = os.path.join("generated", "configure", "shard_config.json")
+        previous_guild_count = 0
+        
+        try:
+            with open(shard_config_path, 'r') as f:
+                shard_data = json.load(f)
+                previous_guild_count = shard_data.get("last_guild_count", 0)
+        except (FileNotFoundError, json.JSONDecodeError):
+            logging.info("No previous shard data found. Will calibrate on first startup.")
+            return None
+        
+        if previous_guild_count == 0:
+            logging.info("No previous guild count data. Will calibrate on first startup.")
+            return None
+        
+        # Calculate optimal shard count
+        calculated_shards = max(1, (previous_guild_count // guilds_per_shard) + 1)
+        logging.info(f"Calculated {calculated_shards} shards for {previous_guild_count} guilds ({guilds_per_shard} guilds per shard)")
+        
+        return calculated_shards
+        
+    except Exception as e:
+        logging.warning(f"Error calculating shard count: {e}. Using Discord's recommendation.")
+        return None
+
+# Get shard count
+shard_count = calculate_shard_count()
+
+if shard_count:
+    bot = commands.AutoShardedBot(intents = intents, 
+                                allowed_mentions = nextcord.AllowedMentions(everyone = True), 
+                                help_command=None,
+                                shard_count=shard_count)
+    logging.info(f"Using calculated shard count: {shard_count}")
+else:
+    bot = commands.AutoShardedBot(intents = intents, 
+                                allowed_mentions = nextcord.AllowedMentions(everyone = True), 
+                                help_command=None)
+    logging.info("Using Discord's automatic shard recommendation")
 
 def get_bot() -> commands.AutoShardedBot: return bot
 
@@ -67,6 +116,7 @@ async def on_ready() -> None: # Bot load
 
     await bot.wait_until_ready()
     logging.info(f"============================== Logged in as: {bot.user.name} with all shards ready. ==============================")
+    logging.info(f"Bot is running with {bot.shard_count} shards across {len(bot.guilds)} guilds.")
 
     global_settings.set_bot_load_status(True)
     global_settings.update_bot_id(bot)
@@ -74,7 +124,61 @@ async def on_ready() -> None: # Bot load
     start_all_api_connections()
     init_views(bot)
 
-    # Print which guilds are on which shard
+    # Log shard distribution and save data for next startup
+    shard_guild_counts = {}
+    total_guilds = len(bot.guilds)
+    
+    for guild in bot.guilds:
+        shard_id = guild.shard_id
+        if shard_id not in shard_guild_counts:
+            shard_guild_counts[shard_id] = 0
+        shard_guild_counts[shard_id] += 1
+    
+    # Save guild count data for next startup
+    try:
+        shard_config_path = os.path.join("generated", "configure", "shard_config.json")
+        os.makedirs(os.path.dirname(shard_config_path), exist_ok=True)
+        
+        shard_data = {
+            "last_guild_count": total_guilds,
+            "last_shard_count": bot.shard_count,
+            "last_updated": "2025-06-24",
+            "guilds_per_shard_config": global_settings.get_configs()["sharding"]["guilds-per-shard"]
+        }
+        
+        with open(shard_config_path, 'w') as f:
+            json.dump(shard_data, f, indent=2)
+            
+        logging.info(f"Saved guild count data: {total_guilds} guilds across {bot.shard_count} shards")
+        
+    except Exception as e:
+        logging.warning(f"Could not save shard data: {e}")
+    
+    # Display shard distribution
+    logging.info("Shard distribution:")
+    max_guilds_per_shard = 0
+    for shard_id in sorted(shard_guild_counts.keys()):
+        guild_count = shard_guild_counts[shard_id]
+        max_guilds_per_shard = max(max_guilds_per_shard, guild_count)
+        logging.info(f"  Shard {shard_id}: {guild_count} guilds")
+    
+    # Intelligent recommendations
+    if global_settings.get_configs()["sharding"]["enabled"]:
+        guilds_per_shard = global_settings.get_configs()["sharding"]["guilds-per-shard"]
+        optimal_shards = max(1, (total_guilds // guilds_per_shard) + 1)
+        
+        if max_guilds_per_shard > guilds_per_shard * 1.5:  # 50% over target
+            logging.warning(f"⚠️  HIGH SHARD LOAD: Some shards have {max_guilds_per_shard} guilds (target: {guilds_per_shard}). Consider restarting - next startup will use {optimal_shards} shards.")
+        elif bot.shard_count < optimal_shards:
+            logging.info(f"💡 SCALING SUGGESTION: Current: {bot.shard_count} shards, Optimal: {optimal_shards} shards. Restart to apply.")
+        elif bot.shard_count > optimal_shards * 1.5:  # Over-sharded
+            logging.info(f"💡 OPTIMIZATION: You might be over-sharded. Current: {bot.shard_count}, Optimal: {optimal_shards}. Restart to optimize.")
+        else:
+            logging.info(f"✅ SHARD COUNT: Optimal ({bot.shard_count} shards for {total_guilds} guilds)")
+    else:
+        logging.info(f"ℹ️  AUTO-SHARDING: Disabled in config. Using Discord's recommendation ({bot.shard_count} shards)")
+
+    # Print detailed guild info only in debug mode
     if logging.getLevelName(logging.getLogger().getEffectiveLevel()) == "DEBUG":
       for guild in bot.guilds:
           shard_id = guild.shard_id

@@ -443,9 +443,16 @@ async def check_and_trigger_profanity_moderation_for_message(
     # Checks
     if not utils.feature_is_active(server=server, feature="moderation__profanity"):
         return False
-    if message.channel.type != nextcord.ChannelType.stage_voice and message.channel.is_nsfw():
-        logging.debug(f"Skipped profanity check for NSFW / stage channel: {message.channel}. Guild ID: {message.guild.id}") 
+    
+    if message is None: return False
+
+    if message.channel.type is nextcord.ChannelType.stage_voice:
+        logging.debug(f"Skipped profanity check stage channel: {message.channel}. Guild ID: {message.guild.id}") 
         return False
+    
+    if message.channel.is_nsfw():
+        logging.debug(f"Skipped profanity check NSFW channel: {message.channel}. Guild ID: {message.guild.id}")
+        return False # Don't check NSFW channels for profanity
 
     if not isinstance(message.author, nextcord.Member): 
         logging.warning(f"Tried to check profanity for a non-member: {message.author}. Guild ID: {message.guild.id}")
@@ -962,9 +969,13 @@ async def check_and_run_moderation_commands(bot: nextcord.Client, message: nextc
     :return: If the message was flagged for something.
     :rtype: bool
     """
-    if message.guild == None: return # Guild not loaded yet.
-    if message.author == None: return
-    if message.author.bot: return # Don't check messages from bots
+    if message.guild == None: return False # Guild not loaded yet.
+    if message.author == None: return False
+    if message.author.bot: return False # Don't check messages from bots
+
+    if not isinstance(message.author, nextcord.Member):
+        # Non-member. Probably a bot.
+        return False
 
     if message.author.guild_permissions.administrator: # Don't check profanity for admins
         logging.debug(f"Skipped profanity check for admin in {__name__}: {message.author}")

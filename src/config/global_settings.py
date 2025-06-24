@@ -255,6 +255,10 @@ class Configs(GlobalSetting):
             },
             "scheduler": {
                 "misfire-grace-time-seconds": 30
+            },
+            "sharding": {
+                "guilds-per-shard": 500,
+                "enabled": True
             }
         }
 
