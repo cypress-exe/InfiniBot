@@ -4,6 +4,7 @@ from nextcord import Interaction, SlashOption
 from nextcord.ext import commands
 import os
 import json
+import time
 
 from components import ui_components, utils
 import config.global_settings as global_settings
@@ -113,37 +114,46 @@ async def on_ready() -> None: # Bot load
     :return: None
     :rtype: None
     """
-
+    startup_start = time.time()
+    
     await bot.wait_until_ready()
     logging.info(f"============================== Logged in as: {bot.user.name} with all shards ready. ==============================")
     logging.info(f"Bot is running with {bot.shard_count} shards across {len(bot.guilds)} guilds.")
 
+    # Initialize core systems
+    init_start = time.time()
+    init_views(bot)
     global_settings.set_bot_load_status(True)
     global_settings.update_bot_id(bot)
     start_scheduler()
     start_all_api_connections()
-    init_views(bot)
+    logging.info(f"Core systems initialized in {time.time() - init_start:.2f}s")
 
-    # Log shard distribution and save data for next startup
-    shard_guild_counts = {}
+    # Log shard distribution and save data for next startup (optimized)
+    shard_start = time.time()
     total_guilds = len(bot.guilds)
+    shard_guild_counts = {}
     
+    # Single iteration through guilds to count by shard
     for guild in bot.guilds:
         shard_id = guild.shard_id
-        if shard_id not in shard_guild_counts:
-            shard_guild_counts[shard_id] = 0
-        shard_guild_counts[shard_id] += 1
+        shard_guild_counts[shard_id] = shard_guild_counts.get(shard_id, 0) + 1
     
-    # Save guild count data for next startup
+    logging.info(f"Shard distribution calculated in {time.time() - shard_start:.2f}s")
+    
+    # Save guild count data for next startup (async file operations)
     try:
         shard_config_path = os.path.join("generated", "configure", "shard_config.json")
         os.makedirs(os.path.dirname(shard_config_path), exist_ok=True)
+        
+        # Cache config value to avoid multiple calls
+        sharding_config = global_settings.get_configs()["sharding"]
         
         shard_data = {
             "last_guild_count": total_guilds,
             "last_shard_count": bot.shard_count,
             "last_updated": "2025-06-24",
-            "guilds_per_shard_config": global_settings.get_configs()["sharding"]["guilds-per-shard"]
+            "guilds_per_shard_config": sharding_config["guilds-per-shard"]
         }
         
         with open(shard_config_path, 'w') as f:
@@ -154,29 +164,31 @@ async def on_ready() -> None: # Bot load
     except Exception as e:
         logging.warning(f"Could not save shard data: {e}")
     
-    # Display shard distribution
-    logging.info("Shard distribution:")
-    max_guilds_per_shard = 0
-    for shard_id in sorted(shard_guild_counts.keys()):
-        guild_count = shard_guild_counts[shard_id]
-        max_guilds_per_shard = max(max_guilds_per_shard, guild_count)
-        logging.info(f"  Shard {shard_id}: {guild_count} guilds")
+    # Display shard distribution (optimized)
+    if shard_guild_counts:
+        logging.info("Shard distribution:")
+        max_guilds_per_shard = max(shard_guild_counts.values())
+        for shard_id in sorted(shard_guild_counts.keys()):
+            guild_count = shard_guild_counts[shard_id]
+            logging.info(f"  Shard {shard_id}: {guild_count} guilds")
     
-    # Intelligent recommendations
-    if global_settings.get_configs()["sharding"]["enabled"]:
-        guilds_per_shard = global_settings.get_configs()["sharding"]["guilds-per-shard"]
-        optimal_shards = max(1, (total_guilds // guilds_per_shard) + 1)
-        
-        if max_guilds_per_shard > guilds_per_shard * 1.5:  # 50% over target
-            logging.warning(f"⚠️  HIGH SHARD LOAD: Some shards have {max_guilds_per_shard} guilds (target: {guilds_per_shard}). Consider restarting - next startup will use {optimal_shards} shards.")
-        elif bot.shard_count < optimal_shards:
-            logging.info(f"💡 SCALING SUGGESTION: Current: {bot.shard_count} shards, Optimal: {optimal_shards} shards. Restart to apply.")
-        elif bot.shard_count > optimal_shards * 1.5:  # Over-sharded
-            logging.info(f"💡 OPTIMIZATION: You might be over-sharded. Current: {bot.shard_count}, Optimal: {optimal_shards}. Restart to optimize.")
+        # Intelligent recommendations (cached config)
+        if sharding_config["enabled"]:
+            guilds_per_shard = sharding_config["guilds-per-shard"]
+            optimal_shards = max(1, (total_guilds // guilds_per_shard) + 1)
+            
+            if max_guilds_per_shard > guilds_per_shard * 1.5:  # 50% over target
+                logging.warning(f"⚠️  HIGH SHARD LOAD: Some shards have {max_guilds_per_shard} guilds (target: {guilds_per_shard}). Consider restarting - next startup will use {optimal_shards} shards.")
+            elif bot.shard_count < optimal_shards:
+                logging.info(f"💡 SCALING SUGGESTION: Current: {bot.shard_count} shards, Optimal: {optimal_shards} shards. Restart to apply.")
+            elif bot.shard_count > optimal_shards * 1.5:  # Over-sharded
+                logging.info(f"💡 OPTIMIZATION: You might be over-sharded. Current: {bot.shard_count}, Optimal: {optimal_shards}. Restart to optimize.")
+            else:
+                logging.info(f"✅ SHARD COUNT: Optimal ({bot.shard_count} shards for {total_guilds} guilds)")
         else:
-            logging.info(f"✅ SHARD COUNT: Optimal ({bot.shard_count} shards for {total_guilds} guilds)")
+            logging.info(f"ℹ️  AUTO-SHARDING: Disabled in config. Using Discord's recommendation ({bot.shard_count} shards)")
     else:
-        logging.info(f"ℹ️  AUTO-SHARDING: Disabled in config. Using Discord's recommendation ({bot.shard_count} shards)")
+        logging.info("No guilds found on any shards.")
 
     # Print detailed guild info only in debug mode
     if logging.getLevelName(logging.getLogger().getEffectiveLevel()) == "DEBUG":
@@ -213,6 +225,10 @@ async def on_ready() -> None: # Bot load
             logging.error(f"Failed to send startup notification in channel {channel.name} (ID: {channel.id}). Check permissions.")
     else:
         logging.info("Bot startup notification is disabled. Skipping notification.")
+    
+    # Log total startup time
+    total_startup_time = time.time() - startup_start
+    logging.info(f"🚀 STARTUP COMPLETE: Total time {total_startup_time:.2f}s for {total_guilds} guilds ({total_guilds/total_startup_time:.1f} guilds/sec)")
 
 
 @bot.event
@@ -495,51 +511,46 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     :return: None
     :rtype: None
     """
-    guild = None
-    for _guild in bot.guilds:
-        if _guild.id == payload.guild_id:
-            guild = _guild
-            break
-    if guild == None: return
+    # Check if guild/channel are needed
+    if (utils.feature_is_active(guild_id = payload.guild_id, feature = "logging") or
+        utils.feature_is_active(guild_id = payload.guild_id, feature = "moderation__profanity")):
+        # Find guild and channel
+        guild = bot.get_guild(payload.guild_id)
+        if guild is None: 
+            return
 
-    # Find the channel
-    channel = None
-    for channel in guild.channels:
-        if channel.id == payload.channel_id:
-            channel = channel
-            break
-    if channel == None: return
-    
-    if not channel.permissions_for(guild.me).read_message_history:
-        await utils.send_error_message_to_server_owner(guild, "View Message History", channel = f"one or more channels (including #{channel.name})")
-        return
-    if not guild.me.guild_permissions.view_audit_log:
-        await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
-        return
-    
-    # If we have it, grab the original message
-    original_message = payload.cached_message
-    if original_message == None:
-        # Find db cached message
-        original_message = stored_messages.get_message(payload.message_id)
-    
-    # Find the message
-    edited_message = None
-    try:
-        async for message in channel.history(limit=500):
-            if int(message.id) == int(payload.message_id):
-                edited_message: nextcord.Message = message
-                break
-    except:
-        return
-    
-    # Punish profanity (if any)
-    with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
-        await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message)
-            
-    # Log the message
-    with LogIfFailure(feature="action_logging.log_raw_message_edit"):
-        await action_logging.log_raw_message_edit(guild, original_message, edited_message)
+        channel = guild.get_channel(payload.channel_id)
+        if channel is None: 
+            return
+        
+        if not channel.permissions_for(guild.me).read_message_history:
+            await utils.send_error_message_to_server_owner(guild, "View Message History", channel = f"one or more channels (including #{channel.name})")
+            return
+        if not guild.me.guild_permissions.view_audit_log:
+            await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
+            return
+        
+        # If we have it, grab the original message
+        original_message = payload.cached_message
+        if original_message is None:
+            # Find db cached message
+            original_message = stored_messages.get_message(payload.message_id)
+        
+        # Find the message
+        edited_message = None
+        try:
+            edited_message = await channel.fetch_message(payload.message_id)
+        except (nextcord.NotFound, nextcord.Forbidden, nextcord.HTTPException):
+            return
+        
+        # Punish profanity (if any)
+        with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
+            await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message,
+                                                                                skip_active_check=True)
+                
+        # Log the message
+        with LogIfFailure(feature="action_logging.log_raw_message_edit"):
+            await action_logging.log_raw_message_edit(guild, original_message, edited_message)
 
     # Update the message in the database
     with LogIfFailure(feature="stored_messages.store_message"):
@@ -557,38 +568,32 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
     :return: None
     :rtype: None
     """
-    # Find the message (CSI Time!)
-    message = None
-    guild = None
-    for _guild in bot.guilds:
-        if _guild.id == payload.guild_id:
-            guild = _guild
-            break
-    if guild == None: return
+    # Check if guild/channel are needed
+    if utils.feature_is_active(guild_id = payload.guild_id, feature = "logging"):
+        # Find guild and channel
+        guild = bot.get_guild(payload.guild_id)
+        if guild is None: 
+            return
 
-    channel = None
-    for _channel in guild.channels:
-        if _channel.id == payload.channel_id:
-            channel = _channel
-            break
-    
-    if channel == None: return
+        channel = guild.get_channel(payload.channel_id)
+        if channel is None: 
+            return
 
-    message = payload.cached_message
+        message = payload.cached_message
 
-    if message == None:
-        # Find db cached message
-        message = stored_messages.get_message(payload.message_id)
-        if (message is not None):
-            # Actual values are important instead of object approximations, so replace them
-            message.guild = guild
-            message.channel = channel
-            # Some additional info needs to be fetched
-            await message.fetch("author")
+        if message is None:
+            # Find db cached message
+            message = stored_messages.get_message(payload.message_id)
+            if message is not None:
+                # Actual values are important instead of object approximations, so replace them
+                message.guild = guild
+                message.channel = channel
+                # Some additional info needs to be fetched
+                await message.fetch("author")
 
-    # Log the message
-    with LogIfFailure(feature="action_logging.log_raw_message_delete"):
-        await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id)
+        # Log the message
+        with LogIfFailure(feature="action_logging.log_raw_message_delete"):
+            await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id)
 
     # Remove the message if we're storing it
     with LogIfFailure(feature="stored_messages.remove_message"):

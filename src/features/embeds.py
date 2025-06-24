@@ -118,6 +118,10 @@ async def run_create_embed_command(interaction: Interaction, role: nextcord.Role
     info_view = EmbedInfoView()
     await interaction.response.send_message(embed=info_embed, view=info_view, ephemeral=True)
     await info_view.wait()
+
+    if info_view.return_modal is None:
+        # User cancelled the modal
+        return
     
     embed_title = info_view.return_modal.title_value
     embed_description = info_view.return_modal.description_value

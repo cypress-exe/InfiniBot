@@ -423,7 +423,8 @@ async def check_and_trigger_profanity_moderation_for_message(
     bot: nextcord.Client, 
     server: Server, 
     message: nextcord.Message, 
-    skip_admin_check: bool = False
+    skip_admin_check: bool = False,
+    skip_active_check: bool = False
 ) -> bool:
     """
     Checks if the given message contains profanity, and punishes the user if it does.
@@ -436,12 +437,14 @@ async def check_and_trigger_profanity_moderation_for_message(
     :type message: nextcord.Message
     :param skip_admin_check: If the bot should skip checking if the user is an administrator.
     :type skip_admin_check: bool
+    :param skip_active_check: If the bot should skip checking if the profanity moderation feature is active.
+    :type skip_active_check: bool
 
     :return: True if a strike was given, False otherwise.
     :rtype: bool
     """
     # Checks
-    if not utils.feature_is_active(server=server, feature="moderation__profanity"):
+    if skip_active_check and not utils.feature_is_active(server=server, feature="moderation__profanity"):
         return False
     
     if message is None: return False
