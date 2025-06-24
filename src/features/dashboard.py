@@ -989,6 +989,9 @@ class Dashboard(CustomView):
 
                         self.time_threshold_btn = self.TimeThresholdButton(self)
                         self.add_item(self.time_threshold_btn)
+
+                        self.delete_invites_btn = self.DeleteInvitesBtn(self)
+                        self.add_item(self.delete_invites_btn)
                         
                         self.disable_btn = self.EnableDisableButton(self)
                         self.add_item(self.disable_btn)
@@ -1022,6 +1025,7 @@ class Dashboard(CustomView):
                         - **Timeout Duration:** {timeout_time}
                         - **Spam Score Threshold:** {server.spam_moderation_profile.score_threshold}
                         - **Time Threshold:** {time_threshold}
+                        - **Auto-Delete Invites:** {"Enabled" if server.spam_moderation_profile.delete_invites else "Disabled"}
 
                         **What is Spam Score**
                         InfiniBot uses a spam score system to determine if a message is spam. The higher the score, the more likely the user is participating in spam.
@@ -1148,6 +1152,66 @@ class Dashboard(CustomView):
                                 
                         async def callback(self, interaction: Interaction):
                             await interaction.response.send_modal(self.TimeThresholdModal(self.outer, interaction.guild.id))
+
+                    class DeleteInvitesBtn(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Toggle Auto-Delete Invites", row = 1)
+                            self.outer = outer
+                            
+                        class EnableDisableView(CustomView):
+                            def __init__(self, outer):
+                                super().__init__(timeout = None)
+                                self.outer = outer
+                                
+                                self.back_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
+                                self.back_btn.callback = self.back_btn_callback
+                                self.add_item(self.back_btn)
+                                
+                                self.action_btn = nextcord.ui.Button(label = "ACTION", style = nextcord.ButtonStyle.green)
+                                self.action_btn.callback = self.action_btn_callback
+                                self.add_item(self.action_btn)
+                                                              
+                            async def setup(self, interaction: Interaction, server = None):
+                                if not server: server = Server(interaction.guild.id)
+
+                                delete_invites_explanation = utils.standardize_str_indention("""
+                                **What is it?**
+                                InfiniBot can automatically delete messages that contain discord invites. This helps to cut down on spam  and unwanted invites in your server.
+                                
+                                **Note:** Users with the Administrator permission will not be affected by this setting.
+                                """)
+
+                                
+                                # Determine whether or not we are active or not.
+                                if server.spam_moderation_profile.delete_invites:
+                                    # We *are* active. Give info for deactivation
+                                    embed = nextcord.Embed(title = "Dashboard - Moderation - Spam - Toggle Auto-Delete Invites", 
+                                                           description = "Are you sure you want to disable the automatic deletion of discord invites? You can re-enable this feature at any time.\n" + delete_invites_explanation,
+                                                           color = nextcord.Color.blue())
+                                    self.action_btn.label = "Disable"
+                                    
+                                else:
+                                    # We are *not* active. Give info for activation
+                                    embed = nextcord.Embed(title = "Dashboard - Moderation - Spam - Toggle Auto-Delete Invites",
+                                                           description = "InfiniBot is currently not deleting discord invites. Do you want to enable it?\n" + delete_invites_explanation,
+                                                           color = nextcord.Color.blue())
+                                    self.action_btn.label = "Enable"
+                                    
+                                await interaction.response.edit_message(embed = embed, view = self)
+                                
+                            async def back_btn_callback(self, interaction: Interaction):
+                                    await self.outer.setup(interaction)
+                                
+                            async def action_btn_callback(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                
+                                server.spam_moderation_profile.delete_invites = (not server.spam_moderation_profile.delete_invites)
+                                
+                                # Return the user
+                                await self.back_btn_callback(interaction)
+                            
+                        async def callback(self, interaction: Interaction):
+                            await self.EnableDisableView(self.outer).setup(interaction)
 
                     class EnableDisableButton(nextcord.ui.Button):
                         def __init__(self, outer):
@@ -4219,7 +4283,6 @@ class Dashboard(CustomView):
                 self.outer = outer
 
                 items = {
-                    "Auto-Delete Invites": "infinibot_settings_profile.delete_invites",
                     "Update Messages": "infinibot_settings_profile.get_updates",
                 }
 
@@ -4239,9 +4302,6 @@ class Dashboard(CustomView):
                 
                 description = f"""
                 Choose a feature to enable / disable
-                
-                **{self.bool_to_symbol(server.infinibot_settings_profile.delete_invites)} - Auto-Delete Invites**
-                InfiniBot can automatically delete discord invites posted by members. (Does not affect Administrators)
                 
                 **{self.bool_to_symbol(server.infinibot_settings_profile.get_updates)} - Update Messages**
                 Get notified about brand-new updates to InfiniBot.

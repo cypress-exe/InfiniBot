@@ -299,9 +299,6 @@ class Server:
         def __init__(self, server_id):
             super().__init__(server_id, "infinibot_settings_profile")
 
-        @Server_Simple_TableManager.boolean_property("delete_invites")
-        def delete_invites(self): pass
-
         @Server_Simple_TableManager.boolean_property("get_updates")
         def get_updates(self): pass
 

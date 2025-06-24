@@ -1360,7 +1360,6 @@ class TestServer(unittest.TestCase):
         server = Server(server_id)
 
         # Using run_test_on_property
-        self.run_test_on_property(server, "infinibot_settings_profile", "delete_invites", False, [True, False], self.INVALID_BOOL_TESTS)
         self.run_test_on_property(server, "infinibot_settings_profile", "get_updates", True, [False, True], self.INVALID_BOOL_TESTS)
         self.run_test_on_property(server, "infinibot_settings_profile", "timezone", UNSET_VALUE, [ZoneInfo("America/Los_Angeles").key, ZoneInfo("America/New_York").key, UNSET_VALUE], 
                                   [(TypeError, None)])

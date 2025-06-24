@@ -843,6 +843,7 @@ def contains_discord_invite(message):
 async def check_and_delete_invite_links(message: nextcord.Message) -> bool:
     """
     Checks if the message contains a Discord invite link and deletes it if present.
+    Only runs if the server has the "delete_invites" feature enabled.
 
     :param message: The message to check for invite links.
     :type message: nextcord.Message

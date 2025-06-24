@@ -104,7 +104,6 @@ CREATE TABLE IF NOT EXISTS birthdays_profile( -- #optimize #remove-if-guild-inva
 -- Create infinibot_settings_profile Table (simple table)
 CREATE TABLE IF NOT EXISTS infinibot_settings_profile( -- #optimize #remove-if-guild-invalid(server_id)
     server_id INT PRIMARY KEY,
-    delete_invites BOOLEAN DEFAULT false,
     get_updates BOOLEAN DEFAULT true,
     timezone TEXT DEFAULT '{"status": "UNSET", "value": null}'
 )
