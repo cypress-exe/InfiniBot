@@ -38,7 +38,7 @@ def setup_discordlists(bot, discordlists_token):
     
     # TODO: Setup bots.ondiscord.xyz 
     api = discordlists.Client(bot)
-    api.set_auth("discordbots.group", discordlists_token)
+    api.set_auth("discordlist.gg", discordlists_token)
     api.start_loop()
 
     logging.info("DiscordLists API connection established successfully.")
