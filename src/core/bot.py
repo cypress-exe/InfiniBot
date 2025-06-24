@@ -94,11 +94,15 @@ if shard_count:
     bot = commands.AutoShardedBot(intents = intents, 
                                 allowed_mentions = nextcord.AllowedMentions(everyone = True), 
                                 help_command=None,
+                                guild_ready_timeout=0.5,
+                                max_messages=100,
                                 shard_count=shard_count)
     logging.info(f"Using calculated shard count: {shard_count}")
 else:
     bot = commands.AutoShardedBot(intents = intents, 
                                 allowed_mentions = nextcord.AllowedMentions(everyone = True), 
+                                guild_ready_timeout=0.5,
+                                max_messages=100,
                                 help_command=None)
     logging.info("Using Discord's automatic shard recommendation")
 
@@ -512,8 +516,9 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     :rtype: None
     """
     # Check if guild/channel are needed
-    if (utils.feature_is_active(guild_id = payload.guild_id, feature = "logging") or
-        utils.feature_is_active(guild_id = payload.guild_id, feature = "moderation__profanity")):
+    server = Server(payload.guild_id)
+    if (utils.feature_is_active(server=server, feature = "logging") or
+        utils.feature_is_active(server=server, feature = "moderation__profanity")):
         # Find guild and channel
         guild = bot.get_guild(payload.guild_id)
         if guild is None: 
@@ -554,7 +559,7 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
 
     # Update the message in the database
     with LogIfFailure(feature="stored_messages.store_message"):
-        if utils.feature_is_active(guild = guild, feature = "logging"):
+        if utils.feature_is_active(server=server, feature = "logging"):
             stored_messages.remove_message(payload.message_id)
             stored_messages.store_message(edited_message)
 
@@ -569,7 +574,8 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
     :rtype: None
     """
     # Check if guild/channel are needed
-    if utils.feature_is_active(guild_id = payload.guild_id, feature = "logging"):
+    server = Server(payload.guild_id)
+    if utils.feature_is_active(server=server, feature = "logging"):
         # Find guild and channel
         guild = bot.get_guild(payload.guild_id)
         if guild is None: 
@@ -597,11 +603,11 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
 
     # Remove the message if we're storing it
     with LogIfFailure(feature="stored_messages.remove_message"):
-        if utils.feature_is_active(guild = guild, feature = "logging"):
+        if utils.feature_is_active(server=server, feature = "logging"):
             stored_messages.remove_message(payload.message_id)
 
     with LogIfFailure(feature="managed_messages.delete"):
-        if utils.feature_is_active(guild = guild, feature = "logging"):
+        if utils.feature_is_active(server=server, feature = "logging"):
             Server(guild.id).managed_messages.delete(payload.message_id, fail_silently=True)
 
 @bot.event
