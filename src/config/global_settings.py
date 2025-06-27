@@ -28,8 +28,7 @@ feature_dependencies = {
         "server": "spam_moderation_profile.active",
     },
     "delete_invite_links": {
-        "global_kill": "delete_invite_links",
-        "global_kill": "moderation__spam",
+        "global_kill": ["delete_invite_links", "moderation__spam"],
         "server": "spam_moderation_profile.delete_invites",
     },
     # ------------------------------------------------------------------------------------------------------
@@ -118,14 +117,36 @@ class GlobalSetting:
     '''This parent class is used to store global settings. It is used to store global settings in the JSON file.'''
     def __init__(self, file_name, variable_list:dict):
         self.file_name = file_name
-        file = JSONFile(self.file_name)
+        self.file = JSONFile(self.file_name)
 
         self.variable_list = variable_list
 
-        for variable, value in self.variable_list.items():
-            if variable not in file:
-                file.add_variable(variable, value)
-                logging.debug(f"Added {variable} to {self.file_name} with value: {value}")
+        # Sync the variables with the image
+        self.sync_variables_with_image(self.variable_list)
+
+    def sync_variables_with_image(self, image: dict, header=""):
+        """
+        Synchronizes variables from a dictionary image with the configuration file.
+        
+        Recursively traverses the provided dictionary and adds any missing variables
+        to the configuration file. Nested dictionaries are handled by building
+        dot-separated paths.
+
+        :param image: The image dictionary to sync.
+        :type image: dict
+        :param header: The header to use for nested variables. Used for recursion.
+        :type header: str
+        :return: None
+        """
+        for variable, value in image.items():
+            path = ".".join([header, variable]) if header else variable
+            if isinstance(value, dict):
+                # Do the whole thing again
+                self.sync_variables_with_image(value, header=path)
+            else:
+                if path not in self.file:
+                    self.file.add_variable(path, value)
+                    logging.debug(f"Added {path} to {self.file_name} with value: {value}")
 
     def __getitem__(self, name):
         return self.get_variable(name)
@@ -142,12 +163,10 @@ class GlobalSetting:
         :return: The value of the variable.
         :rtype: Any
         """
-        file = JSONFile(self.file_name)
-
-        if name not in file:
+        if name not in self.file:
             raise AttributeError(f"{self.__class__.__name__} object has no item {name}")
         
-        return file[name]
+        return self.file[name]
 
     def set_variable(self, name, value):
         """
@@ -158,24 +177,22 @@ class GlobalSetting:
         :param value: The value to set the variable to.
         :type value: Any
         """
-        file = JSONFile(self.file_name)
-
-        if name not in file:
+        if name not in self.file:
             raise AttributeError(f"{self.__class__.__name__} object has no item {name}")
 
         logging.info(f"Updating global setting. Name: {name}, Value: {value}")
-        file[name] = value
+        self.file[name] = value
 
     def __contains__(self, name):
-        file = JSONFile(self.file_name)
-        return name in file
-    
+        return name in self.file
+
     def reset(self):
         """
         Resets the global setting to its default value. Be careful with this method.
         """
-        file = JSONFile(self.file_name)
-        file.delete_file()
+        self.file.delete_file()
+        self.file = JSONFile(self.file_name)
+        self.sync_variables_with_image(self.variable_list)
 
 class GlobalKillStatus(GlobalSetting):
     '''This class is used to store global kill settings. It is used to store global kill settings in the JSON file. '''
@@ -220,7 +237,7 @@ class Configs(GlobalSetting):
         variable_list = {
             "logging": {
                 "log-level": "INFO",
-                "max-logs-to-keep": 10
+                "max-logs-days-to-keep": 7
             },
             "admin-ids": {
                 'level-1-admins': [],

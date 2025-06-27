@@ -1560,15 +1560,19 @@ class TestFileManager(unittest.TestCase):
         test_file.add_variable("bool1", True)
         test_file.add_variable("bool2", False)
         test_file.add_variable("bool3", True)
+        test_file.add_variable("parent.string1", "Hello World")
 
         self.assertTrue(test_file["bool1"])
         self.assertFalse(test_file["bool2"])
         self.assertTrue(test_file["bool3"])
+        self.assertEqual(test_file["parent.string1"], "Hello World")
+        self.assertEqual(test_file["parent"]["string1"], "Hello World")
 
-        self.assertTrue(len(test_file) == 3)
+        self.assertTrue(len(test_file) == 4)
 
         test_file["bool2"] = True
         test_file["bool3"] = False
+        test_file["parent.string1"] = "Goodbye World"
 
         del test_file
 
@@ -1578,9 +1582,11 @@ class TestFileManager(unittest.TestCase):
         self.assertTrue(test_file["bool1"])
         self.assertTrue(test_file["bool2"])
         self.assertFalse(test_file["bool3"])
+        self.assertEqual(test_file["parent.string1"], "Goodbye World")
+        self.assertEqual(test_file["parent"]["string1"], "Goodbye World")
 
         for variable in test_file:
-            self.assertTrue(variable in ["bool1", "bool2", "bool3"])
+            self.assertTrue(variable in ["bool1", "bool2", "bool3", "parent"])
 
         test_file.delete_file()
         self.assertTrue(not os.path.exists(path))
