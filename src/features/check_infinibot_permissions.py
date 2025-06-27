@@ -11,7 +11,7 @@ class InfiniBotPermissionsReportView(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
         
-        support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links"]["support-server-invite-link"])
+        support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links.support-server-invite-link"])
         self.add_item(support_server_btn)
 
         refresh_btn = nextcord.ui.Button(label = "Refresh", style = nextcord.ButtonStyle.gray, custom_id = "refresh_infinibot_permissions_report")

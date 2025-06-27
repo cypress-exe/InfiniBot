@@ -55,11 +55,11 @@ def calculate_shard_count():
     """Calculate optimal shard count based on configuration and stored guild data"""
     try:
         # Check if sharding is enabled in config
-        if not global_settings.get_configs()["sharding"]["enabled"]:
+        if not global_settings.get_configs()["sharding.enabled"]:
             logging.info("Auto-sharding is disabled in configuration. Using Discord's recommendation.")
             return None
         
-        guilds_per_shard = global_settings.get_configs()["sharding"]["guilds-per-shard"]
+        guilds_per_shard = global_settings.get_configs()["sharding.guilds-per-shard"]
         
         # Try to read previous guild count from shard_config.json
         shard_config_path = os.path.join("generated", "configure", "shard_config.json")

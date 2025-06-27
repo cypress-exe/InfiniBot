@@ -79,7 +79,7 @@ feature_dependencies = {
 # WHEN UPDATING, REMEMBER TO:
 # 1. Update github-pages-site/docs/getting-started/install-and-setup.md#Required Permissions
 # 2. Update join link to reflect new permissions:
-#    - Replace link in generated/configure/config.json["links"]["bot-invite-link"]
+#    - Replace link in generated/configure/config.json["links.bot-invite-link"]
 #    - Replace link in discord developer portal
 #    - Replace link on promotion sites (top.gg, etc...) 
 required_permissions = {

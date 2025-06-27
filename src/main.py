@@ -79,7 +79,7 @@ def configure_logging():
     setup_logging()
 
     # Change logging level depending on configurations
-    log_level = get_configs()["logging"]["log-level"]
+    log_level = get_configs()["logging.log-level"]
     if log_level not in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]:
         logging.warning("Invalid logging level in config.json. Defaulting to INFO.")
         log_level = "INFO"

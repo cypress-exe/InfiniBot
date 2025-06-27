@@ -77,7 +77,7 @@ For help, visit the [Support & Feedback]({% link docs/getting-started/support.md
 <!-- WHEN UPDATING, REMEMBER TO:
 1. Update src/config/global_settings.required_permissions
 2. Update join link to reflect new permissions:
-    - Replace link in generated/configure/config.json["links"]["bot-invite-link"]
+    - Replace link in generated/configure/config.json["links.bot-invite-link"]
     - Replace link in discord developer portal
     - Replace link on promotion sites (top.gg, etc...) -->
 

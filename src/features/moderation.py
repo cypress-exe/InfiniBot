@@ -738,8 +738,8 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
     :return: True if a strike was given, False otherwise.
     :rtype: bool
     """
-    max_messages_to_check = get_configs()["spam-moderation"]["max-messages-to-check"]    # The MAXIMUM messages InfiniBot will try to check for spam
-    message_chars_to_check_repetition = get_configs()["spam-moderation"]["message-chars-to-check-repetition"]    # A message requires these many characters before it is checked for repetition
+    max_messages_to_check = get_configs()["spam-moderation.max-messages-to-check"]    # The MAXIMUM messages InfiniBot will try to check for spam
+    message_chars_to_check_repetition = get_configs()["spam-moderation.message-chars-to-check-repetition"]    # A message requires these many characters before it is checked for repetition
 
     # If Spam is Enabled
     if not utils.feature_is_active(server=server, feature="moderation__spam"): return False
