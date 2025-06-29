@@ -141,18 +141,20 @@ class StoredMessage:
              str(self.last_updated))
             )
 
-def store_message(message: nextcord.Message | StoredMessage, override_checks=False):
+def store_message(message: nextcord.Message | StoredMessage, override_checks=False) -> bool:
     """
     Store a message in the database.
 
     :param message: The message to store in the database.
     :type message: nextcord.Message
+    :return: True if the message was added/updated, False if not.
+    :rtype: bool
     """
 
     if not override_checks:
-        if message == None: return
-        if message.guild == None: return
-        if message.author.bot == True: return # Don't store bot messages
+        if message == None: return False
+        if message.guild == None: return False
+        if message.author.bot == True: return False # Don't store bot messages
 
     def get_var(message, main_name, fallback_name) -> Any:
         """
@@ -183,16 +185,20 @@ def store_message(message: nextcord.Message | StoredMessage, override_checks=Fal
         content = excluded.content,
         last_updated = CURRENT_TIMESTAMP
     """
-    get_database().execute_query(query, {
+    affected_rows = get_database().execute_query(query, {
         'message_id': get_var(message, 'id', 'message_id'),
         'guild_id': get_var(message, 'guild.id', 'guild_id'),
         'channel_id': get_var(message, 'channel.id', 'channel_id'),
         'author_id': get_var(message, 'author.id', 'author_id'),
         'content': message.content,
         'last_updated': get_var(message, 'last_updated', 'created_at') or datetime.datetime.now().isoformat()
-    }, commit=True)
+    }, commit=True, return_affected_rows=True)
 
-    logging.debug(f"Stored message with ID {get_var(message, 'id', 'message_id')} in the database.")
+    success = affected_rows > 0
+    if success:
+        logging.debug(f"Stored message with ID {get_var(message, 'id', 'message_id')} in the database.")
+    
+    return success
 
 def get_message(message_id: int) -> StoredMessage | None:
     """
@@ -291,7 +297,7 @@ def remove_messages_from_channel(channel_id: int):
     get_database().execute_query(query, {'channel_id': channel_id}, commit=True)
     logging.info(f"Removed all messages from channel with ID {channel_id} from the database.")
 
-def cleanup(max_messages_to_keep_per_guild=None, max_days_to_keep=None):
+def cleanup_db(max_messages_to_keep_per_guild=None, max_days_to_keep=None):
     """
     Clean up messages from the database by removing older entries and limiting 
     the total number of messages per guild.

@@ -19,7 +19,10 @@ from config.file_manager import JSONFile, update_base_path as file_manager_updat
 from config.global_settings import required_permissions, get_global_kill_status
 from config.member import Member
 from config.server import Server
-from config.stored_messages import StoredMessage, cleanup, get_all_messages, get_message, remove_message, store_message
+from config.stored_messages import (
+    StoredMessage, 
+    cleanup_db, get_all_messages, get_message, remove_message, store_message,
+)
 from core.log_manager import setup_logging, update_base_path as log_manager_update_base_path
 from modules.custom_types import UNSET_VALUE
 from modules.database import Database
@@ -419,11 +422,23 @@ class TestStoredMessages(unittest.TestCase):
                 yield name, getattr(self, name) 
 
     def entrypoint(self):
+        self.cleanup()  # Ensure the database is clean before starting
         for name, step in self._steps():
             try:
                 step()
             except Exception as e:
                 self.fail("{} failed ({}: {})".format(name, type(e), e))
+
+    def cleanup(self) -> None:
+        """
+        Cleans up the database by removing all messages.
+
+        :return: None
+        """
+        logging.info("Cleaning up the database...")
+        
+        # Clear the database
+        db_manager.get_database().execute_query("DELETE FROM messages", commit=True)
 
     def step1_test_add_message(self) -> None:
         """
@@ -465,7 +480,7 @@ class TestStoredMessages(unittest.TestCase):
         self.assertEqual(test_message.last_updated, last_updated)
 
         # Store the message
-        store_message(test_message, override_checks=True)
+        self.assertTrue(store_message(test_message, override_checks=True))
 
         # Check that the message was stored correctly
         message_result = get_message(test_message.message_id)
@@ -475,6 +490,13 @@ class TestStoredMessages(unittest.TestCase):
         self.assertEqual(message_result.channel_id, test_message.channel_id)
         self.assertEqual(message_result.author_id, test_message.author_id)
         self.assertEqual(message_result.content, test_message.content)
+
+        # Ensure that no error is thrown if the message is already in the database
+        try:
+            self.assertTrue(store_message(test_message, override_checks=True))
+            self.assertTrue(store_message(test_message, override_checks=True))
+        except Exception as e:
+            self.fail(f"Failed to store message again (should not happen): {e}")
 
         # Remove the test message
         remove_message(test_message.message_id)
@@ -519,7 +541,7 @@ class TestStoredMessages(unittest.TestCase):
         logging.info("Testing retrieval of all messages from the database...")
 
         # Clear the database
-        db_manager.get_database().execute_query("DELETE FROM messages", commit=True)
+        self.cleanup()
 
         # Generate a set of unique guild IDs
         unique_guilds = set()
@@ -557,7 +579,7 @@ class TestStoredMessages(unittest.TestCase):
 
         logging.info("Test for retrieving all messages from the database completed successfully.")
 
-    def step4_test_quantity_based_cleanup(self, guilds=10, max_messages_to_keep_per_guild=50) -> None:
+    def step4_test_quantity_based_cleanup(self, guilds=5, max_messages_to_keep_per_guild=30) -> None:
         """
         Tests the cleanup of the database based on message quantity limits.
 
@@ -626,7 +648,7 @@ class TestStoredMessages(unittest.TestCase):
 
         # Run the cleanup
         logging.info("Running cleanup...")
-        cleanup(max_messages_to_keep_per_guild=max_messages_to_keep_per_guild)
+        cleanup_db(max_messages_to_keep_per_guild=max_messages_to_keep_per_guild)
         logging.info("Cleanup complete.")
 
         # Check that the correct number of messages were deleted
@@ -655,7 +677,7 @@ class TestStoredMessages(unittest.TestCase):
 
         logging.info("Test for cleanup of the database (quantity based) completed successfully.")
 
-    def step5_test_age_based_cleanup(self, guilds=10) -> None:
+    def step5_test_age_based_cleanup(self, guilds=5) -> None:
         """
         Tests the cleanup of the database based on message age and count limits.
 
@@ -735,7 +757,7 @@ class TestStoredMessages(unittest.TestCase):
 
         # Run the cleanup
         logging.info("Running cleanup...")
-        cleanup(max_days_to_keep=max_days_to_keep)
+        cleanup_db(max_days_to_keep=max_days_to_keep)
         logging.info("Cleanup complete.")
 
         # Check that the correct number of messages were deleted
@@ -760,7 +782,9 @@ class TestStoredMessages(unittest.TestCase):
         self.assertEqual(retrieved_messages_set, persistent_messages_set, msg="Incorrect content of messages left in the database after cleanup.")
 
         # Delete all messages in the database to prepare for the next test
-        db_manager.get_database().execute_query("DELETE FROM messages", commit=True)     
+        db_manager.get_database().execute_query("DELETE FROM messages", commit=True)
+
+        logging.info("Test for cleanup of the database (age based) completed successfully.")
 
 class TestServer(unittest.TestCase):
     INVALID_INT_TESTS = [(ValueError, -1), (TypeError, "abc"), (TypeError, None)]
@@ -878,7 +902,7 @@ class TestServer(unittest.TestCase):
         :param property_name: The name of the property to test.
         :type property_name: str
         :param default_value: The default value of the property.
-        :param test_values: A list of values to test the property with.
+        :param test_values: The test values to test the property with.
         :param invalid_values: A list of invalid values to test the property with. Should raise an error. (Optional)
         :return: None
         :rtype: None
@@ -1075,6 +1099,8 @@ class TestServer(unittest.TestCase):
 
             property = getattr(self.server, self.table_name)
             test_case.assertEqual(len(property), 0)
+
+           
 
             # Add test entries
             for test_entry in default_test_data:
@@ -1483,7 +1509,7 @@ class TestMember(unittest.TestCase):
         :param property_name: The name of the property to test
         :type property_name: str
         :param default_value: The default value to test
-        :param test_values: The test values to test
+        :param test_values: The test values to test the property with
         :return: None
         :rtype: None
         """

@@ -15,6 +15,7 @@ from core.api_connections_manager import start_all_api_connections
 from core.log_manager import LogIfFailure
 from core.server_join_and_leave_manager import handle_server_join, handle_server_remove
 from core.scheduling import start_scheduler, stop_scheduler
+from core.shard_manager import calculate_shard_count
 from core.view_manager import init_views
 
 from features import (
@@ -50,59 +51,15 @@ intents.members = True
 intents.voice_states = True
 intents.reactions = True
 
-# Calculate optimal shard count based on configuration and previous data
-def calculate_shard_count():
-    """Calculate optimal shard count based on configuration and stored guild data"""
-    try:
-        # Check if sharding is enabled in config
-        if not global_settings.get_configs()["sharding.enabled"]:
-            logging.info("Auto-sharding is disabled in configuration. Using Discord's recommendation.")
-            return None
-        
-        guilds_per_shard = global_settings.get_configs()["sharding.guilds-per-shard"]
-        
-        # Try to read previous guild count from shard_config.json
-        shard_config_path = os.path.join("generated", "configure", "shard_config.json")
-        previous_guild_count = 0
-        
-        try:
-            with open(shard_config_path, 'r') as f:
-                shard_data = json.load(f)
-                previous_guild_count = shard_data.get("last_guild_count", 0)
-        except (FileNotFoundError, json.JSONDecodeError):
-            logging.info("No previous shard data found. Will calibrate on first startup.")
-            return None
-        
-        if previous_guild_count == 0:
-            logging.info("No previous guild count data. Will calibrate on first startup.")
-            return None
-        
-        # Calculate optimal shard count
-        calculated_shards = max(1, (previous_guild_count // guilds_per_shard) + 1)
-        logging.info(f"Calculated {calculated_shards} shards for {previous_guild_count} guilds ({guilds_per_shard} guilds per shard)")
-        
-        return calculated_shards
-        
-    except Exception as e:
-        logging.warning(f"Error calculating shard count: {e}. Using Discord's recommendation.")
-        return None
 
 # Get shard count
 shard_count = calculate_shard_count()
 
-if shard_count:
-    bot = commands.AutoShardedBot(intents = intents, 
-                                allowed_mentions = nextcord.AllowedMentions(everyone = True), 
-                                help_command=None,
-                                max_messages=100,
-                                shard_count=shard_count)
-    logging.info(f"Using calculated shard count: {shard_count}")
-else:
-    bot = commands.AutoShardedBot(intents = intents, 
-                                allowed_mentions = nextcord.AllowedMentions(everyone = True), 
-                                max_messages=100,
-                                help_command=None)
-    logging.info("Using Discord's automatic shard recommendation")
+bot = commands.AutoShardedBot(intents = intents, 
+                            allowed_mentions = nextcord.AllowedMentions(everyone = True), 
+                            help_command=None,
+                            max_messages=100,
+                            shard_count=shard_count)
 
 def get_bot() -> commands.AutoShardedBot: return bot
 
@@ -461,6 +418,7 @@ async def on_message(message: nextcord.Message) -> None:
     :rtype: None
     """
     if message == None: return
+    if message.author == None: return
     
     # DM Commands ---------------------------------------------
     if message.guild == None:

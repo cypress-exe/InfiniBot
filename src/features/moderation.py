@@ -764,15 +764,13 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
         if spam_score >= server.spam_moderation_profile.score_threshold:
             break
         
-        
-        message_time = _message.created_at
-        time_now = datetime.datetime.now(datetime.timezone.utc)
-        time_difference = time_now - message_time
-        time_difference_in_seconds = time_difference.total_seconds()
+        within_time_window = True # Assume it is within the time window until proven otherwise
+        if server.spam_moderation_profile.time_threshold_seconds > 0:
+            message_time = _message.created_at
+            time_now = datetime.datetime.now(datetime.timezone.utc)
+            time_difference = time_now - message_time
+            time_difference_in_seconds = time_difference.total_seconds()
 
-        if server.spam_moderation_profile.time_threshold_seconds == 0:
-            within_time_window = True
-        else:
             within_time_window = time_difference_in_seconds <= server.spam_moderation_profile.time_threshold_seconds
 
         score_addition = 0
@@ -802,8 +800,7 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
                 score_addition += 30
 
             # Cap score_addition at 50
-            if score_addition > 50:
-                score_addition = 50
+            score_addition = min(score_addition, 50)
 
             impact = 1 if _message.id == message.id else normalized_exponential_decay(x=1-(time_difference_in_seconds / server.spam_moderation_profile.time_threshold_seconds), k=10) # Exponential decay
             spam_score += score_addition * impact
@@ -812,7 +809,7 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
         else:
             break # If this message is outside of the time threshold window, previous ones will be too. Break out of the loop.
 
-    # Punnish the member (if needed)
+    # Punish the member (if needed)
     if spam_score >= server.spam_moderation_profile.score_threshold:
         try:
             # Time them out
