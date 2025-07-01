@@ -1,10 +1,9 @@
 import logging
-import json
 
 from nextcord import Guild as NextcordGuild
 
 from config.file_manager import read_txt_to_list
-from config.stored_messages import remove_messages_from_guild
+from config.messages.stored_messages import remove_messages_from_guild
 from core.db_manager import get_database, Simple_TableManager, IntegratedList_TableManager, TableManager
 
 class Server_Simple_TableManager(Simple_TableManager):

@@ -1121,7 +1121,7 @@ async def daily_database_maintenance(bot: nextcord.Client):
         logging.info("Starting message log cleanup...")
         message_log_cleanup_start = datetime.datetime.now(datetime.timezone.utc)
 
-        from config import stored_messages
+        from config.messages import stored_messages
         total_deleted += stored_messages.cleanup_db()
 
         message_log_cleanup_duration = datetime.datetime.now(datetime.timezone.utc) - message_log_cleanup_start

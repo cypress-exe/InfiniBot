@@ -9,7 +9,7 @@ import time
 from components import ui_components, utils
 import config.global_settings as global_settings
 from config.server import Server
-from config import stored_messages
+from config.messages import stored_messages
 from core import log_manager
 from core.api_connections_manager import start_all_api_connections
 from core.log_manager import LogIfFailure
@@ -504,7 +504,7 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
 
     # Update the message in the database
     with LogIfFailure(feature="stored_messages.store_message"):
-        if utils.feature_is_active(server=server, feature = "logging"):
+        if utils.feature_is_active(guild_id=payload.guild_id, feature="logging"):
             stored_messages.remove_message(payload.message_id)
             stored_messages.store_message(edited_message)
 

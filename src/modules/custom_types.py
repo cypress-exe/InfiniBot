@@ -43,6 +43,7 @@ class _Unset_Value(metaclass=FalseType):
 UNSET_VALUE = _Unset_Value
 '''A constant value used as a placeholder value.'''
 
+
 class ExpiringSet:
     def __init__(self, expiration_time=5):
         """
