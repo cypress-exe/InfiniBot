@@ -3,7 +3,8 @@ import logging
 from nextcord import Guild as NextcordGuild
 
 from config.file_manager import read_txt_to_list
-from config.messages.stored_messages import remove_messages_from_guild
+from config.messages.cached_messages import remove_cached_messages_from_guild
+from config.messages.stored_messages import remove_db_messages_from_guild
 from core.db_manager import get_database, Simple_TableManager, IntegratedList_TableManager, TableManager
 
 class Server_Simple_TableManager(Simple_TableManager):
@@ -93,7 +94,8 @@ class Server:
             logging.debug(f"Removed all data from {table_name} for server {self.server_id}")
 
         # Remove messages
-        remove_messages_from_guild(self.server_id)
+        remove_db_messages_from_guild(self.server_id)
+        remove_cached_messages_from_guild(self.server_id)
         logging.debug(f"Removed all stored messages for server {self.server_id}")
 
     def get_debug_info(self):

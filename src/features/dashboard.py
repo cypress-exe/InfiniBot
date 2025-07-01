@@ -1674,8 +1674,8 @@ class Dashboard(CustomView):
                             else: 
                                 points = 0
 
-                            level = leveling.get_level_from_points(points)
-                                    
+                            level = min(leveling.get_level_from_points(points), 9999)
+
                             await interaction.response.send_modal(self.LevelModal(self.outer, selection, level))
                     
                     class DeleteAllLevelsButton(nextcord.ui.Button):
@@ -1817,7 +1817,10 @@ class Dashboard(CustomView):
                                 self.outer = outer
                                 self.role_id = role_id
                                 
-                                self.input = nextcord.ui.TextInput(label = "Level at which to reward this role (number)")
+                                self.input = nextcord.ui.TextInput(
+                                    label = "Level at which to reward this role (number)", 
+                                    placeholder = "Enter a level (1-9999)", 
+                                    max_length=4, required=True)
                                 self.add_item(self.input)
                                 
                             async def callback(self, interaction: Interaction):

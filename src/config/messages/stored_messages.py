@@ -7,7 +7,7 @@ from config.messages.utils import *
 from config.global_settings import get_configs
 
 
-def store_message(message: nextcord.Message | MessageRecord, override_checks=False) -> bool:
+def store_message_in_db(message: nextcord.Message | MessageRecord, override_checks=False) -> bool:
     """
     Store a message in the database.
 
@@ -47,7 +47,7 @@ def store_message(message: nextcord.Message | MessageRecord, override_checks=Fal
 
     return success
 
-def get_message(message_id: int) -> MessageRecord | None:
+def get_message_from_db(message_id: int) -> MessageRecord | None:
     """
     Retrieve a message from the database by its ID.
 
@@ -71,7 +71,7 @@ def get_message(message_id: int) -> MessageRecord | None:
     )
     
 
-def get_all_messages(guild:nextcord.Guild=None, guild_id=None) -> list[MessageRecord]:
+def get_all_messages_from_db(guild:nextcord.Guild=None, guild_id=None) -> list[MessageRecord]:
     """
     USE FOR TESTING ONLY! VERY EXPENSIVE!
 
@@ -110,7 +110,7 @@ def get_all_messages(guild:nextcord.Guild=None, guild_id=None) -> list[MessageRe
     return messages
     
 
-def remove_message(message_id: int):
+def remove_message_from_db(message_id: int):
     """
     Remove a message from the database by its ID.
     If the message is not found, no action is taken.
@@ -122,7 +122,7 @@ def remove_message(message_id: int):
     get_database().execute_query(query, {'message_id': message_id}, commit=True)
     logging.debug(f"Removed message with ID {message_id} from the database.")
 
-def remove_messages_from_guild(guild_id: int):
+def remove_db_messages_from_guild(guild_id: int):
     """
     Remove all messages from the database for a specific guild.
 
@@ -133,7 +133,7 @@ def remove_messages_from_guild(guild_id: int):
     get_database().execute_query(query, {'guild_id': guild_id}, commit=True)
     logging.info(f"Removed all messages from guild with ID {guild_id} from the database.")
 
-def remove_messages_from_channel(channel_id: int):
+def remove_db_messages_from_channel(channel_id: int):
     """
     Remove all messages from the database for a specific channel.
 

@@ -10,7 +10,7 @@ from config.messages.utils import *
 _message_cache: Dict[int, deque] = {}
 _MAX_CACHE_SIZE = 25
 
-def cache_message(message: nextcord.Message | MessageRecord, override_checks=False) -> bool:
+def cache_message(message: nextcord.Message | MessageRecord, override_checks=False, skip_if_exists=False) -> bool:
     """
     Cache a message in memory with FIFO behavior per channel.
 
@@ -18,6 +18,8 @@ def cache_message(message: nextcord.Message | MessageRecord, override_checks=Fal
     :type message: nextcord.Message | MessageRecord
     :param override_checks: Whether to override standard checks (bot messages, etc.)
     :type override_checks: bool
+    :param skip_if_exists: If True, skip caching if message already exists. If False, update existing message.
+    :type skip_if_exists: bool
     :return: True if the message was cached, False if not.
     :rtype: bool
     """
@@ -37,14 +39,18 @@ def cache_message(message: nextcord.Message | MessageRecord, override_checks=Fal
     if message_record.channel_id not in _message_cache:
         _message_cache[message_record.channel_id] = deque(maxlen=_MAX_CACHE_SIZE)
 
-    # Check if message already exists in cache and update it
+    # Check if message already exists in cache
     channel_cache = _message_cache[message_record.channel_id]
     for i, existing_msg in enumerate(channel_cache):
         if existing_msg.message_id == message_record.message_id:
-            # Update existing message
-            channel_cache[i] = message_record
-            logging.debug(f"Updated cached message with ID {message_record.message_id} in channel {message_record.channel_id}.")
-            return True
+            if skip_if_exists:
+                logging.debug(f"Message with ID {message_record.message_id} already exists in cache, skipping.")
+                return False
+            else:
+                # Update existing message
+                channel_cache[i] = message_record
+                logging.debug(f"Updated cached message with ID {message_record.message_id} in channel {message_record.channel_id}.")
+                return True
 
     # Add new message to cache (FIFO will automatically remove oldest if at max capacity)
     channel_cache.append(message_record)

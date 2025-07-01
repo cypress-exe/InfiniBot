@@ -28,7 +28,7 @@ feature_dependencies = {
         "server": "spam_moderation_profile.active",
     },
     "delete_invite_links": {
-        "global_kill": ["delete_invite_links", "moderation__spam"],
+        "global_kill": ("delete_invite_links", "moderation__spam"),
         "server": "spam_moderation_profile.delete_invites",
     },
     # ------------------------------------------------------------------------------------------------------

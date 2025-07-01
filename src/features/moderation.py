@@ -10,6 +10,7 @@ from typing import List
 import nextcord
 
 from components import utils, ui_components
+from config.messages.cached_messages import cache_message, get_cached_messages_from_channel
 from config.global_settings import get_configs, get_global_kill_status, get_bot_load_status
 from config.member import Member
 from config.server import Server
@@ -748,6 +749,9 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
     if not message.guild.me.guild_permissions.view_audit_log:
         await utils.send_error_message_to_server_owner(message.guild, "View Audit Log", channel=message.channel.name)
         return False
+    
+    # Cache this message
+    cache_message(message, skip_if_exists=True)
 
     # Configure limit (the most messages that we're willing to check)
     if server.spam_moderation_profile.score_threshold < max_messages_to_check:
@@ -756,58 +760,61 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
         limit = max_messages_to_check
 
     # Get previous messages
-    previous_messages = message.channel.history(limit=limit)
+    previous_messages = get_cached_messages_from_channel(message.channel.id)[::-1]
+    if len(previous_messages) > limit:
+        previous_messages = previous_messages[:limit]
     
+    # printout = [message.content for message in previous_messages]
+    # logging.info(f"Previous Messages: {printout}")
+
     # Loop through each previous message and test it
     spam_score = 0
-    async for _message in previous_messages:
+    for _message in previous_messages:
         if spam_score >= server.spam_moderation_profile.score_threshold:
             break
         
-        within_time_window = True # Assume it is within the time window until proven otherwise
         if server.spam_moderation_profile.time_threshold_seconds > 0:
-            message_time = _message.created_at
+            message_time = _message.last_updated
             time_now = datetime.datetime.now(datetime.timezone.utc)
             time_difference = time_now - message_time
             time_difference_in_seconds = time_difference.total_seconds()
 
-            within_time_window = time_difference_in_seconds <= server.spam_moderation_profile.time_threshold_seconds
+            if not time_difference_in_seconds <= server.spam_moderation_profile.time_threshold_seconds:
+                # If this message is too old, all following messages are even older
+                break
 
         score_addition = 0
-        if within_time_window:
-            if _message.author.bot: continue
-            if _message.author.id != message.author.id: continue
+        
+        if _message.author_id != message.author.id: continue
 
-            if _message.id != message.id: # If it's not the same message
-                if _message.content == message.content:
-                    score_addition += 25 # Weighted more
-                else:
-                    similarity = get_percent_similar(_message.content, message.content)
-                    if similarity >= 0.6:
-                        score_addition += similarity * 20
+        if _message.message_id != message.id: # If it's not the same message
+            if _message.content == message.content:
+                score_addition += 25 # Weighted more
+            else:
+                similarity = get_percent_similar(_message.content, message.content)
+                if similarity >= 0.6:
+                    score_addition += similarity * 20
 
-            if len(_message.content) < 10:
-                impact = 1 if _message.id == message.id else 0.5
-                score_addition += 7 * impact
+        if len(_message.content) < 10:
+            impact = 1 if _message.message_id == message.id else 0.5
+            score_addition += 7 * impact
 
-            # Check word count percentage
-            if _message.content and len(_message.content) >= message_chars_to_check_repetition and check_repeated_words_percentage(_message.content):
-                impact = 1 if _message.id == message.id else 0.1
-                score_addition += 0.25 * len(_message.content) * impact
-            
-            # Check message attachments
-            if compare_attachments(_message.attachments, message.attachments):
-                score_addition += 30
+        # Check word count percentage
+        if _message.content and len(_message.content) >= message_chars_to_check_repetition and check_repeated_words_percentage(_message.content):
+            impact = 1 if _message.message_id == message.id else 0.1
+            score_addition += 0.25 * len(_message.content) * impact
+        
+        # Check message attachments
+        if compare_attachments(_message.attachments, message.attachments):
+            score_addition += 30
 
-            # Cap score_addition at 50
-            score_addition = min(score_addition, 50)
+        # Cap score_addition at 50
+        score_addition = min(score_addition, 50)
 
-            impact = 1 if _message.id == message.id else normalized_exponential_decay(x=1-(time_difference_in_seconds / server.spam_moderation_profile.time_threshold_seconds), k=10) # Exponential decay
-            spam_score += score_addition * impact
-            logging.debug(f"{spam_score=}")
+        impact = 1 if _message.message_id == message.id else normalized_exponential_decay(x=1-(time_difference_in_seconds / server.spam_moderation_profile.time_threshold_seconds), k=10) # Exponential decay
+        spam_score += score_addition * impact
+        logging.debug(f"{spam_score=}")
 
-        else:
-            break # If this message is outside of the time threshold window, previous ones will be too. Break out of the loop.
 
     # Punish the member (if needed)
     if spam_score >= server.spam_moderation_profile.score_threshold:

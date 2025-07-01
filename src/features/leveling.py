@@ -6,6 +6,8 @@ import nextcord
 from nextcord import Interaction
 
 from components import utils, ui_components
+from config.messages.cached_messages import cache_message, get_cached_messages_from_channel
+from config.messages.utils import MessageRecord
 from config.global_settings import get_bot_load_status, get_global_kill_status
 from config.member import Member
 from config.server import Server
@@ -294,37 +296,47 @@ async def grant_xp_for_message(message: nextcord.Message) -> None:
     
     server = Server(message.guild.id)
     if message.channel.id in server.leveling_profile.exempt_channels: return
-    
+
+    # Cache message
+    cache_message(message, skip_if_exists=True)
+
     # Anti-spam logic
-    previous_messages = channel.history(limit = MESSAGES_TO_CHECK_FOR_SPAM + 1) # Includes the message just sent
-    
+    previous_messages = get_cached_messages_from_channel(channel.id)[::-1]
+    limit = MESSAGES_TO_CHECK_FOR_SPAM + 1
+    if len(previous_messages) > limit:
+        previous_messages = previous_messages[:limit]
+
+    # printout = [message.content for message in previous_messages]
+    # logging.info(f"Previous Messages: {printout}")
+
     points_multiplier = 1
     forgiveness = 3
 
-    try:
-        await anext(previous_messages) # Skip the first message
-    except StopAsyncIteration:
-        # No previous messages, so we can just return
-        logging.debug("No previous messages found, skipping xp grant.")
-        return
-
-    previous_messages_inverted_list:list[nextcord.Message] = [x async for x in previous_messages][::-1]
-    for previous_message in previous_messages_inverted_list:
-        if previous_message.content == None or previous_message.content == "": continue
-        if previous_message.author.id != member.id: continue
+    # Skip if we don't have enough messages to compare
+    if len(previous_messages) <= 1:
+        logging.debug("Not enough previous messages found for spam comparison.")
+    else:
+        # Skip the first message (current message) and process the rest
+        previous_messages_to_check: list[MessageRecord] = previous_messages[1:]
         
-        # Compare the messages using spam moderation's get_percent_similar (from moderation)
-        percent_similar = get_percent_similar(previous_message.content, message.content)
+        for previous_message in reversed(previous_messages_to_check):
+            if previous_message.content is None or previous_message.content == "": 
+                continue
+            if previous_message.author_id != member.id: 
+                continue
+            
+            # Compare the messages using spam moderation's get_percent_similar (from moderation)
+            percent_similar = get_percent_similar(previous_message.content, message.content)
 
-        factor = 1 - percent_similar  # Adjustment factor
-        points_multiplier *= factor
-        points_multiplier += forgiveness * (points_multiplier/2)  # Gradual increase towards 1
-        
-        # Keep the multiplier between 0 and 1
-        if points_multiplier > 1:
-            points_multiplier = 1
-        elif points_multiplier < 0:
-            points_multiplier = 0
+            factor = 1 - percent_similar  # Adjustment factor
+            points_multiplier *= factor
+            points_multiplier += forgiveness * (points_multiplier/2)  # Gradual increase towards 1
+            
+            # Keep the multiplier between 0 and 1
+            if points_multiplier > 1:
+                points_multiplier = 1
+            elif points_multiplier < 0:
+                points_multiplier = 0
 
     message_compressed = compress_string(message.content)
     total_points = len(message_compressed) / 10
@@ -566,6 +578,10 @@ async def run_set_level_command(interaction: Interaction, member: nextcord.Membe
     if await utils.user_has_config_permissions(interaction):
         if new_level < 0:
             await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "\"Level\" needs to be a positive number.", color = nextcord.Color.red()), ephemeral=True)
+            return
+        
+        if new_level > 9999:
+            await interaction.response.send_message(embed = nextcord.Embed(title = "Format Error", description = "\"Level\" needs to be less than or equal to 9999.", color = nextcord.Color.red()), ephemeral=True)
             return
 
         # Get previous level

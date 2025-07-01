@@ -21,7 +21,7 @@ from config.member import Member
 from config.server import Server
 from config.messages.stored_messages import (
     MessageRecord, 
-    cleanup_db, get_all_messages, get_message, remove_message, store_message,
+    cleanup_db, get_all_messages_from_db, get_message_from_db, remove_message_from_db, store_message_in_db,
 )
 from config.messages.cached_messages import (
     cache_message, get_cached_message, get_cached_messages_from_channel,
@@ -485,10 +485,10 @@ class TestStoredMessages(unittest.TestCase):
         self.assertEqual(test_message.last_updated, last_updated)
 
         # Store the message
-        self.assertTrue(store_message(test_message, override_checks=True))
+        self.assertTrue(store_message_in_db(test_message, override_checks=True))
 
         # Check that the message was stored correctly
-        message_result = get_message(test_message.message_id)
+        message_result = get_message_from_db(test_message.message_id)
 
         self.assertEqual(message_result.message_id, test_message.message_id)
         self.assertEqual(message_result.guild_id, test_message.guild_id)
@@ -498,13 +498,13 @@ class TestStoredMessages(unittest.TestCase):
 
         # Ensure that no error is thrown if the message is already in the database
         try:
-            self.assertTrue(store_message(test_message, override_checks=True))
-            self.assertTrue(store_message(test_message, override_checks=True))
+            self.assertTrue(store_message_in_db(test_message, override_checks=True))
+            self.assertTrue(store_message_in_db(test_message, override_checks=True))
         except Exception as e:
             self.fail(f"Failed to store message again (should not happen): {e}")
 
         # Remove the test message
-        remove_message(test_message.message_id)
+        remove_message_from_db(test_message.message_id)
 
         logging.info("Test for addition of a message to the database completed successfully.")
 
@@ -522,9 +522,9 @@ class TestStoredMessages(unittest.TestCase):
         # Create a test message
         test_message = generate_test_message()
 
-        store_message(test_message, override_checks=True)
+        store_message_in_db(test_message, override_checks=True)
 
-        remove_message(test_message.message_id)
+        remove_message_from_db(test_message.message_id)
 
         # Check that the message was removed
         query = f"SELECT * FROM messages WHERE message_id = {test_message.message_id}"
@@ -562,10 +562,10 @@ class TestStoredMessages(unittest.TestCase):
 
         # Store the test messages
         for message in test_messages_to_store:
-            store_message(message, override_checks=True)
+            store_message_in_db(message, override_checks=True)
 
         # Retrieve all messages
-        messages = get_all_messages()
+        messages = get_all_messages_from_db()
 
         # Check that all messages were retrieved
         for message in test_messages:
@@ -573,10 +573,10 @@ class TestStoredMessages(unittest.TestCase):
 
         # Remove the test messages
         for message in test_messages:
-            remove_message(message.message_id)
+            remove_message_from_db(message.message_id)
 
         # Ensure the database is empty
-        messages = get_all_messages()
+        messages = get_all_messages_from_db()
         self.assertEqual(len(messages), 0)
 
         # Delete all messages in the database to prepare for the next test (should be empty anyway, but doesn't hurt)
@@ -642,7 +642,7 @@ class TestStoredMessages(unittest.TestCase):
         # Store the test messages
         messages_stored = 0
         for message in all_messages:
-            store_message(message, override_checks=True)
+            store_message_in_db(message, override_checks=True)
             messages_stored += 1
 
             if messages_stored % 100 == 0:
@@ -657,7 +657,7 @@ class TestStoredMessages(unittest.TestCase):
         logging.info("Cleanup complete.")
 
         # Check that the correct number of messages were deleted
-        retrieved_messages = get_all_messages()
+        retrieved_messages = get_all_messages_from_db()
 
         logging.info(f"Retrieved {len(retrieved_messages)} messages from the database after cleanup.")
         
@@ -751,7 +751,7 @@ class TestStoredMessages(unittest.TestCase):
         # Store the test messages
         messages_stored = 0
         for message in all_messages:
-            store_message(message, override_checks=True)
+            store_message_in_db(message, override_checks=True)
             messages_stored += 1
 
             if messages_stored % 100 == 0:
@@ -766,7 +766,7 @@ class TestStoredMessages(unittest.TestCase):
         logging.info("Cleanup complete.")
 
         # Check that the correct number of messages were deleted
-        retrieved_messages = get_all_messages()
+        retrieved_messages = get_all_messages_from_db()
 
         logging.info(f"Retrieved {len(retrieved_messages)} messages from the database after cleanup.")
         
@@ -1107,7 +1107,7 @@ class TestServer(unittest.TestCase):
 
         # Add some messages
         for _ in range(5):
-            store_message(generate_test_message(guild_id=server_id), override_checks=True)
+            store_message_in_db(generate_test_message(guild_id=server_id), override_checks=True)
 
         server.remove_all_data()
 
@@ -1139,7 +1139,7 @@ class TestServer(unittest.TestCase):
 
         self.assertEqual(server.join_message_profile.active, False)
 
-        self.assertEqual(get_all_messages(guild_id=server_id), [])
+        self.assertEqual(get_all_messages_from_db(guild_id=server_id), [])
 
 
     def run_test_on_property(self, primary_server_instance, table_name, property_name: str, default_value, test_values, invalid_values) -> None:

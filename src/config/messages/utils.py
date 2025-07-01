@@ -24,12 +24,12 @@ class MessageRecord:
         :param last_updated: The timestamp when the message was created.
         :type last_updated: datetime.datetime
         """
-        self.message_id = None
-        self.channel_id = None
-        self.guild_id = None
-        self.author_id = None
-        self.content = None
-        self.last_updated = None
+        self.message_id: int = None
+        self.channel_id: int = None
+        self.guild_id: int = None
+        self.author_id: int = None
+        self.content: str = None
+        self.last_updated: datetime.datetime = None
 
         # Added for compatibility reasons. Not stored in db, and will always be empty.
         self.embeds = []
