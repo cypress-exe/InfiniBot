@@ -401,7 +401,7 @@ async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: n
             message = f"Failed to timeout {member.mention} for profanity moderation. Missing permissions."
             embed = nextcord.Embed(title = "Failed to Timeout", description = message, color = nextcord.Color.red())
 
-            admin_channel = await bot.fetch_channel(server.profanity_moderation_profile.channel)
+            admin_channel = bot.get_channel(server.profanity_moderation_profile.channel) or await bot.fetch_channel(server.profanity_moderation_profile.channel)
             if admin_channel is None: return False
             await admin_channel.send(embed = embed)
             return False

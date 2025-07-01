@@ -165,7 +165,7 @@ async def on_ready() -> None: # Bot load
             logging.warning("No channel ID specified for startup notification. Skipping notification.")
             return
         
-        channel = await bot.fetch_channel(channel_id)
+        channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
 
         if channel is None:
             logging.error(f"Channel with ID {channel_id} not found. Please check the channel ID in the configuration.")
@@ -469,7 +469,7 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
         return
     
     # Find guild and channel
-    channel = await bot.fetch_channel(payload.channel_id)
+    channel = bot.get_channel(payload.channel_id) or await bot.fetch_channel(payload.channel_id)
     if channel is None: 
         return
 
