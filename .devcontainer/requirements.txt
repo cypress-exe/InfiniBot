@@ -1,5 +1,5 @@
 APScheduler==3.11.0
-dateparser==1.2.1
+dateparser==1.2.2
 humanfriendly==10.0
 nextcord==3.1.0
 nextcord_ext_menus==1.5.7
