@@ -11,7 +11,7 @@ from nextcord import Interaction
 
 from components import ui_components, utils
 from components.ui_components import CustomView, CustomModal
-from config.global_settings import ShardLoadedStatus
+from config.global_settings import ShardLoadedStatus # Leave import
 from config.server import Server
 from features import leveling
 from features.moderation import str_is_profane
@@ -64,11 +64,12 @@ class Dashboard(CustomView):
             await ui_components.disabled_feature_override(self, interaction)
             return
         
-        with ShardLoadedStatus() as shards_loaded:
-            if not interaction.guild.shard_id in shards_loaded:
-                logging.warning(f"Dashboard: Shard {interaction.guild.shard_id} is not loaded. Forwarding to inactive screen for guild {interaction.guild.id}.")
-                await ui_components.infinibot_loading_override(self, interaction)
-                return
+        # Uncomment this to check if the shard is loaded before showing the dashboard
+        # with ShardLoadedStatus() as shards_loaded:
+        #     if not interaction.guild.shard_id in shards_loaded:
+        #         logging.warning(f"Dashboard: Shard {interaction.guild.shard_id} is not loaded. Forwarding to inactive screen for guild {interaction.guild.id}.")
+        #         await ui_components.infinibot_loading_override(self, interaction)
+        #         return
         
         description = """
         Welcome to the **InfiniBot Dashboard**! 
@@ -4125,7 +4126,7 @@ class Dashboard(CustomView):
                         auto_bans_str = f"```{auto_bans_str}```"
                         self.revoke_btn.disabled = False
                     else:
-                        auto_bans_str = "You don't have any autobans yet."
+                        auto_bans_str = "You don't have any autobans yet.\n"
                         self.revoke_btn.disabled = True
                                         
                     description = f"""InfiniBot has the capability to ban members both in your server and after they leave.
@@ -4142,7 +4143,6 @@ class Dashboard(CustomView):
 
                     **Current Autobans**
                     {auto_bans_str}
-
                     View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/additional/autobans/) for more information."""
 
                     # On Mobile, extra spaces cause problems. We'll get rid of them here:
@@ -4264,18 +4264,23 @@ class Dashboard(CustomView):
                                     color=nextcord.Color.red()
                                 )
                                 
-                            if interaction.guild.me.guild_permissions.ban_members:
+                            elif interaction.guild.me.guild_permissions.ban_members:
+                                # Check if user is already banned by iterating through bans
+                                # Unfortunately, nextcord doesn't provide a direct method to check if a user is banned through an ID
+                                # We would need to have a nextcord.User mention, and we don't have one here...
                                 try:
-                                    await interaction.guild.fetch_ban(int(user_id))
-                                except (nextcord.NotFound, nextcord.Forbidden):
+                                    async for ban_entry in interaction.guild.bans():
+                                        if not ban_entry.user: continue
+                                        if ban_entry.user.id == int(user_id):
+                                            embed = nextcord.Embed(
+                                                title="User Already Banned",
+                                                description=(f"InfiniBot won't add \"{user_name} (ID: {user_id})\" as an "
+                                                           f"autoban because they are already banned in this server."),
+                                                color=nextcord.Color.red()
+                                            )
+                                            break
+                                except Exception:
                                     pass
-                                else:
-                                    embed = nextcord.Embed(
-                                        title="User Already Banned",
-                                        description=(f"InfiniBot won't add \"{user_name} (ID: {user_id})\" as an "
-                                                   f"autoban because they are already banned in this server."),
-                                        color=nextcord.Color.red()
-                                    )
                             
                             if embed is None:
                                 # Save data

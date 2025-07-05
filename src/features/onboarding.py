@@ -4,7 +4,7 @@ import logging
 
 from components import utils, ui_components
 from components.ui_components import CustomView
-from config.global_settings import get_configs, ShardLoadedStatus
+from config.global_settings import get_configs, ShardLoadedStatus # Leave ShardLoadedStatus import
 from config.server import Server
 from features.dashboard import Dashboard
 
@@ -404,12 +404,13 @@ async def run_onboarding_command(interaction: Interaction):
         await ui_components.disabled_feature_override(disabled_view, interaction, edit_message=False)
         return
     
-    with ShardLoadedStatus() as shards_loaded:
-        if not interaction.guild.shard_id in shards_loaded:
-            logging.warning(f"Onboarding: Shard {interaction.guild.shard_id} is not loaded. Forwarding to inactive screen for guild {interaction.guild.id}.")
-            loading_view = CustomView()
-            await ui_components.infinibot_loading_override(loading_view, interaction, edit_message=False)
-            return
+    # Uncomment this to check if the shard is loaded before showing the onboarding
+    # with ShardLoadedStatus() as shards_loaded:
+    #     if not interaction.guild.shard_id in shards_loaded:
+    #         logging.warning(f"Onboarding: Shard {interaction.guild.shard_id} is not loaded. Forwarding to inactive screen for guild {interaction.guild.id}.")
+    #         loading_view = CustomView()
+    #         await ui_components.infinibot_loading_override(loading_view, interaction, edit_message=False)
+    #         return
         
     if await utils.user_has_config_permissions(interaction):
         view = Onboarding()

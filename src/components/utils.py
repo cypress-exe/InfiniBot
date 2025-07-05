@@ -596,7 +596,7 @@ async def get_channel(guild: nextcord.Guild) -> nextcord.TextChannel | None:
     await send_error_message_to_server_owner(guild, "Send Messages")
     return None
 
-failed_member_fetches = ExpiringSet(60 * 10)  # 10 minutes expiration
+failed_member_fetches = ExpiringSet(60 * 1)  # 1 minute expiration
 async def get_member(guild: nextcord.Guild, user_id: int, override_failed_cache: bool = False) -> nextcord.Member | None:
     """
     |coro|  

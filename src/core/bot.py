@@ -59,6 +59,7 @@ bot = commands.AutoShardedBot(intents = intents,
                             allowed_mentions = nextcord.AllowedMentions(everyone = True), 
                             help_command=None,
                             max_messages=1000,
+                            chunk_guilds_at_startup=True,
                             shard_count=shard_count)
 
 def get_bot() -> commands.AutoShardedBot: return bot
@@ -218,6 +219,15 @@ async def on_close() -> None:
     stop_scheduler()
     logging.fatal("InfiniBot is shutting down...")
 
+# CUSTOM DECORATORS ============================================================================================================================================================
+if global_settings.get_environment_type().upper() == "PROD":
+    def dev_only_slash_command(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+else:
+    dev_only_slash_command = bot.slash_command
+
 # SLASH COMMANDS ==============================================================================================================================================================
 @bot.slash_command(name="view", description="Requires Infinibot Mod", contexts=[nextcord.InteractionContextType.guild])
 async def view(interaction: Interaction): pass
@@ -235,15 +245,6 @@ async def help(interaction: Interaction):
 @bot.slash_command(name="about", description="View bot version, repository, and documentation links")
 async def info(interaction: Interaction):
     await about.run_bot_about_command(interaction)
-
-@bot.slash_command(name="test", description="Test command")
-async def test(interaction: Interaction):
-    from core.scheduling import run_scheduled_tasks
-    await run_scheduled_tasks()  # Ensure scheduled tasks are running before responding
-    embed = nextcord.Embed(title="Test Command", description="This is a test command.", color=nextcord.Color.blue())
-    embed.add_field(name="Info", value="This command is used for testing purposes.", inline=False)
-    embed.set_footer(text="If you see this, the command is working!")
-    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 # SERVER COMMANDS ================================================================================================================================================================
 @bot.slash_command(name="dashboard", description="Configure InfiniBot (Requires Infinibot Mod)", contexts=[nextcord.InteractionContextType.guild])
@@ -376,6 +377,46 @@ async def opt_into_dms(interaction: Interaction):
     :rtype: None
     """
     await dm_commands.run_opt_into_dms_command(interaction)
+
+# Test Commands (ONLY AVAILABLE IN DEV BUILD)
+@dev_only_slash_command(name="test", description="A test command for InfiniBot. NOT INCLUDED IN PRODUCTION BUILD.")
+async def test(interaction: Interaction):
+    # ======================================= <INSERT TEST CODE HERE> =======================================
+    DEFER_INTERACTION = True # Provides extra time to run code before returning a response.
+    SEND_DEFAULT_EMBED = True # Sends an generic embed response to indicate the command was run successfully.
+    async def test_items(interaction: Interaction):
+        # from features.test import run_test_command
+        # await run_test_command(interaction)
+        pass
+        
+    # ======================================= </INSERT TEST CODE HERE> =======================================
+
+    logging.info(f"Test command invoked by {interaction.user.name} ({interaction.user.id}) in guild {interaction.guild.name} ({interaction.guild.id})")
+    logging.info(f"Running test command with DEFER_INTERACTION={DEFER_INTERACTION} and SEND_DEFAULT_EMBED={SEND_DEFAULT_EMBED}")
+    if DEFER_INTERACTION: await interaction.response.defer(ephemeral=True)
+    await test_items(interaction)
+
+    if SEND_DEFAULT_EMBED:
+        embed = nextcord.Embed(title="✅  Test Command  ✅", description="This is a test command.", color=nextcord.Color.blue())
+        embed.add_field(
+            name="What is this?", 
+            value="This command is used for testing purposes. It either does nothing, \
+            or maybe runs an operation behind the scenes for testing.", 
+            inline=False
+            )
+        embed.set_footer(text="This command will NOT exist in production.")
+        embed.set_author(name=bot.user.name, icon_url=bot.user.display_avatar.url)
+        
+        try:
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        except nextcord.InteractionResponded:
+            # If the response has already been sent, follow up instead
+            try:
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            except Exception as e:
+                logging.warning(f"Error sending followup message: {e}")
+
+    logging.info(f"Test command completed successfully.")
 
 # MESSAGE & USER COMMANDS ============================================================================================================================================================== 
 @bot.message_command(name="Options")
@@ -737,6 +778,8 @@ def run() -> None:
     # Get token
     token = os.environ['DISCORD_AUTH_TOKEN']
     logging.info(f"Running bot with token: {token[:5]}*******...")
+
+    logging.info(f"Running in {global_settings.get_environment_type()} mode.")
 
     try:
         bot.run(token)

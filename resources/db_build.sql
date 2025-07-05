@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS infinibot_settings_profile( -- #optimize #remove-if-g
 )
 
 -- Create member_profile Table (simple table)
-CREATE TABLE IF NOT EXISTS member_profile( -- #optimize #remove-if-guild-invalid(server_id)
+CREATE TABLE IF NOT EXISTS member_profile( -- #optimize
     member_id INT PRIMARY KEY,
     level_up_card_enabled BOOLEAN DEFAULT false,
     join_card_enabled BOOLEAN DEFAULT false,

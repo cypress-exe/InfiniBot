@@ -221,7 +221,7 @@ async def handle_server_remove(guild: nextcord.Guild):
 
     # Don't run if InfiniBot is still loading
     if not get_bot_load_status():
-        logging.debug(f"Skipping server removal handling for {guild.name} (ID: {guild.id}) because InfiniBot is still loading.")
+        logging.info(f"Skipping server removal handling for {guild.name} (ID: {guild.id}) because InfiniBot is still loading.")
         return
     
     logging.info(f"InfiniBot has been removed from the server {guild.name} (ID: {guild.id}).") # Info log for now. Maybe change to debug later.

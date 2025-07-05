@@ -221,7 +221,7 @@ async def daily_leveling_maintenance(bot: nextcord.Client, guild: nextcord.Guild
         # Go through each member and edit
         for member_level_info in server.member_levels:
             try:
-                member = await utils.get_member(guild, member_level_info.member_id, override_failed_cache=True)
+                member = await utils.get_member(guild, member_level_info.member_id)
                 if member == None:
                     logging.warning(f"Member {member_level_info.member_id} not found in guild {guild.id}. Removing from member levels.")
                     # Remove the member if they are not found

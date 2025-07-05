@@ -927,15 +927,13 @@ async def daily_moderation_maintenance(bot: nextcord.Client, guild: nextcord.Gui
         # Go through each member and edit
         for member_strike_info in server.moderation_strikes:
             try:
-                member = await utils.get_member(guild, member_strike_info.member_id, override_failed_cache=True)
+                member = await utils.get_member(guild, member_strike_info.member_id)
                 if member is None:
-                    # Remove the member
-                    server.member_levels.delete(member_strike_info.member_id)
                     continue
-
+                    
                 # Check if the member has strikes
                 if (member_strike_info.strikes == 0): 
-                    server.moderation_strikes.delete(member_strike_info.member_id)
+                    server.moderation_strikes.delete(member_strike_info.member_id) # Cleanup
                     continue
 
                 # Convert string to UTC-aware datetime

@@ -1,3 +1,4 @@
+import os
 import nextcord
 import logging
 
@@ -359,6 +360,16 @@ def update_bot_id(bot: nextcord.Client):
     """
     global bot_id
     bot_id = bot.application_id
+
+
+def get_environment_type() -> str:
+    """
+    Retrieve the server environment type.
+
+    :return: The server environment type.
+    :rtype: str
+    """
+    return os.getenv("ENVIRONMENT_TYPE", "DEV").upper()
 
 
 def is_channel_purging(channel_id: int) -> bool:
