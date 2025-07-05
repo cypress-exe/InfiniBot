@@ -1,6 +1,7 @@
 import logging
 import math
 import re
+from typing import Union
 
 import nextcord
 from nextcord import Interaction
@@ -70,45 +71,40 @@ def get_points_from_level(level: int) -> int:
 
 def get_ranked_members(guild: nextcord.Guild) -> list[list[nextcord.Member, int]]:
     """
-    Get a list of ranked members in a guild sorted by level points.  
+    Get a list of ranked members in a guild sorted by level points. (Only includes members with points)  
     Note: Returned list is sorted by points but index does not necessarily represent rank.
 
     :param guild: The guild to get the ranked members from.
     :type guild: nextcord.Guild
-    :return: A list of [member, points] lists sorted by points in descending order.
-    :rtype: list[list[nextcord.Member, int]]
+    :return: A list of [int, points] lists sorted by points in descending order.
+    :rtype: list[list[int, int]]
     """
-    ranked_members:list[list[nextcord.Member, int]] = []
+    ranked_members:list[list[int, int]] = []
     server = Server(guild.id)
-                        
-    for member in guild.members: 
-        if member.bot: continue
-        
-        if member.id in server.member_levels: points = server.member_levels[member.id].points
-        else: points = 0
 
-        ranked_members.append([member, points])
+    for member_level_info in server.member_levels:
+            ranked_members.append([member_level_info.member_id, member_level_info.points])
 
-    ranked_members = sorted(ranked_members, key=lambda x: (-x[1], x[0].name))
+    ranked_members = sorted(ranked_members, key=lambda x: (-x[1], f"<@{x[0]}>"))
     return ranked_members
 
-def calculate_rank_for_member(ranked_members: list[list[nextcord.Member, int]], member_id: int = None) -> list[tuple[int, nextcord.Member, int]]:
+def calculate_rank_for_member(ranked_members: list[list[int, int]], target_member_id: int = None) -> Union[list[tuple[int, int, int]], tuple[int, int]]:
     """
     Calculate ranks for all members or find the rank of a specific member.
     
     :param ranked_members: The list of ranked members from get_ranked_members()
-    :type ranked_members: list[list[nextcord.Member, int]]
+    :type ranked_members: list[list[int, int]]
     :param member_id: Optional member ID to find the specific rank for
     :type member_id: int, optional
     :return: If member_id is provided, returns a tuple (rank, points) for that member,
              otherwise returns a list of (rank, member, points) tuples for all members
-    :rtype: list[tuple[int, nextcord.Member, int]] or tuple[int, int]
+    :rtype: list[tuple[int, int, int]] or tuple[int, int]
     """
     results = []
     rank, last_points = 1, None
     
     for index, package in enumerate(ranked_members):
-        member = package[0]
+        member_id = package[0]
         points = package[1]
         
         # Update rank if points are less than previous member's points
@@ -116,15 +112,15 @@ def calculate_rank_for_member(ranked_members: list[list[nextcord.Member, int]], 
             rank += 1
         
         # If we're looking for a specific member and found them
-        if member_id is not None and member.id == member_id:
+        if target_member_id == member_id:
             return (rank, points)
         
         # Otherwise, add to results list
-        results.append((rank, member, points))
+        results.append((rank, member_id, points))
         last_points = points
     
     # If we were looking for a specific member and didn't find them
-    if member_id is not None:
+    if target_member_id is not None:
         return (0, 0)
         
     return results
@@ -141,7 +137,7 @@ def get_member_rank(guild: nextcord.Guild, member_id: int) -> tuple[int, int]:
     :rtype: tuple[int, int]
     """
     ranked_members = get_ranked_members(guild)
-    return calculate_rank_for_member(ranked_members, member_id=member_id)
+    return calculate_rank_for_member(ranked_members, target_member_id=member_id)
 
 def add_leaderboard_ranking_to_embed(guild: nextcord.Guild, embed: nextcord.Embed, include_ranked_members: bool = False) -> nextcord.Embed:
     """
@@ -158,8 +154,15 @@ def add_leaderboard_ranking_to_embed(guild: nextcord.Guild, embed: nextcord.Embe
     """
     ranked_members = get_ranked_members(guild)
     ranked_results = calculate_rank_for_member(ranked_members)
+
+    if len(ranked_results) == 0:
+        embed.add_field(
+            name="No members found",
+            value="There are no members with points in this server. To level up, send messages in the server!",
+            inline=False
+        )
     
-    for index, (rank, member, points) in enumerate(ranked_results):
+    for index, (rank, member_id, points) in enumerate(ranked_results):
         if index >= 20:
             remaining_members = len(ranked_results) - 20
             embed.add_field(
@@ -171,13 +174,9 @@ def add_leaderboard_ranking_to_embed(guild: nextcord.Guild, embed: nextcord.Embe
 
         level = get_level_from_points(points)
 
-        member_name = (
-            f"{member} ({member.nick})" if member.nick else f"{member}"
-        )
-
         embed.add_field(
-            name=f"**#{rank} {member_name}**",
-            value=f"Level: {level}, Points: {points}",
+            name=f"#{rank} | Level {level} ({points} pts)",
+            value=f"<@{member_id}>",
             inline=False
         )
 
@@ -222,9 +221,10 @@ async def daily_leveling_maintenance(bot: nextcord.Client, guild: nextcord.Guild
         # Go through each member and edit
         for member_level_info in server.member_levels:
             try:
-                member = guild.get_member(member_level_info.member_id)
-                if member == None: # Member is no longer in the server
-                    # Remove the member
+                member = await utils.get_member(guild, member_level_info.member_id, override_failed_cache=True)
+                if member == None:
+                    logging.warning(f"Member {member_level_info.member_id} not found in guild {guild.id}. Removing from member levels.")
+                    # Remove the member if they are not found
                     server.member_levels.delete(member_level_info.member_id)
                     continue
 
@@ -387,6 +387,8 @@ async def process_level_change(guild: nextcord.Guild, member: nextcord.Member, l
     :rtype: None
     """
     server = Server(guild.id)
+
+    if member is None: return
 
     # Get points
     if member.id in server.member_levels: points = server.member_levels[member.id].points

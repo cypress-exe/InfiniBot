@@ -9,6 +9,7 @@ from nextcord import Interaction
 
 from components.ui_components import ErrorWhyAdminPrivilegesButton
 from config.global_settings import feature_dependencies, required_permissions, get_global_kill_status, get_bot_load_status
+from modules.custom_types import ExpiringSet
 
 COLOR_OPTIONS = ["Red", "Green", "Blue", "Yellow", "White", "Blurple", "Greyple", "Teal", "Purple", "Gold", "Magenta", "Fuchsia"]
 
@@ -594,7 +595,44 @@ async def get_channel(guild: nextcord.Guild) -> nextcord.TextChannel | None:
     # No suitable channel found, notify server owner
     await send_error_message_to_server_owner(guild, "Send Messages")
     return None
-                
+
+failed_member_fetches = ExpiringSet(60 * 10)  # 10 minutes expiration
+async def get_member(guild: nextcord.Guild, user_id: int, override_failed_cache: bool = False) -> nextcord.Member | None:
+    """
+    |coro|  
+    Get a member from a guild by their user ID.
+
+    :param guild: The guild to search for the member.
+    :type guild: nextcord.Guild
+    :param user_id: The ID of the user to find.
+    :type user_id: int
+    :param override_failed_cache: If True, will override the failed member fetch cache and attempt to fetch the member again.
+    :type override_failed_cache: bool
+    :return: The member if found, otherwise None.
+    :rtype: nextcord.Member | None
+    """
+    global failed_member_fetches
+    
+    if not guild or guild.unavailable:
+        logging.warning(f"Guild {guild} is unavailable or None. Cannot get member.")
+        return None
+    
+    if member := guild.get_member(user_id):
+        return member
+
+    if (not override_failed_cache) and ((guild.id, user_id) in failed_member_fetches):
+        logging.info(f"Member with ID {user_id} was not found in guild {guild.name} recently. Skipping fetch.")
+        return None
+
+    try:
+        return await guild.fetch_member(user_id)
+    except nextcord.NotFound:
+        logging.debug(f"Member with ID {user_id} was not found in guild {guild.name}.")
+        if not (guild.id, user_id) in failed_member_fetches:
+            logging.info(f"Adding failed member fetch for guild {guild.id} and user {user_id}.")
+            failed_member_fetches.add((guild.id, user_id))
+        return None
+
 async def check_and_warn_if_channel_is_text_channel(interaction: Interaction) -> bool:
     """
     |coro|

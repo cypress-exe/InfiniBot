@@ -321,11 +321,11 @@ async def run_purge_command(interaction: Interaction, amount: str) -> None:
             return
 
     # Validate input
-    if not amount or (not amount.isdigit() and amount.lower() != "all") or (amount.isdigit() and int(amount) < 1):
+    if not amount or (not amount.isdigit() and amount.lower() != "all") or (amount.isdigit() and (int(amount) < 1 or int(amount) > 50)):
         await _send_error(
             interaction,
             "Invalid Amount",
-            "Please specify a positive number or 'all' to purge messages."
+            "Please specify a positive number between 1 and 50 or 'all' to purge messages."
         )
         return
 

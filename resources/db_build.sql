@@ -172,6 +172,14 @@ CREATE TABLE IF NOT EXISTS birthdays( -- #remove-if-guild-invalid(server_id)
     PRIMARY KEY (server_id, member_id)
 )
 
+-- Create join-to-create_active_vcs Table (integrated list table)
+CREATE TABLE IF NOT EXISTS join_to_create_active_vcs( -- #remove-if-guild-invalid(server_id)
+    server_id INT, -- primary key
+    channel_id INT, -- secondary key
+    added DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (server_id, channel_id)
+)
+
 -- Create autobans Table (integrated list table)
 CREATE TABLE IF NOT EXISTS autobans( -- #remove-if-guild-invalid(server_id)
     server_id INT, -- primary key

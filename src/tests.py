@@ -1711,6 +1711,17 @@ class TestServer(unittest.TestCase):
 
         server.remove_all_data()
 
+    def test_join_to_create_active_vcs(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_integrated_list_property
+        test = self.RunTestOnIntegratedListProperty(server, "join_to_create_active_vcs", ["channel_id:int"], [5, 20])
+        test.run(self)
+
+        server.remove_all_data()
+
     def test_autobans(self):
         server_id = random.randint(0, 1000000000)
 

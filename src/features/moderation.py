@@ -36,9 +36,9 @@ class IncorrectButtonView(ui_components.CustomView):
         embed = interaction.message.embeds[0]
         id = embed.footer.text.split(" ")[-1]
         guild = interaction.guild
-        member = guild.get_member(int(id))
-        
-        if member != None:
+        member = await utils.get_member(guild, int(id), override_failed_cache=True)
+
+        if member is not None:
             button.label = "Marked as Incorrect"
             button.disabled = True
             
@@ -482,6 +482,9 @@ async def check_and_trigger_profanity_moderation_for_message(
     
     # Grant a strike (and maybe timeout)
     action_successful = await grant_and_punish_strike(bot, message.guild.id, message.author, 1)
+
+    # Wait a second
+    await asyncio.sleep(1)
     
     timed_out = message.author.communication_disabled_until is not None
 
@@ -924,8 +927,8 @@ async def daily_moderation_maintenance(bot: nextcord.Client, guild: nextcord.Gui
         # Go through each member and edit
         for member_strike_info in server.moderation_strikes:
             try:
-                member = guild.get_member(member_strike_info.member_id)
-                if member == None: # Member is no longer in the server
+                member = await utils.get_member(guild, member_strike_info.member_id, override_failed_cache=True)
+                if member is None:
                     # Remove the member
                     server.member_levels.delete(member_strike_info.member_id)
                     continue

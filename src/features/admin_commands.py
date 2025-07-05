@@ -481,9 +481,8 @@ async def handle_info_command(message: nextcord.Message, message_parts: list):
     guild_name = guild_name.replace("@", "@\u200b")  # Prevent mentions in embed title
     
     description = f"""Owner: {guild.owner} ({guild.owner.id})
-    Members: {len(guild.members)}
-    Bots: {len([m for m in guild.members if m.bot])}
-    
+    Members: {guild.member_count}
+
     **Time In Server**: {duration.days} days"""
     
     # Clean up indentation for mobile

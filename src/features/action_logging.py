@@ -525,6 +525,7 @@ async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry
     :return: None
     :rtype: None
     """
+    global fresh_role_updates
 
     class RoleList:
         """
@@ -659,15 +660,21 @@ async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry
             deleted_roles.remove(guild.premium_subscriber_role.id)
 
     # Remove roles that were just logged
+    added_roles_ids = [role.id for role in added_roles.roles]
+    deleted_roles_ids = [role.id for role in deleted_roles.roles]
     for role_info in fresh_role_updates:
         if role_info[0] == entry.user.id:
-            if role_info[2] == "added" and role_info[1] in added_roles:
+            if role_info[2] == "added" and role_info[1] in added_roles_ids:
                 added_roles.remove(role_info[1])
             elif role_info[2] == "removed" and role_info[1] in deleted_roles:
                 deleted_roles.remove(role_info[1])
 
     if len(added_roles) == 0 and len(deleted_roles) == 0:
         return
+    
+    # Add to fresh role updates
+    for role in added_roles: fresh_role_updates.add((entry.user.id, role.id, "added"))
+    for role in deleted_roles: fresh_role_updates.add((entry.user.id, role.id, "removed"))
 
     user = entry.user
     fresh_audit_log = entry_is_fresh(entry)
@@ -688,10 +695,6 @@ async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry
         embed.add_field(name="Reason", value=entry.reason, inline=False)
 
     await log_channel.send(embed=embed)
-
-    # Add to fresh role updates
-    for role in added_roles: fresh_role_updates.add((entry.user.id, role.id, "added"))
-    for role in deleted_roles: fresh_role_updates.add((entry.user.id, role.id, "removed"))
 
 async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, entry: nextcord.AuditLogEntry, log_channel: nextcord.TextChannel) -> None:
     """

@@ -58,7 +58,7 @@ shard_count = calculate_shard_count()
 bot = commands.AutoShardedBot(intents = intents, 
                             allowed_mentions = nextcord.AllowedMentions(everyone = True), 
                             help_command=None,
-                            max_messages=100,
+                            max_messages=1000,
                             shard_count=shard_count)
 
 def get_bot() -> commands.AutoShardedBot: return bot
@@ -235,6 +235,15 @@ async def help(interaction: Interaction):
 @bot.slash_command(name="about", description="View bot version, repository, and documentation links")
 async def info(interaction: Interaction):
     await about.run_bot_about_command(interaction)
+
+@bot.slash_command(name="test", description="Test command")
+async def test(interaction: Interaction):
+    from core.scheduling import run_scheduled_tasks
+    await run_scheduled_tasks()  # Ensure scheduled tasks are running before responding
+    embed = nextcord.Embed(title="Test Command", description="This is a test command.", color=nextcord.Color.blue())
+    embed.add_field(name="Info", value="This command is used for testing purposes.", inline=False)
+    embed.set_footer(text="If you see this, the command is working!")
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 # SERVER COMMANDS ================================================================================================================================================================
 @bot.slash_command(name="dashboard", description="Configure InfiniBot (Requires Infinibot Mod)", contexts=[nextcord.InteractionContextType.guild])
@@ -688,7 +697,12 @@ async def on_guild_channel_delete(channel: nextcord.abc.GuildChannel) -> None:
     """
     cached_messages.remove_cached_messages_from_channel(channel.id)
     stored_messages.remove_db_messages_from_channel(channel.id)
-    Server(channel.guild.id).managed_messages.delete_all_matching(channel_id=channel.id)
+    
+    server = Server(channel.guild.id)
+    server.managed_messages.delete_all_matching(channel_id=channel.id)
+    if channel.id in server.join_to_create_active_vcs:
+        server.join_to_create_active_vcs.delete(channel.id)
+
 
 @bot.event
 async def on_voice_state_update(member: nextcord.Member, before: nextcord.VoiceState, after: nextcord.VoiceState) -> None:

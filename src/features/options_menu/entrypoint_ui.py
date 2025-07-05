@@ -63,7 +63,7 @@ class OptionsView(ui_components.CustomView):
 
         # Load buttons
         for button in self.buttons:
-            button.load(interaction, data)
+            await button.load(interaction, data)
 
         if len(self.children) == 0:
             await self.show_error(interaction, f"Hmmm. You don't have any options for this {self.relevant_object_type.lower()}.")

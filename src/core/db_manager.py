@@ -89,22 +89,21 @@ class TableManager:
         """
         result = {}
         try:
-            for key, value in self.__dict__().items():
+            for key, value in self.to_dict().items():
                 if hasattr(value, 'recursive_dict'):
                     # If the value has a recursive_dict method, call it
                     result[key] = value.recursive_dict()
                     continue
                 
-                if hasattr(value, '__dict__'):
-                    # If the value has a __dict__ attribute, convert it to a dict
-                    result[key] = value.__dict__()
+                if hasattr(value, 'to_dict'):
+                    # If the value has a to_dict attribute, convert it to a dict
+                    result[key] = value.to_dict()
                     continue
                 
                 # Otherwise, just store the value as is
                 result[key] = value
         except (TypeError, AttributeError) as e:
-            # Handle cases where __dict__() fails (like IntegratedList_TableManager tuple indexing error)
-            # Fall back to basic object representation
+            # Handle cases where to_dict() fails fall back to basic object representation
             result['error'] = f"Could not serialize object: {str(e)}"
             result['type'] = type(self).__name__
             if hasattr(self, 'table_name'):
@@ -149,11 +148,11 @@ class Simple_TableManager(TableManager):
 
     def __str__(self):
         column_names_and_types = self.get_column_names_and_types()
-        properties = self.__dict__()
+        properties = self.to_dict()
 
         return "\n".join(f"{prop} ({column_names_and_types[prop]}): {getattr(self, prop)}" for prop in properties)
-    
-    def __dict__(self) -> dict:
+
+    def to_dict(self) -> dict:
         column_names_and_types = self.get_column_names_and_types()
         column_names = [*column_names_and_types]
         properties = {}
@@ -560,7 +559,7 @@ class Simple_TableManager(TableManager):
             def __str__(self):
                 return json.dumps(self.properties)
             
-            def __dict__(self):
+            def to_dict(self):
                 return self.properties
                 
             def to_embed(self):
@@ -580,7 +579,7 @@ class Simple_TableManager(TableManager):
             if value is None: # This case should never happen.
                 return EmbedProperty()
 
-            # value = {"title":"Embed Title", "description":"Embed Description...", "color": 0x00FFFF, ...}
+            # value = {"title":"Embed Title", "description":"Embed Description...", "color":"Blue", ...}
             value_decoded = json.loads(str(value))
             
             # Ensure all embed properties are valid
@@ -782,7 +781,10 @@ class IntegratedList_TableManager(TableManager):
         column_names = self.database.all_column_names[self.table_name][2:] # Ignore primary key and secondary key
         for column_name in column_names:
             if column_name not in data_dict.keys():
-                raise KeyError(f"Column \"{column_name}\" not found in data. Did you forget to add it?")
+                if column_name in self.database.all_column_defaults[self.table_name]:
+                    continue
+                else:
+                    raise KeyError(f"Column \"{column_name}\" not found in data. Did you forget to add it?")
 
         return data_dict
     
@@ -859,6 +861,22 @@ class IntegratedList_TableManager(TableManager):
         data = self._get_entry(second_key_value)
         if data is None: raise KeyError(f"Secondary key \"{second_key_value}\" not found in table.")
         return self._package_list_into_dataclass(data)
+
+    def get(self, secondary_key_value, default=None):
+        """
+        Get an entry from the list based on the secondary key value.
+
+        Args:
+            secondary_key_value (str): The value of the secondary key.
+            default: The default value to return if the entry is not found.
+
+        Returns:
+            dataclass: The dataclass representing the entry, or the default value if not found.
+        """
+        try:
+            return self[secondary_key_value]
+        except KeyError:
+            return default
 
     def get_matching(self, **kwargs):
         """
@@ -1038,7 +1056,7 @@ class IntegratedList_TableManager(TableManager):
         entries_str = ", ".join(str(entry) for entry in entries)
         return f"[{entries_str}]"
     
-    def __dict__(self):
+    def to_dict(self):
         """
         Return a dictionary representation of the list.
 

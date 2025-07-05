@@ -45,6 +45,7 @@ class Server:
         self._member_levels = None
         self._level_rewards = None
         self._birthdays = None
+        self._join_to_create_active_vcs = None
         self._autobans = None
         
         self._managed_messages = None
@@ -363,6 +364,14 @@ class Server:
     class Birthdays(Server_IntegratedList_TableManager):
         def __init__(self, server_id):
             super().__init__("birthdays", "server_id", server_id, "member_id")
+
+    @property
+    def join_to_create_active_vcs(self):
+        if self._join_to_create_active_vcs is None: self._join_to_create_active_vcs = self.JoinToCreateActiveVCs(self.server_id)
+        return self._join_to_create_active_vcs
+    class JoinToCreateActiveVCs(Server_IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("join_to_create_active_vcs", "server_id", server_id, "channel_id")
 
     @property
     def autobans(self):
