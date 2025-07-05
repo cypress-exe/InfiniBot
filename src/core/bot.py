@@ -387,6 +387,18 @@ async def test(interaction: Interaction):
     async def test_items(interaction: Interaction):
         # from features.test import run_test_command
         # await run_test_command(interaction)
+
+        # from components.utils import send_error_message_to_server_owner
+        # import asyncio
+
+        # await send_error_message_to_server_owner(interaction.guild, "View Channels", channel=interaction.channel.name, administrator=False)
+
+        # # Wait a second
+        # await asyncio.sleep(1)
+
+        # # Send another
+        # await send_error_message_to_server_owner(interaction.guild, "View Channels", channel=interaction.channel.name, administrator=False)
+
         pass
         
     # ======================================= </INSERT TEST CODE HERE> =======================================

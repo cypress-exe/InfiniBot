@@ -721,6 +721,7 @@ async def check_text_channel_permissions(channel: nextcord.TextChannel, auto_war
 
     return False
 
+messages_sent = ExpiringSet(60 * 5)  # 5 minutes expiration
 async def send_error_message_to_server_owner(
     guild: nextcord.Guild, 
     permission: str, 
@@ -761,12 +762,17 @@ async def send_error_message_to_server_owner(
         logging.error("No guild found for send_error_message_to_server_owner. Exiting... DID NOT WARN OWNER!!!")
         return
     
-    logging.info(f"Sending error message to server owner (guild_id: {guild.id}). ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
+    if (guild.id, permission, message, administrator, channel, guild_permission) in messages_sent:
+        logging.info(f"Skipping sending error message to server owner (guild_id: {guild.id}) because it was already sent recently. ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
+        return
+    
     member = guild.owner
+    if member == None: return
+
+    logging.info(f"Sending error message to server owner (guild_id: {guild.id}). ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
     
     # Make sure the member has DMs enabled in their profile settings for InfiniBot
     from config.member import Member # Avoids cyclic import
-    if member == None: return
     member_settings = Member(member.id)
     if not member_settings.direct_messages_enabled: return
     
@@ -801,7 +807,10 @@ async def send_error_message_to_server_owner(
         else:
             await dm.send(embed = embed)
     except:
-        return
+        pass
+    
+    # Add to the set of sent messages
+    messages_sent.add((guild.id, permission, message, administrator, channel, guild_permission))
 
 async def get_infinibot_mod_role(guild: nextcord.Guild, _iteration=0) -> nextcord.Role | None:
     """
