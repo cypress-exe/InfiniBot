@@ -447,7 +447,7 @@ async def check_and_trigger_profanity_moderation_for_message(
     :rtype: bool
     """
     # Checks
-    if skip_active_check and not utils.feature_is_active(server=server, feature="moderation__profanity"):
+    if not skip_active_check and not utils.feature_is_active(server=server, feature="moderation__profanity"):
         return False
     
     if message is None: return False
