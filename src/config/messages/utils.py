@@ -31,7 +31,7 @@ class MessageRecord:
         self.content: str = None
         self.last_updated: datetime.datetime = None
 
-        # Added for compatibility reasons. Not stored in db, and will always be empty.
+        # Optional attributes. These may be up-to-date on cached messages, but not on database records.
         self.embeds = []
         self.attachments = []
 
@@ -190,11 +190,16 @@ def message_to_message_record_type(message: nextcord.Message | MessageRecord) ->
     content = message.content
     last_updated = get_var(message, 'last_updated', 'created_at') or datetime.datetime.now()
 
+    embeds = getattr(message, 'embeds', [])
+    attachments = getattr(message, 'attachments', [])
+
     return MessageRecord(
         message_id=message_id,
         channel_id=channel_id,
         guild_id=guild_id,
         author_id=author_id,
         content=content,
-        last_updated=last_updated
+        last_updated=last_updated,
+        embeds=embeds,
+        attachments=attachments
     )
