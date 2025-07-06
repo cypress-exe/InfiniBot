@@ -116,7 +116,7 @@ async def run_bot_about_command(interaction: Interaction) -> None:
         value=(
             "[📖 Full Documentation](https://cypress-exe.github.io/InfiniBot/)\n"
             "[🚀 Getting Started](https://cypress-exe.github.io/InfiniBot/docs/getting-started/)\n"
-            f"[💬 Support Server]({get_configs()["links"]["support-server-invite-link"]})\n"
+            f"[💬 Support Server]({get_configs()["links.support-server-invite-link"]})\n"
             "[🐛 Report Issues](https://github.com/cypress-exe/InfiniBot/issues)"
         ),
         inline=False

@@ -278,7 +278,7 @@ def _extract_info_from_joke_submission_embed(embed: nextcord.Embed):
 
     return joke, extracted_values
 
-def _get_member_in_support_server(member_id: int):
+async def _get_member_in_support_server(member_id: int):
     """
     Retrieves a Discord member from the InfiniBot support server by their ID.
     
@@ -294,7 +294,7 @@ def _get_member_in_support_server(member_id: int):
     support_server = _get_infinibot_support_server()
     if not support_server: return None
 
-    return support_server.get_member(int(member_id))
+    return await utils.get_member(support_server, int(member_id))
 
 class JokeView(CustomView):
     def __init__(self):
@@ -356,6 +356,7 @@ class JokeView(CustomView):
                     ),
                     ephemeral=True
                 )
+                return
 
             embed = _format_joke_submission_embed(
                 Joke(
@@ -407,19 +408,13 @@ class JokeVerificationView(CustomView):
     @nextcord.ui.button(label="Deny", custom_id="deny_joke")
     async def deny(self, button: nextcord.ui.Button, interaction: Interaction):
         class Modal(CustomModal):
-            def __init__(self, message: nextcord.Message):
+            def __init__(self, message: nextcord.Message, member: nextcord.Member):
                 super().__init__(title="Reason to Deny", timeout=None)
                 self.message = message
-                
-                # Get the member ID
-                _, extraction_info = _extract_info_from_joke_submission_embed(message.embeds[0])
-                self.member_id = extraction_info["member_id"]
-
-                # Get the member
-                member = _get_member_in_support_server(self.member_id)
+                self.member = member
 
                 self.reason = nextcord.ui.TextInput(
-                    label=f"Reason. {"WARNING: WILL SEND TO THE SUBMITTER" if member else ""}",
+                    label=f"Reason. {"WARNING: WILL SEND TO THE SUBMITTER" if self.member else ""}",
                     placeholder="Your joke submission was denied because...",
                     default_value="Your joke submission was denied because ",
                     style=nextcord.TextInputStyle.paragraph
@@ -489,10 +484,8 @@ class JokeVerificationView(CustomView):
 
                 # Get confirmation that we will be able to dm the user
                 more_info = "\n\nThis will **not** send the submitter a dm."
-                member = None
                 if _get_infinibot_support_server():
-                    member = _get_member_in_support_server(self.member_id)
-                    if member:
+                    if self.member:
                         # Overwrite the message to say that the user WILL be sent a dm
                         more_info = "\n\nBoth your reason and your username will be sent to the submitter via dm."
 
@@ -507,10 +500,17 @@ class JokeVerificationView(CustomView):
                         color=nextcord.Color.blue()
                     ),
                     ephemeral=True,
-                    view=ConfirmView(self.message, reason, member)
+                    view=ConfirmView(self.message, reason, self.member)
                 )
 
-        modal = Modal(interaction.message)
+        # Get the member ID
+        _, extraction_info = _extract_info_from_joke_submission_embed(interaction.message.embeds[0])
+        self.member_id = extraction_info["member_id"]
+
+        # Get the member
+        member = await _get_member_in_support_server(self.member_id)
+
+        modal = Modal(interaction.message, member)
         await interaction.response.send_modal(modal)
 
     @nextcord.ui.button(label="Verify", custom_id="verify_joke")
@@ -635,10 +635,10 @@ class JokeVerificationView(CustomView):
 
                 # Get confirmation that we will be able to dm the user
                 more_info = "This will **not** send the submitter a dm."
-                member = None
+                self.member = None
                 if _get_infinibot_support_server():
-                    member = _get_member_in_support_server(self.member_id)
-                    if member: more_info = "This will send the submitter a dm."
+                    self.member = await _get_member_in_support_server(self.member_id)
+                    if self.member: more_info = "This will send the submitter a dm."
 
                 await interaction.response.send_message(
                     embed=nextcord.Embed(
@@ -657,7 +657,7 @@ class JokeVerificationView(CustomView):
                         body,
                         punchline,
                         self.member_id,
-                        member
+                        self.member
                     )
                 )
 

@@ -43,10 +43,12 @@ class _Unset_Value(metaclass=FalseType):
 UNSET_VALUE = _Unset_Value
 '''A constant value used as a placeholder value.'''
 
+
 class ExpiringSet:
     def __init__(self, expiration_time=5):
         """
         Initialize the set with a specified expiration time for elements.
+        
         :param expiration_time: Time in seconds after which elements expire.
         """
         self.store = set()
@@ -56,6 +58,7 @@ class ExpiringSet:
     def add(self, item):
         """
         Add an item to the set with an expiration time.
+
         :param item: Item to add.
         """
         with self.lock:
@@ -67,6 +70,7 @@ class ExpiringSet:
     def remove(self, item):
         """
         Remove an item from the set.
+
         :param item: Item to remove.
         """
         self._remove_item(item)
@@ -74,6 +78,7 @@ class ExpiringSet:
     def __contains__(self, item):
         """
         Check if an item exists in the set and hasn't expired.
+
         :param item: Item to check.
         :return: True if the item exists, False otherwise.
         """
@@ -83,6 +88,7 @@ class ExpiringSet:
     def _remove_item(self, item):
         """
         Remove an item from the set. This is called internally by the timer.
+
         :param item: Item to remove.
         """
         with self.lock:

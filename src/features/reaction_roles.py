@@ -310,12 +310,17 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
         return
 
     # Get the user
-    user = guild.get_member(payload.user_id)
-    if user == None: return
+    user = await utils.get_member(guild, payload.user_id)
+    if user is None:
+        # If the user is not in the server, we can't do anything
+        logging.warning(f"User {payload.user_id} not found in guild {guild.id}. Ignoring reaction.")
+        return
 
     # Get the message
     try:
-        message = await guild.get_channel(payload.channel_id).fetch_message(payload.message_id)
+        channel = guild.get_channel(payload.channel_id) or await bot.fetch_channel(payload.channel_id)
+        if channel is None: return  # If the channel doesn't exist, we can't do anything
+        message = await channel.fetch_message(payload.message_id)
     except nextcord.errors.Forbidden:
         return
     except AttributeError:

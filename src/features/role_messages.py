@@ -391,7 +391,7 @@ class RoleMessageSetup(CustomView):
                             if len(self.outer.options) > 0:
                                 self.add_item(self.back_btn)
                             
-                            self.finish_btn = nextcord.ui.Button(label=("Finish" if not self.editing else "Save"), style=nextcord.ButtonStyle.blurple, row=1)
+                            self.finish_btn = nextcord.ui.Button(label=("Finish This Option" if not self.editing else "Save This Option"), style=nextcord.ButtonStyle.blurple, row=1)
                             self.finish_btn.callback = self.finish_btn_callback
                             self.add_item(self.finish_btn)
                             

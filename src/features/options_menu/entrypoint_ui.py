@@ -34,9 +34,10 @@ class OptionsView(ui_components.CustomView):
         # on the buttons before they decide whether they want to add themselves or not.
 
     async def setup(self, interaction: Interaction):
-        if not get_bot_load_status():
-            await self.show_error(interaction, "The bot is not fully loaded yet. Please wait a few minutes and try again.")
-            return
+        # Uncomment this if to check if the bot is fully loaded before showing the options
+        # if not get_bot_load_status():
+        #     await self.show_error(interaction, "The bot is not fully loaded yet. Please wait a few minutes and try again.")
+        #     return
         
         if not utils.feature_is_active(feature="options_menu"):
             await self.show_error(interaction, "This feature is disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved.")
@@ -63,7 +64,7 @@ class OptionsView(ui_components.CustomView):
 
         # Load buttons
         for button in self.buttons:
-            button.load(interaction, data)
+            await button.load(interaction, data)
 
         if len(self.children) == 0:
             await self.show_error(interaction, f"Hmmm. You don't have any options for this {self.relevant_object_type.lower()}.")

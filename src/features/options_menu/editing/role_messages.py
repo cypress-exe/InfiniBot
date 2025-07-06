@@ -606,10 +606,16 @@ class EditRoleMessage(CustomView):
         
     async def setup(self, interaction: Interaction):
         await self.load(interaction)
+
+        description = utils.standardize_str_indention(
+            """Edit your role message by making to the text, color, and options. Once finished, click on \"Confirm Edits\"
+
+            Utilize InfiniBot's [Generic Replacements](https://cypress-exe.github.io/InfiniBot/docs/messaging/generic-replacements/) to customize your role message."""
+            )
         
         embed = nextcord.Embed(
             title="Edit Role Message",
-            description="Edit your role message by making to the text, color, and options. Once finished, click on \"Confirm Edits\"",
+            description=description,
             color=nextcord.Color.yellow()
         )
         

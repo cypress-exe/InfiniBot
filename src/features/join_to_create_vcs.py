@@ -47,6 +47,7 @@ async def run_join_to_create_vc_member_update(member: nextcord.Member, before: n
             category = after.channel.category if after.channel.category else member.guild
             try:
                 new_vc = await category.create_voice_channel(name=f"{member.name} Vc")
+                server.join_to_create_active_vcs.add(channel_id=new_vc.id)
             except nextcord.errors.Forbidden:
                 await utils.send_error_message_to_server_owner(member.guild, "Manage Channels", guild_permission=True)
                 return
@@ -63,9 +64,8 @@ async def run_join_to_create_vc_member_update(member: nextcord.Member, before: n
         # Check if the channel is empty and needs deletion
         if not before.channel.members:
             try:
-                channel_name_split = before.channel.name.split(" ")
-                member_name = " ".join(channel_name_split[:-1])
-                if member_name in [member.name for member in member.guild.members] and channel_name_split[-1] == "Vc":
+                server = Server(member.guild.id)
+                if before.channel.id in server.join_to_create_active_vcs:
                     # Ensure bot can view the channel before attempting deletion
                     if not before.channel.permissions_for(member.guild.me).view_channel:
                         await utils.send_error_message_to_server_owner(member.guild, "View Channels", channel=f"#{before.channel.name}")
@@ -73,6 +73,8 @@ async def run_join_to_create_vc_member_update(member: nextcord.Member, before: n
                     
                     # Delete the voice channel
                     await before.channel.delete()
+
+                    # Note: Deleting the channel automatically triggers the removal from active VCs
 
             except nextcord.errors.Forbidden:
                 if not before.channel.permissions_for(member.guild.me).manage_channels:

@@ -9,7 +9,7 @@ from config.global_settings import (
     is_channel_purging,
     add_channel_to_purging,
     remove_channel_from_purging,
-    ShardLoadedStatus
+    ShardLoadedStatus # Leave import
 )
 from config.server import Server
 
@@ -313,19 +313,19 @@ async def run_purge_command(interaction: Interaction, amount: str) -> None:
         )
         return
     
-    # Check if bot is loaded
-    with ShardLoadedStatus() as shards_loaded:
-        if not interaction.guild.shard_id in shards_loaded:
-            logging.warning(f"Dashboard: Shard {interaction.guild.shard_id} is not loaded. Forwarding to inactive screen for guild {interaction.guild.id}.")
-            await _send_error(interaction, ui_components.INFINIBOT_LOADING_EMBED.title, ui_components.INFINIBOT_LOADING_EMBED.description)
-            return
+    # Uncomment this to check if the shard is loaded before running purge command
+    # with ShardLoadedStatus() as shards_loaded:
+    #     if not interaction.guild.shard_id in shards_loaded:
+    #         logging.warning(f"Dashboard: Shard {interaction.guild.shard_id} is not loaded. Forwarding to inactive screen for guild {interaction.guild.id}.")
+    #         await _send_error(interaction, ui_components.INFINIBOT_LOADING_EMBED.title, ui_components.INFINIBOT_LOADING_EMBED.description)
+    #         return
 
     # Validate input
-    if not amount or (not amount.isdigit() and amount.lower() != "all") or (amount.isdigit() and int(amount) < 1):
+    if not amount or (not amount.isdigit() and amount.lower() != "all") or (amount.isdigit() and (int(amount) < 1 or int(amount) > 50)):
         await _send_error(
             interaction,
             "Invalid Amount",
-            "Please specify a positive number or 'all' to purge messages."
+            "Please specify a positive number between 1 and 50 or 'all' to purge messages."
         )
         return
 

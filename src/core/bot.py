@@ -9,12 +9,13 @@ import time
 from components import ui_components, utils
 import config.global_settings as global_settings
 from config.server import Server
-from config import stored_messages
+from config.messages import cached_messages, stored_messages
 from core import log_manager
 from core.api_connections_manager import start_all_api_connections
 from core.log_manager import LogIfFailure
 from core.server_join_and_leave_manager import handle_server_join, handle_server_remove
 from core.scheduling import start_scheduler, stop_scheduler
+from core.shard_manager import calculate_shard_count
 from core.view_manager import init_views
 
 from features import (
@@ -50,61 +51,16 @@ intents.members = True
 intents.voice_states = True
 intents.reactions = True
 
-# Calculate optimal shard count based on configuration and previous data
-def calculate_shard_count():
-    """Calculate optimal shard count based on configuration and stored guild data"""
-    try:
-        # Check if sharding is enabled in config
-        if not global_settings.get_configs()["sharding"]["enabled"]:
-            logging.info("Auto-sharding is disabled in configuration. Using Discord's recommendation.")
-            return None
-        
-        guilds_per_shard = global_settings.get_configs()["sharding"]["guilds-per-shard"]
-        
-        # Try to read previous guild count from shard_config.json
-        shard_config_path = os.path.join("generated", "configure", "shard_config.json")
-        previous_guild_count = 0
-        
-        try:
-            with open(shard_config_path, 'r') as f:
-                shard_data = json.load(f)
-                previous_guild_count = shard_data.get("last_guild_count", 0)
-        except (FileNotFoundError, json.JSONDecodeError):
-            logging.info("No previous shard data found. Will calibrate on first startup.")
-            return None
-        
-        if previous_guild_count == 0:
-            logging.info("No previous guild count data. Will calibrate on first startup.")
-            return None
-        
-        # Calculate optimal shard count
-        calculated_shards = max(1, (previous_guild_count // guilds_per_shard) + 1)
-        logging.info(f"Calculated {calculated_shards} shards for {previous_guild_count} guilds ({guilds_per_shard} guilds per shard)")
-        
-        return calculated_shards
-        
-    except Exception as e:
-        logging.warning(f"Error calculating shard count: {e}. Using Discord's recommendation.")
-        return None
 
 # Get shard count
 shard_count = calculate_shard_count()
 
-if shard_count:
-    bot = commands.AutoShardedBot(intents = intents, 
-                                allowed_mentions = nextcord.AllowedMentions(everyone = True), 
-                                help_command=None,
-                                guild_ready_timeout=0.5,
-                                max_messages=100,
-                                shard_count=shard_count)
-    logging.info(f"Using calculated shard count: {shard_count}")
-else:
-    bot = commands.AutoShardedBot(intents = intents, 
-                                allowed_mentions = nextcord.AllowedMentions(everyone = True), 
-                                guild_ready_timeout=0.5,
-                                max_messages=100,
-                                help_command=None)
-    logging.info("Using Discord's automatic shard recommendation")
+bot = commands.AutoShardedBot(intents = intents, 
+                            allowed_mentions = nextcord.AllowedMentions(everyone = True), 
+                            help_command=None,
+                            max_messages=1000,
+                            chunk_guilds_at_startup=True,
+                            shard_count=shard_count)
 
 def get_bot() -> commands.AutoShardedBot: return bot
 
@@ -210,7 +166,7 @@ async def on_ready() -> None: # Bot load
             logging.warning("No channel ID specified for startup notification. Skipping notification.")
             return
         
-        channel = bot.get_channel(channel_id)
+        channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
 
         if channel is None:
             logging.error(f"Channel with ID {channel_id} not found. Please check the channel ID in the configuration.")
@@ -251,13 +207,6 @@ async def on_shard_ready(shard_id: int) -> None:
     with global_settings.ShardLoadedStatus() as shards_loaded:
         shards_loaded.append(shard_id)
 
-    # Optional: Perform shard-specific tasks, such as notifying a server or channel
-    # Example:
-    # if shard_id == 0:
-    #     admin_channel = bot.get_channel(YOUR_ADMIN_CHANNEL_ID)
-    #     if admin_channel:
-    #         await admin_channel.send(f"Shard {shard_id} is ready.")
-
 @bot.event
 async def on_close() -> None:
     """
@@ -269,6 +218,15 @@ async def on_close() -> None:
     global_settings.set_bot_load_status(False)
     stop_scheduler()
     logging.fatal("InfiniBot is shutting down...")
+
+# CUSTOM DECORATORS ============================================================================================================================================================
+if global_settings.get_environment_type().upper() == "PROD":
+    def dev_only_slash_command(*args, **kwargs):
+        def decorator(func):
+            return func
+        return decorator
+else:
+    dev_only_slash_command = bot.slash_command
 
 # SLASH COMMANDS ==============================================================================================================================================================
 @bot.slash_command(name="view", description="Requires Infinibot Mod", contexts=[nextcord.InteractionContextType.guild])
@@ -420,6 +378,58 @@ async def opt_into_dms(interaction: Interaction):
     """
     await dm_commands.run_opt_into_dms_command(interaction)
 
+# Test Commands (ONLY AVAILABLE IN DEV BUILD)
+@dev_only_slash_command(name="test", description="A test command for InfiniBot. NOT INCLUDED IN PRODUCTION BUILD.")
+async def test(interaction: Interaction):
+    # ======================================= <INSERT TEST CODE HERE> =======================================
+    DEFER_INTERACTION = True # Provides extra time to run code before returning a response.
+    SEND_DEFAULT_EMBED = True # Sends an generic embed response to indicate the command was run successfully.
+    async def test_items(interaction: Interaction):
+        # from features.test import run_test_command
+        # await run_test_command(interaction)
+
+        # from components.utils import send_error_message_to_server_owner
+        # import asyncio
+
+        # await send_error_message_to_server_owner(interaction.guild, "View Channels", channel=interaction.channel.name, administrator=False)
+
+        # # Wait a second
+        # await asyncio.sleep(1)
+
+        # # Send another
+        # await send_error_message_to_server_owner(interaction.guild, "View Channels", channel=interaction.channel.name, administrator=False)
+
+        pass
+        
+    # ======================================= </INSERT TEST CODE HERE> =======================================
+
+    logging.info(f"Test command invoked by {interaction.user.name} ({interaction.user.id}) in guild {interaction.guild.name} ({interaction.guild.id})")
+    logging.info(f"Running test command with DEFER_INTERACTION={DEFER_INTERACTION} and SEND_DEFAULT_EMBED={SEND_DEFAULT_EMBED}")
+    if DEFER_INTERACTION: await interaction.response.defer(ephemeral=True)
+    await test_items(interaction)
+
+    if SEND_DEFAULT_EMBED:
+        embed = nextcord.Embed(title="✅  Test Command  ✅", description="This is a test command.", color=nextcord.Color.blue())
+        embed.add_field(
+            name="What is this?", 
+            value="This command is used for testing purposes. It either does nothing, \
+            or maybe runs an operation behind the scenes for testing.", 
+            inline=False
+            )
+        embed.set_footer(text="This command will NOT exist in production.")
+        embed.set_author(name=bot.user.name, icon_url=bot.user.display_avatar.url)
+        
+        try:
+            await interaction.response.send_message(embed=embed, ephemeral=True)
+        except nextcord.InteractionResponded:
+            # If the response has already been sent, follow up instead
+            try:
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            except Exception as e:
+                logging.warning(f"Error sending followup message: {e}")
+
+    logging.info(f"Test command completed successfully.")
+
 # MESSAGE & USER COMMANDS ============================================================================================================================================================== 
 @bot.message_command(name="Options")
 async def message_command_options(interaction: Interaction, message: nextcord.Message):
@@ -470,6 +480,7 @@ async def on_message(message: nextcord.Message) -> None:
     :rtype: None
     """
     if message == None: return
+    if message.author == None: return
     
     # DM Commands ---------------------------------------------
     if message.guild == None:
@@ -487,7 +498,7 @@ async def on_message(message: nextcord.Message) -> None:
     # Store message if logging enabled
     with LogIfFailure(feature="stored_messages.store_message"):
         if utils.feature_is_active(guild = message.guild, feature = "logging"):
-            stored_messages.store_message(message)
+            stored_messages.store_message_in_db(message)
 
     # Moderation
     message_is_flagged_for_moderation = False
@@ -515,53 +526,58 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     :return: None
     :rtype: None
     """
-    # Check if guild/channel are needed
-    server = Server(payload.guild_id)
-    if (utils.feature_is_active(server=server, feature = "logging") or
-        utils.feature_is_active(server=server, feature = "moderation__profanity")):
-        # Find guild and channel
-        guild = bot.get_guild(payload.guild_id)
-        if guild is None: 
-            return
+    # Skip DM messages (guild_id will be None)
+    if payload.guild_id is None:
+        return
+    
+    # Find guild and channel
+    channel = bot.get_channel(payload.channel_id) or await bot.fetch_channel(payload.channel_id)
+    if channel is None: 
+        return
 
-        channel = guild.get_channel(payload.channel_id)
-        if channel is None: 
-            return
-        
-        if not channel.permissions_for(guild.me).read_message_history:
-            await utils.send_error_message_to_server_owner(guild, "View Message History", channel = f"one or more channels (including #{channel.name})")
-            return
-        if not guild.me.guild_permissions.view_audit_log:
-            await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
-            return
-        
-        # If we have it, grab the original message
-        original_message = payload.cached_message
-        if original_message is None:
-            # Find db cached message
-            original_message = stored_messages.get_message(payload.message_id)
-        
-        # Find the message
-        edited_message = None
-        try:
-            edited_message = await channel.fetch_message(payload.message_id)
-        except (nextcord.NotFound, nextcord.Forbidden, nextcord.HTTPException):
-            return
-        
-        # Punish profanity (if any)
-        with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
-            await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message,
-                                                                                skip_active_check=True)
-                
-        # Log the message
-        with LogIfFailure(feature="action_logging.log_raw_message_edit"):
-            await action_logging.log_raw_message_edit(guild, original_message, edited_message)
+    guild = channel.guild
+    if guild is None: 
+        return
+    
+    if not channel.permissions_for(guild.me).read_message_history:
+        await utils.send_error_message_to_server_owner(guild, "View Message History", channel = f"one or more channels (including #{channel.name})")
+        return
+    if not guild.me.guild_permissions.view_audit_log:
+        await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
+        return
+    
+    # If we have it, grab the original message
+    original_message = payload.cached_message
+    if original_message is None:
+        # Find db stored message
+        original_message = stored_messages.get_message_from_db(payload.message_id)
+    
+    # Find the message
+    edited_message = None
+    try:
+        edited_message = await channel.fetch_message(payload.message_id)
+    except (nextcord.NotFound, nextcord.Forbidden, nextcord.HTTPException):
+        return
+    
+    # Update the message's cache
+    with LogIfFailure(feature="cached_messages.remove_cached_message & cached_messages.cache_message"):
+        cached_messages.remove_cached_message(edited_message.id, channel.id)
+        cached_messages.cache_message(edited_message)
+
+    # Punish profanity (if any)
+    with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
+        await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message,
+                                                                            skip_active_check=True)
+            
+    # Log the message
+    with LogIfFailure(feature="action_logging.log_raw_message_edit"):
+        await action_logging.log_raw_message_edit(guild, original_message, edited_message)
 
     # Update the message in the database
-    with LogIfFailure(feature="stored_messages.store_message"):
-        if utils.feature_is_active(server=server, feature = "logging"):
-            stored_messages.remove_message(payload.message_id)
-            stored_messages.store_message(edited_message)
+    with LogIfFailure(feature="stored_messages.remove_message_from_db & stored_messages.store_message_in_db"):
+        if utils.feature_is_active(guild_id=payload.guild_id, feature="logging"):
+            stored_messages.remove_message_from_db(payload.message_id)
+            stored_messages.store_message_in_db(edited_message)
 
 @bot.event
 async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None:
@@ -573,8 +589,14 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
     :return: None
     :rtype: None
     """
-    # Check if guild/channel are needed
+    # Skip DM messages (guild_id will be None)
+    if payload.guild_id is None:
+        return
+    
+    # Create server instance for feature checks
     server = Server(payload.guild_id)
+    
+    # Check if guild/channel are needed for logging
     if utils.feature_is_active(server=server, feature = "logging"):
         # Find guild and channel
         guild = bot.get_guild(payload.guild_id)
@@ -589,7 +611,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
 
         if message is None:
             # Find db cached message
-            message = stored_messages.get_message(payload.message_id)
+            message = stored_messages.get_message_from_db(payload.message_id)
             if message is not None:
                 # Actual values are important instead of object approximations, so replace them
                 message.guild = guild
@@ -601,14 +623,17 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
         with LogIfFailure(feature="action_logging.log_raw_message_delete"):
             await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id)
 
-    # Remove the message if we're storing it
-    with LogIfFailure(feature="stored_messages.remove_message"):
-        if utils.feature_is_active(server=server, feature = "logging"):
-            stored_messages.remove_message(payload.message_id)
+        # Update the message in the database
+        with LogIfFailure(feature="stored_messages.remove_message_from_db"):
+            stored_messages.remove_message_from_db(payload.message_id)
 
+    # Remove managed message
     with LogIfFailure(feature="managed_messages.delete"):
-        if utils.feature_is_active(server=server, feature = "logging"):
-            Server(guild.id).managed_messages.delete(payload.message_id, fail_silently=True)
+        server.managed_messages.delete(payload.message_id, fail_silently=True)
+
+    # Remove the message if we're storing it (always do this regardless of logging setting)
+    with LogIfFailure(feature="cached_messages.remove_cached_message"):
+        cached_messages.remove_cached_message(payload.message_id, payload.channel_id)
 
 @bot.event
 async def on_member_update(before: nextcord.Member, after: nextcord.Member) -> None:
@@ -723,8 +748,14 @@ async def on_guild_channel_delete(channel: nextcord.abc.GuildChannel) -> None:
     :return: None
     :rtype: None
     """
-    stored_messages.remove_messages_from_channel(channel.id)
-    Server(channel.guild.id).managed_messages.delete_all_matching(channel_id = channel.id)
+    cached_messages.remove_cached_messages_from_channel(channel.id)
+    stored_messages.remove_db_messages_from_channel(channel.id)
+    
+    server = Server(channel.guild.id)
+    server.managed_messages.delete_all_matching(channel_id=channel.id)
+    if channel.id in server.join_to_create_active_vcs:
+        server.join_to_create_active_vcs.delete(channel.id)
+
 
 @bot.event
 async def on_voice_state_update(member: nextcord.Member, before: nextcord.VoiceState, after: nextcord.VoiceState) -> None:
@@ -759,6 +790,8 @@ def run() -> None:
     # Get token
     token = os.environ['DISCORD_AUTH_TOKEN']
     logging.info(f"Running bot with token: {token[:5]}*******...")
+
+    logging.info(f"Running in {global_settings.get_environment_type()} mode.")
 
     try:
         bot.run(token)

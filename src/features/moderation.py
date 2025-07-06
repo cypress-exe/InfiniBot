@@ -10,6 +10,7 @@ from typing import List
 import nextcord
 
 from components import utils, ui_components
+from config.messages.cached_messages import cache_message, get_cached_messages_from_channel
 from config.global_settings import get_configs, get_global_kill_status, get_bot_load_status
 from config.member import Member
 from config.server import Server
@@ -35,9 +36,9 @@ class IncorrectButtonView(ui_components.CustomView):
         embed = interaction.message.embeds[0]
         id = embed.footer.text.split(" ")[-1]
         guild = interaction.guild
-        member = guild.get_member(int(id))
-        
-        if member != None:
+        member = await utils.get_member(guild, int(id), override_failed_cache=True)
+
+        if member is not None:
             button.label = "Marked as Incorrect"
             button.disabled = True
             
@@ -400,7 +401,8 @@ async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: n
             message = f"Failed to timeout {member.mention} for profanity moderation. Missing permissions."
             embed = nextcord.Embed(title = "Failed to Timeout", description = message, color = nextcord.Color.red())
 
-            admin_channel = bot.get_channel(server.profanity_moderation_profile.channel)
+            admin_channel = bot.get_channel(server.profanity_moderation_profile.channel) or await bot.fetch_channel(server.profanity_moderation_profile.channel)
+            if admin_channel is None: return False
             await admin_channel.send(embed = embed)
             return False
         
@@ -411,6 +413,7 @@ async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: n
             embed.set_footer(text = f"Error ID: {uuid}")
 
             admin_channel = bot.get_channel(server.profanity_moderation_profile.channel)
+            if admin_channel is None: return False
             await admin_channel.send(embed = embed)
 
             logging.error(f"Error ID: {uuid} - Failed to timeout user ({member.id}) for profanity moderation.")
@@ -444,7 +447,7 @@ async def check_and_trigger_profanity_moderation_for_message(
     :rtype: bool
     """
     # Checks
-    if skip_active_check and not utils.feature_is_active(server=server, feature="moderation__profanity"):
+    if not skip_active_check and not utils.feature_is_active(server=server, feature="moderation__profanity"):
         return False
     
     if message is None: return False
@@ -479,6 +482,9 @@ async def check_and_trigger_profanity_moderation_for_message(
     
     # Grant a strike (and maybe timeout)
     action_successful = await grant_and_punish_strike(bot, message.guild.id, message.author, 1)
+
+    # Wait a second
+    await asyncio.sleep(1)
     
     timed_out = message.author.communication_disabled_until is not None
 
@@ -736,8 +742,8 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
     :return: True if a strike was given, False otherwise.
     :rtype: bool
     """
-    max_messages_to_check = get_configs()["spam-moderation"]["max-messages-to-check"]    # The MAXIMUM messages InfiniBot will try to check for spam
-    message_chars_to_check_repetition = get_configs()["spam-moderation"]["message-chars-to-check-repetition"]    # A message requires these many characters before it is checked for repetition
+    max_messages_to_check = get_configs()["spam-moderation.max-messages-to-check"]    # The MAXIMUM messages InfiniBot will try to check for spam
+    message_chars_to_check_repetition = get_configs()["spam-moderation.message-chars-to-check-repetition"]    # A message requires these many characters before it is checked for repetition
 
     # If Spam is Enabled
     if not utils.feature_is_active(server=server, feature="moderation__spam"): return False
@@ -746,6 +752,9 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
     if not message.guild.me.guild_permissions.view_audit_log:
         await utils.send_error_message_to_server_owner(message.guild, "View Audit Log", channel=message.channel.name)
         return False
+    
+    # Cache this message
+    cache_message(message, skip_if_exists=True)
 
     # Configure limit (the most messages that we're willing to check)
     if server.spam_moderation_profile.score_threshold < max_messages_to_check:
@@ -754,63 +763,63 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
         limit = max_messages_to_check
 
     # Get previous messages
-    previous_messages = message.channel.history(limit=limit)
+    previous_messages = get_cached_messages_from_channel(message.channel.id)[::-1]
+    if len(previous_messages) > limit:
+        previous_messages = previous_messages[:limit]
     
+    # printout = [message.content for message in previous_messages]
+    # logging.info(f"Previous Messages: {printout}")
+
     # Loop through each previous message and test it
     spam_score = 0
-    async for _message in previous_messages:
+    for _message in previous_messages:
         if spam_score >= server.spam_moderation_profile.score_threshold:
             break
         
-        
-        message_time = _message.created_at
-        time_now = datetime.datetime.now(datetime.timezone.utc)
-        time_difference = time_now - message_time
-        time_difference_in_seconds = time_difference.total_seconds()
+        if server.spam_moderation_profile.time_threshold_seconds > 0:
+            message_time = _message.last_updated
+            time_now = datetime.datetime.now(datetime.timezone.utc)
+            time_difference = time_now - message_time
+            time_difference_in_seconds = time_difference.total_seconds()
 
-        if server.spam_moderation_profile.time_threshold_seconds == 0:
-            within_time_window = True
-        else:
-            within_time_window = time_difference_in_seconds <= server.spam_moderation_profile.time_threshold_seconds
+            if not time_difference_in_seconds <= server.spam_moderation_profile.time_threshold_seconds:
+                # If this message is too old, all following messages are even older
+                break
 
         score_addition = 0
-        if within_time_window:
-            if _message.author.bot: continue
-            if _message.author.id != message.author.id: continue
+        
+        if _message.author_id != message.author.id: continue
 
-            if _message.id != message.id: # If it's not the same message
-                if _message.content == message.content:
-                    score_addition += 25 # Weighted more
-                else:
-                    similarity = get_percent_similar(_message.content, message.content)
-                    if similarity >= 0.6:
-                        score_addition += similarity * 20
+        if _message.message_id != message.id: # If it's not the same message
+            if _message.content == message.content:
+                score_addition += 25 # Weighted more
+            else:
+                similarity = get_percent_similar(_message.content, message.content)
+                if similarity >= 0.6:
+                    score_addition += similarity * 20
 
-            if len(_message.content) < 10:
-                impact = 1 if _message.id == message.id else 0.5
-                score_addition += 7 * impact
+        if len(_message.content) < 10:
+            impact = 1 if _message.message_id == message.id else 0.5
+            score_addition += 7 * impact
 
-            # Check word count percentage
-            if _message.content and len(_message.content) >= message_chars_to_check_repetition and check_repeated_words_percentage(_message.content):
-                impact = 1 if _message.id == message.id else 0.1
-                score_addition += 0.25 * len(_message.content) * impact
-            
-            # Check message attachments
-            if compare_attachments(_message.attachments, message.attachments):
-                score_addition += 30
+        # Check word count percentage
+        if _message.content and len(_message.content) >= message_chars_to_check_repetition and check_repeated_words_percentage(_message.content):
+            impact = 1 if _message.message_id == message.id else 0.1
+            score_addition += 0.25 * len(_message.content) * impact
+        
+        # Check message attachments
+        if compare_attachments(_message.attachments, message.attachments):
+            score_addition += 30
 
-            # Cap score_addition at 50
-            if score_addition > 50:
-                score_addition = 50
+        # Cap score_addition at 50
+        score_addition = min(score_addition, 50)
 
-            impact = 1 if _message.id == message.id else normalized_exponential_decay(x=1-(time_difference_in_seconds / server.spam_moderation_profile.time_threshold_seconds), k=10) # Exponential decay
-            spam_score += score_addition * impact
-            logging.debug(f"{spam_score=}")
+        impact = 1 if _message.message_id == message.id else normalized_exponential_decay(x=1-(time_difference_in_seconds / server.spam_moderation_profile.time_threshold_seconds), k=10) # Exponential decay
+        spam_score += score_addition * impact
+        logging.debug(f"{spam_score=}")
 
-        else:
-            break # If this message is outside of the time threshold window, previous ones will be too. Break out of the loop.
 
-    # Punnish the member (if needed)
+    # Punish the member (if needed)
     if spam_score >= server.spam_moderation_profile.score_threshold:
         try:
             # Time them out
@@ -918,15 +927,13 @@ async def daily_moderation_maintenance(bot: nextcord.Client, guild: nextcord.Gui
         # Go through each member and edit
         for member_strike_info in server.moderation_strikes:
             try:
-                member = guild.get_member(member_strike_info.member_id)
-                if member == None: # Member is no longer in the server
-                    # Remove the member
-                    server.member_levels.delete(member_strike_info.member_id)
+                member = await utils.get_member(guild, member_strike_info.member_id)
+                if member is None:
                     continue
-
+                    
                 # Check if the member has strikes
                 if (member_strike_info.strikes == 0): 
-                    server.moderation_strikes.delete(member_strike_info.member_id)
+                    server.moderation_strikes.delete(member_strike_info.member_id) # Cleanup
                     continue
 
                 # Convert string to UTC-aware datetime

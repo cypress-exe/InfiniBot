@@ -481,9 +481,8 @@ async def handle_info_command(message: nextcord.Message, message_parts: list):
     guild_name = guild_name.replace("@", "@\u200b")  # Prevent mentions in embed title
     
     description = f"""Owner: {guild.owner} ({guild.owner.id})
-    Members: {len(guild.members)}
-    Bots: {len([m for m in guild.members if m.bot])}
-    
+    Members: {guild.member_count}
+
     **Time In Server**: {duration.days} days"""
     
     # Clean up indentation for mobile
@@ -626,9 +625,9 @@ async def handle_global_kill_command(message: nextcord.Message, message_parts: l
             description=(
             "### ONLY USE THESE COMMANDS FOR EMERGENCIES!!! "
             "THIS GOES INTO EFFECT GLOBALLY ACROSS ALL GUILDS INSTANTLY!!!\n\n"
-            "Select one of the following features to kill or revive:\n"
+            "Select one of the following features to kill, revive, or get status:\n"
             f"```{"\n".join(sorted(commands.keys()))}\n\n```\n"
-            "**Usage:** `-global-kill <feature> <kill|revive>`"
+            "**Usage:** `-global-kill <feature> <kill|revive|status>`"
             ), 
             color=nextcord.Color.blue()
         )
@@ -642,10 +641,21 @@ async def handle_global_kill_command(message: nextcord.Message, message_parts: l
                 action = True
             elif action_str == "revive":
                 action = False
+            elif action_str == "status":
+                # Special case to just return the current status of the feature
+                current_status = get_global_kill_status().get_variable(argument)
+                status_str = "disabled, meaning that users CANNOT use it." if current_status else "enabled, meaning that users CAN use it."
+                embed = nextcord.Embed(
+                    title=f"{argument.replace('_', ' ').title()} Status", 
+                    description=f"The {argument.replace('_', ' ').title()} feature is currently **{status_str}**.", 
+                    color=nextcord.Color.blue()
+                )
+                await message.channel.send(embed=embed)
+                return
             else:
                 embed = nextcord.Embed(
                     title="Invalid Argument", 
-                    description="Specify whether to `kill` or `revive`.", 
+                    description="Specify whether to `kill`, `revive`, or get `status`.", 
                     color=nextcord.Color.red()
                 )
                 await message.channel.send(embed=embed)
@@ -680,7 +690,7 @@ async def handle_global_kill_command(message: nextcord.Message, message_parts: l
         else:
             embed = nextcord.Embed(
                 title="Missing Argument", 
-                description="Specify whether to `kill` or `revive`.", 
+                description="Specify whether to `kill`, `revive`, or get `status`.", 
                 color=nextcord.Color.red()
             )
             await message.channel.send(embed=embed)

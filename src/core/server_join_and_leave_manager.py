@@ -14,13 +14,13 @@ class NewServerJoinView(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
         
-        support_server_btn = nextcord.ui.Button(label="Support Server", style=nextcord.ButtonStyle.link, url=get_configs()["links"]["support-server-invite-link"])
+        support_server_btn = nextcord.ui.Button(label="Support Server", style=nextcord.ButtonStyle.link, url=get_configs()["links.support-server-invite-link"])
         self.add_item(support_server_btn)
         
-        invite_btn = nextcord.ui.Button(label="Add to Your Server", style=nextcord.ButtonStyle.link, url=get_configs()["links"]["bot-invite-link"])
+        invite_btn = nextcord.ui.Button(label="Add to Your Server", style=nextcord.ButtonStyle.link, url=get_configs()["links.bot-invite-link"])
         self.add_item(invite_btn)
         
-        topGG_vote_btn = nextcord.ui.Button(label="Vote for InfiniBot", style=nextcord.ButtonStyle.link, url=get_configs()["links"]["topgg-review-link"])
+        topGG_vote_btn = nextcord.ui.Button(label="Vote for InfiniBot", style=nextcord.ButtonStyle.link, url=get_configs()["links.topgg-review-link"])
         self.add_item(topGG_vote_btn)
 
         check_permissions_btn = nextcord.ui.Button(label="Check InfiniBot Permissions", style=nextcord.ButtonStyle.gray, custom_id="check_infinibot_permissions")
@@ -39,7 +39,7 @@ class ResendSetupMessageView(CustomView):
         resend_setup_message_btn.callback = handle_resend_setup_message
         self.add_item(resend_setup_message_btn)
 
-        support_server_btn = nextcord.ui.Button(label="Stuck? Go to Support Server", style=nextcord.ButtonStyle.link, url=get_configs()["links"]["support-server-invite-link"])
+        support_server_btn = nextcord.ui.Button(label="Stuck? Go to Support Server", style=nextcord.ButtonStyle.link, url=get_configs()["links.support-server-invite-link"])
         self.add_item(support_server_btn)
 
 async def handle_resend_setup_message(interaction: nextcord.Interaction):
@@ -134,8 +134,8 @@ def _create_welcome_embed(infinibot_mod_mention: str, infinibot_role_mention: st
     
     📞 **Need Help?**
     Join our support server or contact us:
-    • Support: {configs["links"]["support-server-invite-link"]}
-    • Email: {configs["links"]["support-email"]}
+    • Support: {configs["links.support-server-invite-link"]}
+    • Email: {configs["links.support-email"]}
     """
     
     # Clean up indentation for mobile compatibility
@@ -221,7 +221,7 @@ async def handle_server_remove(guild: nextcord.Guild):
 
     # Don't run if InfiniBot is still loading
     if not get_bot_load_status():
-        logging.debug(f"Skipping server removal handling for {guild.name} (ID: {guild.id}) because InfiniBot is still loading.")
+        logging.info(f"Skipping server removal handling for {guild.name} (ID: {guild.id}) because InfiniBot is still loading.")
         return
     
     logging.info(f"InfiniBot has been removed from the server {guild.name} (ID: {guild.id}).") # Info log for now. Maybe change to debug later.
