@@ -1,10 +1,10 @@
 import logging
-import json
 
 from nextcord import Guild as NextcordGuild
 
 from config.file_manager import read_txt_to_list
-from config.stored_messages import remove_messages_from_guild
+from config.messages.cached_messages import remove_cached_messages_from_guild
+from config.messages.stored_messages import remove_db_messages_from_guild
 from core.db_manager import get_database, Simple_TableManager, IntegratedList_TableManager, TableManager
 
 class Server_Simple_TableManager(Simple_TableManager):
@@ -45,6 +45,7 @@ class Server:
         self._member_levels = None
         self._level_rewards = None
         self._birthdays = None
+        self._join_to_create_active_vcs = None
         self._autobans = None
         
         self._managed_messages = None
@@ -55,18 +56,20 @@ class Server:
         return str(self.server_id)
 
     def _format_server_id(self, server_id):
+        if isinstance(server_id, bool) or server_id is None or server_id == "" or server_id == 0:
+            logging.error("Server ID cannot be None, False, True, empty string, or zero.", exc_info=True)
+            raise ValueError(f"Invalid server ID: `{server_id}`. Server ID must be a valid integer or nextcord.Guild instance.")
         if isinstance(server_id, NextcordGuild):
-            logging.warning(f"Server ID {server_id} is an instance of nextcord.Guild. Implicitly converting to guild_id. This is not recommended.")
-            server_id = server_id.id
+            logging.warning(f"Server ID `{server_id}` is an instance of nextcord.Guild. Implicitly converting to guild_id. This is not recommended.")
+            return server_id.id
         else:
             if not isinstance(server_id, int):
                 try:
-                    logging.warning(f"Server ID {server_id} is not an integer. Implicitly converting to integer. This is not recommended.")
-                    server_id = int(server_id)
+                    logging.warning(f"Server ID `{server_id}` is not an integer. Implicitly converting to integer. This is not recommended.")
+                    return int(server_id)
                 except ValueError:
-                    raise ValueError(f"Server ID {server_id} is not an integer.")
-                
-        return server_id
+                    raise ValueError(f"Server ID `{server_id}` is not an integer.")
+            return server_id
 
     def remove_all_data(self):
         '''Removes all data relating to this server from the database.'''
@@ -94,7 +97,8 @@ class Server:
             logging.debug(f"Removed all data from {table_name} for server {self.server_id}")
 
         # Remove messages
-        remove_messages_from_guild(self.server_id)
+        remove_db_messages_from_guild(self.server_id)
+        remove_cached_messages_from_guild(self.server_id)
         logging.debug(f"Removed all stored messages for server {self.server_id}")
 
     def get_debug_info(self):
@@ -362,6 +366,14 @@ class Server:
     class Birthdays(Server_IntegratedList_TableManager):
         def __init__(self, server_id):
             super().__init__("birthdays", "server_id", server_id, "member_id")
+
+    @property
+    def join_to_create_active_vcs(self):
+        if self._join_to_create_active_vcs is None: self._join_to_create_active_vcs = self.JoinToCreateActiveVCs(self.server_id)
+        return self._join_to_create_active_vcs
+    class JoinToCreateActiveVCs(Server_IntegratedList_TableManager):
+        def __init__(self, server_id):
+            super().__init__("join_to_create_active_vcs", "server_id", server_id, "channel_id")
 
     @property
     def autobans(self):

@@ -42,7 +42,7 @@ Simple_TableManager(primary_id: int, table_name: str)
 #### `__str__`
 Returns a string representation of the manager with column names and their types.
 
-#### `__dict__`
+#### `to_dict`
 Returns a dictionary of column names and their corresponding values from the SQL table.
 
 #### `get_column_names_and_types`
@@ -222,6 +222,69 @@ Updates an entry using a dictionary of values.
 - **Parameters**:
   - `secondary_key_value` (str): The secondary key value.
   - `data_dict` (dict): The dictionary of data to update.
+
+#### `_validate_dict_values_for_sqlite`
+Validates dictionary values to ensure they are compatible with SQLite data type limits (clamps out-of-bounds int/float values).
+- **Parameters:**
+  - `data_dict` (dict): Dictionary containing column names and their values.
+- **Returns:**
+  - `dict`: The validated dictionary with potentially clamped values.
+
+#### `get_matching`
+Returns all entries matching given criteria as a list of dataclasses.
+- **Parameters:**
+  - `**kwargs`: Column-value pairs to match.
+- **Returns:**
+  - `list`: List of dataclasses matching the criteria.
+
+#### `get`
+Retrieves an entry based on the secondary key value, or returns a default if not found.
+- **Parameters:**
+  - `secondary_key_value` (str): The secondary key value.
+  - `default` (optional): The value to return if the entry is not found.
+- **Returns:**
+  - `dataclass` or the default value.
+
+#### `__next__`
+Returns the next entry in the list (for iterator protocol).
+- **Returns:**
+  - `dataclass`: The next dataclass entry.
+
+#### `__getitem__`
+Retrieves an entry using the `[]` operator.
+- **Parameters:**
+  - `second_key_value` (str): The secondary key value.
+- **Returns:**
+  - `dataclass`: The dataclass representing the entry.
+- **Raises:**
+  - `KeyError` if the entry is not found.
+
+#### `__len__`
+Returns the number of entries in the table.
+- **Returns:**
+  - `int`: The number of entries.
+
+#### `__contains__`
+Checks if an entry exists in the table.
+- **Parameters:**
+  - `secondary_key_value` (str): The secondary key value.
+- **Returns:**
+  - `bool`: True if the entry exists, False otherwise.
+
+#### `__iter__`
+Returns an iterator for all entries in the table.
+- **Returns:**
+  - `iterator`: An iterator over all dataclass entries.
+
+#### `__str__`
+Returns a string representation of all entries in the table.
+- **Returns:**
+  - `str`: String representation of all entries.
+
+#### `to_dict`
+Returns a dictionary representation of all entries in the table.
+- **Returns:**
+  - `dict`: Dictionary mapping secondary key to entry data.
 
 #### CRUD Operations
 

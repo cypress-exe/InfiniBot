@@ -8,7 +8,7 @@ class DeleteDMButton(OptionsButton):
     def get_label(self) -> str:
         return "Delete Message"
 
-    def load(self, interaction: Interaction, data: dict):
+    async def load(self, interaction: Interaction, data: dict):
         self.message: nextcord.Message = data["message"]
 
         # Check Message Compatibility

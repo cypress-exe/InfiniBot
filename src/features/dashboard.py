@@ -11,7 +11,7 @@ from nextcord import Interaction
 
 from components import ui_components, utils
 from components.ui_components import CustomView, CustomModal
-from config.global_settings import ShardLoadedStatus
+from config.global_settings import ShardLoadedStatus # Leave import
 from config.server import Server
 from features import leveling
 from features.moderation import str_is_profane
@@ -64,11 +64,12 @@ class Dashboard(CustomView):
             await ui_components.disabled_feature_override(self, interaction)
             return
         
-        with ShardLoadedStatus() as shards_loaded:
-            if not interaction.guild.shard_id in shards_loaded:
-                logging.warning(f"Dashboard: Shard {interaction.guild.shard_id} is not loaded. Forwarding to inactive screen for guild {interaction.guild.id}.")
-                await ui_components.infinibot_loading_override(self, interaction)
-                return
+        # Uncomment this to check if the shard is loaded before showing the dashboard
+        # with ShardLoadedStatus() as shards_loaded:
+        #     if not interaction.guild.shard_id in shards_loaded:
+        #         logging.warning(f"Dashboard: Shard {interaction.guild.shard_id} is not loaded. Forwarding to inactive screen for guild {interaction.guild.id}.")
+        #         await ui_components.infinibot_loading_override(self, interaction)
+        #         return
         
         description = """
         Welcome to the **InfiniBot Dashboard**! 
@@ -570,38 +571,52 @@ class Dashboard(CustomView):
                                         self.add_item(back_btn)
                                     
                                     async def setup(self, interaction: Interaction):
-                                        self.members = self.get_members(interaction, limit=25)
-                                        
-                                        members_string = [f"{item[2]} - {item[0]}" for item in self.members]
+                                        self.embed = nextcord.Embed(
+                                            title="Dashboard - Moderation - Profanity - Manage Members",
+                                            description="Loading your members with strikes...",
+                                            color=nextcord.Color.blue()
+                                        )
+                                        message = await interaction.response.edit_message(embed=self.embed, view=self)
+
+                                        self.members = await self.get_members(interaction, limit=25)
+                                        if self.members:
+                                            members_string = "\n".join([f"{item[2]} - {item[0]}" for item in self.members])
+                                        else:
+                                            members_string = "Your server doesn't have any members with strikes yet."
+
                                         self.embed = nextcord.Embed(
                                             title="Dashboard - Moderation - Profanity - Manage Members",
                                             color=nextcord.Color.blue()
                                         )
-                                        self.embed.add_field(name="Strike # - Member", value="\n".join(members_string), inline=True)
-                                        
-                                        await interaction.response.edit_message(embed=self.embed, view=self)
-                                    
-                                    def get_members(self, interaction: Interaction, limit: int = None):
+                                        self.embed.add_field(name="Strike # - Member", value=members_string, inline=True)
+
+                                        await interaction.followup.edit_message(message_id=message.id, embed=self.embed, view=self)
+
+                                    async def get_members(self, interaction: Interaction, limit: int = None):
                                         """Fetches and sorts members by strike count."""
                                         server = Server(interaction.guild_id)
                                         data = []
-                                        for member in interaction.guild.members:
+
+                                        for strike_info in server.moderation_strikes:
+                                            member = await utils.get_member(interaction.guild, strike_info.member_id)
+
+                                            if member is None: continue # Member has left the server
                                             if member.bot: continue # ignore bots
-                                            
-                                            strikes = 0
-                                            if member.id in server.moderation_strikes:
-                                                strikes = server.moderation_strikes[member.id].strikes
-                                            data.append([member.display_name, member.id, strikes])
+
+                                            data.append([member.mention, member.id, strike_info.strikes])
 
                                         data = sorted(data, key=lambda x: (-x[2], x[0]))
 
+                                        returned_data = []
                                         for i, item in enumerate(data):
                                             if limit and i >= limit:
-                                                yield [f"{len(data) - limit} more. Use */get_strikes* to view specific member strikes", None, None]
+                                                returned_data.append([f"{len(data) - limit} more. Use */get_strikes* to view specific member strikes", None, None])
                                                 return
-                                            # EX: [member_name, member_id, strike#]
-                                            yield item
-                                    
+                                            # EX: [member_mention, member_id, strike#]
+                                            returned_data.append([item[0], item[1], item[2]])
+
+                                        return returned_data
+
                                     async def back_btn_callback(self, interaction: Interaction):
                                         await self.outer.setup(interaction)
                                         await interaction.edit_original_message(view=self.outer)
@@ -611,69 +626,90 @@ class Dashboard(CustomView):
                                             super().__init__(label="Edit", style=nextcord.ButtonStyle.gray)
                                             self.outer = outer                      
                                         
-                                        class EditStrikesView(CustomView):
-                                            def __init__(self, outer, guild: nextcord.Guild, user_selection):
+                                        class MemberSelectView(CustomView):
+                                            def __init__(self, outer):
                                                 super().__init__(timeout=None)
                                                 self.outer = outer
-
-                                                user_selection = json.loads(user_selection)
-
-                                                self.member_name, self.member_id, self.member_strikes = user_selection
-
-                                                server = Server(guild.id)
                                                 
-                                                strike_levels = [
-                                                    nextcord.SelectOption(label=str(level), default=(level==self.member_strikes))
-                                                    for level in range(server.profanity_moderation_profile.max_strikes + 1)
-                                                ][::-1] # invert list
-                                                
-                                                self.strike_select = nextcord.ui.Select(options=strike_levels, placeholder="Choose a Strike Level")
-                                                self.strike_select.callback = self.confirm_selection
-                                                self.add_item(self.strike_select)
+                                                self.member_select = nextcord.ui.UserSelect(
+                                                    placeholder="Choose a Member",
+                                                    min_values=1,
+                                                    max_values=1
+                                                )
+                                                self.member_select.callback = self.member_selected
+                                                self.add_item(self.member_select)
                                                 
                                                 cancel_btn = nextcord.ui.Button(label="Cancel", style=nextcord.ButtonStyle.danger)
                                                 cancel_btn.callback = self.cancel
                                                 self.add_item(cancel_btn)
-
+                                            
                                             async def setup(self, interaction: Interaction):
-                                                embed:nextcord.Embed = self.outer.embed.copy()
-                                                embed.description = f"Select a strike level for {self.member_name}."
-                                                embed._fields.clear() # Not technically supported.
+                                                embed = self.outer.embed.copy()
+                                                embed.description = "Choose a Member with strikes to edit:"
                                                 await interaction.response.edit_message(embed=embed, view=self)
+                                            
+                                            async def member_selected(self, interaction: Interaction):
+                                                selected_user: nextcord.User = self.member_select.values[0]
+
+                                                if selected_user.bot or selected_user.system:
+                                                    await interaction.response.send_message(embed=nextcord.Embed(title="Error", description="You cannot edit strikes for bots or system users.", color=nextcord.Color.red()), ephemeral=True)
+                                                    return
+                                                
+                                                await self.EditStrikesView(self.outer, interaction.guild, selected_user).setup(interaction)
                                             
                                             async def cancel(self, interaction: Interaction):
                                                 await self.outer.setup(interaction)
-                                            
-                                            async def confirm_selection(self, interaction: Interaction):
-                                                strikes = int(self.strike_select.values[0])
-                                                server = Server(interaction.guild.id)
+
+                                            class EditStrikesView(CustomView):
+                                                def __init__(self, outer, guild: nextcord.Guild, user_selection: nextcord.User):
+                                                    super().__init__(timeout=None)
+                                                    self.outer = outer
+
+                                                    self.member_name = user_selection.display_name
+                                                    self.member_id = user_selection.id
+
+                                                    server = Server(guild.id)
+                                                    self.member_strikes = server.moderation_strikes.get(self.member_id, 0)
+                                                    
+                                                    strike_levels = [
+                                                        nextcord.SelectOption(label=str(level), default=(level==self.member_strikes))
+                                                        for level in range(server.profanity_moderation_profile.max_strikes + 1)
+                                                    ][::-1] # invert list
+                                                    
+                                                    self.strike_select = nextcord.ui.Select(options=strike_levels, placeholder="Choose a Strike Level")
+                                                    self.strike_select.callback = self.confirm_selection
+                                                    self.add_item(self.strike_select)
+                                                    
+                                                    cancel_btn = nextcord.ui.Button(label="Cancel", style=nextcord.ButtonStyle.danger)
+                                                    cancel_btn.callback = self.cancel
+                                                    self.add_item(cancel_btn)
+
+                                                async def setup(self, interaction: Interaction):
+                                                    embed:nextcord.Embed = self.outer.embed.copy()
+                                                    embed.description = f"Select a strike level for {self.member_name}."
+                                                    embed._fields.clear() # Not technically supported.
+                                                    await interaction.response.edit_message(embed=embed, view=self)
                                                 
-                                                if self.member_id in server.moderation_strikes:
-                                                    if strikes != 0: 
-                                                        server.moderation_strikes.edit(self.member_id, strikes=strikes, last_strike=datetime.datetime.now())
+                                                async def cancel(self, interaction: Interaction):
+                                                    await self.outer.setup(interaction)
+                                                
+                                                async def confirm_selection(self, interaction: Interaction):
+                                                    strikes = int(self.strike_select.values[0])
+                                                    server = Server(interaction.guild.id)
+                                                    
+                                                    if self.member_id in server.moderation_strikes:
+                                                        if strikes != 0: 
+                                                            server.moderation_strikes.edit(self.member_id, strikes=strikes, last_strike=datetime.datetime.now())
+                                                        else:
+                                                            server.moderation_strikes.delete(self.member_id)
                                                     else:
-                                                        server.moderation_strikes.delete(self.member_id)
-                                                else:
-                                                    if strikes != 0:
-                                                        server.moderation_strikes.add(member_id=self.member_id, strikes=strikes, last_strike=datetime.datetime.now())
-                                                
-                                                await self.outer.setup(interaction)
+                                                        if strikes != 0:
+                                                            server.moderation_strikes.add(member_id=self.member_id, strikes=strikes, last_strike=datetime.datetime.now())
+                                                    
+                                                    await self.outer.setup(interaction)
 
                                         async def callback(self, interaction: Interaction):
-                                            member_select_options = [
-                                                nextcord.SelectOption(label=f"{data[2]} - {data[0]}", value=json.dumps(data)) for data in self.outer.get_members(interaction)
-                                            ]
-                                            embed = self.outer.embed.copy()
-                                            embed.description = "Choose a Member:"
-                                            await ui_components.SelectView(
-                                                embed, member_select_options, self.member_select_view_callback, placeholder="Choose a Member", continue_button_label="Next", preserve_order=True
-                                            ).setup(interaction)
-
-                                        async def member_select_view_callback(self, interaction: Interaction, selection):
-                                            if not selection: # User clicked "Cancel"
-                                                await self.outer.setup(interaction)
-                                            else:
-                                                await self.EditStrikesView(self.outer, interaction.guild, selection).setup(interaction)
+                                            await self.MemberSelectView(self.outer).setup(interaction)
                                                 
                                     class ResetAllStrikesButton(nextcord.ui.Button):  
                                         def __init__(self, outer):
@@ -1547,7 +1583,6 @@ class Dashboard(CustomView):
                 **Settings:**
                 - **Notifications Channel:** {leveling_channel_ui_text}
                 - **Level-Up Message:** {leveling_message}
-
                 Utilize InfiniBot's [Generic Replacements](https://cypress-exe.github.io/InfiniBot/docs/messaging/generic-replacements/) to customize your level-up message.
                 View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/core-features/leveling/) for more information.
                 """
@@ -1602,81 +1637,95 @@ class Dashboard(CustomView):
                         def __init__(self, outer):
                             super().__init__(label = "Edit", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
-                                                        
-                        class LevelModal(CustomModal):
-                            def __init__(self, outer, member_id, default_level):
-                                super().__init__(title = "Choose Level")
+                                                                               
+                        class MemberSelectView(CustomView):
+                            def __init__(self, outer):
+                                super().__init__(timeout=None)
                                 self.outer = outer
-                                self.member_id = member_id
-
-                                self.input = nextcord.ui.TextInput(label = "Choose a level. Must be a number.", default_value=str(default_level), placeholder="Enter a positive number", max_length=4)
-                                self.add_item(self.input)
                                 
-                            async def callback(self, interaction: Interaction):
-                                # Check
-                                if (not self.input.value.isdigit()) or int(self.input.value) < 0:
-                                    embed = nextcord.Embed(title = "Invalid Level", description = "The level needs to be a positive number.", color = nextcord.Color.red())
-                                    await interaction.response.send_message(embed = embed, ephemeral = True)
-                                    return
+                                self.member_select = nextcord.ui.UserSelect(
+                                    placeholder="Choose a member to edit their level...",
+                                    min_values=1,
+                                    max_values=1
+                                )
+                                self.member_select.callback = self.member_select_callback
+                                self.add_item(self.member_select)
                                 
-                                member_id = self.member_id
-                                level = int(self.input.value)
-                                points = leveling.get_points_from_level(level)
+                                self.back_btn = nextcord.ui.Button(label="Back", style=nextcord.ButtonStyle.danger)
+                                self.back_btn.callback = self.back_btn_callback
+                                self.add_item(self.back_btn)
+                            
+                            async def setup(self, interaction: Interaction):
+                                embed = nextcord.Embed(
+                                    title="Dashboard - Leveling - Manage Members - Edit Level",
+                                    description="Select a member to edit their level. You can choose any member from the server, not just those with existing levels.",
+                                    color=nextcord.Color.blue()
+                                )
+                                await interaction.response.edit_message(embed=embed, view=self)
+                            
+                            async def member_select_callback(self, interaction: Interaction):
+                                selected_member = self.member_select.values[0]
                                 
-                                if member_id == None: return # Bad parameters
-                                
-                                # Save
+                                # Get current level
                                 server = Server(interaction.guild.id)
-                                if member_id in server.member_levels:
-                                    if points == 0: # Delete member record
-                                        server.member_levels.delete(member_id)
-                                    else: # Edit member record
-                                        server.member_levels.edit(member_id = member_id, points = points)
-                                else: # Add member record
-                                    server.member_levels.add(member_id = member_id, points = points)
-                                    
+                                if selected_member.id in server.member_levels:
+                                    member_info = server.member_levels[selected_member.id]
+                                    points = member_info.points
+                                else: 
+                                    points = 0
 
-                                await self.outer.setup(interaction)
-                                
-                                # Get the member
-                                discord_member = None
-                                for _member in interaction.guild.members:
-                                    if _member.id == int(member_id):
-                                        discord_member = _member
-                                
-                                # Check their level rewards
-                                await leveling.process_level_change(interaction.guild, discord_member, silent = True)
+                                level = min(leveling.get_level_from_points(points), 9999)
+
+                                await interaction.response.send_modal(
+                                    self.LevelModal(self.outer.outer, selected_member.id, level)
+                                )
+                            
+                            async def back_btn_callback(self, interaction: Interaction):
+                                await self.outer.outer.setup(interaction)
+
+                            class LevelModal(CustomModal):
+                                def __init__(self, outer, member_id, default_level):
+                                    super().__init__(title = "Choose Level")
+                                    self.outer = outer
+                                    self.member_id = member_id
+
+                                    self.input = nextcord.ui.TextInput(label = "Choose a level. Must be a number.", default_value=str(default_level), placeholder="Enter a positive number", max_length=4)
+                                    self.add_item(self.input)
+                                    
+                                async def callback(self, interaction: Interaction):
+                                    # Check
+                                    if (not self.input.value.isdigit()) or int(self.input.value) < 0:
+                                        embed = nextcord.Embed(title = "Invalid Level", description = "The level needs to be a positive number.", color = nextcord.Color.red())
+                                        await interaction.response.send_message(embed = embed, ephemeral = True)
+                                        return
+                                    
+                                    member_id = self.member_id
+                                    level = int(self.input.value)
+                                    points = leveling.get_points_from_level(level)
+                                    
+                                    if member_id == None: return # Bad parameters
+                                    
+                                    # Save
+                                    server = Server(interaction.guild.id)
+                                    if member_id in server.member_levels:
+                                        if points == 0: # Delete member record
+                                            server.member_levels.delete(member_id)
+                                        else: # Edit member record
+                                            server.member_levels.edit(member_id = member_id, points = points)
+                                    else: # Add member record
+                                        server.member_levels.add(member_id = member_id, points = points)
+                                        
+
+                                    await self.outer.setup(interaction)
+                                    
+                                    # Get the member
+                                    discord_member = await utils.get_member(interaction.guild, int(member_id))
+                                    
+                                    # Check their level rewards
+                                    await leveling.process_level_change(interaction.guild, discord_member, silent=True)
                                                        
                         async def callback(self, interaction: Interaction): # Edit Levels Callback ————————————————————————————————————————————————————————————
-                            member_select_options:list[nextcord.SelectOption] = []
-                            for data in self.outer.ranked_members:
-                                level = leveling.get_level_from_points(data[1])
-                                member = data[0]
-                                if member.nick != None: member_name = f"{member} ({member.nick})"
-                                else: member_name = f"{member}"
-                            
-                                member_select_options.append(nextcord.SelectOption(label = f"{member_name} - Level {str(level)}, Points - {str(data[1])}", value = data[0].id))
-                            
-                            embed: nextcord.Embed = copy.copy(self.outer.embed)
-                            embed.description = "Choose a Member"
-                            await ui_components.SelectView(embed, member_select_options, self.select_view_callback, continue_button_label = "Next", placeholder = "Choose", preserve_order = True).setup(interaction)
-                        
-                        async def select_view_callback(self, interaction: Interaction, selection):       
-                            if selection == None:
-                                await self.outer.setup(interaction)
-                                return
-                            
-                            member_id = selection
-                            server = Server(interaction.guild.id)
-                            if member_id in server.member_levels:
-                                member_info = server.member_levels[member_id]
-                                points = member_info.points
-                            else: 
-                                points = 0
-
-                            level = leveling.get_level_from_points(points)
-                                    
-                            await interaction.response.send_modal(self.LevelModal(self.outer, selection, level))
+                            await self.MemberSelectView(self).setup(interaction)
                     
                     class DeleteAllLevelsButton(nextcord.ui.Button):
                         def __init__(self, outer):
@@ -1817,7 +1866,10 @@ class Dashboard(CustomView):
                                 self.outer = outer
                                 self.role_id = role_id
                                 
-                                self.input = nextcord.ui.TextInput(label = "Level at which to reward this role (number)")
+                                self.input = nextcord.ui.TextInput(
+                                    label = "Level at which to reward this role (number)", 
+                                    placeholder = "Enter a level (1-9999)", 
+                                    max_length=4, required=True)
                                 self.add_item(self.input)
                                 
                             async def callback(self, interaction: Interaction):
@@ -3049,9 +3101,10 @@ class Dashboard(CustomView):
                         for bday in server.birthdays:
                             try:
                                 member_id = bday.member_id
-                                member = interaction.guild.get_member(member_id)
-                                
-                                if member is None:  # Member left. Delete their birthday
+                                member = await utils.get_member(interaction.guild, member_id, override_failed_cache=True)
+
+                                if member is None:
+                                    logging.warning(f"Member {member_id} not found in guild {interaction.guild.id}. Removing from birthdays.")
                                     server.birthdays.delete(member_id)
                                     continue
                                 
@@ -3090,86 +3143,104 @@ class Dashboard(CustomView):
                             super().__init__(label="Add", style=nextcord.ButtonStyle.gray)
                             self.outer = outer
                             
-                        async def callback(self, interaction: Interaction):
-                            server = Server(interaction.guild.id)
-                                
-                            member_select_options = []
-                            for member in interaction.guild.members:
-                                if member.bot:
-                                    continue
-                                if member.id in server.birthdays:
-                                    continue
-                                member_select_options.append(nextcord.SelectOption(label=f"{member}", description=member.nick, value=member.id))
-                            
-                            if not member_select_options:
-                                await interaction.response.send_message(
-                                    embed=nextcord.Embed(
-                                        title="No Available Members",
-                                        description="Every member in your server already has a birthday! Go invite someone!",
-                                        color=nextcord.Color.red()
-                                    ),
-                                    ephemeral=True
-                                )
-                                return
-                            
-                            await ui_components.SelectView(
-                                self.outer.embed,
-                                member_select_options,
-                                self.select_view_return,
-                                placeholder="Choose a Member",
-                                continue_button_label="Next"
-                            ).setup(interaction)
-                            
-                        async def select_view_return(self, interaction: Interaction, selection):
-                            if selection is None:  # User clicked "Cancel"
-                                await self.outer.setup(interaction)
-                                return
-                            
-                            await interaction.response.send_modal(self.InfoModal(self.outer, selection))          
-                                            
-                        class InfoModal(CustomModal):            
-                            def __init__(self, outer, member_id):
-                                super().__init__(title="Add Birthday", timeout=None)
+                        class MemberSelectView(CustomView):
+                            def __init__(self, outer):
+                                super().__init__(timeout=None)
                                 self.outer = outer
-                                self.member_id = member_id
                                 
-                                self.date_input = nextcord.ui.TextInput(
-                                    label="Date",
-                                    style=nextcord.TextInputStyle.short,
-                                    max_length=50,
-                                    placeholder="January 1st, 2000 or MM/DD/YYYY"
+                                self.member_select = nextcord.ui.UserSelect(
+                                    placeholder="Choose a Member",
+                                    min_values=1,
+                                    max_values=1,
                                 )
-                                self.add_item(self.date_input)
+                                self.member_select.callback = self.member_selected
+                                self.add_item(self.member_select)
                                 
-                                self.real_name_input = nextcord.ui.TextInput(
-                                    label="Real Name (Optional)",
-                                    style=nextcord.TextInputStyle.short,
-                                    max_length=50,
-                                    required=False
-                                )
-                                self.add_item(self.real_name_input)
+                                cancel_btn = nextcord.ui.Button(label="Cancel", style=nextcord.ButtonStyle.danger)
+                                cancel_btn.callback = self.cancel
+                                self.add_item(cancel_btn)
+                            
+                            async def setup(self, interaction: Interaction):            
+                                embed = self.outer.embed.copy()
+                                embed.description = "Choose a member to add a birthday for:"
+                                await interaction.response.edit_message(embed=embed, view=self)
+                            
+                            async def member_selected(self, interaction: Interaction):
+                                selected_user: nextcord.User = self.member_select.values[0]
                                 
-                            async def callback(self, interaction: Interaction):
-                                try:
-                                    date = parser.parse(self.date_input.value, dayfirst=False)
-                                    date_serialized = date.strftime("%Y-%m-%d")
-                                except:
-                                    await interaction.response.send_message(
-                                        embed=nextcord.Embed(
-                                            title="Invalid Format",
-                                            description="You formatted the date wrong. Try formatting it like this: Month Day, Year",
-                                            color=nextcord.Color.red()
-                                        ),
-                                        ephemeral=True
+                                # Check if user is a bot
+                                if selected_user.bot or selected_user.system:
+                                    error_embed = nextcord.Embed(
+                                        title="Invalid Selection",
+                                        description="Cannot add birthdays for bots or system users.",
+                                        color=nextcord.Color.red()
                                     )
+                                    await interaction.response.send_message(embed=error_embed, ephemeral=True)
                                     return
                                 
+                                # Check if the selected user already has a birthday
                                 server = Server(interaction.guild.id)
-                                real_name = self.real_name_input.value if self.real_name_input.value != "" else None
-                                server.birthdays.add(member_id=self.member_id, birth_date=date_serialized, real_name=real_name)
-
+                                if selected_user.id in server.birthdays:
+                                    error_embed = nextcord.Embed(
+                                        title="Member Already Has Birthday",
+                                        description=f"{selected_user.display_name} already has a birthday set. Use the Edit button to modify it.",
+                                        color=nextcord.Color.red()
+                                    )
+                                    await interaction.response.send_message(embed=error_embed, ephemeral=True)
+                                    return
+                                
+                                # Proceed to birthday input modal
+                                await interaction.response.send_modal(self.InfoModal(self.outer, selected_user.id))
+                            
+                            async def cancel(self, interaction: Interaction):
                                 await self.outer.setup(interaction)
+                            
+                            class InfoModal(CustomModal):            
+                                def __init__(self, outer, member_id):
+                                    super().__init__(title="Add Birthday", timeout=None)
+                                    self.outer = outer
+                                    self.member_id = member_id
+                                    
+                                    self.date_input = nextcord.ui.TextInput(
+                                        label="Date",
+                                        style=nextcord.TextInputStyle.short,
+                                        max_length=50,
+                                        placeholder="January 1st, 2000 or MM/DD/YYYY"
+                                    )
+                                    self.add_item(self.date_input)
+                                    
+                                    self.real_name_input = nextcord.ui.TextInput(
+                                        label="Real Name (Optional)",
+                                        style=nextcord.TextInputStyle.short,
+                                        max_length=50,
+                                        required=False
+                                    )
+                                    self.add_item(self.real_name_input)
+                                    
+                                async def callback(self, interaction: Interaction):
+                                    try:
+                                        date = parser.parse(self.date_input.value, dayfirst=False)
+                                        date_serialized = date.strftime("%Y-%m-%d")
+                                    except:
+                                        await interaction.response.send_message(
+                                            embed=nextcord.Embed(
+                                                title="Invalid Format",
+                                                description="You formatted the date wrong. Try formatting it like this: Month Day, Year",
+                                                color=nextcord.Color.red()
+                                            ),
+                                            ephemeral=True
+                                        )
+                                        return
+                                    
+                                    server = Server(interaction.guild.id)
+                                    real_name = self.real_name_input.value if self.real_name_input.value != "" else None
+                                    server.birthdays.add(member_id=self.member_id, birth_date=date_serialized, real_name=real_name)
 
+                                    await self.outer.setup(interaction)
+
+                        async def callback(self, interaction: Interaction):                            
+                            await self.MemberSelectView(self.outer).setup(interaction)          
+                                            
                     class EditBirthdayButton(nextcord.ui.Button):
                         def __init__(self, outer):
                             super().__init__(label="Edit", style=nextcord.ButtonStyle.gray)
@@ -3179,9 +3250,13 @@ class Dashboard(CustomView):
                             server = Server(interaction.guild.id)
                                 
                             member_select_options = []
-                            for member in interaction.guild.members:
-                                if member.id in server.birthdays:
-                                    member_select_options.append(nextcord.SelectOption(label=f"{member}", description=member.nick, value=member.id))
+                            for member_options in server.birthdays:
+                                member = await utils.get_member(interaction.guild, member_options.member_id)
+
+                                if member is None:
+                                    continue
+
+                                member_select_options.append(nextcord.SelectOption(label=f"{member}", description=member.nick, value=member.id))
                             
                             if not member_select_options:
                                 await interaction.response.send_message(
@@ -3266,10 +3341,12 @@ class Dashboard(CustomView):
                             server = Server(interaction.guild.id)
                                 
                             member_select_options = []
-                            for member in interaction.guild.members:
-                                if member.id in server.birthdays:
-                                    member_select_options.append(nextcord.SelectOption(label=f"{member}", description=member.nick, value=member.id))
-                            
+                            for member_options in server.birthdays:
+                                member = await utils.get_member(interaction.guild, member_options.member_id)
+
+                                if member is None: continue
+                                member_select_options.append(nextcord.SelectOption(label=f"{member}", description=member.nick, value=member.id))
+
                             if not member_select_options:
                                 await interaction.response.send_message(
                                     embed=nextcord.Embed(
@@ -4049,7 +4126,7 @@ class Dashboard(CustomView):
                         auto_bans_str = f"```{auto_bans_str}```"
                         self.revoke_btn.disabled = False
                     else:
-                        auto_bans_str = "You don't have any autobans yet."
+                        auto_bans_str = "You don't have any autobans yet.\n"
                         self.revoke_btn.disabled = True
                                         
                     description = f"""InfiniBot has the capability to ban members both in your server and after they leave.
@@ -4066,7 +4143,6 @@ class Dashboard(CustomView):
 
                     **Current Autobans**
                     {auto_bans_str}
-
                     View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/additional/autobans/) for more information."""
 
                     # On Mobile, extra spaces cause problems. We'll get rid of them here:
@@ -4178,28 +4254,33 @@ class Dashboard(CustomView):
                                     ephemeral=True
                                 )
                                 return
-                            
-                            for member in interaction.guild.members:
-                                if member.id == int(user_id):
-                                    embed = nextcord.Embed(
-                                        title="User Already In Server", 
-                                        description=(f"InfiniBot won't add \"{user_name} (ID: {user_id})\" as an autoban "
-                                                   f"because they are already in this server ({member.mention}). "
-                                                   f"You can ban them with the /ban command."), 
-                                        color=nextcord.Color.red()
-                                    )
-                                    break
+
+                            if await utils.get_member(interaction.guild, user_id):
+                                embed = nextcord.Embed(
+                                    title="User Already In Server", 
+                                    description=(f"InfiniBot won't add \"{user_name} (ID: {user_id})\" as an autoban "
+                                                f"because they are already in this server (<@{user_id}>). "
+                                                f"You can ban them with the /ban command."), 
+                                    color=nextcord.Color.red()
+                                )
                                 
-                            if interaction.guild.me.guild_permissions.ban_members:
-                                async for ban in interaction.guild.bans():
-                                    if ban.user.id == int(user_id):
-                                        embed = nextcord.Embed(
-                                            title="User Already Banned", 
-                                            description=(f"InfiniBot won't add \"{user_name} (ID: {user_id})\" as an "
-                                                       f"autoban because they are already banned in this server."), 
-                                            color=nextcord.Color.red()
-                                        )
-                                        break
+                            elif interaction.guild.me.guild_permissions.ban_members:
+                                # Check if user is already banned by iterating through bans
+                                # Unfortunately, nextcord doesn't provide a direct method to check if a user is banned through an ID
+                                # We would need to have a nextcord.User mention, and we don't have one here...
+                                try:
+                                    async for ban_entry in interaction.guild.bans():
+                                        if not ban_entry.user: continue
+                                        if ban_entry.user.id == int(user_id):
+                                            embed = nextcord.Embed(
+                                                title="User Already Banned",
+                                                description=(f"InfiniBot won't add \"{user_name} (ID: {user_id})\" as an "
+                                                           f"autoban because they are already banned in this server."),
+                                                color=nextcord.Color.red()
+                                            )
+                                            break
+                                except Exception:
+                                    pass
                             
                             if embed is None:
                                 # Save data
@@ -4611,6 +4692,17 @@ async def run_dashboard_command(interaction: Interaction):
     :return: None
     :rtype: None
     """
+    if interaction.guild_id is None:
+        await interaction.response.send_message(
+            embed=nextcord.Embed(
+                title="Error",
+                description="This command can only be used in a server.",
+                color=nextcord.Color.red()
+            ),
+            ephemeral=True
+        )
+        return
+    
     if await utils.user_has_config_permissions(interaction):
         view = Dashboard(interaction.guild_id)
         await view.setup(interaction)

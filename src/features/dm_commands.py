@@ -18,10 +18,7 @@ async def check_and_run_dm_commands(bot: nextcord.Client, message: nextcord.Mess
     if message.author.id == bot.application_id: return
 
     if message.content.lower() == "clear-last": # Clear last message
-        async for message in message.channel.history(limit=10):
-            if message.author.id == bot.application_id:
-                await message.delete()
-                break
+        await message.channel.purge(limit=1, check=lambda m: m.author.id == bot.application_id)
 
         embed = nextcord.Embed(title = "Cleared Last Message", description="Last message has been cleared.", color = nextcord.Color.green())
         await message.channel.send(embed = embed, delete_after = 3)

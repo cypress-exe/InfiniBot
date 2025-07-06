@@ -19,7 +19,15 @@ from config.file_manager import JSONFile, update_base_path as file_manager_updat
 from config.global_settings import required_permissions, get_global_kill_status
 from config.member import Member
 from config.server import Server
-from config.stored_messages import StoredMessage, cleanup, get_all_messages, get_message, remove_message, store_message
+from config.messages.stored_messages import (
+    MessageRecord, 
+    cleanup_db, get_all_messages_from_db, get_message_from_db, remove_message_from_db, store_message_in_db,
+)
+from config.messages.cached_messages import (
+    cache_message, get_cached_message, get_cached_messages_from_channel,
+    get_all_cached_messages, remove_cached_message, remove_cached_messages_from_channel,
+    remove_cached_messages_from_guild, clear_all_cached_messages, get_cache_stats
+)
 from core.log_manager import setup_logging, update_base_path as log_manager_update_base_path
 from modules.custom_types import UNSET_VALUE
 from modules.database import Database
@@ -48,8 +56,8 @@ def update_database_url() -> None:
     db_manager.database_url = "sqlite:///./generated/test-files/files/test.db"
     db_manager.init_database()
 
-def generate_test_message(**kwargs) -> StoredMessage:
-    message = StoredMessage(
+def generate_test_message(**kwargs) -> MessageRecord:
+    message = MessageRecord(
         message_id=random.randint(0, 1000000000),
         guild_id=random.randint(0, 1000000000),
         channel_id=random.randint(0, 1000000000),   
@@ -419,11 +427,23 @@ class TestStoredMessages(unittest.TestCase):
                 yield name, getattr(self, name) 
 
     def entrypoint(self):
+        self.cleanup()  # Ensure the database is clean before starting
         for name, step in self._steps():
             try:
                 step()
             except Exception as e:
                 self.fail("{} failed ({}: {})".format(name, type(e), e))
+
+    def cleanup(self) -> None:
+        """
+        Cleans up the database by removing all messages.
+
+        :return: None
+        """
+        logging.info("Cleaning up the database...")
+        
+        # Clear the database
+        db_manager.get_database().execute_query("DELETE FROM messages", commit=True)
 
     def step1_test_add_message(self) -> None:
         """
@@ -447,7 +467,7 @@ class TestStoredMessages(unittest.TestCase):
         last_updated = datetime.datetime.now(ZoneInfo("UTC"))
 
         # Create a test message
-        test_message = StoredMessage(
+        test_message = MessageRecord(
             message_id=message_id,
             guild_id=guild_id,
             channel_id=channel_id,
@@ -456,7 +476,7 @@ class TestStoredMessages(unittest.TestCase):
             last_updated=last_updated
         )
 
-        # Check that StoredMessage behaves correctly
+        # Check that MessageRecord behaves correctly
         self.assertEqual(test_message.message_id, message_id)
         self.assertEqual(test_message.guild_id, guild_id)
         self.assertEqual(test_message.channel_id, channel_id)
@@ -465,10 +485,10 @@ class TestStoredMessages(unittest.TestCase):
         self.assertEqual(test_message.last_updated, last_updated)
 
         # Store the message
-        store_message(test_message, override_checks=True)
+        self.assertTrue(store_message_in_db(test_message, override_checks=True))
 
         # Check that the message was stored correctly
-        message_result = get_message(test_message.message_id)
+        message_result = get_message_from_db(test_message.message_id)
 
         self.assertEqual(message_result.message_id, test_message.message_id)
         self.assertEqual(message_result.guild_id, test_message.guild_id)
@@ -476,8 +496,15 @@ class TestStoredMessages(unittest.TestCase):
         self.assertEqual(message_result.author_id, test_message.author_id)
         self.assertEqual(message_result.content, test_message.content)
 
+        # Ensure that no error is thrown if the message is already in the database
+        try:
+            self.assertTrue(store_message_in_db(test_message, override_checks=True))
+            self.assertTrue(store_message_in_db(test_message, override_checks=True))
+        except Exception as e:
+            self.fail(f"Failed to store message again (should not happen): {e}")
+
         # Remove the test message
-        remove_message(test_message.message_id)
+        remove_message_from_db(test_message.message_id)
 
         logging.info("Test for addition of a message to the database completed successfully.")
 
@@ -495,9 +522,9 @@ class TestStoredMessages(unittest.TestCase):
         # Create a test message
         test_message = generate_test_message()
 
-        store_message(test_message, override_checks=True)
+        store_message_in_db(test_message, override_checks=True)
 
-        remove_message(test_message.message_id)
+        remove_message_from_db(test_message.message_id)
 
         # Check that the message was removed
         query = f"SELECT * FROM messages WHERE message_id = {test_message.message_id}"
@@ -519,7 +546,7 @@ class TestStoredMessages(unittest.TestCase):
         logging.info("Testing retrieval of all messages from the database...")
 
         # Clear the database
-        db_manager.get_database().execute_query("DELETE FROM messages", commit=True)
+        self.cleanup()
 
         # Generate a set of unique guild IDs
         unique_guilds = set()
@@ -535,10 +562,10 @@ class TestStoredMessages(unittest.TestCase):
 
         # Store the test messages
         for message in test_messages_to_store:
-            store_message(message, override_checks=True)
+            store_message_in_db(message, override_checks=True)
 
         # Retrieve all messages
-        messages = get_all_messages()
+        messages = get_all_messages_from_db()
 
         # Check that all messages were retrieved
         for message in test_messages:
@@ -546,10 +573,10 @@ class TestStoredMessages(unittest.TestCase):
 
         # Remove the test messages
         for message in test_messages:
-            remove_message(message.message_id)
+            remove_message_from_db(message.message_id)
 
         # Ensure the database is empty
-        messages = get_all_messages()
+        messages = get_all_messages_from_db()
         self.assertEqual(len(messages), 0)
 
         # Delete all messages in the database to prepare for the next test (should be empty anyway, but doesn't hurt)
@@ -557,7 +584,7 @@ class TestStoredMessages(unittest.TestCase):
 
         logging.info("Test for retrieving all messages from the database completed successfully.")
 
-    def step4_test_quantity_based_cleanup(self, guilds=10, max_messages_to_keep_per_guild=50) -> None:
+    def step4_test_quantity_based_cleanup(self, guilds=5, max_messages_to_keep_per_guild=30) -> None:
         """
         Tests the cleanup of the database based on message quantity limits.
 
@@ -615,7 +642,7 @@ class TestStoredMessages(unittest.TestCase):
         # Store the test messages
         messages_stored = 0
         for message in all_messages:
-            store_message(message, override_checks=True)
+            store_message_in_db(message, override_checks=True)
             messages_stored += 1
 
             if messages_stored % 100 == 0:
@@ -626,11 +653,11 @@ class TestStoredMessages(unittest.TestCase):
 
         # Run the cleanup
         logging.info("Running cleanup...")
-        cleanup(max_messages_to_keep_per_guild=max_messages_to_keep_per_guild)
+        cleanup_db(max_messages_to_keep_per_guild=max_messages_to_keep_per_guild)
         logging.info("Cleanup complete.")
 
         # Check that the correct number of messages were deleted
-        retrieved_messages = get_all_messages()
+        retrieved_messages = get_all_messages_from_db()
 
         logging.info(f"Retrieved {len(retrieved_messages)} messages from the database after cleanup.")
         
@@ -655,7 +682,7 @@ class TestStoredMessages(unittest.TestCase):
 
         logging.info("Test for cleanup of the database (quantity based) completed successfully.")
 
-    def step5_test_age_based_cleanup(self, guilds=10) -> None:
+    def step5_test_age_based_cleanup(self, guilds=5) -> None:
         """
         Tests the cleanup of the database based on message age and count limits.
 
@@ -724,7 +751,7 @@ class TestStoredMessages(unittest.TestCase):
         # Store the test messages
         messages_stored = 0
         for message in all_messages:
-            store_message(message, override_checks=True)
+            store_message_in_db(message, override_checks=True)
             messages_stored += 1
 
             if messages_stored % 100 == 0:
@@ -735,11 +762,11 @@ class TestStoredMessages(unittest.TestCase):
 
         # Run the cleanup
         logging.info("Running cleanup...")
-        cleanup(max_days_to_keep=max_days_to_keep)
+        cleanup_db(max_days_to_keep=max_days_to_keep)
         logging.info("Cleanup complete.")
 
         # Check that the correct number of messages were deleted
-        retrieved_messages = get_all_messages()
+        retrieved_messages = get_all_messages_from_db()
 
         logging.info(f"Retrieved {len(retrieved_messages)} messages from the database after cleanup.")
         
@@ -760,7 +787,255 @@ class TestStoredMessages(unittest.TestCase):
         self.assertEqual(retrieved_messages_set, persistent_messages_set, msg="Incorrect content of messages left in the database after cleanup.")
 
         # Delete all messages in the database to prepare for the next test
-        db_manager.get_database().execute_query("DELETE FROM messages", commit=True)     
+        db_manager.get_database().execute_query("DELETE FROM messages", commit=True)
+
+        logging.info("Test for cleanup of the database (age based) completed successfully.")
+
+class TestCachedMessages(unittest.TestCase):
+    def _steps(self):
+        for name in dir(self): # dir() result is implicitly sorted
+            if name.startswith("step"):
+                yield name, getattr(self, name) 
+
+    def entrypoint(self):
+        self.cleanup()  # Ensure the cache is clean before starting
+        for name, step in self._steps():
+            try:
+                step()
+            except Exception as e:
+                self.fail("{} failed ({}: {})".format(name, type(e), e))
+
+    def cleanup(self) -> None:
+        """
+        Cleans up the cache by removing all messages.
+
+        :return: None
+        """
+        logging.info("Cleaning up the message cache...")
+        clear_all_cached_messages()
+
+    def generate_test_cached_message(self, **kwargs) -> MessageRecord:
+        """Generate a test cached message with random data."""
+        message = MessageRecord(
+            message_id=random.randint(0, 1000000000),
+            guild_id=random.randint(0, 1000000000),
+            channel_id=random.randint(0, 1000000000),   
+            author_id=random.randint(0, 1000000000),
+            content="".join([random.choice(r"abcdefghijklmnopqrstuvwxyz!@#$%^&*()_+-=[]{};:'<>,./? ") for _ in range(random.randint(1, 100))]),
+            last_updated=datetime.datetime.now(ZoneInfo("UTC"))
+        )
+
+        for key, value in kwargs.items():
+            setattr(message, key, value)
+
+        return message
+
+    def step1_test_cache_message(self) -> None:
+        """
+        Tests the caching of a message.
+        """
+        logging.info("Testing caching of a message...")
+
+        # Create a test message
+        test_message = self.generate_test_cached_message()
+
+        # Cache the message
+        self.assertTrue(cache_message(test_message, override_checks=True))
+
+        # Retrieve the message from cache
+        cached_message = get_cached_message(test_message.message_id, test_message.channel_id)
+        self.assertIsNotNone(cached_message)
+        self.assertEqual(cached_message.message_id, test_message.message_id)
+        self.assertEqual(cached_message.channel_id, test_message.channel_id)
+        self.assertEqual(cached_message.guild_id, test_message.guild_id)
+        self.assertEqual(cached_message.author_id, test_message.author_id)
+        self.assertEqual(cached_message.content, test_message.content)
+
+        logging.info("Message caching test completed successfully.")
+
+    def step2_test_cache_message_update(self) -> None:
+        """
+        Tests updating a cached message.
+        """
+        logging.info("Testing updating a cached message...")
+
+        # Create and cache a test message
+        test_message = self.generate_test_cached_message()
+        cache_message(test_message, override_checks=True)
+
+        # Update the message content
+        updated_content = "Updated content"
+        test_message.content = updated_content
+        test_message.last_updated = datetime.datetime.now(ZoneInfo("UTC"))
+
+        # Cache the updated message
+        self.assertTrue(cache_message(test_message, override_checks=True))
+
+        # Retrieve the updated message
+        cached_message = get_cached_message(test_message.message_id, test_message.channel_id)
+        self.assertIsNotNone(cached_message)
+        self.assertEqual(cached_message.content, updated_content)
+
+        logging.info("Message update test completed successfully.")
+
+    def step3_test_fifo_behavior(self) -> None:
+        """
+        Tests the FIFO behavior of the cache with maximum size limit.
+        """
+        logging.info("Testing FIFO behavior with cache size limit...")
+
+        channel_id = random.randint(0, 1000000000)
+        messages = []
+
+        from config.messages.cached_messages import _MAX_CACHE_SIZE
+
+        # Cache more than the maximum allowed messages (_MAX_CACHE_SIZE)
+        for i in range(_MAX_CACHE_SIZE + 5):
+            test_message = self.generate_test_cached_message(channel_id=channel_id)
+            messages.append(test_message)
+            cache_message(test_message, override_checks=True)
+
+        # Check that only the last _MAX_CACHE_SIZE messages are in cache
+        cached_messages = get_cached_messages_from_channel(channel_id)
+        self.assertEqual(len(cached_messages), _MAX_CACHE_SIZE)
+
+        # Verify that the oldest messages were removed (FIFO)
+        cached_message_ids = [msg.message_id for msg in cached_messages]
+        expected_message_ids = [msg.message_id for msg in messages[-_MAX_CACHE_SIZE:]]  # Last _MAX_CACHE_SIZE messages
+        self.assertEqual(set(cached_message_ids), set(expected_message_ids))
+
+        # Verify that the first 5 messages are not in cache
+        for i in range(5):
+            cached_message = get_cached_message(messages[i].message_id, channel_id)
+            self.assertIsNone(cached_message)
+
+        logging.info("FIFO behavior test completed successfully.")
+
+    def step4_test_remove_message(self) -> None:
+        """
+        Tests removing a specific message from cache.
+        """
+        logging.info("Testing message removal...")
+
+        # Create and cache a test message
+        test_message = self.generate_test_cached_message()
+        cache_message(test_message, override_checks=True)
+
+        # Verify message is cached
+        cached_message = get_cached_message(test_message.message_id, test_message.channel_id)
+        self.assertIsNotNone(cached_message)
+
+        # Remove the message
+        self.assertTrue(remove_cached_message(test_message.message_id, test_message.channel_id))
+
+        # Verify message is no longer cached
+        cached_message = get_cached_message(test_message.message_id, test_message.channel_id)
+        self.assertIsNone(cached_message)
+
+        # Try to remove the same message again (should return False)
+        self.assertFalse(remove_cached_message(test_message.message_id, test_message.channel_id))
+
+        logging.info("Message removal test completed successfully.")
+
+    def step5_test_remove_channel_messages(self) -> None:
+        """
+        Tests removing all messages from a specific channel.
+        """
+        logging.info("Testing channel message removal...")
+
+        channel_id = random.randint(0, 1000000000)
+        messages = []
+
+        # Cache multiple messages in the channel
+        for i in range(5):
+            test_message = self.generate_test_cached_message(channel_id=channel_id)
+            messages.append(test_message)
+            cache_message(test_message, override_checks=True)
+
+        # Verify messages are cached
+        cached_messages = get_cached_messages_from_channel(channel_id)
+        self.assertEqual(len(cached_messages), 5)
+
+        # Remove all messages from the channel
+        removed_count = remove_cached_messages_from_channel(channel_id)
+        self.assertEqual(removed_count, 5)
+
+        # Verify channel is empty
+        cached_messages = get_cached_messages_from_channel(channel_id)
+        self.assertEqual(len(cached_messages), 0)
+
+        logging.info("Channel message removal test completed successfully.")
+
+    def step6_test_remove_guild_messages(self) -> None:
+        """
+        Tests removing all messages from a specific guild.
+        """
+        logging.info("Testing guild message removal...")
+
+        guild_id = random.randint(0, 1000000000)
+        messages = []
+
+        # Cache messages in multiple channels of the same guild
+        for i in range(3):
+            channel_id = random.randint(0, 1000000000)
+            for j in range(3):
+                test_message = self.generate_test_cached_message(guild_id=guild_id, channel_id=channel_id)
+                messages.append(test_message)
+                cache_message(test_message, override_checks=True)
+
+        # Verify messages are cached
+        all_cached = get_all_cached_messages()
+        total_guild_messages = sum(
+            len([msg for msg in channel_messages if msg.guild_id == guild_id])
+            for channel_messages in all_cached.values()
+        )
+        self.assertEqual(total_guild_messages, 9)
+
+        # Remove all messages from the guild
+        removed_count = remove_cached_messages_from_guild(guild_id)
+        self.assertEqual(removed_count, 9)
+
+        # Verify guild messages are removed
+        all_cached_after = get_all_cached_messages()
+        total_guild_messages_after = sum(
+            len([msg for msg in channel_messages if msg.guild_id == guild_id])
+            for channel_messages in all_cached_after.values()
+        )
+        self.assertEqual(total_guild_messages_after, 0)
+
+        logging.info("Guild message removal test completed successfully.")
+
+    def step7_test_cache_stats(self) -> None:
+        """
+        Tests getting cache statistics.
+        """
+        logging.info("Testing cache statistics...")
+
+        # Clear cache and check stats
+        clear_all_cached_messages()
+        stats = get_cache_stats()
+        self.assertEqual(stats['total_messages'], 0)
+        self.assertEqual(stats['total_channels'], 0)
+        self.assertEqual(stats['max_cache_size_per_channel'], 25)
+
+        # Add messages to multiple channels
+        channel1_id = random.randint(0, 1000000000)
+        channel2_id = random.randint(0, 1000000000)
+
+        for i in range(5):
+            test_message1 = self.generate_test_cached_message(channel_id=channel1_id)
+            test_message2 = self.generate_test_cached_message(channel_id=channel2_id)
+            cache_message(test_message1, override_checks=True)
+            cache_message(test_message2, override_checks=True)
+
+        # Check updated stats
+        stats = get_cache_stats()
+        self.assertEqual(stats['total_messages'], 10)
+        self.assertEqual(stats['total_channels'], 2)
+        self.assertEqual(stats['channel_message_counts'][channel1_id], 5)
+        self.assertEqual(stats['channel_message_counts'][channel2_id], 5)
+
+        logging.info("Cache statistics test completed successfully.")
 
 class TestServer(unittest.TestCase):
     INVALID_INT_TESTS = [(ValueError, -1), (TypeError, "abc"), (TypeError, None)]
@@ -832,7 +1107,7 @@ class TestServer(unittest.TestCase):
 
         # Add some messages
         for _ in range(5):
-            store_message(generate_test_message(guild_id=server_id), override_checks=True)
+            store_message_in_db(generate_test_message(guild_id=server_id), override_checks=True)
 
         server.remove_all_data()
 
@@ -864,7 +1139,7 @@ class TestServer(unittest.TestCase):
 
         self.assertEqual(server.join_message_profile.active, False)
 
-        self.assertEqual(get_all_messages(guild_id=server_id), [])
+        self.assertEqual(get_all_messages_from_db(guild_id=server_id), [])
 
 
     def run_test_on_property(self, primary_server_instance, table_name, property_name: str, default_value, test_values, invalid_values) -> None:
@@ -878,7 +1153,7 @@ class TestServer(unittest.TestCase):
         :param property_name: The name of the property to test.
         :type property_name: str
         :param default_value: The default value of the property.
-        :param test_values: A list of values to test the property with.
+        :param test_values: The test values to test the property with.
         :param invalid_values: A list of invalid values to test the property with. Should raise an error. (Optional)
         :return: None
         :rtype: None
@@ -1075,6 +1350,8 @@ class TestServer(unittest.TestCase):
 
             property = getattr(self.server, self.table_name)
             test_case.assertEqual(len(property), 0)
+
+           
 
             # Add test entries
             for test_entry in default_test_data:
@@ -1434,6 +1711,17 @@ class TestServer(unittest.TestCase):
 
         server.remove_all_data()
 
+    def test_join_to_create_active_vcs(self):
+        server_id = random.randint(0, 1000000000)
+
+        server = Server(server_id)
+
+        # Using run_test_on_integrated_list_property
+        test = self.RunTestOnIntegratedListProperty(server, "join_to_create_active_vcs", ["channel_id:int"], [5, 20])
+        test.run(self)
+
+        server.remove_all_data()
+
     def test_autobans(self):
         server_id = random.randint(0, 1000000000)
 
@@ -1483,7 +1771,7 @@ class TestMember(unittest.TestCase):
         :param property_name: The name of the property to test
         :type property_name: str
         :param default_value: The default value to test
-        :param test_values: The test values to test
+        :param test_values: The test values to test the property with
         :return: None
         :rtype: None
         """
@@ -1560,15 +1848,19 @@ class TestFileManager(unittest.TestCase):
         test_file.add_variable("bool1", True)
         test_file.add_variable("bool2", False)
         test_file.add_variable("bool3", True)
+        test_file.add_variable("parent.string1", "Hello World")
 
         self.assertTrue(test_file["bool1"])
         self.assertFalse(test_file["bool2"])
         self.assertTrue(test_file["bool3"])
+        self.assertEqual(test_file["parent.string1"], "Hello World")
+        self.assertEqual(test_file["parent"]["string1"], "Hello World")
 
-        self.assertTrue(len(test_file) == 3)
+        self.assertTrue(len(test_file) == 4)
 
         test_file["bool2"] = True
         test_file["bool3"] = False
+        test_file["parent.string1"] = "Goodbye World"
 
         del test_file
 
@@ -1578,9 +1870,11 @@ class TestFileManager(unittest.TestCase):
         self.assertTrue(test_file["bool1"])
         self.assertTrue(test_file["bool2"])
         self.assertFalse(test_file["bool3"])
+        self.assertEqual(test_file["parent.string1"], "Goodbye World")
+        self.assertEqual(test_file["parent"]["string1"], "Goodbye World")
 
         for variable in test_file:
-            self.assertTrue(variable in ["bool1", "bool2", "bool3"])
+            self.assertTrue(variable in ["bool1", "bool2", "bool3", "parent"])
 
         test_file.delete_file()
         self.assertTrue(not os.path.exists(path))
@@ -1830,6 +2124,7 @@ def main(_iteration_number: int = 0) -> None:
         # Add monolithic tests
         test_suite.addTest(TestDatabase('entrypoint'))
         test_suite.addTest(TestStoredMessages('entrypoint'))
+        test_suite.addTest(TestCachedMessages('entrypoint'))
 
     else:
         logging.warning("Running only specified tests: " + ", ".join([test.id() for test in specific_tests_to_run]))

@@ -8,7 +8,7 @@ class EditButton(OptionsButton):
     def get_label(self) -> str:
         return "Edit Message"
 
-    def load(self, interaction: Interaction, data: dict):
+    async def load(self, interaction: Interaction, data: dict):
         self.message: nextcord.Message = data["message"]
         self.message_info: dict = data["message_info"]
 

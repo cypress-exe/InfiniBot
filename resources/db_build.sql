@@ -109,7 +109,7 @@ CREATE TABLE IF NOT EXISTS infinibot_settings_profile( -- #optimize #remove-if-g
 )
 
 -- Create member_profile Table (simple table)
-CREATE TABLE IF NOT EXISTS member_profile( -- #optimize #remove-if-guild-invalid(server_id)
+CREATE TABLE IF NOT EXISTS member_profile( -- #optimize
     member_id INT PRIMARY KEY,
     level_up_card_enabled BOOLEAN DEFAULT false,
     join_card_enabled BOOLEAN DEFAULT false,
@@ -170,6 +170,14 @@ CREATE TABLE IF NOT EXISTS birthdays( -- #remove-if-guild-invalid(server_id)
     birth_date DATE,
     real_name TEXT,
     PRIMARY KEY (server_id, member_id)
+)
+
+-- Create join-to-create_active_vcs Table (integrated list table)
+CREATE TABLE IF NOT EXISTS join_to_create_active_vcs( -- #remove-if-guild-invalid(server_id)
+    server_id INT, -- primary key
+    channel_id INT, -- secondary key
+    added DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (server_id, channel_id)
 )
 
 -- Create autobans Table (integrated list table)

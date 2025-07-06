@@ -30,9 +30,15 @@ class EditReactionRole(CustomView):
             await ui_components.disabled_feature_override(self, interaction)
             return
         
+        description = utils.standardize_str_indention(
+            """Edit the following reaction role's text and options.
+
+            Utilize InfiniBot's [Generic Replacements](https://cypress-exe.github.io/InfiniBot/docs/messaging/generic-replacements/) to customize your reaction role."""
+            )
+        
         main_embed = nextcord.Embed(
-            title="Edit Reaction Role", 
-            description="Edit the following reaction role's text and options.", 
+            title="Edit Reaction Role",
+            description=description,
             color=nextcord.Color.yellow()
         )
         

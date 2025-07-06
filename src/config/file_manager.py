@@ -88,8 +88,16 @@ class JSONFile:
                     json.loads(file.read())
             except json.JSONDecodeError:
                 logging.error(f"{self.path} is malformed. Deleting file.")
-                os.remove(self.path)
-                self.ensure_existence()
+                try:
+                    os.rename(self.path, f"{self.path}.bak")
+                    self.ensure_existence()
+                except OSError as e:
+                    logging.error(f"Failed to backup malformed file {self.path}: {e}")
+                    try:
+                        os.remove(self.path)
+                        self.ensure_existence()
+                    except OSError as e2:
+                        logging.error(f"Failed to remove malformed file {self.path}: {e2}")
 
     def _get_data(self) -> dict:
         """
@@ -133,16 +141,54 @@ class JSONFile:
         :rtype: None
         """
         if len(keys) > 1:
-            key = keys.pop(0)
+            key = keys[0]
             if key not in data or not isinstance(data[key], dict):
                 data[key] = {}
-            self._update_nested(data[key], keys, value)
+            self._update_nested(data[key], keys[1:], value)
         else:
             data[keys[0]] = value
+
+    def _get_nested(self, data: dict, keys: list) -> any:
+        """
+        Recursively retrieves a value from a nested dictionary.
+
+        :param data: The dictionary to traverse.
+        :type data: dict
+        :param keys: The list of keys to recursively traverse.
+        :type keys: list
+        :return: The value at the nested location.
+        :rtype: any
+        :raises KeyError: If any key in the path doesn't exist.
+        """
+        current = data
+        for key in keys:
+            if not isinstance(current, dict) or key not in current:
+                raise KeyError(f"Key path {'.'.join(keys)} does not exist")
+            current = current[key]
+        return current
+
+    def _exists_nested(self, data: dict, keys: list) -> bool:
+        """
+        Recursively checks if a nested key path exists in a dictionary.
+
+        :param data: The dictionary to check.
+        :type data: dict
+        :param keys: The list of keys to check.
+        :type keys: list
+        :return: Whether the nested key path exists.
+        :rtype: bool
+        """
+        current = data
+        for key in keys:
+            if not isinstance(current, dict) or key not in current:
+                return False
+            current = current[key]
+        return True
 
     def __contains__(self, key: str) -> bool:
         """
         Check if a key exists in the JSON file.
+        Supports dot notation for nested keys (e.g., 'user.settings.theme').
 
         :param key: The key to check.
         :type key: str
@@ -150,11 +196,16 @@ class JSONFile:
         :rtype: bool
         """
         data = self._get_data()
-        return key in data
+        if isinstance(key, str) and '.' in key:
+            keys = key.split('.')
+            return self._exists_nested(data, keys)
+        else:
+            return key in data
 
     def __getitem__(self, key: str) -> any:
         """
         Retrieves the value associated with a key from the JSON file.
+        Supports dot notation for nested keys (e.g., 'user.settings.theme').
 
         :param key: The key to retrieve.
         :type key: str
@@ -165,9 +216,13 @@ class JSONFile:
         data = self._get_data()
 
         if key not in self:
-                raise KeyError(f"{key} does not exist in {self.file_name}.")
+            raise KeyError(f"{key} does not exist in {self.file_name}.")
 
-        return data[key]
+        if isinstance(key, str) and '.' in key:
+            keys = key.split('.')
+            return self._get_nested(data, keys)
+        else:
+            return data[key]
 
     def __setitem__(self, key: str, value: any) -> None:
         """
@@ -191,6 +246,7 @@ class JSONFile:
     def __delitem__(self, key: str) -> None:
         """
         Deletes a key-value pair from the JSON file.
+        Supports dot notation for nested keys (e.g., 'user.settings.theme').
 
         :param key: The key to delete.
         :type key: str
@@ -201,9 +257,17 @@ class JSONFile:
         data = self._get_data()
 
         if key not in self:
-                raise KeyError(f"{key} does not exist in {self.file_name}.")
+            raise KeyError(f"{key} does not exist in {self.file_name}.")
         
-        del data[key]
+        if isinstance(key, str) and '.' in key:
+            keys = key.split('.')
+            # Navigate to the parent and delete the final key
+            parent = data
+            for k in keys[:-1]:
+                parent = parent[k]
+            del parent[keys[-1]]
+        else:
+            del data[key]
         self._set_data(data)
 
     def __iter__(self) -> iter:
@@ -257,6 +321,7 @@ class JSONFile:
     def add_variable(self, key, value) -> None:
         """
         Adds a new key-value pair to the JSON file.
+        Supports dot notation for nested keys (e.g., 'user.settings.theme').
 
         :param key: The key to add.
         :type key: str
@@ -269,9 +334,13 @@ class JSONFile:
         data = self._get_data()
 
         if key in self:
-                raise KeyError(f"{key} already exists in {self.file_name}. Use __setitem__() instead. Implementation: JSONFile[key] = value")
+            raise KeyError(f"{key} already exists in {self.file_name}. Use __setitem__() instead. Implementation: JSONFile[key] = value")
 
-        data[key] = value
+        if isinstance(key, str) and '.' in key:
+            keys = key.split('.')
+            self._update_nested(data, keys, value)
+        else:
+            data[key] = value
         self._set_data(data)
 
     def delete_file(self) -> None:
@@ -281,6 +350,33 @@ class JSONFile:
         :return: None
         :rtype: None
         """
-        """Deletes the actual JSON file. Use with caution."""
         os.remove(self.path)
         logging.warning(f"Deleted {self.path}")
+
+    def get(self, key: str, default=None) -> any:
+        """
+        Retrieves the value associated with a key from the JSON file.
+        Returns a default value if the key does not exist.
+        Supports dot notation for nested keys (e.g., 'user.settings.theme').
+
+        :param key: The key to retrieve.
+        :type key: str
+        :param default: The default value to return if the key does not exist.
+        :type default: any
+        :return: The value associated with the key or the default value.
+        :rtype: any
+        """
+        try:
+            return self[key]
+        except KeyError:
+            return default
+    
+    def items(self) -> iter:
+        """
+        Returns an iterator over the key-value pairs in the JSON file.
+
+        :return: An iterator over the key-value pairs in the JSON file.
+        :rtype: iter
+        """
+        data = self._get_data()
+        return data.items()

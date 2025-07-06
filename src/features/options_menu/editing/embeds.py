@@ -30,12 +30,18 @@ class EditEmbed(CustomView):
         if not utils.feature_is_active(guild_id=interaction.guild.id, feature="options_menu__editing"):
             await ui_components.disabled_feature_override(self, interaction)
             return
-        
-        main_embed = nextcord.Embed(title="Edit Embed", description="Edit the following embed's text and color.", color=nextcord.Color.yellow())
+
+        description = utils.standardize_str_indention(
+            """Edit the following embed's text and color.
+            
+            Utilize InfiniBot's [Generic Replacements](https://cypress-exe.github.io/InfiniBot/docs/messaging/generic-replacements/) to customize your embed."""
+            )
+
+        main_embed = nextcord.Embed(title="Edit Embed", description=description, color=nextcord.Color.yellow())
         edit_embed = self.message.embeds[0]
         embeds = [main_embed, edit_embed]
-        await interaction.response.edit_message(embeds = embeds, view = self)
-  
+        await interaction.response.edit_message(embeds=embeds, view=self)
+
     class EditTextButton(nextcord.ui.Button):
         def __init__(self, outer):
             super().__init__(label="Edit Text", emoji="✏️")

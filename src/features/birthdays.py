@@ -93,7 +93,7 @@ async def check_and_run_birthday_actions(bot: nextcord.Client, guild: nextcord.G
 
         for entry in entries_with_birthdays_today:
             member_id = entry.member_id
-            member = bot.get_user(member_id)
+            member = await utils.get_member(guild, member_id)
 
             if member == None: # Member left. Warn server owner
                 message = f"""
