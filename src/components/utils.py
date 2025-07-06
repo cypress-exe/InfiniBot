@@ -383,10 +383,10 @@ def feature_is_active(**kwargs) -> bool:
     server:Server = kwargs.get("server")
     if not server:
         if kwargs.get("guild"):
-            server_id = kwargs.get("guild").id
+            server_id:int = kwargs.get("guild").id
         else:
             server_id:int = kwargs.get("server_id") or kwargs.get("guild_id")
-        if server_id: server = Server(server_id)
+        if server_id is not None: server = Server(server_id)
 
     if server and not isinstance(server, Server):
         raise ValueError(f"Error: {__name__} received an invalid server object. Server: {server}")

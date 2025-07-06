@@ -4692,6 +4692,17 @@ async def run_dashboard_command(interaction: Interaction):
     :return: None
     :rtype: None
     """
+    if interaction.guild_id is None:
+        await interaction.response.send_message(
+            embed=nextcord.Embed(
+                title="Error",
+                description="This command can only be used in a server.",
+                color=nextcord.Color.red()
+            ),
+            ephemeral=True
+        )
+        return
+    
     if await utils.user_has_config_permissions(interaction):
         view = Dashboard(interaction.guild_id)
         await view.setup(interaction)

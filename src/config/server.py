@@ -56,18 +56,20 @@ class Server:
         return str(self.server_id)
 
     def _format_server_id(self, server_id):
+        if isinstance(server_id, bool) or server_id is None or server_id == "" or server_id == 0:
+            logging.error("Server ID cannot be None, False, True, empty string, or zero.", exc_info=True)
+            raise ValueError(f"Invalid server ID: `{server_id}`. Server ID must be a valid integer or nextcord.Guild instance.")
         if isinstance(server_id, NextcordGuild):
-            logging.warning(f"Server ID {server_id} is an instance of nextcord.Guild. Implicitly converting to guild_id. This is not recommended.")
-            server_id = server_id.id
+            logging.warning(f"Server ID `{server_id}` is an instance of nextcord.Guild. Implicitly converting to guild_id. This is not recommended.")
+            return server_id.id
         else:
             if not isinstance(server_id, int):
                 try:
-                    logging.warning(f"Server ID {server_id} is not an integer. Implicitly converting to integer. This is not recommended.")
-                    server_id = int(server_id)
+                    logging.warning(f"Server ID `{server_id}` is not an integer. Implicitly converting to integer. This is not recommended.")
+                    return int(server_id)
                 except ValueError:
-                    raise ValueError(f"Server ID {server_id} is not an integer.")
-                
-        return server_id
+                    raise ValueError(f"Server ID `{server_id}` is not an integer.")
+            return server_id
 
     def remove_all_data(self):
         '''Removes all data relating to this server from the database.'''
