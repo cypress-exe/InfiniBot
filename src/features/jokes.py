@@ -356,6 +356,7 @@ class JokeView(CustomView):
                     ),
                     ephemeral=True
                 )
+                return
 
             embed = _format_joke_submission_embed(
                 Joke(
