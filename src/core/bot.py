@@ -167,19 +167,21 @@ async def on_ready() -> None: # Bot load
             return
 
         channel = await utils.get_channel(channel_id, bot=bot)
+        if not channel:
+            logging.warning(f"Channel with ID {channel_id} not found. Skipping startup notification.")
+            return
         
-        if channel:
-            # Send notification
-            embed = nextcord.Embed(
-                title = "InfiniBot is online!",
-                description = "InfiniBot has successfully started and is active on all guilds.",
-                color = nextcord.Color.green()
-            )
-            try:
-                await channel.send(embed=embed)
-                logging.info("Startup notification sent successfully.")
-            except nextcord.Forbidden:
-                logging.error(f"Failed to send startup notification in channel {channel.name} (ID: {channel.id}). Check permissions.")
+        # Send notification
+        embed = nextcord.Embed(
+            title = "InfiniBot is online!",
+            description = "InfiniBot has successfully started and is active on all guilds.",
+            color = nextcord.Color.green()
+        )
+        try:
+            await channel.send(embed=embed)
+            logging.info("Startup notification sent successfully.")
+        except nextcord.Forbidden:
+            logging.error(f"Failed to send startup notification in channel {channel.name} (ID: {channel.id}). Check permissions.")
     else:
         logging.info("Bot startup notification is disabled. Skipping notification.")
     
