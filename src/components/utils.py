@@ -596,6 +596,42 @@ async def get_available_channel(guild: nextcord.Guild) -> nextcord.TextChannel |
     await send_error_message_to_server_owner(guild, "Send Messages")
     return None
 
+failed_channel_fetches = ExpiringSet(60 * 1)  # 1 minute expiration
+async def get_channel(channel: int, bot: nextcord.Client | None = None, override_failed_cache: bool = False) -> nextcord.TextChannel | None:
+    """
+    |coro|  
+    Get a text channel from the bot's cache or fetch it from the API, with failed fetch caching.
+
+    Args:
+        channel: The ID of the channel to find.
+        bot: Optionally, the bot instance to use for fetching the channel. If None, will get the bot instance from the global context.
+        override_failed_cache: If True, will override the failed channel fetch cache and attempt to fetch the channel again.
+
+    Returns:
+        The text channel if found, otherwise None.
+    """
+    global failed_channel_fetches
+
+    if not bot:
+        from src.core.bot import get_bot
+        bot = get_bot()
+
+    if channel_obj := bot.get_channel(channel):
+        return channel_obj
+
+    if (not override_failed_cache) and (channel in failed_channel_fetches):
+        logging.info(f"Channel with ID {channel} was not found recently. Skipping fetch.")
+        return None
+
+    try:
+        return await bot.fetch_channel(channel)
+    except (nextcord.Forbidden, nextcord.NotFound):
+        logging.debug(f"Channel with ID {channel} was not found.")
+        if channel not in failed_channel_fetches:
+            logging.info(f"Adding failed channel fetch for channel {channel}.")
+            failed_channel_fetches.add(channel)
+        return None
+
 failed_member_fetches = ExpiringSet(60 * 1)  # 1 minute expiration
 async def get_member(guild: nextcord.Guild, user_id: int, override_failed_cache: bool = False) -> nextcord.Member | None:
     """
@@ -626,7 +662,7 @@ async def get_member(guild: nextcord.Guild, user_id: int, override_failed_cache:
 
     try:
         return await guild.fetch_member(user_id)
-    except nextcord.NotFound:
+    except (nextcord.Forbidden, nextcord.NotFound):
         logging.debug(f"Member with ID {user_id} was not found in guild {guild.name}.")
         if not (guild.id, user_id) in failed_member_fetches:
             logging.info(f"Adding failed member fetch for guild {guild.id} and user {user_id}.")

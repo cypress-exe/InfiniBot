@@ -318,12 +318,10 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
 
     # Get the message
     try:
-        channel = guild.get_channel(payload.channel_id) or await bot.fetch_channel(payload.channel_id)
+        channel = await utils.get_channel(payload.channel_id)
         if channel is None: return  # If the channel doesn't exist, we can't do anything
         message = await channel.fetch_message(payload.message_id)
-    except nextcord.errors.Forbidden:
-        return
-    except AttributeError:
+    except (nextcord.errors.Forbidden, nextcord.errors.NotFound, AttributeError):
         return
     
     # Declare some functions

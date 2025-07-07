@@ -165,24 +165,21 @@ async def on_ready() -> None: # Bot load
         if channel_id is None or channel_id == 0:
             logging.warning("No channel ID specified for startup notification. Skipping notification.")
             return
-        
-        channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
 
-        if channel is None:
-            logging.error(f"Channel with ID {channel_id} not found. Please check the channel ID in the configuration.")
-            return
+        channel = await utils.get_channel(channel_id, bot=bot)
         
-        # Send notification
-        embed = nextcord.Embed(
-            title = "InfiniBot is online!",
-            description = "InfiniBot has successfully started and is active on all guilds.",
-            color = nextcord.Color.green()
-        )
-        try:
-            await channel.send(embed=embed)
-            logging.info("Startup notification sent successfully.")
-        except nextcord.Forbidden:
-            logging.error(f"Failed to send startup notification in channel {channel.name} (ID: {channel.id}). Check permissions.")
+        if channel:
+            # Send notification
+            embed = nextcord.Embed(
+                title = "InfiniBot is online!",
+                description = "InfiniBot has successfully started and is active on all guilds.",
+                color = nextcord.Color.green()
+            )
+            try:
+                await channel.send(embed=embed)
+                logging.info("Startup notification sent successfully.")
+            except nextcord.Forbidden:
+                logging.error(f"Failed to send startup notification in channel {channel.name} (ID: {channel.id}). Check permissions.")
     else:
         logging.info("Bot startup notification is disabled. Skipping notification.")
     
@@ -529,55 +526,61 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     # Skip DM messages (guild_id will be None)
     if payload.guild_id is None:
         return
-    
-    # Find guild and channel
-    channel = bot.get_channel(payload.channel_id) or await bot.fetch_channel(payload.channel_id)
-    if channel is None: 
-        return
 
-    guild = channel.guild
-    if guild is None: 
-        return
-    
-    if not channel.permissions_for(guild.me).read_message_history:
-        await utils.send_error_message_to_server_owner(guild, "View Message History", channel = f"one or more channels (including #{channel.name})")
-        return
-    if not guild.me.guild_permissions.view_audit_log:
-        await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
-        return
-    
-    # If we have it, grab the original message
-    original_message = payload.cached_message
-    if original_message is None:
-        # Find db stored message
-        original_message = stored_messages.get_message_from_db(payload.message_id)
-    
-    # Find the message
     edited_message = None
     try:
-        edited_message = await channel.fetch_message(payload.message_id)
-    except (nextcord.NotFound, nextcord.Forbidden, nextcord.HTTPException):
-        return
-    
-    # Update the message's cache
-    with LogIfFailure(feature="cached_messages.remove_cached_message & cached_messages.cache_message"):
-        cached_messages.remove_cached_message(edited_message.id, channel.id)
-        cached_messages.cache_message(edited_message)
+        # Find guild and channel
+        channel = await utils.get_channel(payload.channel_id, bot=bot)
+        if channel is None: 
+            return
 
-    # Punish profanity (if any)
-    with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
-        await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message,
-                                                                            skip_active_check=True)
-            
-    # Log the message
-    with LogIfFailure(feature="action_logging.log_raw_message_edit"):
-        await action_logging.log_raw_message_edit(guild, original_message, edited_message)
+        guild = channel.guild
+        if guild is None: 
+            return
+        
+        if not channel.permissions_for(guild.me).read_message_history:
+            await utils.send_error_message_to_server_owner(guild, "View Message History", channel = f"one or more channels (including #{channel.name})")
+            return
+        if not guild.me.guild_permissions.view_audit_log:
+            await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
+            return
+        
+        # If we have it, grab the original message
+        original_message = payload.cached_message
+        if original_message is None:
+            # Find db stored message
+            original_message = stored_messages.get_message_from_db(payload.message_id)
+        
+        # Find the message
+        try:
+            edited_message = await channel.fetch_message(payload.message_id)
+        except (nextcord.NotFound, nextcord.Forbidden, nextcord.HTTPException):
+            return
+        
+        # Update the message's cache
+        with LogIfFailure(feature="cached_messages.remove_cached_message & cached_messages.cache_message"):
+            cached_messages.remove_cached_message(edited_message.id, channel.id)
+            cached_messages.cache_message(edited_message)
 
-    # Update the message in the database
-    with LogIfFailure(feature="stored_messages.remove_message_from_db & stored_messages.store_message_in_db"):
-        if utils.feature_is_active(guild_id=payload.guild_id, feature="logging"):
-            stored_messages.remove_message_from_db(payload.message_id)
-            stored_messages.store_message_in_db(edited_message)
+        # Punish profanity (if any)
+        with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
+            await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message,
+                                                                                skip_active_check=True)
+                
+        # Log the message
+        with LogIfFailure(feature="action_logging.log_raw_message_edit"):
+            await action_logging.log_raw_message_edit(guild, original_message, edited_message)
+
+        # Add the edited message to the database
+        with LogIfFailure(feature="stored_messages.store_message_in_db(edited_message)"):
+            if utils.feature_is_active(guild_id=guild.id, feature="logging"):
+                stored_messages.store_message_in_db(edited_message)
+
+    finally:
+        # Update the message in the database
+        with LogIfFailure(feature="stored_messages.remove_message_from_db"):
+            if utils.feature_is_active(guild_id=payload.guild_id, feature="logging"):
+                stored_messages.remove_message_from_db(payload.message_id)
 
 @bot.event
 async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None:
@@ -598,34 +601,36 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
     
     # Check if guild/channel are needed for logging
     if utils.feature_is_active(server=server, feature = "logging"):
-        # Find guild and channel
-        guild = bot.get_guild(payload.guild_id)
-        if guild is None: 
-            return
+        try:
+            # Find guild and channel
+            guild = bot.get_guild(payload.guild_id)
+            if guild is None: 
+                return
 
-        channel = guild.get_channel(payload.channel_id)
-        if channel is None: 
-            return
+            channel = await utils.get_channel(payload.channel_id, bot=bot)
+            if channel is None: 
+                return
 
-        message = payload.cached_message
+            message = payload.cached_message
 
-        if message is None:
-            # Find db cached message
-            message = stored_messages.get_message_from_db(payload.message_id)
-            if message is not None:
-                # Actual values are important instead of object approximations, so replace them
-                message.guild = guild
-                message.channel = channel
-                # Some additional info needs to be fetched
-                await message.fetch("author")
+            if message is None:
+                # Find db cached message
+                message = stored_messages.get_message_from_db(payload.message_id)
+                if message is not None:
+                    # Actual values are important instead of object approximations, so replace them
+                    message.guild = guild
+                    message.channel = channel
+                    # Some additional info needs to be fetched
+                    await message.fetch("author")
 
-        # Log the message
-        with LogIfFailure(feature="action_logging.log_raw_message_delete"):
-            await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id)
+            # Log the message
+            with LogIfFailure(feature="action_logging.log_raw_message_delete"):
+                await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id)
 
-        # Update the message in the database
-        with LogIfFailure(feature="stored_messages.remove_message_from_db"):
-            stored_messages.remove_message_from_db(payload.message_id)
+        finally:
+            # Update the message in the database
+            with LogIfFailure(feature="stored_messages.remove_message_from_db"):
+                stored_messages.remove_message_from_db(payload.message_id)
 
     # Remove managed message
     with LogIfFailure(feature="managed_messages.delete"):

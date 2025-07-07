@@ -1,6 +1,7 @@
 import nextcord
 from typing import Any
 import datetime
+import logging
 
 class MessageRecord:
     """
@@ -77,20 +78,31 @@ class MessageRecord:
         :raises ValueError: If the variable name is not one of the recognized options.
         """
         from core.bot import get_bot
-        if variable == "guild":
-            self.guild = await get_bot().fetch_guild(self.guild_id)
-            return self.guild
-        elif variable == "channel":
-            self.channel = await get_bot().fetch_channel(self.channel_id)
-            return self.channel
-        elif variable == "author":
-            self.author = await get_bot().fetch_user(self.author_id)
-            return self.author
-        elif variable == "message":
-            if not self.channel: await self.fetch("channel")
-            self.message = await self.channel.fetch_message(self.message_id)
-            return self.message
-        
+
+        try:
+            if variable == "guild":
+                self.guild = get_bot().get_guild(self.guild_id) or await get_bot().fetch_guild(self.guild_id)
+                return self.guild
+            elif variable == "channel":
+                self.channel = get_bot().get_channel(self.channel_id) or await get_bot().fetch_channel(self.channel_id)
+                return self.channel
+            elif variable == "author":
+                self.author = get_bot().get_user(self.author_id) or await get_bot().fetch_user(self.author_id)
+                return self.author
+            elif variable == "message":
+                if not self.channel: await self.fetch("channel")
+                if not self.channel: return None # Channel fetching failed.
+                self.message = await self.channel.fetch_message(self.message_id)
+                return self.message
+        except (nextcord.NotFound, nextcord.Forbidden):
+            # The bot probably failed to get the guild/channel/user/message due to permission
+            # issues or the entity not existing.
+
+            # Log it, but do not raise an error.
+            logging.error(f"Failed to fetch {variable} with ID {getattr(self, variable + '_id', None)}. "
+                          f"Please check the ID and permissions.")
+            return None
+
         raise ValueError(f"Invalid variable name: {variable}")
 
     def __str__(self):

@@ -1,3 +1,4 @@
+import logging
 from nextcord import Interaction
 import nextcord
 import re
@@ -112,9 +113,23 @@ class EditReactionRole(CustomView):
                 self.back_btn.callback = self.back_btn_callback
                 self.add_item(self.back_btn)
                 
-            async def setup(self, interaction: Interaction):             
-                channel = await interaction.guild.fetch_channel(self.message_info.channel_id)
-                message = await channel.fetch_message(self.message_info.message_id)       
+            async def setup(self, interaction: Interaction):
+                try:           
+                    channel = await utils.get_channel(self.message_info.channel_id)
+                    message = await channel.fetch_message(self.message_info.message_id)       
+                except (nextcord.errors.Forbidden, nextcord.errors.NotFound, AttributeError) as e:
+                    logging.error(f"Failed to fetch message for reaction role editing: {e}")
+                    embed = nextcord.Embed(
+                        title="Error",
+                        description="Failed to fetch the reaction role message. Please try again later.",
+                        color=nextcord.Color.red()
+                    )
+                    await interaction.response.send_message(
+                        embed=embed,
+                        ephemeral=True
+                    )
+                    return
+                
                 options = message.embeds[0].fields[0].value.split("\n")
                 self.formatted_options, problem = self.format_options(interaction.guild, options)
                 
@@ -232,8 +247,22 @@ class EditReactionRole(CustomView):
                 return return_list, problem
 
             async def add_or_remove_option(self, interaction: Interaction, emoji, role_id, index=None):
-                channel = await interaction.guild.fetch_channel(self.message_info.channel_id)
-                message = await channel.fetch_message(self.message_info.message_id)
+                try:           
+                    channel = await utils.get_channel(self.message_info.channel_id)
+                    message = await channel.fetch_message(self.message_info.message_id)       
+                except (nextcord.errors.Forbidden, nextcord.errors.NotFound) as e:
+                    logging.error(f"Failed to fetch message for reaction role editing: {e}")
+                    embed = nextcord.Embed(
+                        title="Error",
+                        description="Failed to fetch the reaction role message. Please try again later.",
+                        color=nextcord.Color.red()
+                    )
+                    await interaction.response.send_message(
+                        embed=embed,
+                        ephemeral=True
+                    )
+                    return
+                    
                 options = message.embeds[0].fields[0].value.split("\n")
                 
                 if index is not None:
