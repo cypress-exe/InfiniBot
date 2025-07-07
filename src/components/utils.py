@@ -555,7 +555,7 @@ def get_infinibot_missing_permissions(guild: nextcord.Guild) -> tuple[list[str],
             
     return missing_guild_permissions, missing_channel_permissions
 
-async def get_channel(guild: nextcord.Guild) -> nextcord.TextChannel | None:
+async def get_available_channel(guild: nextcord.Guild) -> nextcord.TextChannel | None:
     """
     |coro|  
     Get a text channel that InfiniBot can send messages and embeds in.

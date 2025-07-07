@@ -834,7 +834,7 @@ async def handle_send_message_to_all_servers_command(message: nextcord.Message):
                 role_mention = role.mention if role else ""
             else:
                 # Standard server handling
-                channel = await utils.get_channel(guild)
+                channel = await utils.get_available_channel(guild)
                 role_mention = ""
 
             # Send message if channel is available

@@ -171,7 +171,7 @@ def _create_role_creation_error_embed(guild: nextcord.Guild, infinibot_mod_role:
 async def _send_welcome_message(guild: nextcord.Guild, embeds: list[nextcord.Embed]) -> None:
     """Send welcome message to a suitable channel or fallback to DM."""
     view = NewServerJoinView()
-    channel = await utils.get_channel(guild)
+    channel = await utils.get_available_channel(guild)
     
     if channel is not None:
         # Successfully found a channel to send to
