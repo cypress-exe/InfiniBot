@@ -133,9 +133,15 @@ class CustomView(nextcord.ui.View):
         # Inform the user about the error with the ID
         embed = INFINIBOT_ERROR_EMBED
         embed.set_footer(text = f"View Interaction - Error ID: {error_id}")
-        await interaction.response.send_message(
-            embed=embed, ephemeral=True, view=SupportView()
-        )
+
+        if not interaction.response.is_done():
+            await interaction.response.send_message(
+                embed=embed, ephemeral=True, view=SupportView()
+            )
+        else:
+            await interaction.followup.send(
+                embed=embed, ephemeral=True, view=SupportView()
+            )
 
 class CustomModal(nextcord.ui.Modal):
     """

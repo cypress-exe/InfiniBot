@@ -380,27 +380,26 @@ async def opt_into_dms(interaction: Interaction):
 # Test Commands (ONLY AVAILABLE IN DEV BUILD)
 @dev_only_slash_command(name="test", description="A test command for InfiniBot. NOT INCLUDED IN PRODUCTION BUILD.")
 async def test(interaction: Interaction):
-    # ======================================= <INSERT TEST CODE HERE> =======================================
+    # ============================================= <VARIABLES> ==============================================
     DEFER_INTERACTION = True # Provides extra time to run code before returning a response.
     SEND_DEFAULT_EMBED = True # Sends an generic embed response to indicate the command was run successfully.
+    # ============================================= </VARIABLES> =============================================
     async def test_items(interaction: Interaction):
+        async def send(**kwargs):
+            """
+            A helper function to send a message in the test command.
+            """
+            if interaction.response.is_done():
+                await interaction.followup.send(**kwargs)
+            else:
+                await interaction.response.send_message(**kwargs)
+    # ======================================= <INSERT TEST CODE HERE> =======================================
+
         # from features.test import run_test_command
         # await run_test_command(interaction)
 
-        # from components.utils import send_error_message_to_server_owner
-        # import asyncio
-
-        # await send_error_message_to_server_owner(interaction.guild, "View Channels", channel=interaction.channel.name, administrator=False)
-
-        # # Wait a second
-        # await asyncio.sleep(1)
-
-        # # Send another
-        # await send_error_message_to_server_owner(interaction.guild, "View Channels", channel=interaction.channel.name, administrator=False)
-
-        pass
-        
     # ======================================= </INSERT TEST CODE HERE> =======================================
+        pass
 
     logging.info(f"Test command invoked by {interaction.user.name} ({interaction.user.id}) in guild {interaction.guild.name} ({interaction.guild.id})")
     logging.info(f"Running test command with DEFER_INTERACTION={DEFER_INTERACTION} and SEND_DEFAULT_EMBED={SEND_DEFAULT_EMBED}")
