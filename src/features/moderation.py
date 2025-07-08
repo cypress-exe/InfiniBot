@@ -756,17 +756,15 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
     # Cache this message
     cache_message(message, skip_if_exists=True)
 
-    # Configure limit (the most messages that we're willing to check)
-    if server.spam_moderation_profile.score_threshold < max_messages_to_check:
-        limit = server.spam_moderation_profile.score_threshold + 1 # Add one because of the existing message
-    else:
-        limit = max_messages_to_check
-
     # Get previous messages
     previous_messages = get_cached_messages_from_channel(message.channel.id)[::-1]
-    if len(previous_messages) > limit:
-        previous_messages = previous_messages[:limit]
-    
+    if len(previous_messages) > max_messages_to_check:
+        previous_messages = previous_messages[:max_messages_to_check]
+
+    if server.spam_moderation_profile.time_threshold_seconds <= 0:
+        logging.warning(f"Time threshold seconds set to invalid value ({server.spam_moderation_profile.time_threshold_seconds}) in server {server.server_id}. Skipping spam moderation check.")
+        return False
+
     # printout = [message.content for message in previous_messages]
     # logging.info(f"Previous Messages: {printout}")
 
