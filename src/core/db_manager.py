@@ -161,6 +161,13 @@ class Simple_TableManager(TableManager):
                 properties[row] = getattr(self, row)
 
         return properties
+    
+    def __dict__(self):
+        """
+        Returns a dictionary representation of the object, including nested objects.
+        This is useful for serialization or debugging purposes.
+        """
+        return self.to_dict()
        
     def get_column_names_and_types(self):
         return self.database.all_column_types[self.table_name]

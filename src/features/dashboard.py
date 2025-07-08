@@ -428,10 +428,10 @@ class Dashboard(CustomView):
                                 
                             select_options = []
                             for channel in interaction.guild.text_channels:
-                                if channel.category != None: categoryName = channel.category.name
-                                else: categoryName = None
+                                if channel.category != None: category_name = channel.category.name
+                                else: category_name = None
                                 if not await utils.check_text_channel_permissions(channel, False): continue
-                                select_options.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = categoryName, default = (server.profanity_moderation_profile.channel != None and server.profanity_moderation_profile.channel == channel.id)))
+                                select_options.append(nextcord.SelectOption(label = channel.name, value = channel.id, description = category_name, default = (server.profanity_moderation_profile.channel != None and server.profanity_moderation_profile.channel == channel.id)))
                             
                             if self.skipped: title = "Dashboard - Moderation - Profanity"
                             else: title = "Dashboard - Moderation - Profanity - Admin Channel"
@@ -464,8 +464,16 @@ class Dashboard(CustomView):
                             server.profanity_moderation_profile.channel = selection
                             await self.outer.setup(interaction)
                                 
-                            #send a message to the new admin channel
-                            embed = nextcord.Embed(title = "Admin Channel Set", description = f"Moderation updates and alerts will now be logged in this channel.\n\n**Ensure Admin-Only Access**\nThis channel lets members report incorrect strikes, so limit access to admins.", color =  nextcord.Color.green())
+                            # Send a message to the new admin channel
+                            embed = nextcord.Embed(
+                                title = "Admin Channel Set", 
+                                description = (
+                                    "Moderation updates and alerts will now be logged in this channel.\n\n"
+                                    "**Ensure Admin-Only Access**\n"
+                                    "This channel lets members report incorrect strikes, so limit access to admins."
+                                ),
+                                color = nextcord.Color.green()
+                            )
                             embed.set_footer(text = f"Action done by {interaction.user}")
                             discord_channel = interaction.guild.get_channel(server.profanity_moderation_profile.channel)
                             await discord_channel.send(embed = embed, view = ui_components.SupportAndInviteView())
