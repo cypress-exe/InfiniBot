@@ -1076,7 +1076,7 @@ class Dashboard(CustomView):
                         Increase this value if InfiniBot is misclassifying messages as spam often. Decrease it if InfiniBot is not detecting spam enough.
 
                         **What is Time Threshold**
-                        InfiniBot will disregard messages outside of the time threshold when determining spam scores. To disable this feature, set the time threshold to 0.
+                        InfiniBot will disregard messages outside of the time threshold when determining spam scores. Note that InfiniBot has a maximum number of messages that it will consider for spam detection.
                         
                         View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/spam/) for more information.
                         """
@@ -1182,10 +1182,8 @@ class Dashboard(CustomView):
                                     return
                                 
                                 try:
-                                    if self.input.value != "0": 
-                                        response_in_seconds = humanfriendly.parse_timespan(self.input.value)
-                                    else:
-                                        response_in_seconds = 0
+                                    response_in_seconds = humanfriendly.parse_timespan(self.input.value)
+                                    if response_in_seconds <= 0: raise Exception
                                 except:
                                     await interaction.response.send_message(embed = format_error_embed, ephemeral=True)
                                     return
