@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import nextcord
 from nextcord import Interaction, SlashOption
@@ -12,7 +13,9 @@ from config.server import Server
 from config.messages import cached_messages, stored_messages
 from core import log_manager
 from core.api_connections_manager import start_all_api_connections
+from core.emoji_manager import cache_application_emojis
 from core.log_manager import LogIfFailure
+from core.shard_manager import log_and_store_shard_distribution
 from core.server_join_and_leave_manager import handle_server_join, handle_server_remove
 from core.scheduling import start_scheduler, stop_scheduler
 from core.shard_manager import calculate_shard_count
@@ -44,6 +47,8 @@ from features import (
 
 from features.options_menu import entrypoint_ui
 
+startup_time = None
+
 # INIT BOT ==============================================================================================================================================================
 intents = nextcord.Intents.default()
 intents.message_content = True
@@ -64,6 +69,32 @@ bot = commands.AutoShardedBot(intents = intents,
 
 def get_bot() -> commands.AutoShardedBot: return bot
 
+async def all_shards_loaded():
+    """
+    Called once all shards are started (not necessarily ready with all info cached)
+
+    :return: None
+    :rtype: None
+    """
+
+    # Wait a second
+    await asyncio.sleep(1)
+
+    # Update bot ID
+    global_settings.update_bot_id(bot)
+
+    # Initialize the bot's emoji cache
+    await cache_application_emojis(bot)
+
+    # Initialize the bot's view cache
+    init_views(bot)
+
+    # Start API connections
+    start_all_api_connections()
+
+    # Update shard distribution
+    log_and_store_shard_distribution(bot)
+
 @bot.event
 async def on_ready() -> None: # Bot load
     """
@@ -74,7 +105,7 @@ async def on_ready() -> None: # Bot load
     :return: None
     :rtype: None
     """
-    startup_start = time.time()
+    global startup_time
     
     await bot.wait_until_ready()
     logging.info(f"============================== Logged in as: {bot.user.name} with all shards ready. ==============================")
@@ -82,73 +113,9 @@ async def on_ready() -> None: # Bot load
 
     # Initialize core systems
     init_start = time.time()
-    init_views(bot)
     global_settings.set_bot_load_status(True)
-    global_settings.update_bot_id(bot)
     start_scheduler()
-    start_all_api_connections()
     logging.info(f"Core systems initialized in {time.time() - init_start:.2f}s")
-
-    # Log shard distribution and save data for next startup (optimized)
-    shard_start = time.time()
-    total_guilds = len(bot.guilds)
-    shard_guild_counts = {}
-    
-    # Single iteration through guilds to count by shard
-    for guild in bot.guilds:
-        shard_id = guild.shard_id
-        shard_guild_counts[shard_id] = shard_guild_counts.get(shard_id, 0) + 1
-    
-    logging.info(f"Shard distribution calculated in {time.time() - shard_start:.2f}s")
-    
-    # Save guild count data for next startup (async file operations)
-    try:
-        shard_config_path = os.path.join("generated", "configure", "shard_config.json")
-        os.makedirs(os.path.dirname(shard_config_path), exist_ok=True)
-        
-        # Cache config value to avoid multiple calls
-        sharding_config = global_settings.get_configs()["sharding"]
-        
-        shard_data = {
-            "last_guild_count": total_guilds,
-            "last_shard_count": bot.shard_count,
-            "last_updated": "2025-06-24",
-            "guilds_per_shard_config": sharding_config["guilds-per-shard"]
-        }
-        
-        with open(shard_config_path, 'w') as f:
-            json.dump(shard_data, f, indent=2)
-            
-        logging.info(f"Saved guild count data: {total_guilds} guilds across {bot.shard_count} shards")
-        
-    except Exception as e:
-        logging.warning(f"Could not save shard data: {e}")
-    
-    # Display shard distribution (optimized)
-    if shard_guild_counts:
-        logging.info("Shard distribution:")
-        max_guilds_per_shard = max(shard_guild_counts.values())
-        for shard_id in sorted(shard_guild_counts.keys()):
-            guild_count = shard_guild_counts[shard_id]
-            logging.info(f"  Shard {shard_id}: {guild_count} guilds")
-    
-        # Intelligent recommendations (cached config)
-        if sharding_config["enabled"]:
-            guilds_per_shard = sharding_config["guilds-per-shard"]
-            optimal_shards = max(1, (total_guilds // guilds_per_shard) + 1)
-            
-            if max_guilds_per_shard > guilds_per_shard * 1.5:  # 50% over target
-                logging.warning(f"⚠️  HIGH SHARD LOAD: Some shards have {max_guilds_per_shard} guilds (target: {guilds_per_shard}). Consider restarting - next startup will use {optimal_shards} shards.")
-            elif bot.shard_count < optimal_shards:
-                logging.info(f"💡 SCALING SUGGESTION: Current: {bot.shard_count} shards, Optimal: {optimal_shards} shards. Restart to apply.")
-            elif bot.shard_count > optimal_shards * 1.5:  # Over-sharded
-                logging.info(f"💡 OPTIMIZATION: You might be over-sharded. Current: {bot.shard_count}, Optimal: {optimal_shards}. Restart to optimize.")
-            else:
-                logging.info(f"✅ SHARD COUNT: Optimal ({bot.shard_count} shards for {total_guilds} guilds)")
-        else:
-            logging.info(f"ℹ️  AUTO-SHARDING: Disabled in config. Using Discord's recommendation ({bot.shard_count} shards)")
-    else:
-        logging.info("No guilds found on any shards.")
 
     # Print detailed guild info only in debug mode
     if logging.getLevelName(logging.getLogger().getEffectiveLevel()) == "DEBUG":
@@ -186,8 +153,8 @@ async def on_ready() -> None: # Bot load
         logging.info("Bot startup notification is disabled. Skipping notification.")
     
     # Log total startup time
-    total_startup_time = time.time() - startup_start
-    logging.info(f"🚀 STARTUP COMPLETE: Total time {total_startup_time:.2f}s for {total_guilds} guilds ({total_guilds/total_startup_time:.1f} guilds/sec)")
+    total_startup_time = time.time() - startup_time
+    logging.info(f"🚀 STARTUP COMPLETE: Total time {total_startup_time:.2f}s for {len(bot.guilds)} guilds ({len(bot.guilds)/total_startup_time:.1f} guilds/sec)")
 
 
 @bot.event
@@ -205,6 +172,11 @@ async def on_shard_ready(shard_id: int) -> None:
 
     with global_settings.ShardLoadedStatus() as shards_loaded:
         shards_loaded.append(shard_id)
+
+        # Check if all shards are loaded
+        if len(shards_loaded) == bot.shard_count:
+            logging.info(f"All {bot.shard_count} shards are loaded. Running post-shard initialization code...")
+            await all_shards_loaded()
 
 @bot.event
 async def on_close() -> None:
@@ -792,12 +764,14 @@ def run() -> None:
     :return: None
     :rtype: None
     """
+    global startup_time
 
     # Get token
     token = os.environ['DISCORD_AUTH_TOKEN']
     logging.info(f"Running bot with token: {token[:5]}*******...")
 
     logging.info(f"Running in {global_settings.get_environment_type()} mode.")
+    startup_time = time.time()
 
     try:
         bot.run(token)

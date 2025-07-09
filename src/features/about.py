@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 
 from config.global_settings import get_configs
+from core.emoji_manager import get_emoji_markdown
 
 async def run_bot_about_command(interaction: Interaction) -> None:
     """
@@ -84,7 +85,7 @@ async def run_bot_about_command(interaction: Interaction) -> None:
     
     # Create the embed
     embed = nextcord.Embed(
-        title="<:infiniboticon:1379549397708312677>  InfiniBot Information",
+        title=f"{get_emoji_markdown('infiniboticon')}  InfiniBot Information",
         description="A powerful, multipurpose Discord bot for server management and engagement.",
         color=nextcord.Color.blurple()
     )
