@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:  # Allows manual triggering
+permissions:
+  contents: read
 jobs:
   # Build job for Jekyll site
   build-pages-site:
