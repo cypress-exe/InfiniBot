@@ -88,7 +88,8 @@ async def run_scheduled_tasks() -> None:
                 await check_and_run_birthday_actions(bot, guild)
                 
                 # Daily maintenance
-                if current_time_local.hour == 3: # 3am local time is a good time to run daily maintenance since it's a low traffic hour
+                # 3am local time is a good time to run daily maintenance since it's a low traffic hour
+                if current_time_local.hour == 3 and current_time_local.minute == 0:
                     await daily_leveling_maintenance(bot, guild)
                     await daily_moderation_maintenance(bot, guild)
                 
