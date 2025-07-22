@@ -7,3 +7,9 @@ services:
             - ../generated:/app/generated
         env_file:
             - ../.env
+        networks:
+            - infinibot_network
+
+networks:
+    infinibot_network:
+        driver: bridge
