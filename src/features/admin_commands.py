@@ -867,6 +867,35 @@ async def handle_send_message_to_all_servers_command(message: nextcord.Message):
     )
     await status_message.edit(embeds=[final_embed, embed_to_send])
 
+@admin_command_level_3("run-daily-db-maintenance", "Run the daily database maintenance actions immediately")
+async def handle_run_scheduled_actions_command(message: nextcord.Message, message_parts: list):
+    """Run the daily database maintenance actions immediately."""
+    await message.channel.send("Running Daily Database Maintenance...")
+    logging.info(f"{message.author} executed the daily database maintenance actions immediately.")
+
+    try:
+        # Import the modules dynamically to avoid circular imports
+        from core.db_manager import daily_database_maintenance
+        from core.bot import get_bot
+
+        await daily_database_maintenance(get_bot())
+
+        embed = nextcord.Embed(
+            title="Daily Database Maintenance Executed", 
+            description="The daily database maintenance actions have been executed successfully.", 
+            color=nextcord.Color.green()
+        )
+        await message.channel.send(embed=embed)
+        
+    except Exception as e:
+        embed = nextcord.Embed(
+            title="Error Executing Daily Database Maintenance", 
+            description=f"An error occurred while executing the daily database maintenance actions: {str(e)}", 
+            color=nextcord.Color.red()
+        )
+        await message.channel.send(embed=embed)
+        logging.error(f"Error executing daily database maintenance actions: {e}")
+
 @admin_command_level_3("add-admin", "Add a new admin to the system")
 async def handle_add_admin_command(message: nextcord.Message, message_parts: list):
     """Add a new admin to the system."""
