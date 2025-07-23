@@ -23,13 +23,17 @@ async def run_join_to_create_vc_member_update(member: nextcord.Member, before: n
     if not utils.feature_is_active(guild_id=member.guild.id, feature="join_to_create_vcs"):
         return
     
+    # Exit if there are no join-to-create voice channels configured
+    server = Server(member.guild.id)
+    if not server.join_to_create_vcs.channels:
+        return
+    
     # Exit if there is no channel change
     if before.channel is None and after.channel is None:
         return
     
     # Handle member joining a voice channel
     if after.channel is not None:
-        server = Server(member.guild.id)
         voice_channels = server.join_to_create_vcs.channels
         
         # Check if the channel is a join-to-create channel
@@ -63,9 +67,9 @@ async def run_join_to_create_vc_member_update(member: nextcord.Member, before: n
     if before.channel is not None:
         # Check if the channel is empty and needs deletion
         if not before.channel.members:
-            try:
-                server = Server(member.guild.id)
-                if before.channel.id in server.join_to_create_active_vcs:
+            # Check if the channel is a join-to-create channel
+            if before.channel.id in server.join_to_create_active_vcs:
+                try:
                     # Ensure bot can view the channel before attempting deletion
                     if not before.channel.permissions_for(member.guild.me).view_channel:
                         await utils.send_error_message_to_server_owner(member.guild, "View Channels", channel=f"#{before.channel.name}")
@@ -76,9 +80,7 @@ async def run_join_to_create_vc_member_update(member: nextcord.Member, before: n
 
                     # Note: Deleting the channel automatically triggers the removal from active VCs
 
-            except nextcord.errors.Forbidden:
-                if not before.channel.permissions_for(member.guild.me).manage_channels:
-                    await utils.send_error_message_to_server_owner(member.guild, "Manage Channels", guild_permission=True)
-                if not before.channel.permissions_for(member.guild.me).connect:
-                    await utils.send_error_message_to_server_owner(member.guild, "Connect", guild_permission=True)
-                return
+                except nextcord.errors.Forbidden:
+                    if not (before.channel.permissions_for(member.guild.me).manage_channels and before.channel.permissions_for(member.guild.me).connect):
+                        await utils.send_error_message_to_server_owner(member.guild, "Manage Channels and/or Connect", guild_permission=True)
+                    return

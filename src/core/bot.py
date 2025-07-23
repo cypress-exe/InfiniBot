@@ -513,13 +513,6 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
         
         if not guild.chunked:
             await guild.chunk()
-
-        if not channel.permissions_for(guild.me).read_message_history:
-            await utils.send_error_message_to_server_owner(guild, "View Message History", channel = f"one or more channels (including #{channel.name})")
-            return
-        if not guild.me.guild_permissions.view_audit_log:
-            await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
-            return
         
         # If we have it, grab the original message
         original_message = payload.cached_message

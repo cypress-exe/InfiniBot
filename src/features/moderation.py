@@ -146,15 +146,14 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
     member = after
     nickname = after.nick
 
+    server = Server(guild.id)
+    if not utils.feature_is_active(server = server, feature = "moderation__profanity"): return
+
     if not guild.chunked:
         await guild.chunk()
     
     if nickname == None: return
     if member.guild_permissions.administrator: return
-    
-    server = Server(guild.id)
-    
-    if not utils.feature_is_active(server = server, feature = "moderation__profanity"): return
 
     profane_word = str_is_profane(nickname, server.profanity_moderation_profile.filtered_words)
     if profane_word != None:
@@ -825,7 +824,9 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
         try:
             # Time them out
             await utils.timeout(message.author, server.spam_moderation_profile.timeout_seconds, reason=f"Spam Moderation: User exceeded spam message limit of {server.spam_moderation_profile.score_threshold} points.")
-            
+        except nextcord.errors.Forbidden:
+            await utils.send_error_message_to_server_owner(message.guild, "Timeout Members", guild_permission=True)
+        else:
             # Send them a message (if they want it)
             if Member(message.author.id).direct_messages_enabled:
                 timeout_time_ui_text = humanfriendly.format_timespan(server.spam_moderation_profile.timeout_seconds)
@@ -836,9 +837,7 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
                         color=nextcord.Color.red(),
                     )
                 )
-        except nextcord.errors.Forbidden:
-            await utils.send_error_message_to_server_owner(message.guild, "Timeout Members", guild_permission=True)
-    
+
         return True
 
     return False

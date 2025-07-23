@@ -186,14 +186,9 @@ async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Mes
     if not user: user = edited_message.author
 
     # Get the log channel
-    server = Server(guild.id)
-    if not utils.feature_is_active(server = server, feature = "logging"): return
-    log_channel_id = server.logging_profile.channel
-    if log_channel_id == UNSET_VALUE: return
-    log_channel = guild.get_channel(log_channel_id)
-    if not log_channel: return
-    if not await utils.check_text_channel_permissions(log_channel, True, custom_channel_name = f"Log Message Channel (#{log_channel.name})"): return
-    
+    log_channel = await get_logging_channel(guild)
+    if not log_channel: return # Logging is not enabled for this guild
+
     # Avatar
     avatar_url = user.display_avatar.url
     # Field name, Link name, content
@@ -352,13 +347,8 @@ async def trigger_delete_log(bot: nextcord.Client, channel: nextcord.TextChannel
     """
     
     # Get the log channel
-    server = Server(guild.id)
-    if not utils.feature_is_active(server = server, feature = "logging"): return
-    log_channel_id = server.logging_profile.channel
-    if log_channel_id == UNSET_VALUE: return
-    log_channel = guild.get_channel(log_channel_id)
-    if not log_channel: return
-    if not await utils.check_text_channel_permissions(log_channel, True, custom_channel_name = f"Log Message Channel (#{log_channel.name})"): return
+    log_channel = await get_logging_channel(guild)
+    if not log_channel: return # Logging is not enabled for this guild
     
     # Gather more data and eliminate cases -----------------------------------------------------------------------------------------------------------------------------
     # Get more information about the message with Audit Logs
@@ -476,6 +466,10 @@ async def log_nickname_change(before: nextcord.Member, after: nextcord.Member, e
     :return: None
     :rtype: None
     """
+    if log_channel is None:
+        logging.error("Log channel is None. Cannot log nickname change.")
+        return
+
     user = entry.user
     fresh_audit_log = entry_is_fresh(entry)
 
@@ -526,6 +520,10 @@ async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry
     :rtype: None
     """
     global fresh_role_updates
+
+    if log_channel is None:
+        logging.error("Log channel is None. Cannot log role change.")
+        return
 
     class RoleList:
         """
@@ -713,6 +711,10 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
     :return: None
     :rtype: None
     """
+    if log_channel is None:
+        logging.error("Log channel is None. Cannot log timeout change.")
+        return
+
     user = entry.user
     fresh_audit_log = entry_is_fresh(entry)
             
@@ -811,7 +813,7 @@ async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, ch
             logging.debug(f"Message {message_id}'s author is InfiniBot; skipping delete log.")
             return
 
-    # Do not trigger if this channel is puring
+    # Do not trigger if this channel is purging
     if is_channel_purging(channel.id): 
         logging.debug(f"Channel {channel.id} is purging; skipping delete log.")
         return
@@ -886,21 +888,24 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.Member) -> 
     if guild == None: return
     if guild.unavailable: return
     
+    log_channel = await get_logging_channel(guild)
+    if not log_channel: return # Logging is not enabled for this guild
+
     if not guild.chunked:
         await guild.chunk()
         
     if guild.me == None: return
     
-    if not guild.me.guild_permissions.view_audit_log:
-        await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
+    try:
+        entries = guild.audit_logs(limit=5) # Look 5 entries back in the audit log to find the kick/ban
+        entry = None
+        async for _entry in entries:
+            if _entry.action == AuditLogAction.kick or _entry.action == AuditLogAction.ban:
+                entry = _entry
+                break
+    except nextcord.Forbidden:
+        await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission=True)
         return
-    
-    entries = guild.audit_logs(limit=5) # Look 5 entries back in the audit log to find the kick/ban
-    entry = None
-    async for _entry in entries:
-        if _entry.action == AuditLogAction.kick or _entry.action == AuditLogAction.ban:
-            entry = _entry
-            break
         
     if entry == None: # User chose to leave the server
         return
@@ -912,20 +917,18 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.Member) -> 
     user = entry.user 
     reason = entry.reason
 
-    log_channel = await get_logging_channel(guild)
-    if log_channel is not None:
-        if entry.action == AuditLogAction.kick:
-            embed = nextcord.Embed(title = "Member Kicked", description = f"{user} kicked {member}.", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
-            if reason: embed.add_field(name = "Reason", value = f"{reason}", inline = False)
-            
-        elif entry.action == AuditLogAction.ban:
-            embed = nextcord.Embed(title = "Member Banned", description = f"{user} banned {member}.", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
-            if reason: embed.add_field(name = "Reason", value = f"{reason}", inline = False)
-            
-        else:
-            return
+    if entry.action == AuditLogAction.kick:
+        embed = nextcord.Embed(title = "Member Kicked", description = f"{user} kicked {member}.", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
+        if reason: embed.add_field(name = "Reason", value = f"{reason}", inline = False)
         
-        await log_channel.send(embed = embed)
+    elif entry.action == AuditLogAction.ban:
+        embed = nextcord.Embed(title = "Member Banned", description = f"{user} banned {member}.", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
+        if reason: embed.add_field(name = "Reason", value = f"{reason}", inline = False)
+        
+    else:
+        return
+    
+    await log_channel.send(embed = embed)
 
 
 # Commands
@@ -945,6 +948,7 @@ async def run_set_log_channel_command(interaction: Interaction) -> None:
         server = Server(interaction.guild.id)
 
         server.logging_profile.channel = interaction.channel.id
+        server.logging_profile.active = True
 
         embed = nextcord.Embed(title = "Log Channel Set", description = f"This channel will now be used for logging.\n\n**Notification Settings**\nSet notification settings for this channel to \"Nothing\". InfiniBot will constantly be sending log messages in this channel.", color =  nextcord.Color.green())
         embed.set_footer(text = f"Action done by {interaction.user}")

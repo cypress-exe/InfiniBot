@@ -231,6 +231,11 @@ async def create_reaction_role(interaction: Interaction, title: str, message: st
     if not interaction.guild or interaction.guild == None: 
         logging.error("interaction.guild is equal to None. Unexpected behavior.")
         return
+
+    # Check for Manage Roles permission
+    if not interaction.guild.me.guild_permissions.manage_roles:
+        await interaction.followup.send(embed=MISSING_PERMISSIONS_MESSAGE, ephemeral=True)
+        return
       
     # Decode roles and emojis
     if _type != "Custom":
@@ -308,11 +313,6 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
         await guild.chunk()
 
     if not guild.me:
-        return
-
-    # Can we manage roles? If not, there's not point to any of this
-    if not guild.me.guild_permissions.manage_roles:
-        await utils.send_error_message_to_server_owner(guild, "Manage Roles", guild_permission=True)
         return
 
     # Get the user
