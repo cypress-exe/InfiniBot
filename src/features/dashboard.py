@@ -261,9 +261,9 @@ class Dashboard(CustomView):
                                 filtered_words = server.profanity_moderation_profile.filtered_words
                                 filtered_words.sort()
                                 filtered_words_string = "\n".join(filtered_words)
+
                                 if filtered_words_string == "": filtered_words_string = "You don't have any filtered words yet. Add some!"
-                                else: 
-                                    filtered_words_string = f"Click to Show:\n||```{filtered_words_string}```||"
+                                else: filtered_words_string = f"Click to Show:\n||```\n{filtered_words_string}```||"
                                 
                                 self.embed.add_field(name = "Filtered Words", value = filtered_words_string)
                                 
