@@ -811,7 +811,9 @@ async def send_error_message_to_server_owner(
     # Make sure the member has DMs enabled in their profile settings for InfiniBot
     from config.member import Member # Avoids cyclic import
     member_settings = Member(member.id)
-    if not member_settings.direct_messages_enabled: return
+    if not member_settings.direct_messages_enabled: 
+        logging.info(f"Skipping sending error message to server owner (guild_id: {guild.id}) because the owner has DMs disabled for InfiniBot. ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
+        return
     
     # UI stuff
     if channel != None:
@@ -844,6 +846,7 @@ async def send_error_message_to_server_owner(
         else:
             await dm.send(embed = embed)
     except:
+        logging.info("Failed to send error message to server owner. This is likely because the owner has DMs disabled for InfiniBot. Skipping...")
         pass
     
     # Add to the set of sent messages

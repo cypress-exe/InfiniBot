@@ -839,6 +839,8 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> 
     if not guild.chunked:
         await guild.chunk()
 
+    if not guild.me: return
+
     if not guild.me.guild_permissions.view_audit_log:
         await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission = True)
         return
@@ -883,6 +885,10 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.Member) -> 
     """
     if guild == None: return
     if guild.unavailable: return
+    
+    if not guild.chunked:
+        await guild.chunk()
+        
     if guild.me == None: return
     
     if not guild.me.guild_permissions.view_audit_log:

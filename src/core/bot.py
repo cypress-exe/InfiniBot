@@ -508,7 +508,7 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
             return
 
         guild = channel.guild
-        if guild is None: 
+        if guild is None or not guild.me: 
             return
         
         if not guild.chunked:
