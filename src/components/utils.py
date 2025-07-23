@@ -294,6 +294,7 @@ def apply_generic_replacements(
             # Add member-related replacements
             replacements["@displayname"] = member.display_name
             replacements["@mention"] = member.mention
+            replacements["@member"] = member.mention
             replacements["@username"] = member.name
             replacements["@id"] = str(member.id)
             replacements["@joindate"] = member.joined_at.strftime("%Y-%m-%d") if member.joined_at else "Unknown"

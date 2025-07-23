@@ -18,7 +18,7 @@ Generic replacements can be used in embeds, join/leave messages, role messages, 
 
 ## User Replacements
 
-- `@mention` - Mentions the member (@username)
+- `@mention` or `@member` - Mentions the member (@username)
 - `@username` - Shows the member's username
 - `@displayname` - Shows the member's display name
 - `@id` - Shows the member's Discord ID
