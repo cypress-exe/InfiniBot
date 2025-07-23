@@ -598,13 +598,13 @@ async def get_available_channel(guild: nextcord.Guild) -> nextcord.TextChannel |
     return None
 
 failed_channel_fetches = ExpiringSet(60 * 1)  # 1 minute expiration
-async def get_channel(channel: int, bot: nextcord.Client | None = None, override_failed_cache: bool = False) -> nextcord.TextChannel | None:
+async def get_channel(channel_id: int, bot: nextcord.Client | None = None, override_failed_cache: bool = False) -> nextcord.TextChannel | None:
     """
     |coro|  
     Get a text channel from the bot's cache or fetch it from the API, with failed fetch caching.
 
     Args:
-        channel: The ID of the channel to find.
+        channel_id: The ID of the channel to find.
         bot: Optionally, the bot instance to use for fetching the channel. If None, will get the bot instance from the global context.
         override_failed_cache: If True, will override the failed channel fetch cache and attempt to fetch the channel again.
 
@@ -617,20 +617,20 @@ async def get_channel(channel: int, bot: nextcord.Client | None = None, override
         from src.core.bot import get_bot
         bot = get_bot()
 
-    if channel_obj := bot.get_channel(channel):
+    if channel_obj := bot.get_channel(channel_id):
         return channel_obj
 
-    if (not override_failed_cache) and (channel in failed_channel_fetches):
-        logging.info(f"Channel with ID {channel} was not found recently. Skipping fetch.")
+    if (not override_failed_cache) and (channel_id in failed_channel_fetches):
+        logging.info(f"Channel with ID {channel_id} was not found recently. Skipping fetch.")
         return None
 
     try:
-        return await bot.fetch_channel(channel)
+        return await bot.fetch_channel(channel_id)
     except (nextcord.Forbidden, nextcord.NotFound):
-        logging.debug(f"Channel with ID {channel} was not found.")
-        if channel not in failed_channel_fetches:
-            logging.info(f"Adding failed channel fetch for channel {channel}.")
-            failed_channel_fetches.add(channel)
+        logging.debug(f"Channel with ID {channel_id} was not found.")
+        if channel_id not in failed_channel_fetches:
+            logging.info(f"Adding failed channel fetch for channel {channel_id}.")
+            failed_channel_fetches.add(channel_id)
         return None
 
 failed_member_fetches = ExpiringSet(60 * 1)  # 1 minute expiration

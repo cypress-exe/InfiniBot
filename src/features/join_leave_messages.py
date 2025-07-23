@@ -24,7 +24,7 @@ async def trigger_join_message(member: nextcord.Member) -> None:
     if utils.feature_is_active(server = server, feature = "join_messages"): # Check if join messages are enabled
         if server.join_message_profile.channel != UNSET_VALUE: # Find join channel
             channel_id = server.join_message_profile.channel
-            channel = member.guild.get_channel(channel_id) or await member.guild.fetch_channel(channel_id)
+            channel = await utils.get_channel(channel_id)
             if channel == None:
                 await utils.send_error_message_to_server_owner(
                     member.guild,
@@ -82,7 +82,7 @@ async def trigger_leave_message(member: nextcord.Member) -> None:
     if utils.feature_is_active(server = server, feature = "leave_messages"): # Check if leave messages are enabled
         if server.leave_message_profile.channel != UNSET_VALUE: # Find join channel
             channel_id = server.leave_message_profile.channel
-            channel = member.guild.get_channel(channel_id) or await member.guild.fetch_channel(channel_id)
+            channel = await utils.get_channel(channel_id)
             if channel == None:
                 await utils.send_error_message_to_server_owner(
                     member.guild,
