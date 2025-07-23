@@ -304,6 +304,9 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
             guild = _guild
     if guild == None: return
 
+    if not guild.chunked:
+        await guild.chunk()
+
     # Can we manage roles? If not, there's not point to any of this
     if not guild.me.guild_permissions.manage_roles:
         await utils.send_error_message_to_server_owner(guild, "Manage Roles", guild_permission=True)

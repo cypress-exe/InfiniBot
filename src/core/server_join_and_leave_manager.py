@@ -118,6 +118,10 @@ async def handle_server_join(guild: nextcord.Guild) -> None:
     # Send message to channel or fallback to DM
     await _send_welcome_message(guild, embeds)
 
+    # Chunk the guild to ensure all members are loaded
+    if not guild.chunked:
+        await guild.chunk()
+
 def _create_welcome_embed(infinibot_mod_mention: str, infinibot_role_mention: str) -> nextcord.Embed:
     """Create the main welcome embed with setup instructions."""
     configs = get_configs()

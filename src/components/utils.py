@@ -593,7 +593,7 @@ async def get_available_channel(guild: nextcord.Guild) -> nextcord.TextChannel |
             return channel
     
     # No suitable channel found, notify server owner
-    await send_error_message_to_server_owner(guild, "Send Messages")
+    # await send_error_message_to_server_owner(guild, "Send Messages")
     return None
 
 failed_channel_fetches = ExpiringSet(60 * 1)  # 1 minute expiration

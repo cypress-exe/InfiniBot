@@ -511,6 +511,9 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
         if guild is None: 
             return
         
+        if not guild.chunked:
+            await guild.chunk()
+
         if not channel.permissions_for(guild.me).read_message_history:
             await utils.send_error_message_to_server_owner(guild, "View Message History", channel = f"one or more channels (including #{channel.name})")
             return
@@ -583,6 +586,9 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
             channel = await utils.get_channel(payload.channel_id, bot=bot)
             if channel is None: 
                 return
+
+            if not guild.chunked:
+                await guild.chunk()
 
             message = payload.cached_message
 

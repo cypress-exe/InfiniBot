@@ -145,6 +145,9 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
     
     member = after
     nickname = after.nick
+
+    if not guild.chunked:
+        await guild.chunk()
     
     if nickname == None: return
     if member.guild_permissions.administrator: return
