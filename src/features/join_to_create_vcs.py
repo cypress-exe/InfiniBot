@@ -1,3 +1,4 @@
+import logging
 import nextcord
 
 from components import utils
@@ -77,6 +78,8 @@ async def run_join_to_create_vc_member_update(member: nextcord.Member, before: n
                     
                     # Delete the voice channel
                     await before.channel.delete()
+
+                    logging.info("Deleted join-to-create voice channel: %s", before.channel.name)
 
                     # Note: Deleting the channel automatically triggers the removal from active VCs
 
