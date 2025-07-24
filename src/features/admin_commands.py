@@ -437,6 +437,7 @@ async def handle_info_command(message: nextcord.Message, message_parts: list):
     # Find guilds by server ID or owner ID
     guilds: list[nextcord.Guild] = []
     for guild in bot.guilds:
+        if guild is None: continue  # Skip if guild is None
         if guild.id == target_id or guild.owner.id == target_id:
             guilds.append(guild)
     
