@@ -155,7 +155,9 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
     if nickname == None: return
     if member.guild_permissions.administrator: return
 
-    profane_word = str_is_profane(nickname, server.profanity_moderation_profile.filtered_words)
+    # Remove URLs from nickname before checking for profanity
+    cleaned_nickname = remove_urls_from_text(nickname)
+    profane_word = str_is_profane(cleaned_nickname, server.profanity_moderation_profile.filtered_words)
     if profane_word != None:
         # Get the audit log
         if not guild.me.guild_permissions.view_audit_log:
@@ -244,6 +246,26 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
             embed =  nextcord.Embed(title = "Profanity Detected", description = description, color = nextcord.Color.dark_red())
             embed.set_footer(text = f"Member ID: {str(member.id)}")
             await admin_channel.send(embed = embed)
+
+def remove_urls_from_text(text: str) -> str:
+    """
+    Removes URLs from text to prevent false positives in profanity detection.
+    
+    :param text: The text to remove URLs from.
+    :type text: str
+    :return: The text with URLs removed.
+    :rtype: str
+    """
+    # Comprehensive URL pattern that matches http/https URLs
+    url_pattern = r'https?://[^\s<>"{}|\\^`\[\]]+'
+    
+    # Remove URLs and replace with a space to maintain word boundaries
+    cleaned_text = re.sub(url_pattern, ' ', text)
+    
+    # Clean up multiple spaces
+    cleaned_text = re.sub(r'\s+', ' ', cleaned_text).strip()
+    
+    return cleaned_text
 
 def str_is_profane(message: str, database: list[str]) -> str | None:
     """
@@ -470,13 +492,13 @@ async def check_and_trigger_profanity_moderation_for_message(
         logging.debug(f"Skipped profanity check for admin: {message.author}. Guild ID: {message.guild.id}")
         return False
         
-    # Message Content
-    msg = message.content.lower()
+    # Message Content - remove URLs to prevent false positives
+    msg = remove_urls_from_text(message.content).lower()
 
-    # Ignore if the message is nothing, or if it is actually just a slash command
-    if len(msg) == 0 or msg[0] == "/":
+    # Ignore if the message is nothing
+    if len(msg.strip()) == 0:
         return False
-    
+        
     # Check for profanity
     profane_word = str_is_profane(msg, server.profanity_moderation_profile.filtered_words)
     if profane_word is None:
@@ -829,14 +851,17 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
         else:
             # Send them a message (if they want it)
             if Member(message.author.id).direct_messages_enabled:
-                timeout_time_ui_text = humanfriendly.format_timespan(server.spam_moderation_profile.timeout_seconds)
-                await message.author.send(
-                    embed=nextcord.Embed(
-                        title="Spam Timeout",
-                        description=f"You were flagged for spamming in \"{message.guild.name}\". You have been timed out for {timeout_time_ui_text}.\n\nPlease contact the admins if you think this is a mistake.",
-                        color=nextcord.Color.red(),
+                try:
+                    timeout_time_ui_text = humanfriendly.format_timespan(server.spam_moderation_profile.timeout_seconds)
+                    await message.author.send(
+                        embed=nextcord.Embed(
+                            title="Spam Timeout",
+                            description=f"You were flagged for spamming in \"{message.guild.name}\". You have been timed out for {timeout_time_ui_text}.\n\nPlease contact the admins if you think this is a mistake.",
+                            color=nextcord.Color.red(),
+                        )
                     )
-                )
+                except nextcord.Forbidden:
+                    pass
 
         return True
 
@@ -905,7 +930,7 @@ async def daily_moderation_maintenance(bot: nextcord.Client, guild: nextcord.Gui
     :return: None
     :rtype: None
     """
-    logging.info(f"Running midnight action for moderation in guild: {guild.name})({guild.id})")
+    logging.debug(f"Running midnight action for moderation in guild: {guild.name})({guild.id})")
     if get_global_kill_status()["moderation__profanity"]:
         logging.warning("SKIPPING profanity moderation strike update because of global kill status.")
         return

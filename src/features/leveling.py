@@ -200,7 +200,7 @@ async def daily_leveling_maintenance(bot: nextcord.Client, guild: nextcord.Guild
     :return: None
     :rtype: None
     """
-    logging.info(f"Running midnight action for leveling in guild: {guild.name})({guild.id})")
+    logging.debug(f"Running midnight action for leveling in guild: {guild.name})({guild.id})")
     if get_global_kill_status()["leveling"]:
         logging.warning("Skipping leveling because of global kill status.")
         return
