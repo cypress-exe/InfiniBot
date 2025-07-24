@@ -504,6 +504,8 @@ async def check_and_trigger_profanity_moderation_for_message(
     if profane_word is None:
         return False
     
+    logging.info(f"Profanity detected in message from {message.author} in {message.guild.name}: {profane_word}. Message: {message.content}")
+    
     # Grant a strike (and maybe timeout)
     action_successful = await grant_and_punish_strike(bot, message.guild.id, message.author, 1)
 
