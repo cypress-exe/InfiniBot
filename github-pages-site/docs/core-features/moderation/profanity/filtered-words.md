@@ -19,7 +19,13 @@ The filter system is highly customizable, allowing you to add server-specific wo
 
 ## Pattern Matching Options
 
-InfiniBot offers sophisticated word filtering with several pattern matching rules:
+InfiniBot offers sophisticated word filtering with several pattern matching rules. To edit your server's filtered words:
+1. Access via: `/dashboard → Moderation → Profanity → Filtered Words`
+2. View the current list of filtered words
+3. Configure filtered words:
+   - Add new words to the filter
+   - Remove words from the filter
+   - Use the Test button to verify your patterns
 
 ### 1. Boundary Control with Quotes
 

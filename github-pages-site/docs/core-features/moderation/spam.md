@@ -44,6 +44,12 @@ InfiniBot calculates a spam score based on:
 
 When a user exceeds the score threshold, they receive a timeout based on your configuration.
 
+## How to Disable Spam Moderation
+
+If spam moderation doesn't suit your server's needs, you can disable it:
+1. Access via: `/dashboard → Moderation → Spam`
+2. Click the **Disable Spam Moderation** button
+
 ---
 
 **Related Pages:**

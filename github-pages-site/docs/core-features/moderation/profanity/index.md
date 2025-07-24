@@ -68,6 +68,15 @@ From the Admin Channel:
 Users can check their own strikes with `/view my-strikes`  
 Moderators can check any member's strikes with `/view member-strikes @member`
 
+## How to Disable Profanity Moderation
+
+If profanity moderation doesn't suit your server's needs, you can disable it:
+1. Access via: `/dashboard → Moderation → Profanity`
+2. Click the **Disable Profanity Moderation** button
+
+{: .titleless-blue }
+Alternatively, you can fine-tune InfiniBot's [Filtered Words]({% link docs/core-features/moderation/profanity/filtered-words.md %}) to better suit your community's language standards without disabling the entire feature.
+
 ---
 
 **Related Pages:**

@@ -543,6 +543,8 @@ async def check_and_trigger_profanity_moderation_for_message(
                     You are now at strike {current_strikes} / {server.profanity_moderation_profile.max_strikes}.
                     """
 
+                description += "\nYou're getting this message because your server has enabled Profanity Moderation for messages. If you believe this was a mistake, please contact a server admin, and they can [disable it](https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/profanity/#how-to-disable-profanity-moderation)."
+
                 description = utils.standardize_str_indention(description)
                 embed = nextcord.Embed(title="Profanity Log", description=description, color=nextcord.Color.red(), timestamp=datetime.datetime.now())
                 embed.set_footer(text="To opt out of dm notifications, use /opt_out_of_dms")
@@ -845,6 +847,7 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
 
     # Punish the member (if needed)
     if spam_score >= server.spam_moderation_profile.score_threshold:
+        logging.info(f"User {message.author.id} exceeded spam score threshold in server {server.server_id}. Score: {spam_score} (Threshold: {server.spam_moderation_profile.score_threshold})")
         try:
             # Time them out
             await utils.timeout(message.author, server.spam_moderation_profile.timeout_seconds, reason=f"Spam Moderation: User exceeded spam message limit of {server.spam_moderation_profile.score_threshold} points.")
@@ -858,7 +861,11 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
                     await message.author.send(
                         embed=nextcord.Embed(
                             title="Spam Timeout",
-                            description=f"You were flagged for spamming in \"{message.guild.name}\". You have been timed out for {timeout_time_ui_text}.\n\nPlease contact the admins if you think this is a mistake.",
+                            description=utils.standardize_str_indention(f"""
+                            You were flagged for spamming in \"{message.guild.name}\". You have been timed out for {timeout_time_ui_text}.\n\nPlease contact the admins if you think this is a mistake.
+
+                            You're getting this message because your server has enabled Spam Moderation for messages. If you believe this was a mistake, please contact a server admin, and they can [disable it](https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/spam/#how-to-disable-spam-moderation).
+                            """),
                             color=nextcord.Color.red(),
                         )
                     )
