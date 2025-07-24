@@ -834,21 +834,21 @@ async def send_error_message_to_server_owner(
 
     # Skip if the bot is not fully loaded
     if not get_bot_load_status():
-        logging.warning("Bot is not ready. Skipping send_error_message_to_server_owner.", stack_info=True)
+        logging.warning("Bot is not ready. Skipping send_error_message_to_server_owner.")
         return
     
     if not guild:
-        logging.error("No guild found for send_error_message_to_server_owner. Exiting... DID NOT WARN OWNER!!!", stack_info=True)
+        logging.error("No guild found for send_error_message_to_server_owner. Exiting... DID NOT WARN OWNER!!!")
         return
     
     if (guild.id, permission, message, administrator, channel, guild_permission) in messages_sent:
-        logging.info(f"Skipping sending error message to server owner (guild_id: {guild.id}) because it was already sent recently. ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})", stack_info=True)
+        logging.info(f"Skipping sending error message to server owner (guild_id: {guild.id}) because it was already sent recently. ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
         return
     
     member = guild.owner
     if member == None: return
 
-    logging.info(f"Sending error message to server owner (guild_id: {guild.id}). ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})", stack_info=True)
+    logging.info(f"Sending error message to server owner (guild_id: {guild.id}). ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
 
     # Make sure the member has DMs enabled in their profile settings for InfiniBot
     from config.member import Member # Avoids cyclic import
