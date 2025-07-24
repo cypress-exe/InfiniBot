@@ -614,7 +614,7 @@ async def get_channel(channel_id: int, bot: nextcord.Client | None = None, overr
     global failed_channel_fetches
 
     if not bot:
-        from src.core.bot import get_bot
+        from core.bot import get_bot
         bot = get_bot()
 
     if channel_obj := bot.get_channel(channel_id):
