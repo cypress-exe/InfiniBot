@@ -547,8 +547,8 @@ async def check_and_trigger_profanity_moderation_for_message(
                 embed = nextcord.Embed(title="Profanity Log", description=description, color=nextcord.Color.red(), timestamp=datetime.datetime.now())
                 embed.set_footer(text="To opt out of dm notifications, use /opt_out_of_dms")
                 await message.author.send(embed=embed)
-                    
-            except nextcord.Forbidden:
+
+            except (nextcord.Forbidden, nextcord.HTTPException):
                 pass # The user has dms turned off. It's not a big deal, they just don't get notified.
             except Exception as e:
                 logging.error(f"Error sending profanity DM to {message.author}: {e}", exc_info=True)
