@@ -961,11 +961,7 @@ async def daily_moderation_maintenance(bot: nextcord.Client, guild: nextcord.Gui
                     server.moderation_strikes.delete(member_strike_info.member_id) # Cleanup
                     continue
 
-                # Convert string to UTC-aware datetime
-                strike_date = datetime.datetime.strptime(
-                    member_strike_info.last_strike, 
-                    "%Y-%m-%d %H:%M:%S.%f"
-                ).replace(tzinfo=datetime.timezone.utc)
+                strike_date = utils.parse_datetime_string(member_strike_info.last_strike)
 
                 # Determine if within the window for strike removal
                 if (strike_date + datetime.timedelta(days = server.profanity_moderation_profile.strike_expire_days) > datetime.datetime.now(datetime.timezone.utc)): 
@@ -976,7 +972,7 @@ async def daily_moderation_maintenance(bot: nextcord.Client, guild: nextcord.Gui
                 _strikes -= 1
                 if _strikes > 0:
                     # Update the member's record
-                    server.moderation_strikes.edit(member_strike_info.member_id, strikes = _strikes, last_strike = datetime.datetime.now())
+                    server.moderation_strikes.edit(member_strike_info.member_id, strikes = _strikes, last_strike = datetime.datetime.now(datetime.timezone.utc))
                     logging.info(f"Member's strike has been removed. Server: {guild.name} ({guild.id})")
                 else:
                     # Remove the member's record

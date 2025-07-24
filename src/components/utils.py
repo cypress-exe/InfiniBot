@@ -203,6 +203,48 @@ def standardize_str_indention(string: str) -> str:
     # Join the lines back into a string
     return('\n'.join(lines))
 
+def parse_datetime_string(date_string: str) -> datetime.datetime:
+    """
+    Parses a datetime string into a timezone-aware UTC datetime object.
+    This function attempts to parse the input `date_string` using a list of predefined
+    datetime formats. If the string does not contain timezone information, it assumes
+    the datetime is in UTC. If the string contains a timezone, it converts the datetime
+    to UTC.  
+    
+    Supported formats:  
+        - "%Y-%m-%d %H:%M:%S.%f"          (e.g., "2023-01-01 12:34:56.789123")
+        - "%Y-%m-%d %H:%M:%S"             (e.g., "2023-01-01 12:34:56")
+        - "%Y-%m-%d %H:%M:%S%z"           (e.g., "2023-01-01 12:34:56+0000")
+        - "%Y-%m-%d %H:%M:%S.%f%z"        (e.g., "2023-01-01 12:34:56.789123+0000")
+    Args:
+        date_string (str): The datetime string to parse.
+    Returns:
+        datetime.datetime: A timezone-aware datetime object in UTC.
+    Raises:
+        ValueError: If the input string cannot be parsed using any of the supported formats.
+    """
+    # List of possible datetime formats
+    formats = [
+        "%Y-%m-%d %H:%M:%S.%f",          # Original format with microseconds
+        "%Y-%m-%d %H:%M:%S",             # Without microseconds
+        "%Y-%m-%d %H:%M:%S%z",           # With timezone, no microseconds
+        "%Y-%m-%d %H:%M:%S.%f%z",        # With timezone and microseconds
+    ]
+    
+    for fmt in formats:
+        try:
+            parsed_dt = datetime.datetime.strptime(date_string, fmt)
+            # If the datetime doesn't have timezone info, add UTC
+            if parsed_dt.tzinfo is None:
+                parsed_dt = parsed_dt.replace(tzinfo=datetime.timezone.utc)
+            # Convert to UTC if it has different timezone
+            return parsed_dt.astimezone(datetime.timezone.utc)
+        except ValueError:
+            continue
+    
+    # If all formats fail, raise the original error with more context
+    raise ValueError(f"Unable to parse datetime string: '{date_string}' with any known format")
+
 def get_discord_color_from_string(color: str) -> nextcord.Color:
     """
     Returns a nextcord.Color object based on the given string. If the string is empty or None, returns the default color.
