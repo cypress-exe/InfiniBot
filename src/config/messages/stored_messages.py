@@ -142,7 +142,7 @@ def remove_db_messages_from_channel(channel_id: int):
     """
     query = "DELETE FROM messages WHERE channel_id = :channel_id"
     get_database().execute_query(query, {'channel_id': channel_id}, commit=True)
-    logging.info(f"Removed all messages from channel with ID {channel_id} from the database.")
+    logging.debug(f"Removed all messages from channel with ID {channel_id} from the database.")
 
 
 def cleanup_db(max_messages_to_keep_per_guild=None, max_days_to_keep=None):
