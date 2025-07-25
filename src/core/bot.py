@@ -725,12 +725,6 @@ async def on_guild_channel_delete(channel: nextcord.abc.GuildChannel) -> None:
     :return: None
     :rtype: None
     """
-
-    # Skip if bot not loaded
-    if not global_settings.get_bot_load_status():
-        logging.warning("Bot is not loaded, skipping channel deletion handling.")
-        return
-    
     logging.info(f"Channel {channel.name} (ID: {channel.id}) was deleted in guild {channel.guild.name} (ID: {channel.guild.id}).")
 
     cached_messages.remove_cached_messages_from_channel(channel.id)
