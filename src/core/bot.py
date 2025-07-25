@@ -69,7 +69,18 @@ bot = commands.AutoShardedBot(intents = intents,
 
 def get_bot() -> commands.AutoShardedBot: return bot
 
-async def all_shards_loaded():
+connected_shards = set()
+
+@bot.event
+async def on_shard_connect(shard_id: int):
+    connected_shards.add(shard_id)
+    logging.info(f"Shard {shard_id} connected.")
+
+    if len(connected_shards) == bot.shard_count:
+        logging.info("All shards are connected.")
+        await post_shards_connected()
+
+async def post_shards_connected():
     """
     Called once all shards are started (not necessarily ready with all info cached)
 
@@ -82,12 +93,6 @@ async def all_shards_loaded():
 
     # Update bot ID
     global_settings.update_bot_id(bot)
-
-    # Initialize the bot's emoji cache
-    await cache_application_emojis(bot)
-
-    # Initialize the bot's view cache
-    init_views(bot)
 
     # Start API connections
     start_all_api_connections()
@@ -116,6 +121,12 @@ async def on_ready() -> None: # Bot load
     global_settings.set_bot_load_status(True)
     start_scheduler()
     logging.info(f"Core systems initialized in {time.time() - init_start:.2f}s")
+
+    # Initialize the bot's view cache
+    init_views(bot)
+
+    # Initialize the bot's emoji cache
+    await cache_application_emojis(bot)
 
     # Print detailed guild info only in debug mode
     if logging.getLevelName(logging.getLogger().getEffectiveLevel()) == "DEBUG":
@@ -175,8 +186,7 @@ async def on_shard_ready(shard_id: int) -> None:
 
         # Check if all shards are loaded
         if len(shards_loaded) == bot.shard_count:
-            logging.info(f"All {bot.shard_count} shards are loaded. Running post-shard initialization code...")
-            await all_shards_loaded()
+            logging.info(f"All {bot.shard_count} shards are loaded.")
 
 @bot.event
 async def on_close() -> None:

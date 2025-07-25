@@ -381,21 +381,33 @@ def apply_generic_replacements(
             "".join(field.name + field.value for field in embed.fields)
         )
         if "#" in embed_content:
-            # Replace channel names with mentions
-            for channel in guild.text_channels:
-                channel_placeholder = f"#{channel.name}"
-                channel_mention = channel.mention
-                
-                if embed.title:
-                    embed.title = embed.title.replace(channel_placeholder, channel_mention)
-                if embed.description:
-                    embed.description = embed.description.replace(channel_placeholder, channel_mention)
-                if embed.footer and embed.footer.text:
-                    embed.footer.text = embed.footer.text.replace(channel_placeholder, channel_mention)
-                
-                for field in embed.fields:
-                    field.name = field.name.replace(channel_placeholder, channel_mention)
-                    field.value = field.value.replace(channel_placeholder, channel_mention)
+            # Replace channel names with mentions for all mentionable channels
+            # Only include channels that can actually be mentioned
+            all_channels = []
+            all_channels.extend(guild.text_channels)  # Text channels can be mentioned
+            # Check if the guild has forum_channels attribute (newer Discord feature)
+            if hasattr(guild, 'forum_channels'):
+                all_channels.extend(guild.forum_channels)  # Forum channels can be mentioned
+            
+            # Note: Voice channels and stage channels typically cannot be mentioned in the same way
+            # as text channels, so we exclude them from channel replacement
+            
+            for channel in all_channels:
+                # Ensure the channel has a mention attribute before using it
+                if hasattr(channel, 'mention') and hasattr(channel, 'name'):
+                    channel_placeholder = f"#{channel.name}"
+                    channel_mention = channel.mention
+                    
+                    if embed.title:
+                        embed.title = embed.title.replace(channel_placeholder, channel_mention)
+                    if embed.description:
+                        embed.description = embed.description.replace(channel_placeholder, channel_mention)
+                    if embed.footer and embed.footer.text:
+                        embed.footer.text = embed.footer.text.replace(channel_placeholder, channel_mention)
+                    
+                    for field in embed.fields:
+                        field.name = field.name.replace(channel_placeholder, channel_mention)
+                        field.value = field.value.replace(channel_placeholder, channel_mention)
     
     return embed
 
@@ -572,14 +584,14 @@ def get_infinibot_missing_permissions(guild: nextcord.Guild) -> tuple[list[str],
         
         this_channels_missing_perms = []
 
-        if channel.type == nextcord.ChannelType.voice:
+        if channel.type in (nextcord.ChannelType.voice, nextcord.ChannelType.stage_voice):
             # For voice channels, check both Voice Channel and Text Channel permissions
             voice_perms = required_permissions_dict.get("Voice Channel Permissions", {})
             text_perms = required_permissions_dict.get("Text Channel Permissions", {})
             # Merge the two dictionaries
             this_channels_required_permissions_dict = {**text_perms, **voice_perms}
         else:
-            # For text channels, just check Text Channel permissions
+            # For text channels and other types, just check Text Channel permissions
             this_channels_required_permissions_dict = required_permissions_dict.get("Text Channel Permissions", {})
 
         # Check if the channel has the permission
@@ -590,7 +602,14 @@ def get_infinibot_missing_permissions(guild: nextcord.Guild) -> tuple[list[str],
                 for frontend_permission in frontend_permissions:
                     if frontend_permission not in this_channels_missing_perms:
                         this_channels_missing_perms.append(frontend_permission)
-                logging.debug(f"Missing channel permission: {permission} in channel #{channel.name}")
+                # Use fallback tree: mention -> name -> ID for channel identification
+                if hasattr(channel, 'mention'):
+                    channel_identifier = channel.mention
+                elif hasattr(channel, 'name'):
+                    channel_identifier = f"#{channel.name}"
+                else:
+                    channel_identifier = f"Channel ID {channel.id}"
+                logging.debug(f"Missing channel permission: {permission} in channel {channel_identifier}")
 
         if len(this_channels_missing_perms) > 0:
             # If there are any missing permissions for this channel, add it to the list of missing channel permissions
@@ -618,6 +637,22 @@ async def get_available_channel(guild: nextcord.Guild) -> nextcord.TextChannel |
     if guild.system_channel:
         if await check_text_channel_permissions(guild.system_channel, False):
             return guild.system_channel
+        
+    # Make a function to check if a text channel is suitable for InfiniBot
+    async def suitable_text_channel(channel: nextcord.TextChannel) -> bool:
+        """
+        Check if a text channel is suitable for InfiniBot to send messages and embeds.
+        """
+        if not isinstance(channel, nextcord.TextChannel):
+            return False
+        
+        # Check if the channel is not a news channel or a private thread
+        if channel.type in (nextcord.ChannelType.news, nextcord.ChannelType.private_thread):
+            return False
+        
+        # Check if the bot has permission to send messages and embeds in the channel
+        permissions = channel.permissions_for(guild.me)
+        return permissions.send_messages and permissions.embed_links
     
     # Try common channel names in order of preference
     preferred_channel_names = ['general', 'welcome', 'greetings']
@@ -627,23 +662,22 @@ async def get_available_channel(guild: nextcord.Guild) -> nextcord.TextChannel |
             lambda x: x.name == channel_name, 
             guild.text_channels
         )
-        if channel and await check_text_channel_permissions(channel, False):
+        if channel and await suitable_text_channel(channel):
             return channel
     
     # Try any available text channel
     for channel in guild.text_channels:
-        if await check_text_channel_permissions(channel, False):
+        if await suitable_text_channel(channel):
             return channel
     
-    # No suitable channel found, notify server owner
-    # await send_error_message_to_server_owner(guild, "Send Messages")
     return None
 
 failed_channel_fetches = ExpiringSet(60 * 1)  # 1 minute expiration
-async def get_channel(channel_id: int, bot: nextcord.Client | None = None, override_failed_cache: bool = False) -> nextcord.TextChannel | None:
+async def get_channel(channel_id: int, bot: nextcord.Client | None = None, override_failed_cache: bool = False) -> nextcord.abc.GuildChannel | None:
     """
     |coro|  
-    Get a text channel from the bot's cache or fetch it from the API, with failed fetch caching.
+    Get a channel from the bot's cache or fetch it from the API, with failed fetch caching.
+    Returns any type of channel (text, voice, stage, forum, etc.).
 
     Args:
         channel_id: The ID of the channel to find.
@@ -651,7 +685,7 @@ async def get_channel(channel_id: int, bot: nextcord.Client | None = None, overr
         override_failed_cache: If True, will override the failed channel fetch cache and attempt to fetch the channel again.
 
     Returns:
-        The text channel if found, otherwise None.
+        The channel if found, otherwise None.
     """
     global failed_channel_fetches
 
@@ -716,16 +750,16 @@ async def check_and_warn_if_channel_is_text_channel(interaction: Interaction) ->
     """
     |coro|
     
-    Checks if the channel in which the interaction was used is a text channel.
-    Notifies the user if it is not a text channel.
+    Checks if the channel in which the interaction was used is a regular text channel.
+    Notifies the user if it is not a regular text channel.
 
     :param interaction: The interaction object from the Discord event.
     :type interaction: nextcord.Interaction
-    :return: True if the channel is a text channel, False otherwise.
+    :return: True if the channel is a regular text channel, False otherwise.
     :rtype: bool
     """
     
-    if type(interaction.channel) == nextcord.TextChannel:
+    if isinstance(interaction.channel, nextcord.TextChannel):
         return True
     else:
         await interaction.response.send_message(embed = nextcord.Embed(title = "You can't use that here!", description = "You can only use this command in text channels.", color = nextcord.Color.red()), ephemeral=True)
@@ -759,18 +793,20 @@ async def user_has_config_permissions(interaction: Interaction, notify: bool = T
     if notify: await interaction.response.send_message(embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.\n\nGo to our [docs](https://cypress-exe.github.io/InfiniBot/docs/getting-started/install-and-setup/#the-infinibot-mod-role) for more information.", color = nextcord.Color.red()), ephemeral = True)
     return False
 
-async def check_text_channel_permissions(channel: nextcord.TextChannel, auto_warn: bool, custom_channel_name: str = None) -> bool:
+async def check_text_channel_permissions(channel: nextcord.abc.GuildChannel, auto_warn: bool, custom_channel_name: str = None) -> bool:
     """
     |coro|  
-    Ensure that InfiniBot has permissions to send messages and embeds in a channel.
+    Ensure that InfiniBot has permissions to send messages in a channel.
+    Works with text channels, threads, forum channels, and other text-based channels.
+    Returns False for non-text channel types.
 
     :param channel: The channel to check.
-    :type channel: nextcord.TextChannel
+    :type channel: nextcord.abc.GuildChannel
     :param auto_warn: Whether or not to warn the guild's owner if InfiniBot does NOT have the required permissions.
     :type auto_warn: bool
     :param custom_channel_name: If warning the owner, specifies a specific name for the channel instead of the default channel name. Defaults to None.
     :type custom_channel_name: str, optional
-    :return: Whether or not InfiniBot has permissions to send messages and embeds in the channel.
+    :return: Whether or not InfiniBot has permissions to send messages in the channel.
     :rtype: bool
     """    
     
@@ -783,20 +819,46 @@ async def check_text_channel_permissions(channel: nextcord.TextChannel, auto_war
     if channel.guild.me == None:
         return False
     
-    channel_name = (custom_channel_name if custom_channel_name else channel.name)
+    # Handle different channel types that support text input
+    if isinstance(channel, nextcord.Thread):
+        # Check parent channel permissions for threads
+        return await check_text_channel_permissions(channel.parent, auto_warn, custom_channel_name)
+    elif isinstance(channel, nextcord.TextChannel):
+        # Regular text channels
+        pass
+    elif isinstance(channel, nextcord.ForumChannel):
+        # Forum channels
+        pass
+    elif hasattr(channel, 'type'):
+        # Check for other text-based channel types by their type
+        if channel.type in (nextcord.ChannelType.news, nextcord.ChannelType.news_thread, # Announcement channels
+                           nextcord.ChannelType.public_thread, nextcord.ChannelType.private_thread):
+            pass
+        else:
+            # Not a text-based channel type
+            return False
+    else:
+        # Unknown channel type or no text support
+        return False
     
-    if channel.permissions_for(channel.guild.me).view_channel:
-        if channel.permissions_for(channel.guild.me).send_messages:
-            if channel.permissions_for(channel.guild.me).embed_links:
+    channel_name = (custom_channel_name if custom_channel_name else getattr(channel, 'name', f'Channel ID {channel.id}'))
+    
+    # Check permissions - some channel types might not have all permission methods
+    try:
+        channel_perms = channel.permissions_for(channel.guild.me)
+        
+        if hasattr(channel_perms, 'view_channel') and channel_perms.view_channel:
+            if hasattr(channel_perms, 'send_messages') and channel_perms.send_messages:
                 return True
             elif auto_warn:
-                await send_error_message_to_server_owner(channel.guild, "Embed Links", channel = channel_name, administrator = False)
+                await send_error_message_to_server_owner(channel.guild, "Send Messages", channel = channel_name, administrator = False)
         elif auto_warn:
-            await send_error_message_to_server_owner(channel.guild, "Send Messages and/or Embed Links", channel = channel_name, administrator = False)
-    elif auto_warn:
-        # Commenting this out for now, because it's been sending a lot of false positives. Maybe uncomment later?
-        # await send_error_message_to_server_owner(channel.guild, "View Channels", channel = channel_name, administrator = False)
-        pass
+            # Commenting this out for now, because it's been sending a lot of false positives. Maybe uncomment later?
+            # await send_error_message_to_server_owner(channel.guild, "View Channels", channel = channel_name, administrator = False)
+            pass
+    except AttributeError:
+        # Channel type doesn't support permission checking
+        return False
 
     return False
 

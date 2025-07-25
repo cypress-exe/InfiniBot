@@ -360,6 +360,7 @@ def update_bot_id(bot: nextcord.Client):
     """
     global bot_id
     bot_id = bot.application_id
+    logging.info(f"Bot ID updated to {bot_id}")
 
 
 def get_environment_type() -> str:
