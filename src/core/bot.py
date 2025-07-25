@@ -46,6 +46,7 @@ from features import (
 )
 
 from features.options_menu import entrypoint_ui
+import humanfriendly
 
 startup_time = None
 
@@ -117,10 +118,8 @@ async def on_ready() -> None: # Bot load
     logging.info(f"Bot is running with {bot.shard_count} shards across {len(bot.guilds)} guilds.")
 
     # Initialize core systems
-    init_start = time.time()
     global_settings.set_bot_load_status(True)
     start_scheduler()
-    logging.info(f"Core systems initialized in {time.time() - init_start:.2f}s")
 
     # Initialize the bot's view cache
     init_views(bot)
@@ -135,37 +134,47 @@ async def on_ready() -> None: # Bot load
           logging.debug(f"Guild: {guild.name} (ID: {guild.id}) is on shard {shard_id}")
 
     # Check if the bot needs to notify on startup
-    if global_settings.get_configs()['notify-on-startup']['enabled']:
-        logging.info("Bot startup notification is enabled. Notifying server owner...")
+    async def send_startup_notification():
+        """
+        Sends a startup notification to the specified channel if enabled in the global settings.
         
-        # Find channel
-        channel_id = global_settings.get_configs()['notify-on-startup']['channel-id']
-        if channel_id is None or channel_id == 0:
-            logging.warning("No channel ID specified for startup notification. Skipping notification.")
-            return
+        :return: None
+        :rtype: None
+        """
+        
+        if global_settings.get_configs()['notify-on-startup']['enabled']:
+            logging.info("Bot startup notification is enabled. Sending notification to channel...")
+            
+            # Find channel
+            channel_id = global_settings.get_configs()['notify-on-startup']['channel-id']
+            if channel_id is None or channel_id == 0:
+                logging.warning("No channel ID specified for startup notification. Skipping notification.")
+                return
 
-        channel = await utils.get_channel(channel_id, bot=bot)
-        if not channel:
-            logging.warning(f"Channel with ID {channel_id} not found. Skipping startup notification.")
-            return
-        
-        # Send notification
-        embed = nextcord.Embed(
-            title = "InfiniBot is online!",
-            description = "InfiniBot has successfully started and is active on all guilds.",
-            color = nextcord.Color.green()
-        )
-        try:
-            await channel.send(embed=embed)
-            logging.info("Startup notification sent successfully.")
-        except nextcord.Forbidden:
-            logging.error(f"Failed to send startup notification in channel {channel.name} (ID: {channel.id}). Check permissions.")
-    else:
-        logging.info("Bot startup notification is disabled. Skipping notification.")
-    
+            channel = await utils.get_channel(channel_id, bot=bot)
+            if not channel:
+                logging.warning(f"Channel with ID {channel_id} not found. Skipping startup notification.")
+                return
+            
+            # Send notification
+            embed = nextcord.Embed(
+                title = "InfiniBot is online!",
+                description = "InfiniBot has successfully started and is active on all guilds.",
+                color = nextcord.Color.green()
+            )
+            try:
+                await channel.send(embed=embed)
+                logging.info("Startup notification sent successfully.")
+            except nextcord.Forbidden:
+                logging.error(f"Failed to send startup notification in channel {channel.name} (ID: {channel.id}). Check permissions.")
+        else:
+            logging.info("Bot startup notification is disabled. Skipping notification.")
+    await send_startup_notification()
+
     # Log total startup time
     total_startup_time = time.time() - startup_time
-    logging.info(f"🚀 STARTUP COMPLETE: Total time {total_startup_time:.2f}s for {len(bot.guilds)} guilds ({len(bot.guilds)/total_startup_time:.1f} guilds/sec)")
+    formatted_time = humanfriendly.format_timespan(round(total_startup_time))
+    logging.info(f"🚀 STARTUP COMPLETE: Total time {formatted_time} for {len(bot.guilds)} guilds ({len(bot.guilds)/total_startup_time:.1f} guilds/sec)")
 
 
 @bot.event
