@@ -4,7 +4,6 @@ import nextcord
 from nextcord import Interaction, SlashOption
 from nextcord.ext import commands
 import os
-import json
 import time
 
 from components import ui_components, utils
@@ -66,6 +65,7 @@ bot = commands.AutoShardedBot(intents = intents,
                             help_command=None,
                             max_messages=1000,
                             chunk_guilds_at_startup=True,
+                            guild_ready_timeout=5,  # 5 second timeout for guilds to be ready (default is 2 seconds)
                             shard_count=shard_count)
 
 def get_bot() -> commands.AutoShardedBot: return bot

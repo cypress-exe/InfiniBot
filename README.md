@@ -9,9 +9,9 @@
 [![GitHub stars](https://img.shields.io/github/stars/cypress-exe/InfiniBot?style=for-the-badge)](https://github.com/cypress-exe/InfiniBot/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/cypress-exe/InfiniBot?style=for-the-badge)](https://github.com/cypress-exe/InfiniBot/network)
 [![GitHub issues](https://img.shields.io/github/issues/cypress-exe/InfiniBot?style=for-the-badge)](https://github.com/cypress-exe/InfiniBot/issues)
-[![GitHub license](https://img.shields.io/github/license/cypress-exe/InfiniBot?style=for-the-badge)](https://github.com/cypress-exe/InfiniBot/blob/main/LICENSE)
 [![Discord](https://img.shields.io/discord/1009127888483799110?style=for-the-badge&logo=discord&logoColor=white&label=Discord)](https://discord.gg/mWgJJ8ZqwR)
 
+[![Top.gg Servers](https://top.gg/api/widget/servers/991832387015159911.svg?style=for-the-badge)](https://top.gg/bot/991832387015159911)
 
 [🚀 Quick Start](#-quick-start) • [📖 Documentation](#-documentation) • [🔧 Installation](#-installation) • [🤝 Support](#-support)
 

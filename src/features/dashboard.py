@@ -13,6 +13,7 @@ from components import ui_components, utils
 from components.ui_components import CustomView, CustomModal
 from config.global_settings import ShardLoadedStatus # Leave import
 from config.server import Server
+from features.action_logging import get_logging_channel
 from features import leveling
 from features.moderation import str_is_profane
 from modules.custom_types import UNSET_VALUE
@@ -1370,19 +1371,30 @@ class Dashboard(CustomView):
                     await self.log_channel_btn.callback(interaction, skipped = True)
                     return
                 
-                log_channel = interaction.guild.get_channel(server.logging_profile.channel)
+                # Try to get log channel
+                log_channel = await get_logging_channel(interaction.guild)
+
                 if log_channel: log_channel_ui_text = log_channel.mention
-                else: log_channel_ui_text = "#unknown"
+                else: log_channel_ui_text = f"​ ⚠️ ​ Can't Access Log Channel (<#{server.logging_profile.channel}>)"
                 
-                description = f"""
-                ✅ ​ InfiniBot is set up to enhance server management with comprehensive logging. View deleted and edited messages, and administrative changes.
-                
+
+                if log_channel:
+                    description = utils.standardize_str_indention(f"""
+                    ✅ ​ InfiniBot is set up to enhance server management with comprehensive logging. View deleted and edited messages, and administrative changes.
+                    """)
+                else:
+                    description = utils.standardize_str_indention(f"""
+                    ### ⚠️ ​ Problem with Log Channel ​ ⚠️
+                    InfiniBot is unable to find your log channel. The log channel either no longer exists, or is hidden from InfiniBot.
+                    ​ ​ ​ ​ ​→ Ensure that InfiniBot has permission to view and send messages in all your channels, and that the log channel is not deleted.
+                    """)
+
+                description += utils.standardize_str_indention(f"""
                 **Settings**
                 - **Log Channel:** {log_channel_ui_text}
                 
                 View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/core-features/logging/) for more information.
-                """
-                description = utils.standardize_str_indention(description)
+                """)
                 
                 embed = nextcord.Embed(title = "Dashboard - Logging", 
                                        description = description, 

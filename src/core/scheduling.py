@@ -54,7 +54,7 @@ async def run_scheduled_tasks() -> None:
         processed = 0
         successes = 0
         errors = 0
-        max_cpu = 75  # More conservative threshold for large scale
+        max_cpu = 50
         throttle_count = 0
 
         for i, guild in enumerate(guilds):

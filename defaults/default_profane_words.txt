@@ -4,7 +4,7 @@
 # the patterns that InfiniBot can monitor:
 # https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/profanity/filtered-words/#pattern-matching-options
 
-f*ck
+fuck
 shit?"
 "as?hole?"
 "bitch

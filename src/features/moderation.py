@@ -563,6 +563,9 @@ async def check_and_trigger_profanity_moderation_for_message(
         message_deleted = True
     except nextcord.errors.Forbidden:
         await utils.send_error_message_to_server_owner(message.guild, "Manage Messages", channel=message.channel.name)
+    except nextcord.errors.NotFound:
+        # The message was already deleted, so we can ignore this error
+        pass
     except Exception as e:
         logging.error(f"Error deleting message after profanity check: {e}", exc_info=True)
 
@@ -923,6 +926,10 @@ async def check_and_delete_invite_links(message: nextcord.Message) -> bool:
                 message.guild, "Manage Messages", channel=message.channel.name
             )
             return False
+        except nextcord.errors.NotFound:
+            # The message might have already been deleted, or we just can't see it.
+            # Just pass
+            pass
 
     return False
 

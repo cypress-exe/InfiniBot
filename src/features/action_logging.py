@@ -82,27 +82,9 @@ async def get_logging_channel(guild: nextcord.Guild) -> nextcord.TextChannel:
     
     log_channel = guild.get_channel(log_channel_id)
     if not log_channel:
-        await utils.send_error_message_to_server_owner(
-            guild,
-            None,
-            message=(
-                f"InfiniBot is unable to find your log channel. "
-                f"The log channel <#{log_channel_id}> either no longer exists, "
-                f"or is hidden from InfiniBot."
-            )
-        )
         return None
 
     if not await utils.check_text_channel_permissions(log_channel, True, custom_channel_name = f"Log Message Channel (#{log_channel.name})"):
-        await utils.send_error_message_to_server_owner(
-            guild,
-            None,
-            message=(
-                f"InfiniBot is unable to use your log channel. "
-                f"The log channel <#{log_channel_id}> either no longer exists, "
-                f"or InfiniBot doesn't have permission to send messages in it."
-            )
-        )
         return None
     
     else:
@@ -869,11 +851,14 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> 
     await asyncio.sleep(1)
 
     # Get audit log entry
-    entry = await anext(
-        guild.audit_logs(limit=1),
-        None
-    )
-    
+    try:
+        entry = await anext(
+            guild.audit_logs(limit=1),
+            None
+        )
+    except nextcord.errors.HTTPException:
+        return  # No audit log entry found
+
     if entry == None:
         # No audit log entry
         return
