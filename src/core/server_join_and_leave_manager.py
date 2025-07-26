@@ -5,7 +5,7 @@ from components import utils
 from components.ui_components import CustomView
 from config.server import Server
 
-from config.global_settings import get_configs, get_bot_load_status
+from config.global_settings import get_configs, get_bot_load_status, recently_left_guilds
 from features.check_infinibot_permissions import run_check_infinibot_permissions, create_permissions_report_embed
 from features.onboarding import run_onboarding_command
 
@@ -91,6 +91,10 @@ async def handle_server_join(guild: nextcord.Guild) -> None:
         guild: The guild that InfiniBot has joined
     """
     logging.info(f"InfiniBot joined server '{guild.name}' (ID: {guild.id})")
+
+    # Ensure not in recently_left_guilds
+    if guild.id in recently_left_guilds:
+        recently_left_guilds.remove(guild.id)
     
     # Prepare roles and mentions
     infinibot_mod_role = await utils.get_infinibot_mod_role(guild)
@@ -229,6 +233,8 @@ async def handle_server_remove(guild: nextcord.Guild):
         return
     
     logging.info(f"InfiniBot has been removed from the server {guild.name} (ID: {guild.id}).") # Info log for now. Maybe change to debug later.
+
+    recently_left_guilds.add(guild.id)  # Add the guild to the recently left guilds set
     
     # Remove all other server data
     Server(guild.id).remove_all_data()

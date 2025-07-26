@@ -600,7 +600,7 @@ class Profile(CustomView):
                         • Any message logs inside a server
                         • Any moderation strikes, levels, birthdays, infinibot-powered messages, etc in any server
                         
-                        Some information not deleted by this process may be deleted when you leave a server. Check InfiniBot's privacy policy for complete transparency and more information.
+                        Some information not deleted by this process may be deleted when you leave a server. Check InfiniBot's [privacy policy](https://cypress-exe.github.io/InfiniBot/docs/legal/privacy-policy/) for complete transparency and more information.
                         
                         Click "Confirm" to delete all your profile information.
                         """

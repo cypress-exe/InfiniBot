@@ -8,7 +8,7 @@ import nextcord
 from nextcord import Interaction
 
 from components.ui_components import ErrorWhyAdminPrivilegesButton
-from config.global_settings import feature_dependencies, required_permissions, get_global_kill_status, get_bot_load_status
+from config.global_settings import feature_dependencies, required_permissions, recently_left_guilds, get_global_kill_status, get_bot_load_status
 from modules.custom_types import ExpiringSet
 
 COLOR_OPTIONS = ["Red", "Green", "Blue", "Yellow", "White", "Blurple", "Greyple", "Teal", "Purple", "Gold", "Magenta", "Fuchsia"]
@@ -909,6 +909,11 @@ async def send_error_message_to_server_owner(
     
     member = guild.owner
     if member == None: return
+
+    # Ensure that InfiniBot is still in this server
+    if guild.id in recently_left_guilds:
+        logging.info(f"Skipping due to recent leave of guild {guild.id}.")
+        return
 
     logging.info(f"Sending error message to server owner (guild_id: {guild.id}). ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
 

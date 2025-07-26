@@ -41,7 +41,7 @@ Birthday messages are sent as embeds, which you can customize:
 
 In addition to the [generic replacements]({% link docs/messaging/generic-replacements.md %}) for InfiniBot's messages, birthday messages provide additional replacements, including:
 - `[age]` - Displays their age (if birth year was provided)
-- `[realname]` - Shows their real name (if provided)
+- `[realname]` - Shows their real name (if provided, else just their username)
 
 Example: `Happy Birthday to @mention! [realname] is turning [age] today!`
 

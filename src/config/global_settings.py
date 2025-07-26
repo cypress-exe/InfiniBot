@@ -3,12 +3,15 @@ import nextcord
 import logging
 
 from config.file_manager import JSONFile
+from modules.custom_types import ExpiringSet
 
 shards_loaded = []
 bot_loaded = False
 bot_id = None
 
 channels_purging = []
+
+recently_left_guilds = ExpiringSet(60 * 1) # 1 minute expiration time for guilds that the bot has just left
 
 # Feature dependencies are used to determine if a feature should be enabled or disabled.
 # The bot will check if the dependency is enabled or disabled, and if it is disabled, the
