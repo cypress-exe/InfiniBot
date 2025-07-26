@@ -275,11 +275,20 @@ async def create_reaction_role(interaction: Interaction, title: str, message: st
     for reaction in added_reactions__emojis:
         try:
             await reaction_role_message.add_reaction(emoji = reaction)
-        except nextcord.errors.Forbidden or nextcord.errors.HTTPException:
+        except (nextcord.errors.Forbidden, nextcord.errors.HTTPException):
             try:
-                await interaction.followup.send(embed = nextcord.Embed(title="Emoji Error", 
-                                                                       description=f"InfiniBot is unable to apply the emoji: {reaction}. If the emoji *is* valid, check that InfiniBot has the permission \"Add Reactions\".", 
-                                                                       color=nextcord.Color.red()))
+                await interaction.followup.send(
+                    embed=nextcord.Embed(
+                        title="Emoji Error",
+                        description=(
+                            f"InfiniBot is unable to apply the emoji: {reaction}. "
+                            f"If the emoji *is* valid, check that InfiniBot has the permission \"Add Reactions\".\n\n"
+                            f"Alternatively, if the emoji is an external emoji, InfiniBot can't use it. "
+                            f"Be sure to add it to the server's emojis for InfiniBot to use it."
+                        ),
+                        color=nextcord.Color.red()
+                    )
+                )
             except nextcord.errors.Forbidden:
                 await utils.send_error_message_to_server_owner(interaction.guild, "Add Reactions")
             break
