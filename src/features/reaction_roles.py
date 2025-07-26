@@ -311,6 +311,21 @@ async def create_reaction_role(interaction: Interaction, title: str, message: st
 async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: nextcord.Client):
     emoji = payload.emoji
 
+    # Commented out. Here's why:
+    #
+    #    Back when InfiniBot started, reaction roles were not necessarily stored in the database indefinitely.
+    #    All modern reaction roles are stored, but uncommenting this block of code would break the really old
+    #    reaction roles that were created before database storage was implemented. It's unfortunate, because 
+    #    it would be nice to have this check, but it's not worth breaking old reaction roles.
+    #
+    # <code>
+    # # Check if the message is a reaction role message
+    # server = Server(payload.guild_id)
+    # if not payload.message_id in server.managed_messages:
+    #     logging.debug(f"Reaction role message not found for message ID {payload.message_id} in guild {payload.guild_id}. Ignoring reaction.")
+    #     return
+    # </code>
+
     # Get the guild
     guild = None
     for _guild in bot.guilds:
@@ -332,13 +347,13 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
         return
 
     # Get the message
-    try:
-        channel = await utils.get_channel(payload.channel_id)
-        if channel is None: return  # If the channel doesn't exist, we can't do anything
-        message = await channel.fetch_message(payload.message_id)
-    except (nextcord.errors.Forbidden, nextcord.errors.NotFound, AttributeError):
-        return
-    
+    channel = await utils.get_channel(payload.channel_id)
+    if channel is None: 
+        return  # If the channel doesn't exist, we can't do anything
+    message = await utils.get_message(channel, payload.message_id)
+    if message is None: 
+        return  # Message doesn't exist or was recently not found
+
     # Declare some functions
     def get_role(string: str):
         pattern = r"^(<@&)(.*)>$"  # Regular expression pattern with a capturing group
@@ -438,6 +453,6 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
         # interacted with the bot, so in this case, their settings are overridden.
         try:
             await user.send(embed=embed, view=view)
-        except nextcord.errors.Forbidden:
+        except (nextcord.errors.Forbidden, nextcord.errors.HTTPException):
             # If the user has DMs disabled, we can't send them a message.
             return

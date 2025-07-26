@@ -15,7 +15,18 @@ class EditReactionRole(CustomView):
         self.message_id = message_id
         
     async def load_buttons(self, interaction: Interaction):
-        self.message = await interaction.channel.fetch_message(self.message_id)
+        self.message = await utils.get_message(interaction.channel, self.message_id)
+        if self.message is None:
+            # Message no longer exists or was recently not found
+            await interaction.response.send_message(
+                embed=nextcord.Embed(
+                    title="Message Not Found",
+                    description="The reaction role message could not be found. It may have been deleted.",
+                    color=nextcord.Color.red()
+                ),
+                ephemeral=True
+            )
+            return
         self.server = Server(interaction.guild.id)
         self.message_info = self.server.managed_messages[self.message_id]
         

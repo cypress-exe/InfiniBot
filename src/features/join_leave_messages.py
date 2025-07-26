@@ -31,7 +31,7 @@ async def trigger_join_message(member: nextcord.Member) -> None:
                     None,
                     message=(
                         f"InfiniBot is unable to find your join message channel. "
-                        f"The join message channel #{channel_id} either no longer exists, "
+                        f"The join message channel <#{channel_id}> either no longer exists, "
                         f"or is hidden from InfiniBot."
                     )
                 )
@@ -89,7 +89,7 @@ async def trigger_leave_message(member: nextcord.Member) -> None:
                     None,
                     message=(
                         f"InfiniBot is unable to find your leave message channel. "
-                        f"The leave message channel #{channel_id} either no longer exists, "
+                        f"The leave message channel <#{channel_id}> either no longer exists, "
                         f"or is hidden from InfiniBot."
                     )
                 )

@@ -544,7 +544,18 @@ class EditRoleMessage(CustomView):
             await self.MultiOrSingleSelectView(self.outer).setup(interaction)
        
     async def load(self, interaction: Interaction):
-        self.message = await interaction.channel.fetch_message(self.message_id)
+        self.message = await utils.get_message(interaction.channel, self.message_id)
+        if self.message is None:
+            # Message no longer exists or was recently not found
+            await interaction.response.send_message(
+                embed=nextcord.Embed(
+                    title="Message Not Found",
+                    description="The role message could not be found. It may have been deleted.",
+                    color=nextcord.Color.red()
+                ),
+                ephemeral=True
+            )
+            return
         self.guild = interaction.guild
         
         if (self.title is None and self.description is None 
@@ -699,7 +710,18 @@ class EditRoleMessage(CustomView):
             view = RoleMessageButton_Multiple()
 
         # Get message from discord before edit
-        original_message = await self.message.channel.fetch_message(self.message.id)
+        original_message = await utils.get_message(self.message.channel, self.message.id)
+        if original_message is None:
+            # Message no longer exists, can't proceed with edit
+            await interaction.followup.send(
+                embed=nextcord.Embed(
+                    title="Edit Failed",
+                    description="The original message could not be found. It may have been deleted.",
+                    color=nextcord.Color.red()
+                ),
+                ephemeral=True
+            )
+            return
         
         edited_message = await self.message.edit(embed=role_message_embed, view=view)
 

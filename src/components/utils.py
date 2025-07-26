@@ -672,7 +672,7 @@ async def get_available_channel(guild: nextcord.Guild) -> nextcord.TextChannel |
     
     return None
 
-failed_channel_fetches = ExpiringSet(60 * 1)  # 1 minute expiration
+failed_channel_fetches = ExpiringSet(60 * 10)  # 10 minutes expiration
 async def get_channel(channel_id: int, bot: nextcord.Client | None = None, override_failed_cache: bool = False) -> nextcord.abc.GuildChannel | None:
     """
     |coro|  
@@ -703,10 +703,38 @@ async def get_channel(channel_id: int, bot: nextcord.Client | None = None, overr
     try:
         return await bot.fetch_channel(channel_id)
     except (nextcord.Forbidden, nextcord.NotFound):
-        logging.debug(f"Channel with ID {channel_id} was not found.")
-        if channel_id not in failed_channel_fetches:
-            logging.info(f"Adding failed channel fetch for channel {channel_id}.")
-            failed_channel_fetches.add(channel_id)
+        logging.info(f"Channel with ID {channel_id} was not found. Caching failed fetch.")
+        failed_channel_fetches.add(channel_id)
+        return None
+
+failed_message_fetches = ExpiringSet(60 * 10)  # 10 minutes expiration
+async def get_message(channel: nextcord.abc.Messageable, message_id: int, override_failed_cache: bool = False) -> nextcord.Message | None:
+    """
+    |coro|  
+    Get a message from a channel by its ID, with failed fetch caching.
+    
+    Args:
+        channel: The channel to fetch the message from.
+        message_id: The ID of the message to fetch.
+        override_failed_cache: If True, will override the failed message fetch cache and attempt to fetch the message again.
+        
+    Returns:
+        The message if found, otherwise None.
+    """
+    global failed_message_fetches
+    
+    # Create a cache key using both channel and message ID to avoid conflicts
+    cache_key = f"{channel.id}:{message_id}"
+    
+    if (not override_failed_cache) and (cache_key in failed_message_fetches):
+        logging.info(f"Message {message_id} in channel {channel.id} was not found recently. Skipping fetch.")
+        return None
+    
+    try:
+        return await channel.fetch_message(message_id)
+    except (nextcord.Forbidden, nextcord.NotFound, nextcord.HTTPException):
+        logging.info(f"Message {message_id} in channel {channel.id} was not found. Caching failed fetch.")
+        failed_message_fetches.add(cache_key)
         return None
 
 failed_member_fetches = ExpiringSet(60 * 1)  # 1 minute expiration
@@ -740,10 +768,8 @@ async def get_member(guild: nextcord.Guild, user_id: int, override_failed_cache:
     try:
         return await guild.fetch_member(user_id)
     except (nextcord.Forbidden, nextcord.NotFound):
-        logging.debug(f"Member with ID {user_id} was not found in guild {guild.name}.")
-        if not (guild.id, user_id) in failed_member_fetches:
-            logging.info(f"Adding failed member fetch for guild {guild.id} and user {user_id}.")
-            failed_member_fetches.add((guild.id, user_id))
+        logging.info(f"Member with ID {user_id} was not found in guild {guild.name}. Caching failed fetch.")
+        failed_member_fetches.add((guild.id, user_id))
         return None
 
 async def check_and_warn_if_channel_is_text_channel(interaction: Interaction) -> bool:
@@ -862,7 +888,7 @@ async def check_text_channel_permissions(channel: nextcord.abc.GuildChannel, aut
 
     return False
 
-messages_sent = ExpiringSet(60 * 5)  # 5 minutes expiration
+messages_sent = ExpiringSet(60 * 30)  # 30 minutes expiration (to prevent spamming the owner with the same message)
 async def send_error_message_to_server_owner(
     guild: nextcord.Guild, 
     permission: str, 

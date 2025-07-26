@@ -540,9 +540,8 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
             original_message = stored_messages.get_message_from_db(payload.message_id)
         
         # Find the message
-        try:
-            edited_message = await channel.fetch_message(payload.message_id)
-        except (nextcord.NotFound, nextcord.Forbidden, nextcord.HTTPException):
+        edited_message = await utils.get_message(channel, payload.message_id)
+        if edited_message is None:
             return
         
         # Update the message's cache
