@@ -34,8 +34,14 @@ InfiniBot's profanity filter uses a combination of pre-defined words and server-
 
 1. Access via: `/dashboard → Moderation → Profanity → Filtered Words`
 2. View the current list of filtered words
-3. Add new words to the filter
-4. Remove words from the filter
+3. Manage your filtered words:
+   - **Add Word** - Add new words (supports multiple words separated by commas)
+   - **Delete Word** - Remove specific words from the filter
+   - **Test** - Verify your word patterns work as expected
+   - **Reset to Defaults** - Clear all custom words and start fresh
+
+{: .titleless-blue }
+**Word Management**: Your server can have up to **150 filtered words** total. InfiniBot automatically prevents duplicate words and validates each entry to ensure proper formatting.
 
 InfiniBot automatically applies basic pattern matching words to detect simple variations of these words. For detailed information about the advanced pattern matching rules in the word filter, see the [Filtered Words]({% link docs/core-features/moderation/profanity/filtered-words.md %}) page.
 

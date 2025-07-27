@@ -23,9 +23,28 @@ InfiniBot offers sophisticated word filtering with several pattern matching rule
 1. Access via: `/dashboard → Moderation → Profanity → Filtered Words`
 2. View the current list of filtered words
 3. Configure filtered words:
-   - Add new words to the filter
-   - Remove words from the filter
-   - Use the Test button to verify your patterns
+   - **Add Word** - Add new words to the filter (up to 150 total words)
+   - **Delete Word** - Remove words from the filter
+   - **Test** - Verify your patterns work as expected
+   - **Reset to Defaults** - Clear all custom words and start fresh
+
+{: .titleless-blue }
+**Word Limit**: Your server can have up to **150 filtered words** total. If you try to add words that would exceed this limit, InfiniBot will add as many as possible and inform you about any that couldn't be added.
+
+### Adding Multiple Words
+
+When adding words, you can:
+- Add single words: `badword`
+- Add multiple words at once: `badword1, badword2, badword3`
+- Mix patterns: `"exact", partial*, wild?card`
+
+**Validation Rules:**
+- Words must be 1-50 characters long
+- No duplicate words allowed
+- Cannot exceed the 150 word limit
+- Empty words are automatically rejected
+
+If some words are valid and others have issues, InfiniBot will add the valid ones and show you which words couldn't be added and why.
 
 ### 1. Boundary Control with Quotes
 
@@ -78,6 +97,17 @@ To test your filters:
 2. Enter sample text that should or shouldn't match your rules
 3. View the results to see which patterns are triggered
 4. Adjust your patterns as needed
+
+## Resetting Your Filter List
+
+If you want to start over with your filtered words:
+
+1. Access via: `/dashboard → Moderation → Profanity → Filtered Words → Reset to Defaults`
+2. Confirm the action in the warning dialog
+3. All custom filtered words will be permanently removed
+
+{: .titleless-red }
+**Warning**: This action cannot be undone! Make sure you have a backup of any important custom words before resetting.
 
 ## Troubleshooting Common Issues
 

@@ -242,6 +242,9 @@ class Dashboard(CustomView):
 
                                 self.test_btn = self.TestButton(self)
                                 self.add_item(self.test_btn)
+
+                                self.reset_btn = self.ResetToDefaultsButton(self)
+                                self.add_item(self.reset_btn)
                                 
                                 self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
                                 self.back_btn.callback = self.back_btn_callback
@@ -258,15 +261,29 @@ class Dashboard(CustomView):
                                     "[Advanced Pattern Matching Options](https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/profanity/filtered-words/#pattern-matching-options)."
                                 )
                                 
-                                self.embed = nextcord.Embed(title = "Dashboard - Moderation - Profanity - Filtered Words", description = description, color = nextcord.Color.blue())
+                                # Create embed and get filtered words
+                                self.embed = nextcord.Embed(
+                                    title="Dashboard - Moderation - Profanity - Filtered Words", 
+                                    description=description, 
+                                    color=nextcord.Color.blue()
+                                )
+                                
                                 filtered_words = server.profanity_moderation_profile.filtered_words
                                 filtered_words.sort()
-                                filtered_words_string = "\n".join(filtered_words)
-
-                                if filtered_words_string == "": filtered_words_string = "You don't have any filtered words yet. Add some!"
-                                else: filtered_words_string = f"Click to Show:\n||```\n{filtered_words_string}```||"
                                 
-                                self.embed.add_field(name = "Filtered Words", value = filtered_words_string)
+                                # Build filtered words display string
+                                if not filtered_words:
+                                    filtered_words_string = "You don't have any filtered words yet. Add some!"
+                                else:
+                                    words_text = "\n".join(filtered_words)
+                                    max_length = 1024 - 50  # Discord's max embed field length minus "Click to Show:" text and extra
+                                    
+                                    if len(words_text) > max_length:
+                                        words_text = words_text[:max_length - 3] + "..."
+                                    
+                                    filtered_words_string = f"Click to Show:\n||```\n{words_text}```||"
+                                
+                                self.embed.add_field(name="Filtered Words", value=filtered_words_string)
                                 
                                 try: await interaction.response.edit_message(embed = self.embed, view = self)
                                 except: await interaction.edit_original_message(embed = self.embed, view = self)
@@ -291,20 +308,118 @@ class Dashboard(CustomView):
                                         
                                     async def callback(self, interaction: Interaction):
                                         server = Server(interaction.guild_id)
-
                                         self.response = self.input.value
-                                        filtered_words = server.profanity_moderation_profile.filtered_words
+                                        
+                                        # Get current filtered words (normalized to lowercase)
+                                        existing_words = {word.lower() for word in server.profanity_moderation_profile.filtered_words}
+                                        
+                                        # Parse and validate input words
+                                        input_words = [word.strip().lower() for word in self.response.split(",")]
+                                        valid_words = []
+                                        errors = []
+                                        seen_in_input = set()
+                                        
+                                        for word in input_words:
+                                            if not word:
+                                                errors.append("<Empty Word>")
+                                            elif len(word) > 50:
+                                                errors.append(f"{word} (Too Long)")
+                                            elif word in existing_words:
+                                                errors.append(f"{word} (Already Exists)")
+                                            elif word in seen_in_input:
+                                                errors.append(f"{word} (Duplicate in Input)")
+                                            else:
+                                                valid_words.append(word)
+                                                seen_in_input.add(word)
+                                        
+                                        # Check if adding valid words would exceed the 150 word limit
+                                        current_filtered_words = server.profanity_moderation_profile.filtered_words
+                                        if len(current_filtered_words) + len(valid_words) > 150:
+                                            # Calculate how many words we can actually add
+                                            remaining_slots = 150 - len(current_filtered_words)
+                                            if remaining_slots > 0:
+                                                # Split valid_words into what we can add and what we can't
+                                                words_to_add = valid_words[:remaining_slots]
+                                                words_rejected = valid_words[remaining_slots:]
+                                                
+                                                # Add rejected words to errors
+                                                for word in words_rejected:
+                                                    errors.append(f"{word} (Would Exceed 150 Word Limit)")
+                                                
+                                                # Update valid_words to only include what we can add
+                                                valid_words = words_to_add
+                                            else:
+                                                # No slots remaining, all words rejected
+                                                for word in valid_words:
+                                                    errors.append(f"{word} (Would Exceed 150 Word Limit)")
+                                                valid_words = []
+                                        
+                                        # Add valid words to filtered list if any exist
+                                        if valid_words:
+                                            current_filtered_words.extend(valid_words)
+                                            server.profanity_moderation_profile.filtered_words = current_filtered_words
+                                        
+                                        # Handle validation errors or warnings
+                                        if not valid_words and errors:
+                                            # No valid words, only errors
+                                            error_list = "\n".join(f"- {error}" for error in errors)
+                                            error_message = utils.standardize_str_indention(f"""
+                                                You didn't enter any valid words to filter.
 
-                                        # Check if word exists already
-                                        if self.response.lower() in [x.lower() for x in filtered_words]:
+                                                Valid words must be:
+                                                - At least 1 character long
+                                                - No more than 50 characters long
+                                                - Not already in the filtered words list
+                                                - Not duplicated in your input
+                                                - Not exceed the 150 total word limit
+
+                                                The following words were not added:
+                                                {error_list}
+
+                                                Try again.
+                                            """)
+                                            
                                             self.stop()
-                                            await interaction.response.send_message(embed = nextcord.Embed(title = "Error", description = f"Word `{self.response}` already exists in filtered words.", color = nextcord.Color.red()), ephemeral = True)
+                                            await interaction.response.send_message(
+                                                embed=nextcord.Embed(
+                                                    title="Error",
+                                                    description=error_message,
+                                                    color=nextcord.Color.red()
+                                                ),
+                                                ephemeral=True
+                                            )
                                             return
+                                        elif valid_words and errors:
+                                            # Some valid words added, but some errors occurred
+                                            error_list = "\n".join(f"- {error}" for error in errors)
+                                            valid_words_list = "\n".join(f"- {word}" for word in valid_words)
+                                            warning_message = utils.standardize_str_indention(f"""
+                                                **Successfully Added:**
+                                                {valid_words_list}
 
-                                        # Else, add the word
-                                        filtered_words.append(self.response.lower())
-                                        server.profanity_moderation_profile.filtered_words = filtered_words
+                                                **Issues Found:**
+                                                The following words were not added:
+                                                {error_list}
 
+                                                Valid words must be:
+                                                - At least 1 character long
+                                                - No more than 50 characters long
+                                                - Not already in the filtered words list
+                                                - Not duplicated in your input
+                                                - Not exceed the 150 total word limit
+                                            """)
+                                            
+                                            self.stop()
+                                            await interaction.response.send_message(
+                                                embed=nextcord.Embed(
+                                                    title="Partial Success",
+                                                    description=warning_message,
+                                                    color=nextcord.Color.orange()
+                                                ),
+                                                ephemeral=True
+                                            )
+                                            return
+                                        
                                         self.stop()
                                         
                                 async def callback(self, interaction: Interaction):
@@ -377,6 +492,57 @@ class Dashboard(CustomView):
                                     await modal.wait()
                                     
                                     await self.outer.setup(interaction)
+
+                            class ResetToDefaultsButton(nextcord.ui.Button):
+                                def __init__(self, outer):
+                                    super().__init__(label = "Reset to Defaults", style = nextcord.ButtonStyle.gray)
+                                    self.outer = outer
+                                    
+                                class ResetConfirmationView(CustomView):
+                                    def __init__(self, outer):
+                                        super().__init__(timeout = None)
+                                        self.outer = outer
+                                        
+                                        self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.secondary)
+                                        self.back_btn.callback = self.back_btn_callback
+                                        self.add_item(self.back_btn)
+                                        
+                                        self.confirm_btn = nextcord.ui.Button(label = "Reset All Words", style = nextcord.ButtonStyle.danger)
+                                        self.confirm_btn.callback = self.confirm_callback
+                                        self.add_item(self.confirm_btn)
+                                        
+                                    async def setup(self, interaction: Interaction):
+                                        embed = nextcord.Embed(
+                                            title = "Reset Filtered Words",
+                                            description = (
+                                                "⚠️ **WARNING** ⚠️\n\n"
+                                                "This will permanently delete ALL custom filtered words from your server.\n\n"
+                                                "Your filtered words will be reset to InfiniBot's defaults.\n\n"
+                                                "Are you sure you want to continue?"
+                                            ),
+                                            color = nextcord.Color.orange()
+                                        )
+                                        
+                                        await interaction.response.edit_message(embed = embed, view = self)
+                                        
+                                    async def back_btn_callback(self, interaction: Interaction):
+                                        await self.outer.setup(interaction)
+                                        
+                                    async def confirm_callback(self, interaction: Interaction):
+                                        server = Server(interaction.guild.id)
+                                        server.profanity_moderation_profile.filtered_words = []
+                                        
+                                        embed = nextcord.Embed(
+                                            title = "Filtered Words Reset",
+                                            description = "✅ All filtered words have been successfully removed from your server.",
+                                            color = nextcord.Color.green()
+                                        )
+                                        
+                                        await interaction.response.send_message(embed = embed, ephemeral = True)
+                                        await self.outer.setup(interaction)
+                                        
+                                async def callback(self, interaction: Interaction):
+                                    await self.ResetConfirmationView(self.outer).setup(interaction)
 
                         async def callback(self, interaction: Interaction): #Filtered Words Button Callback ————————————————————————————————————————————————————————————
                             view = self.FilteredWordsView(self.outer)
