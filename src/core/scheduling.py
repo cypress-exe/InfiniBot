@@ -54,7 +54,8 @@ async def run_scheduled_tasks() -> None:
         processed = 0
         successes = 0
         errors = 0
-        max_cpu = 50
+        throttle_cpu = 50 # Start normal throttling at 50% CPU usage
+        critical_cpu = 75 # Start critical throttling at 75% CPU usage
         throttle_count = 0
 
         for i, guild in enumerate(guilds):
@@ -63,10 +64,14 @@ async def run_scheduled_tasks() -> None:
                 if i % MONITORING_INTERVAL == 0:
                     cpu = psutil.cpu_percent()
                     
-                    if cpu > max_cpu:
+                    if cpu > throttle_cpu:
                         throttle_count += 1
-                        delay = min(2.0, 0.5 * (cpu / max_cpu))  # Dynamic backoff
-                        logging.warning(f"CPU {cpu}% > {max_cpu}%, throttling for {delay}s")
+                        if cpu > critical_cpu:
+                            delay = min(2.0, 0.7 * (cpu / critical_cpu))  # Dynamic backoff for critical CPU
+                            logging.warning(f"CPU {cpu}% > {critical_cpu}%, critical throttling for {delay}s")
+                        else:
+                            delay = min(1.0, 0.3 * (cpu / throttle_cpu))  # Lighter throttling for normal high CPU
+                            logging.debug(f"CPU {cpu}% > {throttle_cpu}%, throttling for {delay}s (normal)")
                         await asyncio.sleep(delay)
                         continue
 
