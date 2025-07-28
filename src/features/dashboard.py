@@ -533,14 +533,14 @@ class Dashboard(CustomView):
                                         server.profanity_moderation_profile.filtered_words = []
                                         
                                         embed = nextcord.Embed(
-                                            title = "Filtered Words Reset",
-                                            description = "✅ All filtered words have been successfully removed from your server.",
-                                            color = nextcord.Color.green()
+                                            title="Filtered Words Reset",
+                                            description="✅ All filtered words have been successfully removed from your server.",
+                                            color=nextcord.Color.green()
                                         )
                                         
-                                        await interaction.response.send_message(embed = embed, ephemeral = True)
                                         await self.outer.setup(interaction)
-                                        
+                                        await interaction.followup.send(embed=embed, ephemeral=True)
+
                                 async def callback(self, interaction: Interaction):
                                     await self.ResetConfirmationView(self.outer).setup(interaction)
 

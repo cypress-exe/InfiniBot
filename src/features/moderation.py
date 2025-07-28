@@ -8,6 +8,7 @@ import re
 from typing import List
 
 import nextcord
+from rapidfuzz import fuzz
 
 from components import utils, ui_components
 from config.messages.cached_messages import cache_message, get_cached_messages_from_channel
@@ -15,7 +16,7 @@ from config.global_settings import get_configs, get_global_kill_status, get_bot_
 from config.member import Member
 from config.server import Server
 from core import log_manager
-from modules.custom_types import UNSET_VALUE
+from modules.custom_types import UNSET_VALUE, ExpiringSet
 
 
 # Profanity Moderation ----------------------------------------------------------------------------------------------------------
@@ -661,41 +662,10 @@ def check_repeated_words_percentage(text: str, threshold: float = 0.8) -> bool:
     # Check if the percentage exceeds the threshold
     return repeated_percentage >= threshold
 
-def levenshtein_distance(s1: str, s2: str) -> int:
-    """
-    Calculates the Levenshtein distance between two strings.
-
-    :param s1: The first string.
-    :type s1: str
-    :param s2: The second string.
-    :type s2: str
-    :return: The Levenshtein distance between the two strings.
-    :rtype: int
-    """
-    # ChatGPT :)
-    # Create a matrix to store the distances
-    len_s1, len_s2 = len(s1), len(s2)
-    matrix = [[0] * (len_s2 + 1) for _ in range(len_s1 + 1)]
-
-    # Initialize the matrix
-    for i in range(len_s1 + 1):
-        matrix[i][0] = i
-    for j in range(len_s2 + 1):
-        matrix[0][j] = j
-
-    # Fill the matrix with the Levenshtein distance
-    for i in range(1, len_s1 + 1):
-        for j in range(1, len_s2 + 1):
-            cost = 0 if s1[i - 1] == s2[j - 1] else 1
-            matrix[i][j] = min(matrix[i - 1][j] + 1,  # Deletion
-                               matrix[i][j - 1] + 1,  # Insertion
-                               matrix[i - 1][j - 1] + cost)  # Substitution
-
-    return matrix[len_s1][len_s2]
-
 def get_percent_similar(s1: str, s2: str) -> float:
     """
-    Calculates the percentage similarity between two strings.
+    Calculates the percentage similarity between two strings using Levenshtein distance.
+    Uses RapidFuzz's optimized C++ implementation for performance.
 
     :param s1: The first string.
     :type s1: str
@@ -704,16 +674,13 @@ def get_percent_similar(s1: str, s2: str) -> float:
     :return: The percentage similarity between the two strings, as a float in [0, 1].
     :rtype: float
     """
-    # Calculate the Levenshtein distance
-    lev_dist = levenshtein_distance(s1, s2)
+    # Early return for identical strings
+    if s1 == s2:
+        return 1.0
     
-    # Find the maximum possible distance (length of the longer string)
-    max_distance = max(len(s1), len(s2))
-    
-    # Calculate the ratio of Levenshtein distance to maximum distance
-    ratio = lev_dist / max_distance
-    
-    return 1 - ratio
+    # Use RapidFuzz's optimized Levenshtein implementation
+    # Convert from 0-100 scale to 0-1 scale
+    return fuzz.ratio(s1, s2) / 100.0
 
 def compare_attachments(attachments_1: List[nextcord.Attachment], attachments_2: List[nextcord.Attachment]) -> bool:
     """
@@ -759,6 +726,7 @@ def normalized_exponential_decay(x: float, k: float = 5) -> float:
     """
     return (1 - math.exp(-k * x)) / (1 - math.exp(-k))
 
+recently_warned_users = ExpiringSet(5) # 5 seconds of grace period to avoid spamming warnings
 async def check_and_trigger_spam_moderation_for_message(message: nextcord.Message, server: Server) -> bool:
     """
     Checks if the given message should trigger spam moderation and punishes the user if it does.
@@ -770,8 +738,12 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
     :return: True if a strike was given, False otherwise.
     :rtype: bool
     """
-    max_messages_to_check = get_configs()["spam-moderation.max-messages-to-check"]    # The MAXIMUM messages InfiniBot will try to check for spam
-    message_chars_to_check_repetition = get_configs()["spam-moderation.message-chars-to-check-repetition"]    # A message requires these many characters before it is checked for repetition
+    global recently_warned_users
+
+    # Checks
+    if message.author.id in recently_warned_users:
+        logging.debug(f"Skipping spam moderation for {message.author.id} in {message.guild.id} due to recent warning.")
+        return False
 
     # If Spam is Enabled
     if not utils.feature_is_active(server=server, feature="moderation__spam"): return False
@@ -783,6 +755,9 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
     
     # Cache this message
     cache_message(message, skip_if_exists=True)
+
+    max_messages_to_check = get_configs()["spam-moderation.max-messages-to-check"]    # The MAXIMUM messages InfiniBot will try to check for spam
+    message_chars_to_check_repetition = get_configs()["spam-moderation.message-chars-to-check-repetition"]    # A message requires these many characters before it is checked for repetition
 
     # Get previous messages
     previous_messages = get_cached_messages_from_channel(message.channel.id)[::-1]
@@ -848,6 +823,16 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
     # Punish the member (if needed)
     if spam_score >= server.spam_moderation_profile.score_threshold:
         logging.info(f"User {message.author.id} exceeded spam score threshold in server {server.server_id}. Score: {spam_score} (Threshold: {server.spam_moderation_profile.score_threshold})")
+        
+        # Check again if the user has recently been warned. Sometimes this value is false at the top of the method, but true by the time we get here.
+        # This is to prevent spamming the user with warnings or timeouts.
+        if message.author.id in recently_warned_users:
+            logging.debug(f"Skipping spam moderation for {message.author.id} in {message.guild.id} due to recent warning.")
+            return False
+        
+        # Add user to recently_warned_users immediately to prevent race conditions
+        recently_warned_users.add(message.author.id)
+        
         try:
             # Time them out
             await utils.timeout(message.author, server.spam_moderation_profile.timeout_seconds, reason=f"Spam Moderation: User exceeded spam message limit of {server.spam_moderation_profile.score_threshold} points.")
@@ -862,7 +847,9 @@ async def check_and_trigger_spam_moderation_for_message(message: nextcord.Messag
                         embed=nextcord.Embed(
                             title="Spam Timeout",
                             description=utils.standardize_str_indention(f"""
-                            You were flagged for spamming in \"{message.guild.name}\". You have been timed out for {timeout_time_ui_text}.\n\nPlease contact the admins if you think this is a mistake.
+                            You were flagged for spamming in \"{message.guild.name}\". You have been timed out for {timeout_time_ui_text}.
+                            
+                            Please contact the admins if you think this is a mistake.
 
                             You're getting this message because your server has enabled Spam Moderation for messages. If you believe this was a mistake, please contact a server admin, and they can [disable it](https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/spam/#how-to-disable-spam-moderation).
                             """),
