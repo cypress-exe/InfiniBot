@@ -71,6 +71,7 @@ bot = commands.AutoShardedBot(intents = intents,
 def get_bot() -> commands.AutoShardedBot: return bot
 
 connected_shards = set()
+post_shards_connected_called = False
 
 @bot.event
 async def on_shard_connect(shard_id: int):
@@ -81,6 +82,14 @@ async def on_shard_connect(shard_id: int):
         logging.info("All shards are connected.")
         await post_shards_connected()
 
+@bot.event
+async def on_shard_disconnect(shard_id: int):
+    if shard_id in connected_shards:
+        connected_shards.remove(shard_id)
+        logging.info(f"Shard {shard_id} disconnected.")
+    else:
+        logging.warning(f"Shard {shard_id} was not in the connected shards list.")
+
 async def post_shards_connected():
     """
     Called once all shards are started (not necessarily ready with all info cached)
@@ -88,6 +97,10 @@ async def post_shards_connected():
     :return: None
     :rtype: None
     """
+    global post_shards_connected_called
+    if post_shards_connected_called:
+        return
+    post_shards_connected_called = True
 
     # Wait a second
     await asyncio.sleep(1)
