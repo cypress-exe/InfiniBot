@@ -564,8 +564,7 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
 
         # Punish profanity (if any)
         with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
-            await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message,
-                                                                                skip_active_check=True)
+            await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message)
                 
         # Log the message
         with LogIfFailure(feature="action_logging.log_raw_message_edit"):
