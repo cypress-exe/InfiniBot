@@ -168,7 +168,7 @@ def remove_cached_messages_from_channel(channel_id: int) -> int:
 
     count = len(_message_cache[channel_id])
     del _message_cache[channel_id]
-    logging.info(f"Removed {count} cached messages from channel with ID {channel_id}.")
+    logging.debug(f"Removed {count} cached messages from channel with ID {channel_id}.")
     return count
 
 def remove_cached_messages_from_guild(guild_id: int) -> int:
@@ -205,7 +205,7 @@ def remove_cached_messages_from_guild(guild_id: int) -> int:
     for channel_id in channels_to_remove:
         del _message_cache[channel_id]
 
-    logging.info(f"Removed {total_removed} cached messages from guild with ID {guild_id}.")
+    logging.debug(f"Removed {total_removed} cached messages from guild with ID {guild_id}.")
     return total_removed
 
 
@@ -220,7 +220,7 @@ def clear_all_cached_messages() -> int:
 
     total_count = sum(len(channel_cache) for channel_cache in _message_cache.values())
     _message_cache.clear()
-    logging.info(f"Cleared all {total_count} cached messages from memory.")
+    logging.warning(f"Cleared all {total_count} cached messages from memory.")
     return total_count
 
 def get_cache_stats() -> Dict[str, Any]:

@@ -697,13 +697,13 @@ async def get_channel(channel_id: int, bot: nextcord.Client | None = None, overr
         return channel_obj
 
     if (not override_failed_cache) and (channel_id in failed_channel_fetches):
-        logging.info(f"Channel with ID {channel_id} was not found recently. Skipping fetch.")
+        logging.debug(f"Channel with ID {channel_id} was not found recently. Skipping fetch.")
         return None
 
     try:
         return await bot.fetch_channel(channel_id)
     except (nextcord.Forbidden, nextcord.NotFound):
-        logging.info(f"Channel with ID {channel_id} was not found. Caching failed fetch.")
+        logging.debug(f"Channel with ID {channel_id} was not found. Caching failed fetch.")
         failed_channel_fetches.add(channel_id)
         return None
 
@@ -727,13 +727,13 @@ async def get_message(channel: nextcord.abc.Messageable, message_id: int, overri
     cache_key = f"{channel.id}:{message_id}"
     
     if (not override_failed_cache) and (cache_key in failed_message_fetches):
-        logging.info(f"Message {message_id} in channel {channel.id} was not found recently. Skipping fetch.")
+        logging.debug(f"Message {message_id} in channel {channel.id} was not found recently. Skipping fetch.")
         return None
     
     try:
         return await channel.fetch_message(message_id)
     except (nextcord.Forbidden, nextcord.NotFound, nextcord.HTTPException):
-        logging.info(f"Message {message_id} in channel {channel.id} was not found. Caching failed fetch.")
+        logging.debug(f"Message {message_id} in channel {channel.id} was not found. Caching failed fetch.")
         failed_message_fetches.add(cache_key)
         return None
 
@@ -762,13 +762,13 @@ async def get_member(guild: nextcord.Guild, user_id: int, override_failed_cache:
         return member
 
     if (not override_failed_cache) and ((guild.id, user_id) in failed_member_fetches):
-        logging.info(f"Member with ID {user_id} was not found in guild {guild.name} recently. Skipping fetch.")
+        logging.debug(f"Member with ID {user_id} was not found in guild {guild.name} recently. Skipping fetch.")
         return None
 
     try:
         return await guild.fetch_member(user_id)
     except (nextcord.Forbidden, nextcord.NotFound):
-        logging.info(f"Member with ID {user_id} was not found in guild {guild.name}. Caching failed fetch.")
+        logging.debug(f"Member with ID {user_id} was not found in guild {guild.name}. Caching failed fetch.")
         failed_member_fetches.add((guild.id, user_id))
         return None
 
@@ -930,7 +930,7 @@ async def send_error_message_to_server_owner(
         return
     
     if (guild.id, permission, message, administrator, channel, guild_permission) in messages_sent:
-        logging.info(f"Skipping sending error message to server owner (guild_id: {guild.id}) because it was already sent recently. ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
+        logging.debug(f"Skipping sending error message to server owner (guild_id: {guild.id}) because it was already sent recently. ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
         return
     
     member = guild.owner
@@ -938,17 +938,17 @@ async def send_error_message_to_server_owner(
 
     # Ensure that InfiniBot is still in this server
     if guild.id in recently_left_guilds:
-        logging.info(f"Skipping due to recent leave of guild {guild.id}.")
+        logging.debug(f"Skipping due to recent leave of guild {guild.id}.")
         return
-
-    logging.info(f"Sending error message to server owner (guild_id: {guild.id}). ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
 
     # Make sure the member has DMs enabled in their profile settings for InfiniBot
     from config.member import Member # Avoids cyclic import
     member_settings = Member(member.id)
     if not member_settings.direct_messages_enabled: 
-        logging.info(f"Skipping sending error message to server owner (guild_id: {guild.id}) because the owner has DMs disabled for InfiniBot. ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
+        logging.debug(f"Skipping sending error message to server owner (guild_id: {guild.id}) because the owner has DMs disabled for InfiniBot. ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
         return
+    
+    logging.info(f"Sending error message to server owner (guild_id: {guild.id}). ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
     
     # UI stuff
     if channel != None:
@@ -981,7 +981,7 @@ async def send_error_message_to_server_owner(
         else:
             await dm.send(embed = embed)
     except:
-        logging.info("Failed to send error message to server owner. This is likely because the owner has DMs disabled for InfiniBot. Skipping...")
+        logging.debug("Failed to send error message to server owner. This is likely because the owner has DMs disabled for InfiniBot. Skipping...")
         pass
     
     # Add to the set of sent messages

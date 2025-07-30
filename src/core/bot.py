@@ -787,7 +787,7 @@ async def on_guild_channel_delete(channel: nextcord.abc.GuildChannel) -> None:
     :return: None
     :rtype: None
     """
-    logging.info(f"Channel {channel.name} (ID: {channel.id}) was deleted in guild {channel.guild.name} (ID: {channel.guild.id}).")
+    logging.debug(f"Channel {channel.name} (ID: {channel.id}) was deleted in guild {channel.guild.name} (ID: {channel.guild.id}).")
 
     cached_messages.remove_cached_messages_from_channel(channel.id)
     stored_messages.remove_db_messages_from_channel(channel.id)

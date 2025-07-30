@@ -816,13 +816,13 @@ class IntegratedList_TableManager(TableManager):
             if isinstance(value, int):
                 if value > MAX_SQLITE_INT or value < -MAX_SQLITE_INT:
                     clamp_value = MAX_SQLITE_INT if value > 0 else -MAX_SQLITE_INT
-                    logging.warning(f"Value for column \"{column_name}\" exceeds SQLite INTEGER bounds. Clamping to {clamp_value}.")
+                    logging.debug(f"Value for column \"{column_name}\" exceeds SQLite INTEGER bounds. Clamping to {clamp_value}.")
                     data_dict[column_name] = clamp_value
                     
             elif isinstance(value, float):
                 if value > MAX_SQLITE_FLOAT or value < -MAX_SQLITE_FLOAT:
                     clamp_value = MAX_SQLITE_FLOAT if value > 0 else -MAX_SQLITE_FLOAT
-                    logging.warning(f"Value for column \"{column_name}\" exceeds SQLite FLOAT bounds. Clamping to {clamp_value}.")
+                    logging.debug(f"Value for column \"{column_name}\" exceeds SQLite FLOAT bounds. Clamping to {clamp_value}.")
                     data_dict[column_name] = clamp_value
 
         return data_dict
