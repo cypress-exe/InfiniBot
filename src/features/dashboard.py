@@ -1986,13 +1986,11 @@ class Dashboard(CustomView):
                         level_rewards = []
                         for level_reward in server.level_rewards:
                             role_id = level_reward.role_id
-                            role = interaction.guild.get_role(role_id)
-                            if role == None:
-                                logging.warning(f"Role {role_id} was not found in the guild {interaction.guild.id} when checking level rewards (viewing). Deleting.")
-                                server.level_rewards.delete(role_id)
-                                continue
-
-                            level_rewards.append(f"{role.mention} - Level {level_reward.level}")
+                            discord_role = interaction.guild.get_role(role_id)
+                            if discord_role:
+                                level_rewards.append(f"{discord_role.mention} - Level {level_reward.level}")
+                            else:
+                                level_rewards.append(f"⚠️ Unknown Role ({role_id}) - Level {level_reward.level}")
                                 
                         if level_rewards == []: level_rewards.append("You don't have any level rewards set up. Create one!")
                         self.embed.add_field(name = "Level Rewards", value = "\n".join(level_rewards))
@@ -2076,25 +2074,44 @@ class Dashboard(CustomView):
                                                                                 
                         async def callback(self, interaction: Interaction):# Delete Level Reward Callback ————————————————————————————————————————————————————————————
                             server = Server(interaction.guild.id)
-                            all_level_reward_roles = []
+                            select_options = []
                             for level_reward in server.level_rewards:
-                                role_id = level_reward.role_id
-                                role = interaction.guild.get_role(role_id)
-                                if role == None: # Should never happen because of earlier checks. But just in case...
-                                    logging.warning(f"Role {role_id} was not found in the guild {interaction.guild.id} when checking level rewards (deletion). Ignoring...")
-                                    continue
+                                role = interaction.guild.get_role(int(level_reward.role_id))
+                                if role:
+                                    select_options.append(nextcord.SelectOption(
+                                        label=f"{role.name} (Level {level_reward.level})", 
+                                        description=role.id, 
+                                        value=level_reward.role_id
+                                    ))
+                                else:
+                                    select_options.append(nextcord.SelectOption(
+                                        label=f"Unknown Role ({level_reward.role_id}) (Level {level_reward.level})", 
+                                        description="This role no longer exists", 
+                                        value=level_reward.role_id
+                                    ))
 
-                                all_level_reward_roles.append(role)
-                                                                
-                            select_options = [nextcord.SelectOption(label = role.name, description = role.id, value = role.id) for role in all_level_reward_roles]
-                            
-                            if select_options == []:
-                                await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Roles", description = "You don't have any level rewards set up!", color = nextcord.Color.red()), ephemeral=True)                     
+                            if not select_options:
+                                await interaction.response.send_message(
+                                    embed=nextcord.Embed(
+                                        title="No Available Roles", 
+                                        description="You don't have any level rewards set up!", 
+                                        color=nextcord.Color.red()
+                                    ), 
+                                    ephemeral=True
+                                )                     
                             else:
-                                embed = nextcord.Embed(title = "Dashboard - Leveling - Level Rewards - Delete",
-                                                       description = "Select a level reward to delete. This does not delete the role.",
-                                                       color = nextcord.Color.blue())
-                                await ui_components.SelectView(embed, select_options, self.select_view_callback, continue_button_label = "Delete", placeholder = "Choose").setup(interaction)
+                                embed = nextcord.Embed(
+                                    title="Dashboard - Leveling - Level Rewards - Delete",
+                                    description="Select a level reward to delete. This does not delete the role.",
+                                    color=nextcord.Color.blue()
+                                )
+                                await ui_components.SelectView(
+                                    embed, 
+                                    select_options, 
+                                    self.select_view_callback, 
+                                    continue_button_label="Delete", 
+                                    placeholder="Choose"
+                                ).setup(interaction)
                    
                         async def select_view_callback(self, interaction: Interaction, selection):
                             if selection == None:
