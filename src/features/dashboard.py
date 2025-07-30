@@ -82,9 +82,11 @@ class Dashboard(CustomView):
         description = utils.standardize_str_indention(description)
         
         embed = nextcord.Embed(title = "Dashboard", description = description, color = nextcord.Color.blue())
-        try: await interaction.response.edit_message(embed = embed, view = self)
-        except: await interaction.response.send_message(embed = embed, view = self, ephemeral=True)
-              
+        try:
+            try: await interaction.response.edit_message(embed = embed, view = self)
+            except: await interaction.response.send_message(embed = embed, view = self, ephemeral=True)
+        except:
+            await interaction.followup.send(embed = embed, view = self)
 
     class ModerationButton(nextcord.ui.Button):
         def __init__(self, outer):
@@ -4905,5 +4907,16 @@ async def run_dashboard_command(interaction: Interaction):
         return
     
     if await utils.user_has_config_permissions(interaction):
+        # Chunk the guild
+        if not interaction.guild.chunked:
+            # Defer interaction to allow chunking
+            await interaction.response.defer(ephemeral=True, with_message=True)
+            
+            try:
+                await interaction.guild.chunk()
+                logging.debug(f"Successfully chunked guild {interaction.guild.name} ({interaction.guild.id})")
+            except Exception as e:
+                logging.warning(f"Failed to chunk guild {interaction.guild.name} ({interaction.guild.id}): {e}")
+
         view = Dashboard(interaction.guild_id)
         await view.setup(interaction)
