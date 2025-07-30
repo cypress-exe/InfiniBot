@@ -162,8 +162,12 @@ class RoleMessageButton_Multiple(CustomView):
             embed = nextcord.Embed(title="Modified Roles", color=nextcord.Color.green())
             if error: embed.description = "Warning: An error occurred with one or more roles. Please notify server admins."
             
-            await interaction.response.edit_message(embed=embed, view=None, delete_after=2.0)
-    
+            try:
+                await interaction.response.edit_message(embed=embed, view=None, delete_after=2.0)
+            except nextcord.errors.NotFound:
+                # Message was deleted, so we can't edit it
+                pass
+
     @nextcord.ui.button(label = "Get Roles", style = nextcord.ButtonStyle.blurple, custom_id = "get_roles")
     async def event(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
         message = interaction.message
