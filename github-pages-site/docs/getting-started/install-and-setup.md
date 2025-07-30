@@ -18,7 +18,7 @@ This guide will walk you through adding InfiniBot to your server and configuring
 ## Adding InfiniBot to Your Server
 
 1. Click the button below to add InfiniBot to your server.  
-[Add InfiniBot to Your Server](https://discord.com/oauth2/authorize?client_id=991832387015159911&permissions=1374809222364&scope=bot){: .btn .btn-primary .mb-2 .mt-2}
+[Add InfiniBot to Your Server](https://discord.com/oauth2/authorize?client_id=991832387015159911){: .btn .btn-primary .mb-2 .mt-2}
 2. Grant InfiniBot the **Administrator** permission for easiest setup. Alternatively, assign individual permissions listed in the [Required Permissions](#required-permissions) section.
 3. Once added, InfiniBot is ready to use with default settings.
 

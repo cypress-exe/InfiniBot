@@ -75,7 +75,7 @@ heading_anchors: true
 
 # Aux links for the upper right navigation
 aux_links:
-  Add InfiniBot to Your Server: https://discord.com/oauth2/authorize?client_id=991832387015159911&permissions=1374809222364&scope=bot
+  Add InfiniBot to Your Server: https://discord.com/oauth2/authorize?client_id=991832387015159911
 
 # Makes Aux links open in a new tab. Default is false
 aux_links_new_tab: true
