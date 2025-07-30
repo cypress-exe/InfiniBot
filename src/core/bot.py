@@ -73,6 +73,32 @@ def get_bot() -> commands.AutoShardedBot: return bot
 connected_shards = set()
 post_shards_connected_called = False
 
+async def ensure_guilds_ready():
+    """
+    Simple function to ensure guilds are properly loaded with minimal retry logic.
+    """
+    unchunked = [guild for guild in bot.guilds if not guild.chunked]
+    
+    if not unchunked:
+        logging.info("✅ All guilds are ready")
+        return
+    
+    logging.warning(f"Retrying chunking for {len(unchunked)} guilds...")
+    
+    # Simple retry - try each guild once more
+    for guild in unchunked:
+        try:
+            await asyncio.wait_for(guild.chunk(), timeout=20)
+        except Exception as e:
+            logging.warning(f"Guild {guild.name} (ID: {guild.id}) failed to chunk: {e}")
+    
+    # Final status
+    still_unchunked = [guild for guild in bot.guilds if not guild.chunked]
+    if still_unchunked:
+        logging.warning(f"⚠️ {len(still_unchunked)} guilds remain unchunked - continuing anyway")
+    else:
+        logging.info("✅ All guilds successfully chunked")
+
 @bot.event
 async def on_shard_connect(shard_id: int):
     connected_shards.add(shard_id)
@@ -129,6 +155,9 @@ async def on_ready() -> None: # Bot load
     await bot.wait_until_ready()
     logging.info(f"============================== Logged in as: {bot.user.name} with all shards ready. ==============================")
     logging.info(f"Bot is running with {bot.shard_count} shards across {len(bot.guilds)} guilds.")
+
+    # Simple retry for any unchunked guilds
+    await ensure_guilds_ready()
 
     # Initialize core systems
     global_settings.set_bot_load_status(True)
@@ -201,14 +230,17 @@ async def on_shard_ready(shard_id: int) -> None:
     :return: None
     :rtype: None
     """
-    logging.info(f"Shard {shard_id} is ready.")
+    shard_guilds = [g for g in bot.guilds if g.shard_id == shard_id]
+    logging.info(f"Shard {shard_id} ready with {len(shard_guilds)} guilds")
 
     with global_settings.ShardLoadedStatus() as shards_loaded:
         shards_loaded.append(shard_id)
 
         # Check if all shards are loaded
         if len(shards_loaded) == bot.shard_count:
-            logging.info(f"All {bot.shard_count} shards are loaded.")
+            total_guilds = len(bot.guilds)
+            chunked_guilds = len([g for g in bot.guilds if g.chunked])
+            logging.info(f"All {bot.shard_count} shards loaded. Guilds chunked: {chunked_guilds}/{total_guilds}")
 
 @bot.event
 async def on_close() -> None:
