@@ -463,21 +463,26 @@ class JokeVerificationView(CustomView):
                         if member_settings.direct_messages_enabled:
                             # Get joke
                             joke, _ = _extract_info_from_joke_submission_embed(self.message.embeds[0])
-                            await dm.send(
-                                embeds=[
-                                    nextcord.Embed(
-                                        title="Joke Submission Denied",
-                                        description=(
-                                            f"Your joke submission has been denied by {interaction.user}. "
-                                            "The joke you submitted has been attached below.\n\n"
-                                            f"Reason: {self.reason}\n\n"
-                                            "If you believe this to be a mistake, contact the moderator in the #support channel of the InfiniBot Support Server."
+                            try:
+                                await dm.send(
+                                    embeds=[
+                                        nextcord.Embed(
+                                            title="Joke Submission Denied",
+                                            description=(
+                                                f"Your joke submission has been denied by {interaction.user}. "
+                                                "The joke you submitted has been attached below.\n\n"
+                                                f"Reason: {self.reason}\n\n"
+                                                "If you believe this to be a mistake, contact the moderator in the #support channel of the InfiniBot Support Server."
                                             ),
-                                        color=nextcord.Color.red()
-                                    ),
-                                    _format_joke_embed(joke)
-                                ]
-                            )
+                                            color=nextcord.Color.red()
+                                        ),
+                                        _format_joke_embed(joke)
+                                    ]
+                                )
+                            except nextcord.errors.Forbidden:
+                                # User has DMs disabled. Do not send a message.
+                                logging.warning(f"Could not send dm to {self.member} ({self.member.id}). "
+                                                "User has DMs disabled or blocked the bot.")
 
                         # Remove the message
                         await interaction.response.edit_message(delete_after=0.0)
@@ -619,19 +624,24 @@ class JokeVerificationView(CustomView):
 
                         member_settings = Member(self.member.id)
                         if member_settings.direct_messages_enabled:
-                            await dm.send(
-                                embeds=[
-                                    nextcord.Embed(
-                                        title="Joke Submission Verified",
-                                        description=(
-                                            "Your joke submission has been verified! "
-                                            "The joke you submitted has been attached below."
+                            try:
+                                await dm.send(
+                                    embeds=[
+                                        nextcord.Embed(
+                                            title="Joke Submission Verified",
+                                            description=(
+                                                "Your joke submission has been verified! "
+                                                "The joke you submitted has been attached below."
+                                            ),
+                                            color=nextcord.Color.green()
                                         ),
-                                        color=nextcord.Color.green()
-                                    ),
-                                    _format_joke_embed(joke)
-                                ]
-                            )
+                                        _format_joke_embed(joke)
+                                    ]
+                                )
+                            except nextcord.errors.Forbidden:
+                                # User has DMs disabled. Do not send a message.
+                                logging.warning(f"Could not send dm to {self.member} ({self.member.id}). "
+                                                "User has DMs disabled or blocked the bot.")
 
                 # Get confirmation that we will be able to dm the user
                 more_info = "This will **not** send the submitter a dm."
