@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import datetime
 from dateutil import parser
@@ -10,7 +11,7 @@ import nextcord
 from nextcord import Interaction
 
 from components import ui_components, utils
-from components.ui_components import CustomView, CustomModal
+from components.ui_components import CustomView, CustomModal, SupportView
 from config.global_settings import ShardLoadedStatus # Leave import
 from config.server import Server
 from features.action_logging import get_logging_channel
@@ -57,7 +58,11 @@ class Dashboard(CustomView):
         self.configure_timezone_btn = self.ConfigureTimezoneButton(self, guild_id)
         self.add_item(self.configure_timezone_btn)
 
-    async def setup(self, interaction: Interaction):
+    async def setup(self, interaction: Interaction, edit_message_id: int = None):
+        """
+        Sets up the dashboard view.
+        If `edit_message_id` is provided, it will specifically edit that message instead of sending a new one.
+        """
         for child in self.children: del child
         self.__init__(interaction.guild_id)
         
@@ -83,10 +88,19 @@ class Dashboard(CustomView):
         
         embed = nextcord.Embed(title = "Dashboard", description = description, color = nextcord.Color.blue())
         try:
-            try: await interaction.response.edit_message(embed = embed, view = self)
-            except: await interaction.response.send_message(embed = embed, view = self, ephemeral=True)
+            if edit_message_id: 
+                try:
+                    await interaction.followup.edit_message(message_id=edit_message_id, embed=embed, view=self)
+                except Exception as e:
+                    logging.warning(f"Failed to edit dashboard message with ID {edit_message_id}: {e}")
+                    await interaction.response.edit_message(embed=embed, view=self)
+            else:
+                await interaction.response.edit_message(embed=embed, view=self)
         except:
-            await interaction.followup.send(embed = embed, view = self)
+            try:
+                await interaction.response.send_message(embed=embed, view=self, ephemeral=True)
+            except:
+                await interaction.followup.send(embed=embed, view=self, ephemeral=True)
 
     class ModerationButton(nextcord.ui.Button):
         def __init__(self, outer):
@@ -4883,6 +4897,56 @@ class Dashboard(CustomView):
             async def back_to_dashboard(self, interaction: Interaction):
                 await self.outer.setup(interaction)
 
+async def _chunk_guild_with_feedback(interaction: Interaction) -> int:
+    """
+    Helper function to chunk the guild with user feedback and error handling.
+    
+    :param interaction: The interaction object from the Discord event.
+    :type interaction: Interaction
+    
+    :return: The message ID of the initial response if successful, None if failed or skipped.
+    :rtype: int | None
+    """
+    if interaction.guild.chunked:
+        return None
+    
+    # Send loading message to user
+    await interaction.response.send_message(
+        embed=nextcord.Embed(
+            title="Getting Things Ready...",
+            description="InfiniBot is retrieving your server's member list. This may take some time for large servers. Please be patient.",
+            color=nextcord.Color.blue()
+        ),
+        ephemeral=True,
+        view=SupportView()
+    )
+    
+    # Get the message ID
+    message = await interaction.original_message()
+    message_id = message.id
+    
+    try:
+        # Add timeout to prevent indefinite hanging
+        await asyncio.wait_for(interaction.guild.chunk(), timeout=30.0)
+        logging.debug(f"Successfully chunked guild {interaction.guild.name} ({interaction.guild.id})")
+        return message_id
+    except asyncio.TimeoutError:
+        logging.warning(f"Guild chunking timed out for {interaction.guild.name} ({interaction.guild.id}) - proceeding without full member cache")
+    except Exception as e:
+        logging.warning(f"Failed to chunk guild {interaction.guild.name} ({interaction.guild.id}): {e}")
+    
+    # Show warning if chunking failed
+    await interaction.edit_original_message(
+        embed=nextcord.Embed(
+            title="Warning",
+            description="InfiniBot was unable to retrieve the full member list for your server. Some features may not work correctly. Please try again later or contact support if this issue persists.",
+            color=nextcord.Color.yellow()
+        ),
+        view=SupportView()
+    )
+    return None
+
+
 async def run_dashboard_command(interaction: Interaction):
     """
     |coro|
@@ -4895,6 +4959,7 @@ async def run_dashboard_command(interaction: Interaction):
     :return: None
     :rtype: None
     """
+    # Validate that command is used in a server
     if interaction.guild_id is None:
         await interaction.response.send_message(
             embed=nextcord.Embed(
@@ -4906,17 +4971,14 @@ async def run_dashboard_command(interaction: Interaction):
         )
         return
     
-    if await utils.user_has_config_permissions(interaction):
-        # Chunk the guild
-        if not interaction.guild.chunked:
-            # Defer interaction to allow chunking
-            await interaction.response.defer(ephemeral=True, with_message=True)
-            
-            try:
-                await interaction.guild.chunk()
-                logging.debug(f"Successfully chunked guild {interaction.guild.name} ({interaction.guild.id})")
-            except Exception as e:
-                logging.warning(f"Failed to chunk guild {interaction.guild.name} ({interaction.guild.id}): {e}")
-
-        view = Dashboard(interaction.guild_id)
-        await view.setup(interaction)
+    # Check user permissions
+    if not await utils.user_has_config_permissions(interaction):
+        # user_has_config_permissions handles the error response itself
+        return
+    
+    # Handle guild chunking if needed
+    payload = await _chunk_guild_with_feedback(interaction)
+    
+    # Create and setup dashboard view
+    view = Dashboard(interaction.guild_id)
+    await view.setup(interaction, edit_message_id=payload)
