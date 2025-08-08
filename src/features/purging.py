@@ -75,9 +75,9 @@ async def _send_error(interaction: Interaction, title: str, description: str) ->
     """
     embed = nextcord.Embed(title=title, description=description, color=nextcord.Color.red())
     if interaction.response.is_done():
-        await interaction.followup.send(embed=embed, ephemeral=True)
+        await interaction.followup.send(embed=embed, ephemeral=True, view=ui_components.SupportView())
     else:
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=embed, ephemeral=True, view=ui_components.SupportView())
 
 # ---------------------------
 # Purge Handlers
@@ -238,7 +238,7 @@ async def _handle_purge_amount(interaction: Interaction, amount: int) -> None:
     :rtype: None
     """
     # Check if channel is already being purged
-    if is_channel_purging(interaction.guild_id):
+    if is_channel_purging(interaction.channel_id):
         await _send_error(
             interaction,
             "Purging Error",
@@ -252,13 +252,26 @@ async def _handle_purge_amount(interaction: Interaction, amount: int) -> None:
     try:
         # Perform the message deletion
         deleted = await interaction.channel.purge(limit=amount)
+    except nextcord.NotFound as e:
+        # Handle the case where some messages were already deleted
+        # This is a common occurrence and shouldn't be treated as a critical error
+        deleted = []
+    except nextcord.Forbidden as e:
+        remove_channel_from_purging(interaction.channel_id)
+        logging.error(f"Purge failed due to insufficient permissions: {e}")
+        await _send_error(
+            interaction,
+            "Permission Error",
+            "InfiniBot lacks the necessary permissions to delete messages. Please check bot permissions."
+        )
+        return
     except Exception as e:
         remove_channel_from_purging(interaction.channel_id)
-        logging.error(f"Purge error: {e}")
+        logging.error(f"Unexpected purge error: {e}")
         await _send_error(
             interaction,
             "Purge Failed",
-            "An error occurred during message deletion. Please check bot permissions."
+            "An unexpected error occurred during message deletion. Please try again or contact support."
         )
         return
     finally:
