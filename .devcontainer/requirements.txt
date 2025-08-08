@@ -5,7 +5,7 @@ nextcord==3.1.0
 nextcord_ext_menus==1.5.7
 rapidfuzz==3.10.1
 python-dateutil==2.9.0.post0
-SQLAlchemy==2.0.41
+SQLAlchemy==2.0.42
 topggpy==1.4.0
 cachetools==6.1.0
 psutil==7.0.0
