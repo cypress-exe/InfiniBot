@@ -280,15 +280,18 @@ async def _handle_purge_amount(interaction: Interaction, amount: int) -> None:
         remove_channel_from_purging(interaction.channel_id)
 
     # Send confirmation of successful purge
-    await interaction.channel.send(
-        embed=nextcord.Embed(
-            title="Purged Messages",
-            description=f"{interaction.user} purged {len(deleted)} messages in {interaction.channel.mention}",
-            color=nextcord.Color.orange(),
-            timestamp=datetime.datetime.now(tz=datetime.timezone.utc)
-        ),
-        view=ui_components.InviteView()
-    )
+    try:
+        await interaction.channel.send(
+            embed=nextcord.Embed(
+                title="Purged Messages",
+                description=f"{interaction.user} purged {len(deleted)} messages in {interaction.channel.mention}",
+                color=nextcord.Color.orange(),
+                timestamp=datetime.datetime.now(tz=datetime.timezone.utc)
+            ),
+            view=ui_components.InviteView()
+        )
+    except nextcord.errors.NotFound: # Unknown Channel
+        logging.warning(f"Failed to send purge confirmation in {interaction.channel.id}. Channel may have been deleted by another bot or a user.")
 
 # ---------------------------
 # Main Command Handler
