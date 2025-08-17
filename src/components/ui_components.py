@@ -269,11 +269,11 @@ class SelectView(CustomView):
         if self.options == None or self.options == []:
             raise ValueError(f"'options' must be a 'list' with one or more 'nextcord.SelectOption' items.")       
         if type(self.options) != list:
-            raise ValueError(f"'options' must be of type 'list'. Recieved type '{type(self.options)}'")        
+            raise ValueError(f"'options' must be of type 'list'. Received type '{type(self.options)}'")        
         for option in self.options:
             if type(option) != nextcord.SelectOption:
-                raise ValueError(f"'options' must only contain 'nextcord.SelectOption' items. Countained 1+ '{type(option)}'")
-            
+                raise ValueError(f"'options' must only contain 'nextcord.SelectOption' items. Contained 1+ '{type(option)}'")
+
         # Remove Unknowns
         if not self.embed.description: self.embed.description = ""
         confirmed_options = []
