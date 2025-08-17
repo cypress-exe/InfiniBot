@@ -31,6 +31,10 @@ class ShowMoreButton(ui_components.CustomView):
   
   @nextcord.ui.button(label = 'Show More', style = nextcord.ButtonStyle.gray, custom_id = "show_more")
   async def event(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
+    if not interaction.message.embeds:
+        await interaction.response.pong()
+        return
+    
     if button.label == "Show More":
         # Show more
         embed = interaction.message.embeds[0]
@@ -55,8 +59,7 @@ class ShowMoreButton(ui_components.CustomView):
         # Remove the info embed
         all_embeds = interaction.message.embeds[:-1]
 
-    await interaction.response.edit_message(view=self, embeds = all_embeds)
-  
+    await interaction.response.edit_message(view=self, embeds=all_embeds)
 
 # Utility Functions
 async def get_logging_channel(guild: nextcord.Guild) -> nextcord.TextChannel:
