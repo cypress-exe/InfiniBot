@@ -140,7 +140,7 @@ async def check_and_run_birthday_actions(bot: nextcord.Client, guild: nextcord.G
                 birth_date = datetime.date.fromisoformat(entry.birth_date[:10])
             except Exception:
                 logging.warning(
-                    f"Unable to parse birth_date '{entry.birth_date}' for member {member_id} in guild {guild.id}; skipping."
+                    f"Unable to parse birth_date '{entry.birth_date}'; skipping."
                 )
                 continue
 
