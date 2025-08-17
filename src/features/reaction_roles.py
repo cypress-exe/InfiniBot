@@ -126,71 +126,74 @@ async def run_reaction_role_command(interaction: Interaction, type: str, mention
     await create_reaction_role(interaction, reaction_role_title, reaction_role_description, view.selection, type, mention_roles)
     
 async def run_custom_reaction_role_command(interaction: Interaction, options: str, mention_roles: bool):
-    if await utils.user_has_config_permissions(interaction):
-        if not utils.feature_is_active(guild = interaction.guild, feature = "reaction_roles"):
-            await interaction.response.send_message(embed = REACTION_ROLES_DISABLED_MESSAGE, ephemeral=True)
-            return
-        
-        if not interaction.guild.me.guild_permissions.manage_roles:
-            await interaction.response.send_message(embed = MISSING_PERMISSIONS_MESSAGE, ephemeral=True)
-            return
-        
-        options_split = [option.strip() for option in options.split(",")]
-        
-        if len(options_split) > 10:
-            await interaction.followup.send(embed = nextcord.Embed(title="Too Many Arguments", description="You can't have more than 10 role options.", color=nextcord.Color.red()), ephemeral=True)
-            return
-        
-        emojis = []
-        role_IDs = []
-        for option in options_split:
-            try:
-                if len(option.split("=")) < 2:
-                    raise Exception # Trigger the error message at end of try block
-                
-                emoji = option.split("=")[0].strip()
-                if emoji in emojis:
-                    await interaction.response.send_message(embed = nextcord.Embed(title="Error: You can't use the same emoji twice", 
-                                                                                   description="Every emoji has to be unique.", color=nextcord.Color.red()), ephemeral=True)
-                    return
-                
-                role_ID = int(option.split("=")[1][4:-1].strip())
-                role = [role for role in interaction.guild.roles if role.id == role_ID][0]
-                if role_ID in role_IDs:
-                    await interaction.response.send_message(embed = nextcord.Embed(title="Error: You can't use the same role twice", description="Every role has to be unique.", 
-                                                                                   color=nextcord.Color.red()), ephemeral=True)
-                    return
-                if not role_ID in [role.id for role in interaction.guild.roles]:
-                    await interaction.response.send_message(embed = nextcord.Embed(title="Error: Role Doesn't Exist", description=f"The role \"{role.name}\" doesn't exist.", 
-                                                                                   color=nextcord.Color.red()), ephemeral=True)
-                    return
-                if not utils.role_assignable_by_infinibot(role):
-                    await interaction.response.send_message(embed = nextcord.Embed(title="Error: Missing Permissions", 
-                                                                                   description=f"Infinibot does not have a high enough role to assign/remove {role.mention}. To fix this, promote the role \"Infinibot\" to the highest role on the server or give InfiniBot Administrator.", 
-                                                                                   color=nextcord.Color.red()))
-                
-                emojis.append(emoji)
-                role_IDs.append(role.id)
-                
-            except Exception:
-                description = utils.standardize_str_indention("""
-                \"Options\" needs to be formatted like this:
-                                                                
-                `Emoji = @Role, Emoji = @Role, Emoji = @Role, Etc`                  
-                `👍 = @Member, 🥸 = @Gamer`
-                
-                For more information: [Check our documentation](https://cypress-exe.github.io/InfiniBot/docs/roles/reaction-roles/)
-                """)
-                await interaction.response.send_message(embed = nextcord.Embed(title="Woops... You Formatted that Wrong", description=description, 
+    if not await utils.user_has_config_permissions(interaction):
+        return
+    
+    if not utils.feature_is_active(guild = interaction.guild, feature = "reaction_roles"):
+        await interaction.response.send_message(embed = REACTION_ROLES_DISABLED_MESSAGE, ephemeral=True)
+        return
+    
+    if not interaction.guild.me.guild_permissions.manage_roles:
+        await interaction.response.send_message(embed = MISSING_PERMISSIONS_MESSAGE, ephemeral=True)
+        return
+    
+    options_split = [option.strip() for option in options.split(",")]
+    
+    if len(options_split) > 10:
+        await interaction.response.send_message(embed = nextcord.Embed(title="Too Many Options", description="You can't have more than 10 role options.", color=nextcord.Color.red()), ephemeral=True)
+        return
+    
+    emojis = []
+    role_IDs = []
+    for option in options_split:
+        try:
+            if len(option.split("=")) < 2:
+                raise Exception # Trigger the error message at end of try block
+            
+            emoji = option.split("=")[0].strip()
+            if emoji in emojis:
+                await interaction.response.send_message(embed = nextcord.Embed(title="Error: You can't use the same emoji twice", 
+                                                                                description="Every emoji has to be unique.", color=nextcord.Color.red()), ephemeral=True)
+                return
+            
+            role_ID = int(option.split("=")[1][4:-1].strip())
+            role = [role for role in interaction.guild.roles if role.id == role_ID][0]
+            if role_ID in role_IDs:
+                await interaction.response.send_message(embed = nextcord.Embed(title="Error: You can't use the same role twice", description="Every role has to be unique.", 
                                                                                 color=nextcord.Color.red()), ephemeral=True)
                 return
-        
-        modal = ReactionRoleModal()
-        await interaction.response.send_modal(modal)
-        
-        await modal.wait()
-        
-        await create_reaction_role(interaction, modal.title_value, modal.description_value, [option.strip() for option in options.split(",")], "Custom", mention_roles)
+            if not role_ID in [role.id for role in interaction.guild.roles]:
+                await interaction.response.send_message(embed = nextcord.Embed(title="Error: Role Doesn't Exist", description=f"The role \"{role.name}\" doesn't exist.", 
+                                                                                color=nextcord.Color.red()), ephemeral=True)
+                return
+            if not utils.role_assignable_by_infinibot(role):
+                await interaction.response.send_message(embed = nextcord.Embed(title="Error: Missing Permissions", 
+                                                                                description=f"Infinibot does not have a high enough role to assign/remove {role.mention}. To fix this, promote the role \"Infinibot\" to the highest role on the server or give InfiniBot Administrator.", 
+                                                                                color=nextcord.Color.red()), ephemeral=True)
+                return
+            
+            emojis.append(emoji)
+            role_IDs.append(role.id)
+            
+        except Exception:
+            description = utils.standardize_str_indention("""
+            \"Options\" needs to be formatted like this:
+                                                            
+            `Emoji = @Role, Emoji = @Role, Emoji = @Role, Etc`                  
+            `👍 = @Member, 🥸 = @Gamer`
+            
+            For more information: [Check our documentation](https://cypress-exe.github.io/InfiniBot/docs/roles/reaction-roles/)
+            """)
+            await interaction.response.send_message(embed = nextcord.Embed(title="Woops... You Formatted that Wrong", description=description, 
+                                                                            color=nextcord.Color.red()), ephemeral=True)
+            return
+    
+    modal = ReactionRoleModal()
+    await interaction.response.send_modal(modal)
+    
+    await modal.wait()
+    
+    await create_reaction_role(interaction, modal.title_value, modal.description_value, [option.strip() for option in options.split(",")], "Custom", mention_roles)
 
 def reaction_role_options_formatter(_type: str, roles: list[nextcord.Role], emojis: list[str], mention_roles: bool):
     reactions_formatted = "" # Returned
