@@ -162,9 +162,20 @@ async def files_computation(deleted_message: nextcord.Message, log_channel: next
     
         
     if len(files) > 0:
-        await log_channel.send(files = files, reference = log_message)
+        try:
+            await log_channel.send(files = files, reference = log_message)
+        except nextcord.errors.HTTPException: # 313 Payload Too Large
+            await log_channel.send(embed=nextcord.Embed(
+                title="Error", 
+                description="One or more files are too large to send. Unfortunately, they have been lost to the void now...", 
+                color=nextcord.Color.red()), 
+                reference=log_message)
     else:
-        await log_channel.send(embed = nextcord.Embed(title = "Error", description = "There was a problem when retrieving these files. They have been lost to the void.", color = nextcord.Color.red()), reference = log_message)
+        await log_channel.send(embed=nextcord.Embed(
+            title="Error", 
+            description="There was a problem when retrieving these files. They have been lost to the void.", 
+            color=nextcord.Color.red()), 
+            reference=log_message)
 
 
 # Triggers
