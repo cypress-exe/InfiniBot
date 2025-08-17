@@ -129,11 +129,22 @@ async def _handle_purge_all(interaction: Interaction) -> None:
     # Delete the original channel
     try:
         await interaction.channel.delete(reason="Purging Channel")
-    except nextcord.Forbidden:
+    except (nextcord.Forbidden, nextcord.errors.HTTPException):
         await _send_error(
             interaction,
-            "Deletion Failed",
-            "Failed to delete original channel. You may need to manually remove cloned channels."
+            "Channel Deletion Failed",
+            utils.standardize_str_indention("""
+            InfiniBot created a replacement channel and transferred applicable settings,
+            but was unable to delete the original channel.
+
+            Possible reasons:
+            - The bot lacks permission to delete channels.
+            - Discord prevents replacing this channel (e.g., system or community channels).
+            - Other edge cases.
+
+            Please review the server and remove any leftover cloned channels manually if needed.
+            If the issue persists, contact support for help.
+            """)
         )
         return
 
