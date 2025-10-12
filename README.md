@@ -22,7 +22,7 @@
 
 ## ✨ Features
 
-InfiniBot is a multipurpose Discord utility bot designed to scale across millions of servers using SQLite for storage, docker for containerization, and sharding for distribution. InfiniBot is in thousands of servers, with hundreds of thousands of active users. It's built to be fast, efficient, and easy to use.
+InfiniBot is a multipurpose Discord utility bot designed to scale across millions of servers using SQLite for storage, docker for containerization, and sharding for distribution. InfiniBot is in thousands of servers, with well over half a million active users. It's built to be fast, efficient, and easy to use.
 
 ### 🛡️ Moderation & Security
 - **Advanced Profanity Filter** - Customizable word filtering with strike system
