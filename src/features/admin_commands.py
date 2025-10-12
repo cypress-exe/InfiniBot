@@ -389,6 +389,10 @@ async def handle_stats_command(message: nextcord.Message):
         server_count += 1
         member_count += guild.member_count
 
+    # Add commas to large numbers for readability
+    member_count = f"{member_count:,}"
+    server_count = f"{server_count:,}"
+
     embed = nextcord.Embed(
         title="Server Stats:", 
         description=f"Server Count: {server_count}\nTotal Members: {member_count}\n\n*A watched pot never boils*", 
