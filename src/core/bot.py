@@ -73,31 +73,39 @@ def get_bot() -> commands.AutoShardedBot: return bot
 connected_shards = set()
 post_shards_connected_called = False
 
-async def ensure_guilds_ready():
+async def ensure_guilds_ready(waited=False):
     """
-    Simple function to ensure guilds are properly loaded with minimal retry logic.
+    Ensure guilds are properly loaded with retry logic.
     """
     unchunked = [guild for guild in bot.guilds if not guild.chunked]
-    
     if not unchunked:
         logging.info("✅ All guilds are ready")
         return
     
+    if not waited:
+        logging.info(f"⏳ Waiting 15 seconds for guilds to be ready. {len(unchunked)} guilds unchunked.")
+        await asyncio.sleep(15)  # Let auto-chunking finish
+        await ensure_guilds_ready(waited=True)
+
     logging.warning(f"Retrying chunking for {len(unchunked)} guilds...")
-    
-    # Simple retry - try each guild once more
+
     for guild in unchunked:
         try:
             await asyncio.wait_for(guild.chunk(), timeout=20)
+        except asyncio.TimeoutError:
+            logging.warning(f"⏱️ Guild {guild.name} timed out waiting for chunk; trying REST fallback.")
+            try:
+                # Fallback: Fetch members via REST
+                async for member in guild.fetch_members(limit=None):
+                    pass
+                logging.info(f"✅ Guild {guild.name} fetched via REST fallback.")
+            except Exception as e:
+                logging.warning(f"⚠️ Guild {guild.name} failed REST fallback: {e}")
         except Exception as e:
-            logging.warning(f"Guild {guild.name} (ID: {guild.id}) failed to chunk: {e}")
-    
-    # Final status
-    still_unchunked = [guild for guild in bot.guilds if not guild.chunked]
-    if still_unchunked:
-        logging.warning(f"⚠️ {len(still_unchunked)} guilds remain unchunked - continuing anyway")
-    else:
-        logging.info("✅ All guilds successfully chunked")
+            logging.warning(f"⚠️ Guild {guild.name} failed to chunk: {e}")
+
+    still_unchunked = [g for g in bot.guilds if not g.chunked]
+    logging.info(f"Chunking complete. Remaining unchunked: {len(still_unchunked)}")
 
 @bot.event
 async def on_shard_connect(shard_id: int):
@@ -113,8 +121,6 @@ async def on_shard_disconnect(shard_id: int):
     if shard_id in connected_shards:
         connected_shards.remove(shard_id)
         logging.info(f"Shard {shard_id} disconnected.")
-    else:
-        logging.warning(f"Shard {shard_id} was not in the connected shards list.")
 
 async def post_shards_connected():
     """
@@ -156,7 +162,7 @@ async def on_ready() -> None: # Bot load
     logging.info(f"============================== Logged in as: {bot.user.name} with all shards ready. ==============================")
     logging.info(f"Bot is running with {bot.shard_count} shards across {len(bot.guilds)} guilds.")
 
-    # Simple retry for any unchunked guilds
+    # Start Manual Guild Chunking Sequence
     await ensure_guilds_ready()
 
     # Initialize core systems
@@ -431,8 +437,8 @@ async def test(interaction: Interaction):
                 await interaction.response.send_message(**kwargs)
     # ======================================= <INSERT TEST CODE HERE> =======================================
 
-        # from features.test import run_test_command
-        # await run_test_command(interaction)
+        cached_members = interaction.guild.members
+        await send(content=f"Cached members: {cached_members}")
 
     # ======================================= </INSERT TEST CODE HERE> =======================================
         pass

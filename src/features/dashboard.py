@@ -12,6 +12,7 @@ from nextcord import Interaction
 
 from components import ui_components, utils
 from components.ui_components import CustomView, CustomModal, SupportView
+from config import global_settings
 from config.global_settings import ShardLoadedStatus # Leave import
 from config.server import Server
 from features.action_logging import get_logging_channel
@@ -4909,6 +4910,10 @@ async def _chunk_guild_with_feedback(interaction: Interaction) -> int:
     """
     if interaction.guild.chunked:
         return None
+
+    # Skip if bot is already fully loaded. If the guild still shows as unchunked, something is wrong, but chunking again won't help.
+    if global_settings.bot_loaded:
+        return None
     
     # Send loading message to user
     await interaction.response.send_message(
@@ -4945,7 +4950,6 @@ async def _chunk_guild_with_feedback(interaction: Interaction) -> int:
         view=SupportView()
     )
     return None
-
 
 async def run_dashboard_command(interaction: Interaction):
     """
