@@ -3,7 +3,7 @@ dateparser==1.2.2
 humanfriendly==10.0
 nextcord==3.1.1
 nextcord_ext_menus==1.5.7
-rapidfuzz==3.13.0
+rapidfuzz==3.14.1
 python-dateutil==2.9.0.post0
 SQLAlchemy==2.0.43
 topggpy==1.4.0
