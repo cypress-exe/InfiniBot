@@ -437,10 +437,13 @@ async def handle_info_command(message: nextcord.Message, message_parts: list):
     # Find guilds by server ID or owner ID
     guilds: list[nextcord.Guild] = []
     for guild in bot.guilds:
-        if guild is None: continue  # Skip if guild is None
-        if guild.id == target_id or guild.owner.id == target_id:
-            guilds.append(guild)
-    
+        try:
+            if guild is None: continue  # Skip if guild is None
+            if guild.id == target_id or (guild.owner and guild.owner.id == target_id):
+                guilds.append(guild)
+        except Exception as e:
+            logging.error(f"Error while processing guild {guild.id if guild else 'Unknown'}: {e}")
+
     if not guilds:
         embed = nextcord.Embed(
             title="Server or Owner Could Not Be Found", 
