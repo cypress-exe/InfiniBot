@@ -38,7 +38,7 @@ _admin_command_registry: Dict[int, Dict[str, Dict[str, Any]]] = {
 
 def admin_command_level_1(command_name: str, description: str = ""):
     """
-    Decorator for Level 1 admin commands (Basic admin commands).
+    Decorator for Level 1 admin commands (Telemetry).
     
     Args:
         command_name (str): The command name (without dashes)
@@ -59,7 +59,7 @@ def admin_command_level_1(command_name: str, description: str = ""):
 
 def admin_command_level_2(command_name: str, description: str = ""):
     """
-    Decorator for Level 2 admin commands (Server management).
+    Decorator for Level 2 admin commands (Support Staff).
     
     Args:
         command_name (str): The command name (without dashes)
@@ -80,7 +80,7 @@ def admin_command_level_2(command_name: str, description: str = ""):
 
 def admin_command_level_3(command_name: str, description: str = ""):
     """
-    Decorator for Level 3 admin commands (System control).
+    Decorator for Level 3 admin commands (System Control).
     
     Args:
         command_name (str): The command name (without dashes)
@@ -340,7 +340,7 @@ async def handle_help_command(message: nextcord.Message):
     
     # Build help message based on user's permission level
     if user_level >= 1:
-        description += "### **Level 1 Commands (Basic Admin)**\n"
+        description += "### **Level 1 Commands (Telemetry)**\n"
         for cmd in sorted(admin_commands['level_1']):
             # Convert command name to proper format
             formatted_cmd = cmd.replace('_', ' ').title()
@@ -348,7 +348,7 @@ async def handle_help_command(message: nextcord.Message):
         description += "\n"
     
     if user_level >= 2:
-        description += "### **Level 2 Commands (Server Management)**\n"
+        description += "### **Level 2 Commands (Support Staff)**\n"
         for cmd in sorted(admin_commands['level_2']):
             formatted_cmd = cmd.replace('_', ' ').title()
             description += f"• `-{cmd}`: {_get_command_description(cmd)}\n"
@@ -579,8 +579,7 @@ async def handle_infinibot_mod_help_command(message: nextcord.Message):
     )
     await message.channel.send(embed=embed)
 
-# Level 3 Command Handlers  
-@admin_command_level_3("restart", "Restart the InfiniBot process")
+@admin_command_level_2("restart", "Restart the InfiniBot process")
 async def handle_restart_command(message: nextcord.Message):
     """Restart the InfiniBot process."""
     embed = nextcord.Embed(
@@ -596,6 +595,7 @@ async def handle_restart_command(message: nextcord.Message):
     python = sys.executable
     os.execl(python, python, *sys.argv)
 
+# Level 3 Command Handlers  
 @admin_command_level_3("global-kill", "Manage global kill switches for InfiniBot features")
 async def handle_global_kill_command(message: nextcord.Message, message_parts: list):
     """Manage global kill switches for InfiniBot features - dynamically generated."""
