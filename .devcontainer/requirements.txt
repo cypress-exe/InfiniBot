@@ -8,5 +8,5 @@ python-dateutil==2.9.0.post0
 SQLAlchemy==2.0.44
 topggpy==1.4.0
 cachetools==6.2.1
-psutil==7.1.0
+psutil==7.1.1
 discordlists.py==1.1.1
