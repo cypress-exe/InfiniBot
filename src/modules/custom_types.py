@@ -1,4 +1,5 @@
 import threading
+import time
 
 class FalseType(type):
     # Override __bool__ to make the class itself falsy
@@ -46,64 +47,36 @@ UNSET_VALUE = _Unset_Value
 
 class ExpiringSet:
     def __init__(self, expiration_time=5):
-        """
-        Initialize the set with a specified expiration time for elements.
-        
-        :param expiration_time: Time in seconds after which elements expire.
-        """
-        self.store = set()
         self.expiration_time = expiration_time
+        # Store item as key, expiration timestamp as value
+        self.store = {}
         self.lock = threading.Lock()
 
     def add(self, item):
-        """
-        Add an item to the set with an expiration time.
-
-        :param item: Item to add.
-        """
         with self.lock:
-            self.store.add(item)
-
-        # Schedule removal of the item after expiration_time seconds
-        threading.Timer(self.expiration_time, self._remove_item, args=[item]).start()
-
-    def remove(self, item):
-        """
-        Remove an item from the set.
-
-        :param item: Item to remove.
-        """
-        self._remove_item(item)
+            # Overwriting the timestamp effectively "renews" the item
+            self.store[item] = time.time() + self.expiration_time
 
     def __contains__(self, item):
-        """
-        Check if an item exists in the set and hasn't expired.
-
-        :param item: Item to check.
-        :return: True if the item exists, False otherwise.
-        """
         with self.lock:
+            self._purge_expired()
             return item in self.store
 
-    def _remove_item(self, item):
-        """
-        Remove an item from the set. This is called internally by the timer.
+    def _purge_expired(self):
+        """Internal helper to clean up expired items. Assumes lock is already held."""
+        now = time.time()
+        # Create a list of expired keys to avoid 'size changed' error during dict iteration
+        expired = [item for item, expiry in self.store.items() if now > expiry]
+        for item in expired:
+            del self.store[item]
 
-        :param item: Item to remove.
-        """
+    def __iter__(self):
         with self.lock:
-            self.store.discard(item)   # Use discard to avoid KeyError if the item is not present
+            self._purge_expired()
+            # Return a list copy to ensure iteration is thread-safe
+            return iter(list(self.store.keys()))
 
     def __repr__(self):
-        """
-        String representation of the set for debugging.
-        """
         with self.lock:
-            return repr(self.store)
-        
-    def __iter__(self):
-        """
-        Iterate over the items in the set.
-        """
-        with self.lock:
-            return iter(self.store)
+            self._purge_expired()
+            return f"ExpiringSet({list(self.store.keys())})"

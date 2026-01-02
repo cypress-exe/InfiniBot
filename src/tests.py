@@ -2,12 +2,15 @@
 
 import nextcord
 import datetime
+import gc
 import json
 import logging
 import os
 import random
 import shutil
 import sys
+import threading
+import time
 import unittest
 import uuid
 from typing import Any, List, Dict
@@ -29,7 +32,7 @@ from config.messages.cached_messages import (
     remove_cached_messages_from_guild, clear_all_cached_messages, get_cache_stats
 )
 from core.log_manager import setup_logging, update_base_path as log_manager_update_base_path
-from modules.custom_types import UNSET_VALUE
+from modules.custom_types import UNSET_VALUE, ExpiringSet
 from modules.database import Database
 
 """
@@ -2038,6 +2041,139 @@ class TestDailyDBMaintenance(unittest.TestCase):
         database.cleanup()
 
         logging.info("Finished testing cleanup_orphaned_guild_entries...")
+
+class TestExpiringSet(unittest.TestCase):
+    """
+    Tests for the ExpiringSet class to ensure proper expiration behavior.
+    """
+    
+    def test_expiring_set_basic_functionality(self) -> None:
+        """
+        Test that ExpiringSet properly stores and expires items.
+        """
+        logging.info("Testing ExpiringSet basic add/expire functionality...")
+        
+        # Create ExpiringSet with short expiration for faster testing
+        expiring_set = ExpiringSet(expiration_time=1)
+        
+        # Add many items to simulate production load
+        num_items = 100
+        logging.debug(f"Adding {num_items} items to ExpiringSet...")
+        for i in range(num_items):
+            expiring_set.add(f"item_{i}")
+        
+        # All items should exist immediately
+        items_found = sum(1 for i in range(num_items) if f"item_{i}" in expiring_set)
+        self.assertEqual(
+            items_found,
+            num_items,
+            msg=f"Expected {num_items} items immediately after add, found {items_found}"
+        )
+        
+        # Wait for items to expire
+        logging.debug("Waiting for items to expire...")
+        time.sleep(1.5)
+        
+        # Verify items actually expired
+        items_remaining = sum(1 for i in range(num_items) if f"item_{i}" in expiring_set)
+        self.assertEqual(
+            items_remaining,
+            0,
+            msg=f"{items_remaining} items did not expire from ExpiringSet"
+        )
+        
+        logging.info("✅ ExpiringSet basic functionality test passed")
+    
+    def test_expiring_set_item_renewal(self) -> None:
+        """
+        Test that adding the same item multiple times renews its expiration.
+        """
+        logging.info("Testing ExpiringSet item renewal on re-add...")
+        
+        expiring_set = ExpiringSet(expiration_time=2)
+        
+        # Add an item
+        expiring_set.add("renewable_item")
+        
+        # Wait 1 second
+        time.sleep(1)
+        
+        # Re-add the same item (should renew expiration)
+        expiring_set.add("renewable_item")
+        
+        # Wait another 1.5 seconds (total 2.5 from first add, but only 1.5 from renewal)
+        time.sleep(1.5)
+        
+        # Item should still exist because it was renewed
+        self.assertIn(
+            "renewable_item",
+            expiring_set,
+            msg="Item should still exist after renewal"
+        )
+        
+        # Wait for full expiration from renewal
+        time.sleep(1)
+        
+        # Now it should be expired
+        self.assertNotIn(
+            "renewable_item",
+            expiring_set,
+            msg="Item should be expired after renewal expiration time"
+        )
+        
+        logging.info("✅ ExpiringSet item renewal test passed")
+    
+    def test_expiring_set_iteration(self) -> None:
+        """
+        Test that iterating over ExpiringSet properly purges expired items.
+        """
+        logging.info("Testing ExpiringSet iteration with expiration...")
+        
+        expiring_set = ExpiringSet(expiration_time=1)
+        
+        # Add items
+        for i in range(5):
+            expiring_set.add(f"item_{i}")
+        
+        # Iterate immediately - should see all items
+        items = list(expiring_set)
+        self.assertEqual(len(items), 5, msg="Should see all items immediately")
+        
+        # Wait for expiration
+        time.sleep(1.5)
+        
+        # Iterate after expiration - should see no items
+        items = list(expiring_set)
+        self.assertEqual(len(items), 0, msg="Should see no items after expiration")
+        
+        logging.info("✅ ExpiringSet iteration test passed")
+    
+    def test_expiring_set_repr(self) -> None:
+        """
+        Test that __repr__ properly purges expired items and shows current state.
+        """
+        logging.info("Testing ExpiringSet.__repr__ with expiration...")
+        
+        expiring_set = ExpiringSet(expiration_time=1)
+        
+        # Add items
+        expiring_set.add("item_1")
+        expiring_set.add("item_2")
+        
+        # Check repr shows items
+        repr_str = repr(expiring_set)
+        self.assertIn("item_1", repr_str, msg="Repr should show active items")
+        self.assertIn("item_2", repr_str, msg="Repr should show active items")
+        
+        # Wait for expiration
+        time.sleep(1.5)
+        
+        # Check repr shows empty after expiration
+        repr_str = repr(expiring_set)
+        self.assertNotIn("item_1", repr_str, msg="Repr should not show expired items")
+        self.assertNotIn("item_2", repr_str, msg="Repr should not show expired items")
+        
+        logging.info("✅ ExpiringSet.__repr__ test passed")
 
 def cleanup_environment():
     """

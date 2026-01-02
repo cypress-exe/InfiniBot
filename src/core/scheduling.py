@@ -15,6 +15,7 @@ from features.leveling import daily_leveling_maintenance
 from features.moderation import daily_moderation_maintenance
 from core.db_manager import daily_database_maintenance
 from core.log_manager import setup_logging
+from components.memory_profiler import log_memory_stats
 
 
 
@@ -119,6 +120,10 @@ async def run_scheduled_tasks() -> None:
 
         if (current_time_utc.hour == 9 and current_time_utc.minute == 0): # 9am utc time = LOW TRAFFIC HOUR GLOBALLY
             await daily_database_maintenance(bot)
+
+        # Memory monitoring (every hour at the top of the hour)
+        if current_time_utc.minute == 0:
+            log_memory_stats()
 
         # Final monitoring report
         if log_on_correct_behavior:

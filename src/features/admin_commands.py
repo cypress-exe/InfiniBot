@@ -599,6 +599,44 @@ async def handle_restart_command(message: nextcord.Message):
     python = sys.executable
     os.execl(python, python, *sys.argv)
 
+@admin_command_level_2("memory", "Display current memory usage")
+async def handle_memory_command(message: nextcord.Message):
+    """Display current memory usage."""
+    from components.memory_profiler import get_memory_stats
+    
+    logging.info(f"Memory stats requested by: {message.author}")
+    
+    try:
+        stats = get_memory_stats()
+        
+        # Format statistics
+        description = (
+            f"**Memory:** {stats['rss_mb']:.1f} MB ({stats['percent']:.1f}%)\n"
+            f"**Threads:** {stats['active_threads']}\n"
+            f"**Cached Messages:** {stats['cached_messages_total']}\n"
+            f"**Cached Channels:** {stats['cached_channels']}"
+        )
+        
+        # Determine color based on memory usage
+        if stats['rss_mb'] > 2000:  # Over 2GB
+            color = nextcord.Color.red()
+        elif stats['rss_mb'] > 1500:  # Over 1.5GB
+            color = nextcord.Color.orange()
+        else:
+            color = nextcord.Color.green()
+        
+        embed = nextcord.Embed(
+            title="📊  Memory Usage",
+            description=description,
+            color=color
+        )
+        
+        await message.channel.send(embed=embed)
+        
+    except Exception as e:
+        logging.error(f"Error generating memory stats: {e}", exc_info=True)
+        await message.channel.send("❌ Error generating memory stats. Check logs for details.")
+
 # Level 3 Command Handlers  
 @admin_command_level_3("global-kill", "Manage global kill switches for InfiniBot features")
 async def handle_global_kill_command(message: nextcord.Message, message_parts: list):
@@ -902,7 +940,7 @@ async def handle_run_scheduled_actions_command(message: nextcord.Message, messag
             color=nextcord.Color.red()
         )
         await message.channel.send(embed=embed)
-        logging.error(f"Error executing daily database maintenance actions: {e}")
+        logging.error(f"Error executing daily database maintenance actions: {e}", exc_info=True)
 
 @admin_command_level_3("add-admin", "Add a new admin to the system")
 async def handle_add_admin_command(message: nextcord.Message, message_parts: list):
