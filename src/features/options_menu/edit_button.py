@@ -1,3 +1,4 @@
+import logging
 from nextcord import Interaction
 import nextcord
 
@@ -34,3 +35,5 @@ class EditButton(OptionsButton):
             await reaction_roles.EditReactionRole(self.message.id).setup(interaction)
         elif self.message_info.message_type == "role_message":
             await role_messages.EditRoleMessage(self.message.id).setup(interaction)
+        else:
+            logging.error(f"Unknown message type for edit: {self.message_info.message_type}")

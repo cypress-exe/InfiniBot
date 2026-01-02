@@ -21,8 +21,9 @@ class RoleMessageButton_Single(CustomView):
             options_selected = False
             options = []
             for field in self.message.embeds[0].fields:
+                name = field.name
                 description = "\n".join(field.value.split("\n")[:-1])
-                roles = self.extract_ids(field.value.split("/n")[-1])
+                roles = self.extract_ids(field.value.split("\n")[-1])
                 self.add_available_roles(roles)
                 
                 # Check if the user has the roles
@@ -36,8 +37,15 @@ class RoleMessageButton_Single(CustomView):
                                 selected = True
                                 options_selected = True
                             break
+                        
+                # Truncate name and description if too long
+                if len(name) > 100:
+                    name = name[:97] + "..."
+                    
+                if len(description) > 100:
+                    description = description[:97] + "..."
                 
-                options.append(nextcord.SelectOption(label=field.name, description=description, value="|".join(roles), default=selected))
+                options.append(nextcord.SelectOption(label=name, description=description, value="|".join(roles), default=selected))
                 
             self.select = nextcord.ui.Select(placeholder="Choose a Role", min_values=0, options=options)
             self.select.callback = self.select_callback
@@ -103,8 +111,9 @@ class RoleMessageButton_Multiple(CustomView):
             
             options = []
             for field in self.message.embeds[0].fields:
+                name = field.name
                 description = "\n".join(field.value.split("\n")[:-1])
-                roles = self.extract_ids(field.value.split("/n")[-1])
+                roles = self.extract_ids(field.value.split("\n")[-1])
                 self.add_available_roles(roles)
                 
                 # Check if the user has the roles
@@ -116,8 +125,15 @@ class RoleMessageButton_Multiple(CustomView):
                         if index == (len(roles) - 1): # If this is the last role to check
                             selected = True
                             break
+                        
+                # Truncate name and description if too long
+                if len(name) > 100:
+                    name = name[:97] + "..."
+
+                if len(description) > 100:
+                    description = description[:97] + "..."
                 
-                options.append(nextcord.SelectOption(label=field.name, description=description, value="|".join(roles), default=selected))
+                options.append(nextcord.SelectOption(label=name, description=description, value="|".join(roles), default=selected))
                 
             self.select = nextcord.ui.Select(placeholder="Choose Roles", min_values=0, max_values=len(options), options=options)
             self.select.callback = self.select_callback
@@ -439,7 +455,11 @@ class RoleMessageSetup(CustomView):
                                                            changes to the text. Here is a mockup of what this option \
                                                            will look like:", color=nextcord.Color.green())
                                 
-                                self.outer.add_field(embed, [self.roles, self.title, self.description])
+                                successful = self.outer.add_field(embed, [self.roles, self.title, self.description])
+                                if not successful:
+                                    self.finish_btn.style = nextcord.ButtonStyle.red
+                                else:
+                                    self.finish_btn.style = nextcord.ButtonStyle.blurple           
                                 
                                 await interaction.response.edit_message(embed=embed, view=self)
                                 
@@ -675,7 +695,7 @@ class RoleMessageSetup(CustomView):
                                 view = RoleMessageButton_Multiple()
                             
                             # Create Role Select
-                            role_message_embed = self.outer.create_embed(
+                            role_message_embed, _ = self.outer.create_embed( # Ignore errors here; they were handled earlier
                                 self.outer.title, self.outer.description, self.outer.color, self.outer.options)
                     
                             await self.outer.disable_view(interaction)
@@ -718,7 +738,8 @@ class RoleMessageSetup(CustomView):
                     )
                     
                     # Create a mockup of the embed
-                    role_message_embed = self.create_embed(self.title, self.description, self.color, self.options)
+                    role_message_embed, errors = self.create_embed(self.title, self.description, self.color, self.options)
+                    self.finish_btn.disabled = errors
                     
                     await interaction.response.edit_message(embeds=[embed, role_message_embed], view=self)
                     
@@ -735,14 +756,38 @@ class RoleMessageSetup(CustomView):
                             self.add_item(self.finish_btn)
                     
                 def create_embed(self, title, description, color, options):
+                    """Create the role message embed.
+                    
+                    :param title: The title of the embed
+                    :type title: str
+                    :param description: The description of the embed
+                    :type description: str
+                    :param color: The color of the embed
+                    :type color: nextcord.Color
+                    :param options: The options to add to the embed
+                    :type options: list[list[list[int], str, str]]
+                    :return: The created embed
+                    :rtype: nextcord.Embed
+                    """
                     embed = nextcord.Embed(title=title, description=description, color=color)
                     embed = utils.apply_generic_replacements(embed, None, self.guild)
+                    errors = False
                     for option in options:
-                        self.add_field(embed, option)
+                        if not self.add_field(embed, option):
+                            errors = True
 
-                    return embed
+                    return embed, errors
                         
                 def add_field(self, embed: nextcord.Embed, option_info):
+                    """Add a field to the embed based on option info.
+
+                    :param embed: The embed to add the field to
+                    :type embed: nextcord.Embed
+                    :param option_info: The option info in the form of [list[int], str, str]
+                    :type option_info: list[list[int], str, str]
+                    :return: True if field was added successfully, False if there was an error
+                    :rtype: bool
+                    """
                     mentions = [f"<@&{role}>" for role in option_info[0]]
                     if len(mentions) > 1:
                         mentions[-1] = f"and {mentions[-1]}"
@@ -752,8 +797,14 @@ class RoleMessageSetup(CustomView):
                     description = option_info[2]
                     
                     spacer = ("\n" if description != "" else "")
+
+                    value = f"{description}{spacer}> Grants {roles}"
+                    if len(value) > 1024: # 1024 is the max length for an embed field value
+                        embed.add_field(name=title, value="```⚠️ CRITICAL: Too many roles to display. Option must be edited to reduce number of roles.```", inline=False)
+                        return False
                     
-                    embed.add_field(name=title, value=f"{description}{spacer}> Grants {roles}", inline=False)
+                    embed.add_field(name=title, value=value, inline=False)
+                    return True
                 
                 async def disable_view(self, interaction: Interaction):
                     for child in self.children:

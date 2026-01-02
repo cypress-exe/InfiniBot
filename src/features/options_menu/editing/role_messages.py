@@ -250,7 +250,11 @@ class EditRoleMessage(CustomView):
                             color=nextcord.Color.yellow()
                         )
                     
-                    self.outer.add_field(embed, [self.roles, self.title, self.description])
+                    successful = self.outer.add_field(embed, [self.roles, self.title, self.description])
+                    if not successful:
+                        self.finish_btn.style = nextcord.ButtonStyle.red
+                    else:
+                        self.finish_btn.style = nextcord.ButtonStyle.blurple         
                     
                     await interaction.response.edit_message(embed=embed, view=self)
                     
@@ -631,12 +635,13 @@ class EditRoleMessage(CustomView):
         )
         
         # Create a mockup of the embed
-        role_message_embed = self.create_embed(
+        role_message_embed, errors = self.create_embed(
             self.title,
             self.description,
             self.color,
             self.options
         )
+        self.confirm_btn.disabled = errors
         
         embeds = [embed, role_message_embed]
         
@@ -652,20 +657,40 @@ class EditRoleMessage(CustomView):
         await interaction.response.edit_message(embeds=embeds, view=self)
         
     def create_embed(self, title, description, color, options):
-        embed = nextcord.Embed(
-            title=title,
-            description=description,
-            color=color
-        )
+        """Create the role message embed.
+
+        :param title: The title of the embed
+        :type title: str
+        :param description: The description of the embed
+        :type description: str
+        :param color: The color of the embed
+        :type color: nextcord.Color
+        :param options: The options to add to the embed
+        :type options: list[list[list[int], str, str]]
+        :return: The created embed
+        :rtype: nextcord.Embed
+        """
+        embed = nextcord.Embed(title=title, description=description, color=color)
 
         embed = utils.apply_generic_replacements(embed, None, self.guild)
 
+        errors = False
         for option in options:
-            self.add_field(embed, option)
+            if not self.add_field(embed, option):
+                errors = True
 
-        return embed
+        return embed, errors
             
     def add_field(self, embed: nextcord.Embed, option_info):
+        """Add a field to the embed based on option info.
+
+        :param embed: The embed to add the field to
+        :type embed: nextcord.Embed
+        :param option_info: The option info in the form of [list[int], str, str]
+        :type option_info: list[list[int], str, str]
+        :return: True if field was added successfully, False if there was an error
+        :rtype: bool
+        """
         mentions = [f"<@&{role}>" for role in option_info[0]]
         if len(mentions) > 1:
             mentions[-1] = f"and {mentions[-1]}"
@@ -675,12 +700,14 @@ class EditRoleMessage(CustomView):
         description = option_info[2]
         
         spacer = ("\n" if description != "" else "")
+
+        value = f"{description}{spacer}> Grants {roles}"
+        if len(value) > 1024: # 1024 is the max length for an embed field value
+            embed.add_field(name=title, value="```⚠️ CRITICAL: Too many roles to display. Option must be edited to reduce number of roles.```", inline=False)
+            return False
         
-        embed.add_field(
-            name=title,
-            value=f"{description}{spacer}> Grants {roles}",
-            inline=False
-        )
+        embed.add_field(name=title, value=value, inline=False)
+        return True
     
     def extract_ids(self, input_string):
         pattern = r"<@&(\d+)>"
@@ -695,7 +722,7 @@ class EditRoleMessage(CustomView):
         await interaction.response.edit_message(view=self, delete_after=1.0)
     
     async def confirm_btn_callback(self, interaction: Interaction):
-        role_message_embed = self.create_embed(
+        role_message_embed, _ = self.create_embed( # Ignore errors here; they were handled earlier
             self.title,
             self.description,
             self.color,
