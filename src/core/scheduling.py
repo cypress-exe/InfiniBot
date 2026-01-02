@@ -16,6 +16,7 @@ from features.moderation import daily_moderation_maintenance
 from core.db_manager import daily_database_maintenance
 from core.log_manager import setup_logging
 from components.memory_profiler import log_memory_stats
+from config.messages.cached_messages import cleanup_stale_channels
 
 
 
@@ -119,11 +120,24 @@ async def run_scheduled_tasks() -> None:
                 )
 
         if (current_time_utc.hour == 9 and current_time_utc.minute == 0): # 9am utc time = LOW TRAFFIC HOUR GLOBALLY
-            await daily_database_maintenance(bot)
+            try:
+                await daily_database_maintenance(bot)
+            except Exception as e:
+                logging.error(f"Daily database maintenance failed: {e}", exc_info=True)
 
         # Memory monitoring (every hour at the top of the hour)
         if current_time_utc.minute == 0:
-            log_memory_stats()
+            try:
+                log_memory_stats()
+            except Exception as e:
+                logging.error(f"Memory profiling failed: {e}", exc_info=True)
+
+        # Message cache cleanup (every 15 minutes)
+        if current_time_utc.minute % 15 == 0:
+            try:
+                cleanup_stale_channels()
+            except Exception as e:
+                logging.error(f"Message cache cleanup failed: {e}", exc_info=True)
 
         # Final monitoring report
         if log_on_correct_behavior:

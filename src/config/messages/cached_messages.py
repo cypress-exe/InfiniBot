@@ -2,6 +2,7 @@ import nextcord
 import logging
 from typing import Any, Dict, List
 from collections import deque
+import time
 
 from config.messages.utils import *
 
@@ -9,6 +10,7 @@ from config.messages.utils import *
 # Each channel has a maximum of 25 messages (FIFO)
 _message_cache: Dict[int, deque] = {}
 _MAX_CACHE_SIZE = 25
+_STALE_CHANNEL_TIMEOUT_SECONDS = 30 * 60  # 30 minutes
 
 def cache_message(message: nextcord.Message | MessageRecord, override_checks=False, skip_if_exists=False) -> bool:
     """
@@ -245,3 +247,47 @@ def get_cache_stats() -> Dict[str, Any]:
         'max_cache_size_per_channel': _MAX_CACHE_SIZE,
         'channel_message_counts': channel_stats
     }
+
+def cleanup_stale_channels() -> int:
+    """
+    Remove channels from cache if their most recent message is older than the timeout threshold.
+    This prevents memory leaks from abandoned or deleted channels.
+
+    :return: The number of channels removed from cache.
+    :rtype: int
+    """
+    global _message_cache
+    
+    current_time = time.time()
+    channels_to_remove = []
+    
+    for channel_id, channel_cache in _message_cache.items():
+        # Skip empty channels (shouldn't happen, but be safe)
+        if not channel_cache:
+            channels_to_remove.append(channel_id)
+            continue
+        
+        # Check the most recent message (last in deque)
+        most_recent_message = channel_cache[-1]
+        
+        # Convert last_updated datetime to timestamp if needed
+        if most_recent_message.last_updated:
+            message_timestamp = most_recent_message.last_updated.timestamp()
+            age_seconds = current_time - message_timestamp
+            
+            if age_seconds > _STALE_CHANNEL_TIMEOUT_SECONDS:
+                channels_to_remove.append(channel_id)
+        else:
+            logging.warning(f"Channel {channel_id} has messages without `last_updated` timestamp, skipping age check.")
+    
+    # Remove stale channels
+    for channel_id in channels_to_remove:
+        channel_cache = _message_cache.get(channel_id, deque())
+        message_count = len(channel_cache)
+        _message_cache.pop(channel_id, None) # Safely remove. Ignore KeyError
+        logging.info(f"Removed stale channel {channel_id} from cache ({message_count} messages, inactive for >{_STALE_CHANNEL_TIMEOUT_SECONDS/60:.0f} minutes)")
+    
+    if channels_to_remove:
+        logging.info(f"Cache cleanup: Removed {len(channels_to_remove)} stale channels, {len(_message_cache)} channels remaining.")
+    
+    return len(channels_to_remove)
