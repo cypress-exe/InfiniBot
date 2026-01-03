@@ -1014,6 +1014,10 @@ async def check_and_run_moderation_commands(bot: nextcord.Client, message: nextc
     
     server = Server(message.guild.id)
 
+    if any(role.id in server.moderation_profile.admin_role_ids for role in message.author.roles): # Don't check profanity for members with admin role
+        logging.debug(f"Skipped profanity check for admin role member in {__name__}: {message.author}")
+        return False
+
     with log_manager.LogIfFailure(feature="check_and_trigger_profanity_moderation_for_message"):
         message_is_profane = await check_and_trigger_profanity_moderation_for_message(bot, server, message, skip_admin_check=True)
         if message_is_profane: 

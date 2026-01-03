@@ -118,6 +118,9 @@ class Dashboard(CustomView):
                 
                 self.spam_moderation_btn = self.SpamModerationButton(self)
                 self.add_item(self.spam_moderation_btn)
+
+                self.admin_roles_btn = self.AdminRolesButton(self)
+                self.add_item(self.admin_roles_btn)
                 
                 self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1) 
                 self.back_btn.callback = self.back_btn_callback
@@ -132,8 +135,9 @@ class Dashboard(CustomView):
                 InfiniBot will help you moderate your server with built-in profanity and spam moderation.
                 
                 **Exemptions**
-                Members with the "Administrator" permission are exempt from moderation.
-                InfiniBot will not moderate age-restricted channels for profanity.
+                - Members with the "Administrator" permission are exempt from moderation.
+                - Members with roles listed in "Admin Roles" are exempt from moderation.
+                - InfiniBot will not moderate age-restricted channels for profanity.
                 
                 Use the buttons below to configure profanity and spam moderation.
                 """
@@ -1503,7 +1507,190 @@ class Dashboard(CustomView):
                 async def callback(self, interaction: Interaction):
                     view = self.SpamModerationView(self.outer)
                     await view.setup(interaction)
+
+            class AdminRolesButton(nextcord.ui.Button):
+                def __init__(self, outer):
+                    super().__init__(label = "Admin Roles", style = nextcord.ButtonStyle.gray)
+                    self.outer = outer
+
+                class AdminRolesView(CustomView):
+                    def __init__(self, outer):
+                        super().__init__(timeout = None)
+                        self.outer = outer
+                        
+                        self.add_role_btn = self.AddRoleButton(self)
+                        self.add_item(self.add_role_btn)
+                        
+                        self.delete_role_btn = self.DeleteRoleButton(self)
+                        self.add_item(self.delete_role_btn)
+                        
+                        self.delete_all_default_roles_btn = self.DeleteAllAdminRoles(self)
+                        self.add_item(self.delete_all_default_roles_btn)
+                        
+                        self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
+                        self.back_btn.callback = self.back_btn_callback
+                        self.add_item(self.back_btn)
+                        
+                    async def setup(self, interaction: Interaction):
+                        if not utils.feature_is_active(feature="moderation"):
+                            await ui_components.disabled_feature_override(self, interaction)
+                            return
+                        
+                        description = """
+                        InfiniBot can be configured such that members with specific roles can bypass InfiniBot's moderation features.
+
+                        **How It Works**
+                        When a member with an admin role attempts to perform an action that would normally be moderated by InfiniBot, InfiniBot will ignore the action and allow it to proceed as normal.
+
+                        View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/admin-roles.md) for more information.
+                        """
+                        description = utils.standardize_str_indention(description)
+                        self.embed = nextcord.Embed(title = "Dashboard - Moderation - Admin Roles", 
+                                                    description = description,
+                                                    color = nextcord.Color.blue())
+                        
+                        server = Server(interaction.guild.id)
+                        
+                        admin_roles = []
+                        for admin_role_id in server.moderation_profile.admin_role_ids:
+                            role = interaction.guild.get_role(int(admin_role_id))
+                            if role == None:
+                                logging.warning(f"Role {admin_role_id} was not found in the guild {interaction.guild.id} when checking admin roles (viewing). Deleting.")
+                                admin_roles:list = server.moderation_profile.admin_role_ids
+                                admin_roles.remove(admin_role_id)
+                                server.moderation_profile.admin_role_ids = admin_roles
+                                continue
+
+                            admin_roles.append(f"{role.mention}")
+                                
+                        if admin_roles == []: admin_roles.append("You don't have any admin roles set up. Create one!")
+                        self.embed.add_field(name = "Admin Roles", value = "\n".join(admin_roles))
+                        
+                        await interaction.response.edit_message(embed = self.embed, view = self)
+                        
+                    async def back_btn_callback(self, interaction: Interaction):
+                        await self.outer.setup(interaction)
+                        await interaction.edit_original_message(view = self.outer)
+                                                                    
+                    class AddRoleButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Add Role", style = nextcord.ButtonStyle.gray)
+                            self.outer = outer
+                                                
+                        async def callback(self, interaction: Interaction):
+                            server = Server(interaction.guild.id)
+                            
+                            select_options = []
+                            for role in interaction.guild.roles:
+                                if role.name == "@everyone": continue
+                                if role.id not in server.moderation_profile.admin_role_ids: 
+                                    select_options.append(nextcord.SelectOption(label = role.name, description = role.id, value = role.id))
+                            
+                            if select_options == []:
+                                await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Roles", 
+                                                                                                description = "You've run out of roles to use! If you have more roles that aren't appearing here, ensure that InfiniBot can view all roles in the server.", 
+                                                                                                color = nextcord.Color.red()), ephemeral=True)
+                                return          
+                                        
+                            description = """
+                            Select a role to add to the list of admin roles. InfiniBot will ignore moderation for members with these roles.
+
+                            **Don't See Your Role?**
+                            Ensure InfiniBot can view the roles you would like to set as admin roles.
+                            """
+                            description = utils.standardize_str_indention(description)
+                            embed = nextcord.Embed(title = "Dashboard - Moderation - Admin Roles - Add Role",
+                                                    description = description,
+                                                    color = nextcord.Color.blue())
+                            await ui_components.SelectView(embed, select_options, self.select_view_callback, continue_button_label = "Add", placeholder = "Choose").setup(interaction)            
+                            
+                        async def select_view_callback(self, interaction: Interaction, selection):
+                            if selection == None: # User cancelled
+                                await self.outer.setup(interaction) 
+                                return
+                            
+                            server = Server(interaction.guild.id)
+                            admin_roles = server.moderation_profile.admin_role_ids
+                            admin_roles.append(int(selection))
+                            server.moderation_profile.admin_role_ids = admin_roles
+
+                            await self.outer.setup(interaction)
+                    
+                    class DeleteRoleButton(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Delete Role", style = nextcord.ButtonStyle.gray)
+                            self.outer = outer
+                                                                                
+                        async def callback(self, interaction: Interaction):
+                            server = Server(interaction.guild.id)
+                            all_admin_roles = []
+                            for admin_role_id in server.moderation_profile.admin_role_ids:
+                                role = interaction.guild.get_role(int(admin_role_id))
+                                if role == None: # Should never happen because of earlier checks. But just in case...
+                                    logging.warning(f"Role {admin_role_id} was not found in the guild {interaction.guild.id} when checking admin roles (deletion). Ignoring...")
+                                    continue
+
+                                all_admin_roles.append(role)
                                                                 
+                            select_options = [nextcord.SelectOption(label = role.name, description = role.id, value = role.id) for role in all_admin_roles]
+                            
+                            if select_options == []:
+                                await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Roles", description = "You don't have any admin roles set up!", color = nextcord.Color.red()), ephemeral=True)                     
+                            else:
+                                embed = nextcord.Embed(title = "Dashboard - Moderation - Admin Roles - Delete Role",
+                                                        description = "Select an admin role to delete. This does not delete the role from Discord. It just removes it from the list of admin roles that InfiniBot uses.",
+                                                        color = nextcord.Color.blue())
+                                await ui_components.SelectView(embed, select_options, self.select_view_callback, continue_button_label = "Delete", placeholder = "Choose").setup(interaction)
+                    
+                        async def select_view_callback(self, interaction: Interaction, selection):
+                            if selection == None: # User cancelled
+                                await self.outer.setup(interaction)
+                                return
+                            
+                            server = Server(interaction.guild.id)
+                            admin_roles:list[int] = server.moderation_profile.admin_role_ids
+                            admin_roles.remove(int(selection))
+                            server.moderation_profile.admin_role_ids = admin_roles
+                            
+                            await self.outer.setup(interaction)
+                    
+                    class DeleteAllAdminRoles(nextcord.ui.Button):
+                        def __init__(self, outer):
+                            super().__init__(label = "Delete All Admin Roles", style = nextcord.ButtonStyle.gray)
+                            self.outer = outer
+                            
+                        class DeleteAllAdminRolesView(CustomView):
+                            def __init__(self, outer):
+                                super().__init__(timeout = None)
+                                self.outer = outer
+                                
+                                self.no_btn = nextcord.ui.Button(label = "No", style = nextcord.ButtonStyle.danger)
+                                self.no_btn.callback = self.no_btn_command
+                                self.add_item(self.no_btn)
+                                
+                                self.yes_btn = nextcord.ui.Button(label = "Yes", style = nextcord.ButtonStyle.green)
+                                self.yes_btn.callback = self.yes_btn_command
+                                self.add_item(self.yes_btn)
+                                
+                            async def setup(self, interaction: Interaction):
+                                embed = nextcord.Embed(title = "Are you sure you want to do this?", description = "By choosing \"Yes\", you will delete all admin roles in the server (the actual roles will not be deleted in Discord).\n\nThis action cannot be undone.", color = nextcord.Color.blue())
+                                await interaction.response.edit_message(embed = embed, view = self)
+                                
+                            async def no_btn_command(self, interaction: Interaction):
+                                await self.outer.setup(interaction)
+                                
+                            async def yes_btn_command(self, interaction: Interaction):
+                                server = Server(interaction.guild.id)
+                                server.moderation_profile.admin_role_ids = []
+                                await self.outer.setup(interaction)
+                        
+                        async def callback(self, interaction: Interaction):
+                            await self.DeleteAllAdminRolesView(self.outer).setup(interaction)
+
+                async def callback(self, interaction: Interaction):
+                    view = self.AdminRolesView(self.outer)
+                    await view.setup(interaction)
+
         async def callback(self, interaction: Interaction):
             view = self.ModerationView(self.outer)
             await view.setup(interaction)
@@ -2089,7 +2276,7 @@ class Dashboard(CustomView):
                             super().__init__(label = "Delete", style = nextcord.ButtonStyle.gray)
                             self.outer = outer
                                                                                 
-                        async def callback(self, interaction: Interaction):# Delete Level Reward Callback ————————————————————————————————————————————————————————————
+                        async def callback(self, interaction: Interaction): # Delete Level Reward Callback ————————————————————————————————————————————————————————————
                             server = Server(interaction.guild.id)
                             select_options = []
                             for level_reward in server.level_rewards:
@@ -2119,7 +2306,7 @@ class Dashboard(CustomView):
                             else:
                                 embed = nextcord.Embed(
                                     title="Dashboard - Leveling - Level Rewards - Delete",
-                                    description="Select a level reward to delete. This does not delete the role.",
+                                    description="Select a level reward to delete. This does not delete the role from Discord.",
                                     color=nextcord.Color.blue()
                                 )
                                 await ui_components.SelectView(
@@ -2159,7 +2346,7 @@ class Dashboard(CustomView):
                                 self.add_item(self.yes_btn)
                                 
                             async def setup(self, interaction: Interaction):
-                                embed = nextcord.Embed(title = "Are you sure you want to do this?", description = "By choosing \"Yes\", you will delete all level rewards in the server (the actual roles will not be deleted).\n\nThis action cannot be undone.", color = nextcord.Color.blue())
+                                embed = nextcord.Embed(title = "Are you sure you want to do this?", description = "By choosing \"Yes\", you will delete all level rewards in the server (the actual roles will not be deleted in Discord).\n\nThis action cannot be undone.", color = nextcord.Color.blue())
                                 await interaction.response.edit_message(embed = embed, view = self)
                                 
                             async def no_btn_command(self, interaction: Interaction):
@@ -2170,9 +2357,6 @@ class Dashboard(CustomView):
                                 for level_reward in server.level_rewards:
                                     server.level_rewards.delete(level_reward.role_id)
                                 await self.outer.setup(interaction)
-                                
-                            async def callback(self, interaction: Interaction):
-                                await self.DeleteAllLevelsView(self.outer).setup(interaction)
                         
                         async def callback(self, interaction: Interaction):
                             await self.DeleteAllLevelsView(self.outer).setup(interaction)
@@ -3990,7 +4174,7 @@ class Dashboard(CustomView):
                     super().__init__(label = "Delete Role", style = nextcord.ButtonStyle.gray)
                     self.outer = outer
                                                                         
-                async def callback(self, interaction: Interaction):# Delete Level Reward Callback ————————————————————————————————————————————————————————————
+                async def callback(self, interaction: Interaction):
                     server = Server(interaction.guild.id)
                     all_default_roles = []
                     for default_role_id in server.default_roles.default_roles:
@@ -4007,7 +4191,7 @@ class Dashboard(CustomView):
                         await interaction.response.send_message(embed = nextcord.Embed(title = "No Available Roles", description = "You don't have any default roles set up!", color = nextcord.Color.red()), ephemeral=True)                     
                     else:
                         embed = nextcord.Embed(title = "Dashboard - Default Roles - Delete Role",
-                                                description = "Select a default role to delete. This does not delete the role. It just removes it from the list of default roles for InfiniBot to assign to new members.",
+                                                description = "Select a default role to delete. This does not delete the role from Discord. It just removes it from the list of default roles for InfiniBot to assign to new members.",
                                                 color = nextcord.Color.blue())
                         await ui_components.SelectView(embed, select_options, self.select_view_callback, continue_button_label = "Delete", placeholder = "Choose").setup(interaction)
             
@@ -4042,7 +4226,7 @@ class Dashboard(CustomView):
                         self.add_item(self.yes_btn)
                         
                     async def setup(self, interaction: Interaction):
-                        embed = nextcord.Embed(title = "Are you sure you want to do this?", description = "By choosing \"Yes\", you will delete all default roles in the server (the actual roles will not be deleted).\n\nThis action cannot be undone.", color = nextcord.Color.blue())
+                        embed = nextcord.Embed(title = "Are you sure you want to do this?", description = "By choosing \"Yes\", you will delete all default roles in the server (the actual roles will not be deleted in Discord).\n\nThis action cannot be undone.", color = nextcord.Color.blue())
                         await interaction.response.edit_message(embed = embed, view = self)
                         
                     async def no_btn_command(self, interaction: Interaction):
@@ -4052,14 +4236,11 @@ class Dashboard(CustomView):
                         server = Server(interaction.guild.id)
                         server.default_roles.default_roles = []
                         await self.outer.setup(interaction)
-                        
-                    async def callback(self, interaction: Interaction):
-                        await self.DeleteAllLevelsView(self.outer).setup(interaction)
-                
+                                       
                 async def callback(self, interaction: Interaction):
                     await self.DeleteAllDefaultRolesView(self.outer).setup(interaction)
             
-        async def callback(self, interaction: Interaction): #Filtered Words Button Callback ————————————————————————————————————————————————————————————
+        async def callback(self, interaction: Interaction):
             view = self.DefaultRolesView(self.outer)
             await view.setup(interaction)           
  

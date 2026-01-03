@@ -29,6 +29,7 @@ class Server:
     def __init__(self, server_id:int):    
         self.server_id = self._format_server_id(server_id)
 
+        self._moderation_profile = None
         self._profanity_moderation_profile = None
         self._spam_moderation_profile = None
         self._logging_profile = None
@@ -125,6 +126,17 @@ class Server:
         return debug_info
 
     # PROFILES
+    @property
+    def moderation_profile(self):
+        if self._moderation_profile is None: self._moderation_profile = self.Moderation_Profile(self.server_id)
+        return self._moderation_profile
+    class Moderation_Profile(Server_Simple_TableManager):
+        def __init__(self, server_id):
+            super().__init__(server_id, "moderation_profile")
+
+        @Server_Simple_TableManager.list_property("admin_role_ids", accept_duplicate_values=False)
+        def admin_role_ids(self): pass
+
     @property
     def profanity_moderation_profile(self):
         if self._profanity_moderation_profile is None: self._profanity_moderation_profile = self.Profanity_Moderation_Profile(self.server_id)

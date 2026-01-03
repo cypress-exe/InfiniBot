@@ -23,16 +23,17 @@ feature_dependencies = {
     "options_menu__banning": {"global_kill": "options_menu__banning"},
     "options_menu__editing": {"global_kill": "options_menu__editing"},
     # ------------------------------------------------------------------------------------------------------
+    "moderation": {"global_kill": "moderation"},
     "moderation__profanity": {
-        "global_kill": "moderation__profanity",
+        "global_kill": ("moderation__profanity", "moderation"),
         "server": "profanity_moderation_profile.active",
     },
     "moderation__spam": {
-        "global_kill": "moderation__spam",
+        "global_kill": ("moderation__spam", "moderation"),
         "server": "spam_moderation_profile.active",
     },
     "delete_invite_links": {
-        "global_kill": ("delete_invite_links", "moderation__spam"),
+        "global_kill": ("delete_invite_links", "moderation__spam", "moderation"),
         "server": "spam_moderation_profile.delete_invites",
     },
     # ------------------------------------------------------------------------------------------------------
@@ -202,6 +203,7 @@ class GlobalKillStatus(GlobalSetting):
     '''This class is used to store global kill settings. It is used to store global kill settings in the JSON file. '''
     def __init__(self):
         variable_list = {
+            "moderation": False,
             "moderation__profanity": False,
             "moderation__spam": False,
             "logging": False,

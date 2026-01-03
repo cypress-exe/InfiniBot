@@ -34,6 +34,11 @@
 
 
 -- START OF PROFILES
+CREATE TABLE IF NOT EXISTS moderation_profile( -- #optimize #remove-if-guild-invalid(server_id)
+    server_id INT PRIMARY KEY,
+    admin_role_ids TEXT DEFAULT '[]'
+);
+
 -- Create profanity_moderation_profile Table (simple table)
 CREATE TABLE IF NOT EXISTS profanity_moderation_profile( -- #optimize #remove-if-guild-invalid(server_id)
     server_id INT PRIMARY KEY,
