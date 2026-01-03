@@ -86,6 +86,7 @@ async def ensure_guilds_ready(waited=False):
         logging.info(f"⏳ Waiting 15 seconds for guilds to be ready. {len(unchunked)} guilds unchunked.")
         await asyncio.sleep(15)  # Let auto-chunking finish
         await ensure_guilds_ready(waited=True)
+        return
 
     logging.warning(f"Retrying chunking for {len(unchunked)} guilds...")
 
