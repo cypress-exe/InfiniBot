@@ -9,6 +9,8 @@ parent: Core Features
 
 InfiniBot's Action Logging feature provides detailed tracking of activities in your server, helping moderators monitor changes and maintain security.
 
+<img src="{{ '/assets/demos/logging.gif' | relative_url }}" alt="Logging Demo" width="70%">
+
 {: .titleless-green }
 Logging creates a transparent record of server activities, making moderation and administration more effective.
 

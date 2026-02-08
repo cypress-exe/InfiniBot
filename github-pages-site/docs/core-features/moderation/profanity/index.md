@@ -11,6 +11,8 @@ has_children: true
 
 Profanity moderation automatically monitors messages for inappropriate language and takes action when violations occur.
 
+<img src="{{ '/assets/demos/profanity-moderation.gif' | relative_url }}" alt="Profanity Moderation Demo" width="70%">
+
 {: .titleless-green }
 InfiniBot's profanity filter uses a combination of pre-defined words and server-specific custom words to provide comprehensive coverage.
 
