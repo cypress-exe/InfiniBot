@@ -149,15 +149,18 @@ async def _handle_purge_all(interaction: Interaction) -> None:
         return
 
     # Send confirmation message in the new channel
-    await new_channel.send(
-        embed=nextcord.Embed(
-            title="Purged Messages",
-            description=f"{interaction.user} has instantly purged {new_channel.mention}",
-            color=nextcord.Color.orange(),
-            timestamp=datetime.datetime.now(tz=datetime.timezone.utc)
-        ),
-        view=ui_components.InviteView()
-    )
+    try:
+        await new_channel.send(
+            embed=nextcord.Embed(
+                title="Purged Messages",
+                description=f"{interaction.user} has instantly purged {new_channel.mention}",
+                color=nextcord.Color.orange(),
+                timestamp=datetime.datetime.now(tz=datetime.timezone.utc)
+            ),
+            view=ui_components.InviteView()
+        )
+    except Exception as e:
+        logging.warning(f"Failed to send purge confirmation message in channel {new_channel.id}: {e}")
 
 def _update_server_configurations(server: Server, old_id: int, new_id: int) -> None:
     """Update server configurations to replace old channel ID with new channel ID.
@@ -277,7 +280,6 @@ async def _handle_purge_amount(interaction: Interaction, amount: int) -> None:
         # This is a common occurrence and shouldn't be treated as a critical error
         deleted = []
     except nextcord.Forbidden as e:
-        remove_channel_from_purging(interaction.channel_id)
         logging.error(f"Purge failed due to insufficient permissions: {e}")
         await _send_error(
             interaction,
@@ -286,7 +288,6 @@ async def _handle_purge_amount(interaction: Interaction, amount: int) -> None:
         )
         return
     except Exception as e:
-        remove_channel_from_purging(interaction.channel_id)
         logging.error(f"Unexpected purge error: {e}")
         await _send_error(
             interaction,
