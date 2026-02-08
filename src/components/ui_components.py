@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import logging
 
@@ -5,7 +6,7 @@ import nextcord
 from nextcord import Interaction
 
 from components import utils
-from config.global_settings import get_configs, required_permissions
+from config.global_settings import bot_loaded, get_configs, required_permissions
 from core.log_manager import get_uuid_for_logging
 
 # View overrides
@@ -86,6 +87,59 @@ async def infinibot_loading_override(view: nextcord.ui.View, interaction: Intera
         if not edit_message: raise
         await interaction.response.edit_message(embed=INFINIBOT_LOADING_EMBED, view=view)
     except: await interaction.response.send_message(embed=INFINIBOT_LOADING_EMBED, view=view, ephemeral=True)
+
+async def chunk_guild_with_feedback(interaction: Interaction) -> int:
+    """
+    Helper function to chunk the guild with user feedback and error handling.
+    
+    :param interaction: The interaction object from the Discord event.
+    :type interaction: Interaction
+    
+    :return: The message ID of the initial response if successful, None if failed or skipped.
+    :rtype: int | None
+    """
+    if interaction.guild.chunked:
+        return None
+
+    # Skip if bot is already fully loaded. If the guild still shows as unchunked, something is wrong, but chunking again won't help.
+    if bot_loaded:
+        return None
+    
+    # Send loading message to user
+    await interaction.response.send_message(
+        embed=nextcord.Embed(
+            title="Getting Things Ready...",
+            description="InfiniBot is retrieving your server's member list. This may take some time for large servers. Please be patient.",
+            color=nextcord.Color.blue()
+        ),
+        ephemeral=True,
+        view=SupportView()
+    )
+    
+    # Get the message ID
+    message = await interaction.original_message()
+    message_id = message.id
+    
+    try:
+        # Add timeout to prevent indefinite hanging
+        await asyncio.wait_for(interaction.guild.chunk(), timeout=30.0)
+        logging.debug(f"Successfully chunked guild {interaction.guild.name} ({interaction.guild.id})")
+        return message_id
+    except asyncio.TimeoutError:
+        logging.warning(f"Guild chunking timed out for {interaction.guild.name} ({interaction.guild.id}) - proceeding without full member cache")
+    except Exception as e:
+        logging.warning(f"Failed to chunk guild {interaction.guild.name} ({interaction.guild.id}): {e}")
+    
+    # Show warning if chunking failed
+    await interaction.edit_original_message(
+        embed=nextcord.Embed(
+            title="Warning",
+            description="InfiniBot was unable to retrieve the full member list for your server. Some features may not work correctly. Please try again later or contact support if this issue persists.",
+            color=nextcord.Color.yellow()
+        ),
+        view=SupportView()
+    )
+    return None
 
 # Components
 def get_colors_available_ui_component():

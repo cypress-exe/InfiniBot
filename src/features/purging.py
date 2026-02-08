@@ -327,17 +327,18 @@ async def run_purge_command(interaction: Interaction, amount: str) -> None:
     :return: None
     :rtype: None
     """
-    # Check basic permissions
-    if not interaction.channel.permissions_for(interaction.guild.me).manage_messages:
+    # Confirm guild is chunked
+    _ = await ui_components.chunk_guild_with_feedback(interaction)
+
+    # Check user permissions
+    if not await utils.user_has_config_permissions(interaction): 
+        return
+    if not interaction.channel.permissions_for(interaction.user).manage_messages:
         await _send_error(
             interaction,
             "Permission Denied",
             "You need the Manage Messages permission to use the purge command.\n\nFor more information: [Check our documentation](https://cypress-exe.github.io/InfiniBot/docs/additional/purging/)"
         )
-        return
-    
-    # Check user permissions
-    if not await utils.user_has_config_permissions(interaction): 
         return
     
     # Check if feature is enabled
@@ -381,7 +382,11 @@ async def run_purge_command(interaction: Interaction, amount: str) -> None:
         
         # Get user confirmation
         view = ConfirmationView()
-        await interaction.response.send_message(embed=confirm_embed, view=view, ephemeral=True)
+        try:
+            await interaction.response.send_message(embed=confirm_embed, view=view, ephemeral=True)
+        except nextcord.errors.InteractionResponded:
+            await interaction.edit_original_message(embed=confirm_embed, view=view)
+
         await view.wait()
         
         if not view.choice:
@@ -401,7 +406,11 @@ async def run_purge_command(interaction: Interaction, amount: str) -> None:
         
         # Get user confirmation
         view = ConfirmationView()
-        await interaction.response.send_message(embed=confirm_embed, view=view, ephemeral=True)
+        try:
+            await interaction.response.send_message(embed=confirm_embed, view=view, ephemeral=True)
+        except nextcord.errors.InteractionResponded:
+            await interaction.edit_original_message(embed=confirm_embed, view=view)
+
         await view.wait()
         
         if not view.choice:
