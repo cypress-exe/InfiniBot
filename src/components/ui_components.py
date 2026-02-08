@@ -241,22 +241,6 @@ class SelectView(CustomView):
                  placeholder: str = None, 
                  continue_button_label = "Continue", 
                  cancel_button_label = "Cancel", 
-                 preserve_order = False) -> None:
-        
-        super().__init__()
-        self.page = 0
-        self.embed = embed
-        self.options = options
-        self.return_command = return_command
-        
-        # Confirm objects
-        
-    def __init__(self, embed: nextcord.Embed, 
-                 options: list[nextcord.SelectOption], 
-                 return_command, 
-                 placeholder: str = None, 
-                 continue_button_label = "Continue", 
-                 cancel_button_label = "Cancel", 
                  preserve_order = False):
         
         super().__init__()
