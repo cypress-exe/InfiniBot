@@ -96,7 +96,7 @@ async def _handle_purge_all(interaction: Interaction) -> None:
         await _send_error(
             interaction,
             "Permission Error",
-            "InfiniBot needs Manage Channels permission to purge entire channels."
+            "InfiniBot needs Manage Channels permission to purge entire channels.\n\nInfiniBot itself does not have the required permissions to manage this channel. Please check the bot's permissions and ensure it has the necessary access to perform purging operations.\n\nFor more information: [Check our documentation](https://cypress-exe.github.io/InfiniBot/docs/additional/purging/)"
         )
         return
 
@@ -230,7 +230,7 @@ async def _update_system_channel(guild: nextcord.Guild, old_channel: nextcord.Te
             await utils.send_error_message_to_server_owner(
                 guild,
                 "Manage Server",
-                "InfiniBot needs Manage Server permission to update system channel."
+                "InfiniBot needs the Manage Server permission to update the system channel."
             )
         else:
             await guild.edit(
@@ -254,6 +254,15 @@ async def _handle_purge_amount(interaction: Interaction, amount: int) -> None:
             interaction,
             "Purging Error",
             "This channel is already being purged."
+        )
+        return
+
+    # Check permissions
+    if not interaction.channel.permissions_for(interaction.guild.me).manage_messages:
+        await _send_error(
+            interaction,
+            "Permission Error",
+            "InfiniBot needs Manage Messages permission to purge messages.\n\nInfiniBot itself does not have the required permissions to manage messages in this channel. Please check the bot's permissions and ensure it has the necessary access to perform purging operations.\n\nFor more information: [Check our documentation](https://cypress-exe.github.io/InfiniBot/docs/additional/purging/)"
         )
         return
 
@@ -322,8 +331,8 @@ async def run_purge_command(interaction: Interaction, amount: str) -> None:
     if not interaction.channel.permissions_for(interaction.guild.me).manage_messages:
         await _send_error(
             interaction,
-            "Permission Error",
-            "InfiniBot needs Manage Messages permission to purge messages."
+            "Permission Denied",
+            "You need the Manage Messages permission to use the purge command.\n\nFor more information: [Check our documentation](https://cypress-exe.github.io/InfiniBot/docs/additional/purging/)"
         )
         return
     
@@ -336,7 +345,7 @@ async def run_purge_command(interaction: Interaction, amount: str) -> None:
         await _send_error(
             interaction,
             "Feature Disabled",
-            "Purging has been disabled. Check the dashboard to enable it."
+            "Purging has been disabled by the developers of InfiniBot. This is likely due to an critical instability with it right now. It will be re-enabled shortly after the issue has been resolved."
         )
         return
     
