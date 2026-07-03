@@ -44,7 +44,7 @@ jobs:
         run: ./build.bash --use-cache --skip-docker # Dry run (no docker build)
 
       - name: Build Docker image with Buildx cache
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: .devcontainer/Dockerfile
