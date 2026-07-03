@@ -1,0 +1,36 @@
+[project]
+name = "infinibot"
+version = "4.1.1"
+description = "A powerful, multi-purpose Discord utility bot built for millions of servers"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.13"
+dependencies = [
+    "APScheduler==3.11.2",
+    "dateparser==1.3.0",
+    "humanfriendly==10.0",
+    "nextcord==3.1.1",
+    "nextcord-ext-menus==1.5.7",
+    "rapidfuzz==3.14.3",
+    "python-dateutil==2.9.0.post0",
+    "SQLAlchemy==2.0.46",
+    "topggpy==1.4.0",
+    "cachetools==7.0.0",
+    "psutil==7.2.2",
+    "discordlists-py==1.1.1",
+]
+
+[tool.uv]
+# Application, not an installable package: `uv sync` installs dependencies only
+package = false
+
+[tool.pyright]
+# Editor language server (pyright/basedpyright/Pylance): use the uv-managed
+# venv and resolve imports rooted at src/ (matching the container's WORKDIR)
+venvPath = "."
+venv = ".venv"
+extraPaths = ["src"]
+pythonVersion = "3.13"
+# IntelliSense only (completions, hover, go-to-definition) — no type-error
+# diagnostics; the codebase is too far along to be fully typed
+typeCheckingMode = "off"
