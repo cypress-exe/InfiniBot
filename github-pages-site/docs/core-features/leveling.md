@@ -9,6 +9,8 @@ parent: Core Features
 
 InfiniBot's leveling system provides an engaging way to reward active members in your community.
 
+<img src="{{ '/assets/demos/leveling.gif' | relative_url }}" alt="Leveling Demo" width="70%">
+
 {: .titleless-green }
 Leveling encourages participation and creates friendly competition in your server, increasing overall engagement.
 

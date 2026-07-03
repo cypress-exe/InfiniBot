@@ -9,6 +9,8 @@ nav_order: 3
 
 Role Messages provide a modern, button-based alternative to reaction roles, allowing members to easily assign themselves roles through an interactive interface.
 
+<img src="{{ '/assets/demos/role-messages.gif' | relative_url }}" alt="Role Messages Demo" width="70%">
+
 {: .titleless-green }
 Role Messages are more advanced than reaction roles and offer greater customization options and a more modern user experience.
 

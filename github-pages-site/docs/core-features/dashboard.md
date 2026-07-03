@@ -9,6 +9,8 @@ parent: Core Features
 
 The Dashboard is InfiniBot's central configuration hub, providing access to all major features and settings.
 
+<img src="{{ '/assets/demos/dashboard.gif' | relative_url }}" alt="Dashboard Demo" width="70%">
+
 **Topics Covered**
 - TOC
 {:toc}
