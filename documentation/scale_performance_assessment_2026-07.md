@@ -20,6 +20,8 @@ OOM-crash after a few days, and missing Components V2 support.
 not limitations of Python or nextcord-class libraries. A Rust rewrite or custom library
 would inherit every one of them if the same patterns were ported. Fix in place first.
 
+**Living Document:** This document is intended to be a living record of the assessment and remediation plan. It should/will be updated as progress is made (items marked with ✅) and new findings emerge.
+
 ---
 
 ## 1. Hours-long bootup — startup guild chunking
@@ -168,10 +170,9 @@ in discord.py → a mechanical rename covers ~90%. Real work:
 
 **Estimate:** 2–4 days of focused work + ~a week of dev soak testing.
 
-Key references: nextcord changelog (docs.nextcord.dev/en/stable/whats_new.html),
-discord.py changelog (discordpy.readthedocs.io/en/latest/whats_new.html), discord.py
-PR #10166, Umbra's CV2 guide
-(about.abstractumbra.dev/discord.py/2025/08/17/components-v2.html).
+Key references: [nextcord changelog](docs.nextcord.dev/en/stable/whats_new.html),
+[discord.py changelog](discordpy.readthedocs.io/en/latest/whats_new.html), discord.py
+PR #10166, [Umbra's CV2 guide](about.abstractumbra.dev/discord.py/2025/08/17/components-v2.html).
 
 ---
 
