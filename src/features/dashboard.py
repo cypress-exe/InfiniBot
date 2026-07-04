@@ -26,7 +26,7 @@ class Dashboard(CustomView):
     This is the main view for the dashboard feature.
     """
     def __init__(self, guild_id):
-        super().__init__(timeout = None)
+        super().__init__()
         
         self.moderation_btn = self.ModerationButton(self)
         self.add_item(self.moderation_btn)
@@ -109,7 +109,7 @@ class Dashboard(CustomView):
           
         class ModerationView(CustomView):
             def __init__(self, outer):
-                super().__init__(timeout = None)
+                super().__init__()
                 self.outer = outer
                 
                 self.profane_moderation_btn = self.ProfaneModerationButton(self)
@@ -156,7 +156,7 @@ class Dashboard(CustomView):
                     
                 class ProfaneModerationView(CustomView):
                     def __init__(self, outer, guild_id, onboarding_modifier = None, onboarding_embed = None):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         self.onboarding_modifier = onboarding_modifier
                         self.onboarding_embed = onboarding_embed
@@ -251,7 +251,7 @@ class Dashboard(CustomView):
                             
                         class FilteredWordsView(CustomView): #Filtered Words Window -----------------------------------------------------
                             def __init__(self, outer):
-                                super().__init__(timeout = None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 self.add_word_btn = self.AddWordButton(self)
@@ -520,7 +520,7 @@ class Dashboard(CustomView):
                                     
                                 class ResetConfirmationView(CustomView):
                                     def __init__(self, outer):
-                                        super().__init__(timeout = None)
+                                        super().__init__()
                                         self.outer = outer
                                         
                                         self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.secondary)
@@ -673,7 +673,7 @@ class Dashboard(CustomView):
                             
                         class ManageStrikeSystemView(CustomView):
                             def __init__(self, outer, guild_id:int):
-                                super().__init__(timeout = None)
+                                super().__init__()
                                 self.outer = outer
 
                                 server = Server(guild_id)
@@ -755,7 +755,7 @@ class Dashboard(CustomView):
                                     
                                 class ManageMembersView(CustomView):
                                     def __init__(self, outer):
-                                        super().__init__(timeout=None)
+                                        super().__init__()
                                         self.outer = outer
 
                                         self.add_item(self.EditStrikesButton(self))
@@ -823,7 +823,7 @@ class Dashboard(CustomView):
                                         
                                         class MemberSelectView(CustomView):
                                             def __init__(self, outer):
-                                                super().__init__(timeout=None)
+                                                super().__init__()
                                                 self.outer = outer
                                                 
                                                 self.member_select = nextcord.ui.UserSelect(
@@ -857,7 +857,7 @@ class Dashboard(CustomView):
 
                                             class EditStrikesView(CustomView):
                                                 def __init__(self, outer, guild: nextcord.Guild, user_selection: nextcord.User):
-                                                    super().__init__(timeout=None)
+                                                    super().__init__()
                                                     self.outer = outer
 
                                                     self.member_name = user_selection.display_name
@@ -871,7 +871,7 @@ class Dashboard(CustomView):
                                                         for level in range(server.profanity_moderation_profile.max_strikes + 1)
                                                     ][::-1] # invert list
                                                     
-                                                    self.strike_select = nextcord.ui.Select(options=strike_levels, placeholder="Choose a Strike Level")
+                                                    self.strike_select = nextcord.ui.Select(custom_id="strike_level_select", options=strike_levels, placeholder="Choose a Strike Level")
                                                     self.strike_select.callback = self.confirm_selection
                                                     self.add_item(self.strike_select)
                                                     
@@ -913,7 +913,7 @@ class Dashboard(CustomView):
 
                                         class ResetAllStrikesView(CustomView):
                                             def __init__(self, outer):
-                                                super().__init__(timeout=None)
+                                                super().__init__()
                                                 self.outer = outer
                                                 
                                                 no_btn = nextcord.ui.Button(label="No", style=nextcord.ButtonStyle.danger)
@@ -1023,7 +1023,7 @@ class Dashboard(CustomView):
                                     
                                 class EnableDisableView(CustomView):
                                     def __init__(self, outer):
-                                        super().__init__(timeout = None)
+                                        super().__init__()
                                         self.outer = outer
                                         
                                         self.back_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
@@ -1077,7 +1077,7 @@ class Dashboard(CustomView):
                                     
                                 class EnableDisableView(CustomView):
                                     def __init__(self, outer):
-                                        super().__init__(timeout = None)
+                                        super().__init__()
                                         self.outer = outer
                                         
                                         self.back_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
@@ -1142,7 +1142,7 @@ class Dashboard(CustomView):
                             
                         class EnableDisableView(CustomView):
                             def __init__(self, outer):
-                                super().__init__(timeout = None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 self.back_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
@@ -1207,7 +1207,7 @@ class Dashboard(CustomView):
                     
                 class SpamModerationView(CustomView):
                     def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         self.onboarding_modifier = onboarding_modifier
                         self.onboarding_embed = onboarding_embed
@@ -1389,7 +1389,7 @@ class Dashboard(CustomView):
                             
                         class EnableDisableView(CustomView):
                             def __init__(self, outer):
-                                super().__init__(timeout = None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 self.back_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
@@ -1449,7 +1449,7 @@ class Dashboard(CustomView):
                             
                         class EnableDisableView(CustomView):
                             def __init__(self, outer):
-                                super().__init__(timeout = None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 self.back_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
@@ -1514,7 +1514,7 @@ class Dashboard(CustomView):
 
                 class AdminRolesView(CustomView):
                     def __init__(self, outer):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         
                         self.add_role_btn = self.AddRoleButton(self)
@@ -1660,7 +1660,7 @@ class Dashboard(CustomView):
                             
                         class DeleteAllAdminRolesView(CustomView):
                             def __init__(self, outer):
-                                super().__init__(timeout = None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 self.no_btn = nextcord.ui.Button(label = "No", style = nextcord.ButtonStyle.danger)
@@ -1701,7 +1701,7 @@ class Dashboard(CustomView):
             
         class LoggingView(CustomView): #Logging Window -----------------------------------------------------
             def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
-                super().__init__(timeout = None)
+                super().__init__()
                 self.outer = outer
                 self.onboarding_modifier = onboarding_modifier
                 self.onboarding_embed = onboarding_embed
@@ -1842,7 +1842,7 @@ class Dashboard(CustomView):
                     
                 class EnableDisableView(CustomView):
                     def __init__(self, outer):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         
                         self.back_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
@@ -1906,7 +1906,7 @@ class Dashboard(CustomView):
             
         class LevelingView(CustomView):
             def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
-                super().__init__(timeout = None)
+                super().__init__()
                 self.outer = outer
                 self.onboarding_modifier = onboarding_modifier
                 self.onboarding_embed = onboarding_embed
@@ -1997,7 +1997,7 @@ class Dashboard(CustomView):
                     
                 class MembersView(CustomView):#Members View Window -----------------------------------------------------
                     def __init__(self, outer):
-                        super().__init__(timeout=None)
+                        super().__init__()
                         self.outer = outer
                         
                         self.edit_level_btn = self.EditLevelButton(self)
@@ -2027,7 +2027,7 @@ class Dashboard(CustomView):
                                                                                
                         class MemberSelectView(CustomView):
                             def __init__(self, outer):
-                                super().__init__(timeout=None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 self.member_select = nextcord.ui.UserSelect(
@@ -2121,7 +2121,7 @@ class Dashboard(CustomView):
                             
                         class DeleteAllLevelsView(CustomView):
                             def __init__(self, outer):
-                                super().__init__(timeout = None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 self.no_btn = nextcord.ui.Button(label = "No", style = nextcord.ButtonStyle.danger)
@@ -2159,7 +2159,7 @@ class Dashboard(CustomView):
                     
                 class LevelRewardsView(CustomView): # Level Rewards Window -----------------------------------------------------
                     def __init__(self, outer):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         
                         self.create_level_reward_btn = self.CreateLevelRewardButton(self)
@@ -2333,7 +2333,7 @@ class Dashboard(CustomView):
                             
                         class DeleteAllLevelsView(CustomView):
                             def __init__(self, outer):
-                                super().__init__(timeout = None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 self.no_btn = nextcord.ui.Button(label = "No", style = nextcord.ButtonStyle.danger)
@@ -2416,7 +2416,7 @@ class Dashboard(CustomView):
                     
                 class LevelingMessageModal(CustomModal): #Leveling Message Modal -----------------------------------------------------
                     def __init__(self, guild: nextcord.Guild, outer):
-                        super().__init__(timeout = None, title = "Level-Up Message")
+                        super().__init__(title = "Level-Up Message")
                         self.outer = outer
                         
                         server = Server(guild.id)
@@ -2451,7 +2451,7 @@ class Dashboard(CustomView):
 
                 class AdvancedView(CustomView):
                     def __init__(self, outer):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
 
                         self.points_lost_per_day_btn = self.PointsLostPerDayButton(self)
@@ -2505,7 +2505,7 @@ class Dashboard(CustomView):
                             
                         class PointsLostPerDayModal(CustomModal): #Leveling Message Modal -----------------------------------------------------
                             def __init__(self, guild: nextcord.Guild, outer):
-                                super().__init__(timeout = None, title = "Points Lost Per Day")
+                                super().__init__(title = "Points Lost Per Day")
                                 self.outer = outer
                                 
                                 server = Server(guild.id)
@@ -2544,7 +2544,7 @@ class Dashboard(CustomView):
                             
                         class MaxPointsPerMessageModal(CustomModal): #Leveling Message Modal -----------------------------------------------------
                             def __init__(self, guild: nextcord.Guild, outer):
-                                super().__init__(timeout = None, title = "Max Points Per Message")
+                                super().__init__(title = "Max Points Per Message")
                                 self.outer = outer
                                 
                                 server = Server(guild.id)
@@ -2583,7 +2583,7 @@ class Dashboard(CustomView):
                             
                         class LevelCardsView(CustomView):
                             def __init__(self, outer, interaction: Interaction):
-                                super().__init__(timeout = None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 server = Server(interaction.guild.id)
@@ -2628,7 +2628,7 @@ class Dashboard(CustomView):
                             
                         class ExemptChannelsView(CustomView):
                             def __init__(self, outer, interaction: Interaction):
-                                super().__init__(timeout = None)
+                                super().__init__()
                                 self.outer = outer 
                                 
                                 add_button = self.AddButton(self, interaction)
@@ -2768,7 +2768,7 @@ class Dashboard(CustomView):
                     
                 class EnableDisableView(CustomView):
                     def __init__(self, outer):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         
                         self.back_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
@@ -2833,7 +2833,7 @@ class Dashboard(CustomView):
             
         class JoinLeaveMessagesView(CustomView):
             def __init__(self, outer, onboarding_modifier = None, onboarding_embed = None):
-                super().__init__(timeout = None)
+                super().__init__()
                 self.outer = outer
                 self.onboarding_modifier = onboarding_modifier
                 self.onboarding_embed = onboarding_embed
@@ -2882,7 +2882,7 @@ class Dashboard(CustomView):
 
                 class JoinMessagesView(CustomView): #Join Messages Window --------------------------------------------
                     def __init__(self, outer):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         
                         self.join_message_btn = self.JoinMessageButton(self)
@@ -2950,7 +2950,7 @@ class Dashboard(CustomView):
                             
                         class JoinMessageModal(CustomModal): #Join Message Modal -----------------------------------------------------
                             def __init__(self, guild: nextcord.Guild, outer):
-                                super().__init__(timeout = None, title = "Join Message")
+                                super().__init__(title = "Join Message")
                                 self.outer = outer
                                 
                                 server = Server(guild.id)
@@ -3025,7 +3025,7 @@ class Dashboard(CustomView):
                             
                         class CardsView(CustomView): # Join Cards
                             def __init__(self, outer, interaction: Interaction):
-                                super().__init__(timeout = None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 server = Server(interaction.guild.id)
@@ -3078,7 +3078,7 @@ class Dashboard(CustomView):
                             
                         class EnableDisableView(CustomView):
                             def __init__(self, outer):
-                                super().__init__(timeout = None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 self.back_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
@@ -3145,7 +3145,7 @@ class Dashboard(CustomView):
 
                 class LeaveMessagesView(CustomView): #Leave Messages Window --------------------------------------------
                     def __init__(self, outer):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         
                         self.leave_message_btn = self.LeaveMessagesButton(self)
@@ -3206,7 +3206,7 @@ class Dashboard(CustomView):
                             
                         class LeaveMessagesModal(CustomModal): #Leave Message Modal -----------------------------------------------------
                             def __init__(self, guild: nextcord.Guild, outer):
-                                super().__init__(timeout = None, title = "Leave Message")
+                                super().__init__(title = "Leave Message")
                                 self.outer = outer
                                 
                                 server = Server(guild.id)
@@ -3281,7 +3281,7 @@ class Dashboard(CustomView):
                             
                         class EnableDisableView(CustomView):
                             def __init__(self, outer):
-                                super().__init__(timeout = None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 self.back_btn = nextcord.ui.Button(label = "Cancel", style = nextcord.ButtonStyle.danger)
@@ -3354,7 +3354,7 @@ class Dashboard(CustomView):
                 
         class BirthdaysView(CustomView):
             def __init__(self, outer, onboarding_modifier=None, onboarding_embed=None):
-                super().__init__(timeout=None)
+                super().__init__()
                 self.outer = outer
                 self.onboarding_modifier = onboarding_modifier
                 self.onboarding_embed = onboarding_embed
@@ -3412,7 +3412,7 @@ class Dashboard(CustomView):
                     )
                     configure_btn.callback = lambda i: self.outer.configure_timezone_btn.callback(i)
                     
-                    view = CustomView(timeout=None)
+                    view = CustomView()
                     view.add_item(back_btn)
                     view.add_item(configure_btn)
                     await interaction.response.edit_message(embed=embed, view=view)
@@ -3476,7 +3476,7 @@ class Dashboard(CustomView):
 
                 class ConfigureBirthdaysView(CustomView):
                     def __init__(self, outer):
-                        super().__init__(timeout=None)
+                        super().__init__()
                         self.outer = outer
 
                         self.add_birthday_btn = self.AddBirthdayButton(self)
@@ -3546,7 +3546,7 @@ class Dashboard(CustomView):
                             
                         class MemberSelectView(CustomView):
                             def __init__(self, outer):
-                                super().__init__(timeout=None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 self.member_select = nextcord.ui.UserSelect(
@@ -3598,7 +3598,7 @@ class Dashboard(CustomView):
                             
                             class InfoModal(CustomModal):            
                                 def __init__(self, outer, member_id):
-                                    super().__init__(title="Add Birthday", timeout=None)
+                                    super().__init__(title="Add Birthday")
                                     self.outer = outer
                                     self.member_id = member_id
                                     
@@ -3687,7 +3687,7 @@ class Dashboard(CustomView):
                                             
                         class InfoModal(CustomModal):            
                             def __init__(self, outer, member_id, guild_id):
-                                super().__init__(title="Edit Birthday", timeout=None)
+                                super().__init__(title="Edit Birthday")
                                 self.outer = outer
                                 self.member_id = member_id
                                 
@@ -3784,7 +3784,7 @@ class Dashboard(CustomView):
                                 
                         class DeleteAllStrikesView(CustomView):
                             def __init__(self, outer):
-                                super().__init__(timeout=None)
+                                super().__init__()
                                 self.outer = outer
                                 
                                 self.no_btn = nextcord.ui.Button(label="No", style=nextcord.ButtonStyle.danger)
@@ -3887,7 +3887,7 @@ class Dashboard(CustomView):
 
                 class SetMessageTimeModal(CustomModal):
                     def __init__(self, outer, guild_id):
-                        super().__init__(title="Set Message Time", timeout=None)
+                        super().__init__(title="Set Message Time")
                         self.outer = outer
                         self.guild_id = guild_id
                         
@@ -3992,7 +3992,7 @@ class Dashboard(CustomView):
                         )
                         configure_btn.callback = lambda i: self.outer.outer.configure_timezone_btn.callback(i)
                         
-                        view = CustomView(timeout=None)
+                        view = CustomView()
                         view.add_item(configure_btn)
                         await interaction.response.edit_message(embed=embed, view=view)
                         return
@@ -4006,7 +4006,7 @@ class Dashboard(CustomView):
                     
                 class EditMessageModal(CustomModal):
                     def __init__(self, guild: nextcord.Guild, outer):
-                        super().__init__(title="Birthday Message", timeout=None)
+                        super().__init__(title="Birthday Message")
                         self.outer = outer
                         
                         server = Server(guild.id)
@@ -4056,7 +4056,7 @@ class Dashboard(CustomView):
             
         class DefaultRolesView(CustomView):
             def __init__(self, outer, onboarding_modifier=None, onboarding_embed=None):
-                super().__init__(timeout = None)
+                super().__init__()
                 self.outer = outer
                 self.onboarding_modifier = onboarding_modifier
                 self.onboarding_embed = onboarding_embed
@@ -4213,7 +4213,7 @@ class Dashboard(CustomView):
                     
                 class DeleteAllDefaultRolesView(CustomView):
                     def __init__(self, outer):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         
                         self.no_btn = nextcord.ui.Button(label = "No", style = nextcord.ButtonStyle.danger)
@@ -4250,7 +4250,7 @@ class Dashboard(CustomView):
                     
         class JoinToCreateVCsView(CustomView):
             def __init__(self, outer, guild: nextcord.Guild, onboarding_modifier = None, onboarding_embed = None):
-                super().__init__(timeout=None)
+                super().__init__()
                 self.outer = outer
                 self.guild = guild
                 self.onboarding_modifier = onboarding_modifier
@@ -4493,7 +4493,7 @@ class Dashboard(CustomView):
             
         class AutoBansView(nextcord.ui.View):
             def __init__(self, outer):
-                super().__init__(timeout=None)
+                super().__init__()
                 self.outer = outer
                 
                 # Create buttons
@@ -4569,7 +4569,7 @@ class Dashboard(CustomView):
                                                 
                 class IDHelp(nextcord.ui.View):
                     def __init__(self, outer):
-                        super().__init__(timeout=None)
+                        super().__init__()
                         self.outer = outer
                         
                         self.back_btn = nextcord.ui.Button(label="Back", style=nextcord.ButtonStyle.danger)
@@ -4614,7 +4614,7 @@ class Dashboard(CustomView):
                         
                     class AddModal(nextcord.ui.Modal):
                         def __init__(self, outer):
-                            super().__init__(title="Add AutoBan", timeout=None)
+                            super().__init__(title="Add AutoBan")
                             self.outer = outer
                             self.user_name = None
                             self.id = None
@@ -4758,7 +4758,7 @@ class Dashboard(CustomView):
             
         class ExtraFeaturesButton(CustomView):
             def __init__(self, outer):
-                super().__init__(timeout = None)
+                super().__init__()
                 self.outer = outer
 
                 items = {
@@ -4808,7 +4808,7 @@ class Dashboard(CustomView):
                     
                 class ChooseView(CustomView):
                     def __init__(self, outer, name, guild_id, path):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         self.name = name
                         self.guild_id = guild_id
@@ -4877,7 +4877,7 @@ class Dashboard(CustomView):
 
         class ConfigureTimezoneView(CustomView):
             def __init__(self, outer, onboarding_modifier=None, onboarding_embed=None):
-                super().__init__(timeout = None)
+                super().__init__()
                 self.outer = outer
                 self.onboarding_modifier = onboarding_modifier
                 self.onboarding_embed = onboarding_embed

@@ -12,7 +12,7 @@ class RoleMessageButton_Single(CustomView):
     
     class View(CustomView):
         def __init__(self, user: nextcord.Member, message: nextcord.Message):
-            super().__init__(timeout = None)
+            super().__init__()
             self.message = message
             self.available_roles = []
             
@@ -47,7 +47,7 @@ class RoleMessageButton_Single(CustomView):
                 
                 options.append(nextcord.SelectOption(label=name, description=description, value="|".join(roles), default=selected))
                 
-            self.select = nextcord.ui.Select(placeholder="Choose a Role", min_values=0, options=options)
+            self.select = nextcord.ui.Select(custom_id="role_message_single_select", placeholder="Choose a Role", min_values=0, options=options)
             self.select.callback = self.select_callback
             self.add_item(self.select)
                 
@@ -103,7 +103,7 @@ class RoleMessageButton_Multiple(CustomView):
     
     class View(CustomView):
         def __init__(self, user: nextcord.Member, message: nextcord.Message):
-            super().__init__(timeout = None)
+            super().__init__()
             self.message = message
             self.available_roles = []
             
@@ -135,7 +135,7 @@ class RoleMessageButton_Multiple(CustomView):
                 
                 options.append(nextcord.SelectOption(label=name, description=description, value="|".join(roles), default=selected))
                 
-            self.select = nextcord.ui.Select(placeholder="Choose Roles", min_values=0, max_values=len(options), options=options)
+            self.select = nextcord.ui.Select(custom_id="role_message_multi_select", placeholder="Choose Roles", min_values=0, max_values=len(options), options=options)
             self.select.callback = self.select_callback
             self.add_item(self.select)
                 
@@ -191,7 +191,7 @@ class RoleMessageButton_Multiple(CustomView):
 
 class RoleMessageSetup(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
 
         link_button = nextcord.ui.Button(
             label="Learn More",
@@ -241,7 +241,7 @@ class RoleMessageSetup(CustomView):
             
         class Modal(CustomModal):
             def __init__(self):
-                super().__init__(title = "Role Message Creation Wizard", timeout = None)
+                super().__init__(title = "Role Message Creation Wizard")
                 
                 self.title_input = nextcord.ui.TextInput(label="To begin, please add a Title", max_length=256)
                 self.add_item(self.title_input)
@@ -254,7 +254,7 @@ class RoleMessageSetup(CustomView):
                 
             class RoleSelectWizardView(CustomView):
                 def __init__(self, title, description):
-                    super().__init__(timeout = None)
+                    super().__init__()
                     self.title = title
                     self.description = description
                     self.color = nextcord.Color.teal()
@@ -324,8 +324,8 @@ class RoleMessageSetup(CustomView):
                             for option in utils.COLOR_OPTIONS:
                                 select_options.append(nextcord.SelectOption(label=option, value=option, default=(option is original_color)))
                             
-                            self.select = nextcord.ui.Select(placeholder="Choose a color", options=select_options)
-                            
+                            self.select = nextcord.ui.Select(custom_id="role_message_edit_color_select", placeholder="Choose a color", options=select_options)
+
                             self.back_btn = nextcord.ui.Button(label="Back", style=nextcord.ButtonStyle.gray)
                             self.back_btn.callback = self.back_callback
 
@@ -374,7 +374,7 @@ class RoleMessageSetup(CustomView):
                         
                     class AddView(CustomView):
                         def __init__(self, outer, options, index = None):
-                            super().__init__(timeout = None)
+                            super().__init__()
                             self.outer = outer
                             self.options = options
                             self.index = index
@@ -516,7 +516,7 @@ class RoleMessageSetup(CustomView):
                             
                         class OptionTitleAndDescriptionModal(CustomModal):
                             def __init__(self, outer):
-                                super().__init__(title = "Option Settings", timeout = None)
+                                super().__init__(title = "Option Settings")
                                 self.outer = outer
 
                                 if self.outer.title == None:
@@ -645,7 +645,7 @@ class RoleMessageSetup(CustomView):
                         
                     class MultiOrSingleSelectView(CustomView):
                         def __init__(self, outer):
-                            super().__init__(timeout = None)
+                            super().__init__()
                             self.outer = outer
                             
                             options = [
@@ -661,6 +661,7 @@ class RoleMessageSetup(CustomView):
                                 )
                             ]
                             self.select = nextcord.ui.Select(
+                                custom_id="role_message_mode_select",
                                 options=options,
                                 placeholder="Choose a Mode"
                             )

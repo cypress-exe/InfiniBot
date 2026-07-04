@@ -11,6 +11,7 @@ bot_id = None
 
 channels_purging = []
 
+VIEW_TIMEOUT = 60 * 5 # 5 minutes timeout for views
 recently_left_guilds = ExpiringSet(60 * 1) # 1 minute expiration time for guilds that the bot has just left
 
 # Feature dependencies are used to determine if a feature should be enabled or disabled.

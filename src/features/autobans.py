@@ -15,7 +15,7 @@ async def check_and_run_autoban_for_member(member: nextcord.Member) -> bool:
         bool: True if the member was autobanned, False otherwise.
     """
     
-    if member_has_autoban(member):
+    if member_has_autoban(member.guild.id, member.id):
         # The member is autobanned. Ban them.
         
         # However, wait a moment to ensure that things settle out
@@ -41,14 +41,15 @@ async def check_and_run_autoban_for_member(member: nextcord.Member) -> bool:
 
     return False
 
-def member_has_autoban(member: nextcord.Member) -> bool:
+def member_has_autoban(guild_id: int, member_id: int) -> bool:
     """
     Checks if a member has an autoban entry.
 
     Args:
-        member (nextcord.Member): The member to check.
+        guild_id (int): The ID of the guild to check.
+        member_id (int): The ID of the member to check.
     Returns:
         bool: True if the member has an autoban entry, False otherwise.
     """
-    server = Server(member.guild.id)
-    return len(server.autobans.get_matching(member_id=member.id)) > 0
+    server = Server(guild_id)
+    return len(server.autobans.get_matching(member_id=member_id)) > 0

@@ -10,7 +10,7 @@ from features.dashboard import Dashboard
 
 class Onboarding(CustomView):
     def __init__(self):
-        super().__init__(timeout=None)
+        super().__init__()
         
         self.dropdown_options = [
             ["Profanity Moderation", "Automatically moderate your server for profanity."],
@@ -25,9 +25,10 @@ class Onboarding(CustomView):
         
         formatted_options = [nextcord.SelectOption(label=option[0], description=option[1]) for option in self.dropdown_options]
         self.dropdown = nextcord.ui.Select(
-            placeholder="Select Features", 
-            min_values=0, 
-            max_values=len(formatted_options), 
+            custom_id="onboarding_feature_select",
+            placeholder="Select Features",
+            min_values=0,
+            max_values=len(formatted_options),
             options=formatted_options
         )
         self.add_item(self.dropdown)
@@ -70,7 +71,7 @@ class Onboarding(CustomView):
             
         class CancelView(CustomView):
             def __init__(self, outer):
-                super().__init__(timeout=None)
+                super().__init__()
                 self.outer = outer
                 
                 self.go_back_btn = nextcord.ui.Button(label="Go Back")
@@ -101,7 +102,7 @@ class Onboarding(CustomView):
             
         class OnboardingInfoView(CustomView):
             def __init__(self, outer, order: list):
-                super().__init__(timeout=None)
+                super().__init__()
                 self.outer = outer
                 self.order = order
                 
@@ -367,7 +368,7 @@ class Onboarding(CustomView):
 
         class FinishedView(CustomView):
             def __init__(self, outer):
-                super().__init__(timeout=None)
+                super().__init__()
                 self.outer = outer
                 
                 self.back_btn = nextcord.ui.Button(label="Back", style=nextcord.ButtonStyle.danger)

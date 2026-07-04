@@ -608,13 +608,28 @@ async def handle_memory_command(message: nextcord.Message):
     
     try:
         stats = get_memory_stats()
-        
-        # Format statistics
+
+        # Format statistics (nextcord-side stats may be None if the bot isn't
+        # fully connected yet)
+        def _fmt(key):
+            value = stats[key]
+            return value if value is not None else 'N/A'
+
+        chunked_guilds = _fmt('chunked_guilds')
+        total_guilds = _fmt('total_guilds')
         description = (
             f"**Memory:** {stats['rss_mb']:.1f} MB ({stats['percent']:.1f}%)\n"
             f"**Threads:** {stats['active_threads']}\n"
-            f"**Cached Messages:** {stats['cached_messages_total']}\n"
-            f"**Cached Channels:** {stats['cached_channels']}"
+            f"**Cached Messages (DB):** {stats['cached_messages_total']}\n"
+            f"**Cached Channels:** {stats['cached_channels']}\n"
+            f"**Active Views:** {_fmt('view_store_active')} "
+            f"(*{_fmt('view_store_raw_total')} unswept in store*)\n"
+            f"**Active Modals:** {_fmt('modal_store_active')} "
+            f"(*{_fmt('modal_store_raw_total')} unswept in store*)\n"
+            f"**Chunked Guilds:** {chunked_guilds}/{total_guilds}\n"
+            f"**Cached Members:** {_fmt('cached_members_total')}\n"
+            f"**Cached Users:** {_fmt('cached_users_total')}\n"
+            f"**Cached Messages (nextcord):** {_fmt('nextcord_cached_messages')}"
         )
         
         # Determine color based on memory usage
@@ -796,7 +811,7 @@ async def handle_send_message_to_all_servers_command(message: nextcord.Message):
 
     class EmbedCreationView(CustomView):
         def __init__(self, author: nextcord.User):
-            super().__init__(timeout=None)
+            super().__init__()
             self.author = author
             self.embed_data = {}
         

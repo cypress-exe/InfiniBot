@@ -68,7 +68,7 @@ class EmbedColorView(CustomView):
         for option in utils.COLOR_OPTIONS:
             select_options.append(nextcord.SelectOption(label=option, value=option))
         
-        self.select = nextcord.ui.Select(placeholder="Choose a color", options=select_options)
+        self.select = nextcord.ui.Select(custom_id="embed_color_select", placeholder="Choose a color", options=select_options)
 
         self.button = nextcord.ui.Button(label="Create", style=nextcord.ButtonStyle.blurple)
         self.button.callback = self.create_callback

@@ -304,10 +304,10 @@ def get_string_from_discord_color(color: nextcord.colour.Colour) -> str | None:
     return None
 
 def apply_generic_replacements(
-    embed: nextcord.Embed, 
-    member: nextcord.Member, 
-    guild: nextcord.Guild, 
-    custom_replacements: dict = {}, 
+    embed: nextcord.Embed,
+    member: nextcord.Member | nextcord.abc.User,
+    guild: nextcord.Guild,
+    custom_replacements: dict = {},
     skip_channel_replacement: bool = False,
     skip_placeholder_replacement: bool = False
 ) -> nextcord.Embed:
@@ -316,8 +316,10 @@ def apply_generic_replacements(
 
     :param embed: The embed to replace placeholders in.
     :type embed: nextcord.Embed
-    :param member: The member to use for placeholder replacement.
-    :type member: nextcord.Member
+    :param member: The member to use for placeholder replacement. May be a plain
+        nextcord.abc.User (e.g. from a raw event, where guild-scoped Member
+        attributes like joined_at aren't available and are guarded below).
+    :type member: nextcord.Member | nextcord.abc.User
     :param guild: The guild to use for placeholder replacement.
     :type guild: nextcord.Guild
     :param custom_replacements: A dictionary of custom placeholder replacements.
@@ -339,7 +341,8 @@ def apply_generic_replacements(
             replacements["@member"] = member.mention
             replacements["@username"] = member.name
             replacements["@id"] = str(member.id)
-            replacements["@joindate"] = member.joined_at.strftime("%Y-%m-%d") if member.joined_at else "Unknown"
+            joined_at = getattr(member, "joined_at", None)
+            replacements["@joindate"] = joined_at.strftime("%Y-%m-%d") if joined_at else "Unknown"
             replacements["@accountage"] = f"{(datetime.datetime.now(datetime.timezone.utc) - member.created_at).days} days" if member.created_at else "Unknown"
         
         if guild:

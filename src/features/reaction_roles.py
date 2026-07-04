@@ -47,7 +47,7 @@ class ReactionRoleView(ui_components.CustomView):
         else:
             max_values = 10
         
-        self.select = nextcord.ui.Select(placeholder="Select Up to 10 Roles", options=options, max_values=max_values)
+        self.select = nextcord.ui.Select(custom_id="reaction_role_select", placeholder="Select Up to 10 Roles", options=options, max_values=max_values)
         
         self.button = nextcord.ui.Button(label="Create", style=nextcord.ButtonStyle.blurple)
         self.button.callback = self.create_callback

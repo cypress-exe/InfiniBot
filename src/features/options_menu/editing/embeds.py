@@ -8,7 +8,7 @@ from features.action_logging import trigger_edit_log
 
 class EditEmbed(CustomView):
     def __init__(self, message_id: int):
-        super().__init__(timeout = None)
+        super().__init__()
         self.message_id = message_id
         
     async def load_buttons(self, interaction: Interaction):
@@ -107,7 +107,7 @@ class EditEmbed(CustomView):
                 for option in utils.COLOR_OPTIONS:
                     select_options.append(nextcord.SelectOption(label=option, value=option, default=(option is original_color)))
                 
-                self.select = nextcord.ui.Select(placeholder="Choose a color", options=select_options)
+                self.select = nextcord.ui.Select(custom_id="edit_embed_color_select", placeholder="Choose a color", options=select_options)
                 
                 self.backBtn = nextcord.ui.Button(label="Back", style=nextcord.ButtonStyle.gray)
                 self.backBtn.callback = self.back_callback

@@ -9,6 +9,14 @@ validation from the synthetic event harness and a progress log.
 Updated 2026-07-04 by Anthropic Claude Opus 4.8 via Claude Code (CLI): marked plan item 1
 (JSONFile in-memory cache) done; implementation was written by hand and reviewed/verified
 by Claude. Recorded the before/after harness benchmark results (proportions only).
+Updated 2026-07-04 by Anthropic Claude Sonnet 5 via Claude Code (CLI): marked plan items 2
+(view/modal leak) and 3 (startup chunking) done. Implementation was scripted (AST-based
+audit + automated edits for the ~130 View/Modal timeout fixes) and hand-written for the
+chunking/raw-event changes, then reviewed by Claude Fable 5 across three passes (one
+in-repo review, one GitHub Copilot review, one live-crash triage) with fixes applied by
+Claude Sonnet 5. Also fixed an unrelated nextcord 3.2.0 regression that surfaced once the
+bot was actually run (see section 5), and added a `-memory` admin command field for the
+view/modal store counts this section recommends watching.
 -->
 
 # InfiniBot Scale & Performance Assessment (July 2026)
@@ -66,6 +74,37 @@ unchunked cache.
    everything at runtime anyway.
 3. Accept (or work around) the missed *first* nickname-change event per uncached member
    in the nickname profanity check.
+
+**Update (2026-07-04): done.** `chunk_guilds_at_startup=False` in `src/core/bot.py`, and
+the `ensure_guilds_ready()` retry-chunking function was deleted outright (not just its
+call site) — it existed purely to retry full-guild REST chunking after boot, and leaving
+it in would have silently reintroduced the same boot-time cost via a different path now
+that every guild starts unchunked. All three required changes above were made:
+`on_member_remove` → `on_raw_member_remove` (with `autobans.member_has_autoban`,
+`leveling.handle_member_removal`, and `join_leave_messages.trigger_leave_message`
+refactored to take `guild`/IDs directly, since the raw event's `payload.user` is a plain
+`nextcord.User`, not a `Member` — the member has already left by the time the raw event
+fires); the two `on_raw_message_edit`/`on_raw_message_delete` chunk() calls were removed;
+and the nickname-check chunk() call in `moderation.check_and_punish_nickname_for_profanity`
+was also removed (same anti-pattern, same fix, not originally called out above but caught
+during implementation) with a code comment recording the accepted first-event-miss
+limitation. One additional runtime chunk() call in `action_logging.log_member_removal`
+(unrelated to the two named above, found during implementation) was removed for the same
+reason. Three other `guild.chunk()` sites were deliberately left alone as out of scope:
+`ui_components.chunk_guild_with_feedback` (explicit user-facing command flow),
+`reaction_roles.py:340`, and a different function in `moderation.py` — none of these run
+on a hot, high-frequency path the way the removed ones did.
+
+One follow-on fix was needed for correctness rather than performance: with chunking
+disabled, an edited message's author can resolve to a plain `User` instead of a `Member`,
+which made `on_raw_message_edit`'s profanity check on edited messages silently skip
+uncached authors. Fixed with a single-member lookup (`utils.get_member()`, cache hit or
+REST fetch-on-miss) before the moderation check, rather than either skipping the check or
+reintroducing a full guild chunk.
+
+**Not yet re-measured:** actual boot time / RSS before-vs-after in production. The harness
+(section 6) doesn't cover this — it exercises event handling, not startup — so this still
+needs a real restart to confirm the "well under a minute" prediction.
 
 **Note on "store chunk data in the DB and restore on boot":** stale by construction —
 members join/leave while the bot is offline, and staleness hits exactly the paths that
@@ -146,6 +185,54 @@ in `init_views()` (`src/core/view_manager.py`).
 **Verification:** log `len(bot._connection._view_store._views)` (e.g. from an admin
 command) and watch it grow under load before the fix, plateau after.
 
+**Update (2026-07-04): done.** An AST-based audit script enumerated every View/Modal
+subclass in `src/` (137 classes), and an automated line-based edit script set
+`timeout=300` (5 min) on all of them except: the 10 persistent views registered via
+`bot.add_view()` in `init_views()` (unchanged, still `timeout=None`, correct), and 7
+decorative link-button-only views in `ui_components.py` (`SupportView`, `InviteView`,
+etc.) that have zero dispatchable items and so are never added to `ViewStore._views`
+regardless of timeout. A follow-up manual review pass caught two inline
+`CustomView(timeout=None)` instantiations in `dashboard.py` that the class-based AST
+audit missed (constructed directly, not as their own class) — those were fixed too.
+`self.stop()` was already present in the genuinely terminal callbacks (e.g.
+`purging.ConfirmationView`); nothing further was needed there. One cosmetic gap: the
+default `on_timeout` leaves buttons enabled, so a view that times out (rather than being
+explicitly stopped) will show Discord's generic "This interaction failed" on the next
+click instead of a friendlier disabled state — not a leak, just polish for later.
+
+**Verification, implemented:** `-memory` (level 2 admin command) now reports **Active
+Views** and **Modals** alongside RSS/thread/cache stats (`src/components/memory_profiler.py`,
+`src/features/admin_commands.py`).
+
+**Correction (2026-07-04), found while dogfooding the metric itself:** the first version
+of this counted `len(bot._connection._view_store.all_views())` directly, which looked
+static (e.g. stuck at 22 views/1 modal across ~20 minutes of `-memory` polling on a test
+server) and read as "the timeout isn't working." It wasn't the timeout — it was the
+metric. `ViewStore.all_views()`/`_modal_store._modals` return everything in nextcord's
+internal dict regardless of whether each entry has actually finished; nextcord only
+sweeps *finished* entries out of that dict as a side effect of `add_view()`/`dispatch()`
+being called again for something else entirely. A view can time out correctly
+(`view.is_finished()` flips to `True` right on schedule) and then sit in the raw dict
+indefinitely if no further view-related activity happens to trigger a sweep — reproduced
+directly: a view with `timeout=0.5` genuinely expired (`is_finished() == True`) but
+`len(all_views())` stayed at 1 with no other activity in-process. The command now reports
+both **Active** (filtered by `not is_finished()` — the number that actually answers "is
+this still pinned in memory") and a parenthetical **unswept in store** count (raw dict
+size, expected to run ahead of Active and not itself evidence of a leak). Watch **Active**
+under load — that's the one that should plateau, not grow unbounded. Not yet observed
+under real sustained production load.
+
+The same command also now reports **Chunked Guilds** (`X/Y`, via `guild.chunked` across
+`bot.guilds` — the section 1 metric: with startup chunking disabled this should stay well
+below the total most of the time, climbing only as guilds get lazily chunked through
+normal activity or the few remaining explicit `guild.chunk()` call sites), **Cached
+Members** (sum of `len(guild.members)` across all guilds — the ~500k-member concern from
+section 1), **Cached Users** (`len(bot._connection._users)`, nextcord's global user cache:
+DM users, message authors, mentions, etc. — distinct from per-guild members), and **Cached
+Messages (nextcord)** (`len(bot.cached_messages)`, nextcord's own bounded `max_messages=1000`
+cache, separate from InfiniBot's DB-backed message cache already shown as "Cached Messages
+(DB)").
+
 ### Swept and (mostly) clean
 
 `tz_cache` (bounded TTLCache), `ExpiringSet` (purges on access), message cache
@@ -202,6 +289,57 @@ PR #10166, [Umbra's CV2 guide](about.abstractumbra.dev/discord.py/2025/08/17/com
 - Table/column names f-string-interpolated into SQL throughout `db_manager.py` —
   internal-only today, but fragile.
 - `on_ready` re-entrancy on reconnects (see §3).
+- `src/features/onboarding.py:59-64` — a bare `raise` inside a `try` (with no exception
+  in flight) is used deliberately to force entry into the `except:` block, as a crude
+  way to pick `send_message` vs `edit_message`. Works (the `RuntimeError` it raises
+  becomes the "active exception"), but it's a trap for the next reader and produces a
+  confusing chained traceback in logs. Found 2026-07-04 while triaging the regression
+  below; not the cause of it. Worth a straight `if/else` rewrite.
+- `src/modules/custom_types.py` — `ExpiringSet` never had a `remove()` method despite
+  `server_join_and_leave_manager.py` calling `.remove()` on every guild rejoin
+  (`recently_left_guilds.remove(guild.id)`), which would `AttributeError` on every
+  rejoin. Added the method (2026-07-04) as a safe no-op-if-absent pop, so a
+  check-then-remove caller can't race the set's own TTL-based expiry.
+
+### 2026-07-04 regression, unrelated to this document's plan: nextcord 3.2.0 breaks all string selects
+
+Independent of everything above: the `nextcord` dependency was bumped `3.1.1 → 3.2.0` in
+a prior PR (#69, merged the day before this was found). In 3.2.0,
+`nextcord.ui.Select`/`StringSelect` passes `custom_id=MISSING` down to its base class by
+default, but the base class's custom-id auto-generation only fires `if custom_id is
+None` — so `MISSING` slips through, the select serializes with no `custom_id`, and
+Discord 400s with `Invalid Form Body: components.N.components.N.custom_id: This field
+is required`. This broke **every** string select in the bot (14 sites, including the
+ones behind the persistent role-message views) the first time each was actually
+rendered in production — none of it is caught by the unit test suite, which doesn't
+exercise Discord's API or component serialization. Fixed by passing an explicit
+`custom_id` at all 14 sites, which bypasses the broken default (verified empirically:
+`Select(...).to_component_dict()['custom_id']` is `None` without an explicit id, set
+correctly with one). No nextcord version change needed, so 3.2.0's Components V2
+support (§4) is retained.
+
+### 2026-07-04, same bug class, InfiniBot's own code this time: `CustomModal` leaked `dataclasses.MISSING` as a `custom_id`
+
+Found while testing the view/modal timeout work: opening the Leveling → Level-Up Message
+modal (and, by construction, any `CustomModal`) crashed with
+`TypeError: Object of type _MISSING_TYPE is not JSON serializable` from inside
+`send_modal`. Root cause: `src/components/ui_components.py` imported `MISSING` from the
+standard library's `dataclasses` module (`from dataclasses import MISSING`) and used it
+as `CustomModal.__init__`'s default for a pass-through `custom_id` parameter. nextcord's
+own `Modal.__init__` decides whether to auto-generate a `custom_id` with
+`custom_id = os.urandom(16).hex() if custom_id is MISSING else custom_id` — checking
+identity against **its own** `nextcord.utils.MISSING` singleton. Since
+`dataclasses.MISSING` is a different object entirely, that check is always `False`, so
+nextcord took the `else` branch and set `self.custom_id` to the literal
+`dataclasses.MISSING` sentinel — which then failed to serialize when the modal was sent.
+Every `CustomModal` subclass was affected (none of them pass `custom_id` explicitly, so
+all hit the broken default), which is effectively all ~35 Modal subclasses in the
+codebase. Reproduced directly (`dataclasses.MISSING` fails the same `is` check and
+produces byte-for-byte the same `json.dumps` error) and fixed with a one-line import
+change to `from nextcord.utils import MISSING` — confirmed the auto-generated
+`custom_id` and full JSON payload are correct afterward. Not caught by the test suite for
+the same reason as the section 5 regression above: no test exercises modal
+serialization against Discord's actual request-shape expectations.
 
 ---
 
@@ -247,8 +385,8 @@ snapshot) before and after each change.
 | --- | --- | --- | --- | --- |
 | 0 | Synthetic event harness + prod-snapshot benchmarking (§6) | — | Baseline & regression metric for everything below | ✅ Done (PR #70) |
 | 1 | In-memory cache for `JSONFile` config reads (invalidate on write; `GlobalSetting` API unchanged) | ~1 day | ~99% of hot-path file I/O; most prod flakiness | ✅ Done (2026-07-04) |
-| 2 | Fix view/modal leak (finite timeouts, `stop()` in terminal callbacks) | ~1–2 days | OOM crash | Next up |
-| 3 | Disable startup chunking + raw-event migration (§1) | ~1–2 days | Boot time; GBs of RSS | Not started |
+| 2 | Fix view/modal leak (finite timeouts, `stop()` in terminal callbacks) | ~1–2 days | OOM crash | ✅ Done (2026-07-04) |
+| 3 | Disable startup chunking + raw-event migration (§1) | ~1–2 days | Boot time; GBs of RSS | ✅ Done (2026-07-04) |
 | 4 | Per-guild settings cache: one `SELECT *` per table per guild in a `TTLCache(maxsize≈5000)`, invalidated on write | ~2–3 days | Remaining hot-path queries | Not started |
 | 5 | Wrap residual DB calls in `asyncio.to_thread` (or aiosqlite) | ~1 day | Belt-and-suspenders loop protection | Not started |
 | 6 | Event-loop lag watchdog (task that sleeps 1s, logs when it wakes late) | ~0.5 day | Makes future blocking regressions visible | Partial — the harness ships an offline watchdog; the in-prod one is still to do |
@@ -271,9 +409,14 @@ snapshot) before and after each change.
    holds two small config files, so this was never a memory trade-off. Conclusion: item
    1 delivered as predicted; the remaining `on_message` cost points squarely at items
    4–5 (per-guild settings cache, async DB calls).
-3. Continue down the table in order; re-benchmark after each hot-path change. Items 2
-   and 3 (leak, chunking) don't show up in harness numbers — verify those with the view-
-   store counter (§3) and boot-time/RSS measurements respectively.
+3. ✅ Items 2 (view/modal leak) and 3 (chunking) — done 2026-07-04. As predicted, neither
+   shows up in the harness numbers (they're not on the `on_message` hot path the harness
+   measures). Verify item 2 with the new `-memory` admin command's Active Views/Modals
+   fields (§3) under real load; item 3 still needs a production boot-time/RSS
+   measurement to confirm the "well under a minute" prediction, since nothing in this
+   pass measured that empirically.
+4. Continue down the table in order (items 4–7); re-benchmark after each hot-path
+   change with the harness.
 
 On the radar, not blocking: Postgres only if ever multi-process (SQLite+WAL is fine
 single-process at this scale); consolidate the three overlapping message caches

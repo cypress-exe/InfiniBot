@@ -12,7 +12,7 @@ RoleSelectWizardView = RoleMessageSetup.GetStartedButton.Modal.RoleSelectWizardV
 
 class EditRoleMessage(CustomView):
     def __init__(self, message_id: int):
-        super().__init__(timeout=None)
+        super().__init__()
         self.message_id = message_id
         self.guild = None # Unset until load
         
@@ -81,6 +81,7 @@ class EditRoleMessage(CustomView):
                     ))
                 
                 self.select = nextcord.ui.Select(
+                    custom_id="edit_role_message_color_select",
                     placeholder="Choose a color",
                     options=select_options
                 )
@@ -147,7 +148,7 @@ class EditRoleMessage(CustomView):
             
         class AddView(CustomView):
             def __init__(self, outer, options, index=None):
-                super().__init__(timeout=None)
+                super().__init__()
                 self.outer = outer
                 self.options = options
                 self.index = index
@@ -308,7 +309,7 @@ class EditRoleMessage(CustomView):
                 
             class OptionTitleAndDescriptionModal(CustomModal):
                 def __init__(self, outer):
-                    super().__init__(title="Option Settings", timeout=None)
+                    super().__init__(title="Option Settings")
                     self.outer = outer
 
                     if self.outer.title is None:
@@ -483,7 +484,7 @@ class EditRoleMessage(CustomView):
             
         class MultiOrSingleSelectView(CustomView):
             def __init__(self, outer):
-                super().__init__(timeout=None)
+                super().__init__()
                 self.outer = outer
                 
                 options = [
@@ -502,6 +503,7 @@ class EditRoleMessage(CustomView):
                 ]
                 
                 self.select = nextcord.ui.Select(
+                    custom_id="edit_role_message_mode_select",
                     options=options,
                     placeholder="Choose a Mode"
                 )
