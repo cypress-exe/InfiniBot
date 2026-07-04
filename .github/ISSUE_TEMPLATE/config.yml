@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Report a Security Vulnerability
+    url: https://github.com/cypress-exe/InfiniBot/security/advisories/new
+    about: Please report security vulnerabilities privately; do not open a public issue.
+  - name: 💬 Discord Support Server
+    url: https://discord.gg/mWgJJ8ZqwR
+    about: General questions, help with setup, or discussion before filing an issue.
+  - name: 📖 Documentation
+    url: https://cypress-exe.github.io/InfiniBot/
+    about: User-facing docs on installation, configuration, and commands.

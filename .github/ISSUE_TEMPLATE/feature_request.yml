@@ -1,0 +1,67 @@
+name: 💡 Feature Request
+description: Suggest a new feature or improvement for InfiniBot.
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement! For larger features, it's
+        worth discussing here before opening a pull request, so we can
+        make sure it fits the project's direction.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues to make sure this isn't a duplicate.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / Motivation
+      description: What problem does this feature solve, or what's currently missing/annoying?
+      placeholder: e.g. "There's currently no way to..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe what you'd like to see happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative solutions, workarounds, or existing features you've considered.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of InfiniBot does this relate to?
+      options:
+        - Moderation / Anti-spam
+        - Leveling / XP
+        - Welcome / Leave messages
+        - Reaction roles
+        - Birthdays
+        - Entertainment / Fun commands
+        - Configuration / Admin settings
+        - Performance / Scaling
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Mockups, examples from other bots, or anything else useful.

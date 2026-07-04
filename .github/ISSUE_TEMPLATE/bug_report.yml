@@ -1,0 +1,83 @@
+name: 🐛 Bug Report
+description: Report something that isn't working as expected.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the
+        sections below as completely as you can; it helps us reproduce
+        and fix the issue faster.
+
+        If this is a **security vulnerability**, please do not file it
+        here (see [SECURITY.md](https://github.com/cypress-exe/InfiniBot/blob/main/SECURITY.md) instead).
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues to make sure this isn't a duplicate.
+          required: true
+        - label: I'm using the latest version of InfiniBot (or `main`, if self-hosting).
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of the bug.
+      placeholder: What happened? What did you expect to happen instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Step-by-step instructions to reproduce the behavior.
+      placeholder: |
+        1. Run command '...'
+        2. Configure setting '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs / Screenshots
+      description: Paste any relevant error output, stack traces, or screenshots. This will be rendered as code automatically.
+      render: shell
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment
+      description: Are you using the official InfiniBot, or self-hosting?
+      options:
+        - Official InfiniBot (invited to my server)
+        - Self-hosted
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version / Commit
+      description: If self-hosting, which commit or version are you running? (`pyproject.toml` version, or `git rev-parse HEAD`)
+      placeholder: e.g. v4.1.1 or a1b2c3d
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment (self-hosted only)
+      description: OS, Docker version, and any relevant environment details.
+      placeholder: e.g. Ubuntu 24.04, Docker 27.0.3
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Anything else that might help us understand the issue.
