@@ -43,11 +43,11 @@ errors.
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--events N` | 5000 | Total events to dispatch. |
-| `--guilds N` | 200 | Number of synthetic guilds. |
+| `--guilds N` | 200 | Number of synthetic guilds.  With `--db-path`: number of guild IDs to sample from the snapshot (default: all). |
 | `--seed INT` | 42 | RNG seed for reproducible runs. |
 | `--smoke` | off | Shorthand for `--events 200 --guilds 10`. |
 | `--enable-features FRACTION` | 0.25 | Fraction of guilds that have logging/leveling/moderation enabled via `Server` setters before the run.  Drives the expensive DB-read code paths. |
-| `--db-path PATH` | (none) | Point the harness at an existing SQLite file (e.g. a prod snapshot) instead of a fresh ephemeral DB.  **Seeding is skipped.**  A loud WARNING is printed because message-log rows will be inserted — always run against a *copy*. |
+| `--db-path PATH` | (none) | Run against an existing SQLite file (e.g. a prod snapshot).  The file is copied to `generated/harness-files/files/db-copy.db` via SQLite's backup API (WAL-safe) and the harness runs against the copy — the source is never modified.  Guild IDs are read from the snapshot (every table with a `server_id`/`guild_id` column), so events hit guilds whose feature profiles actually exist.  **Seeding is skipped.** |
 | `--log-level LEVEL` | WARNING | Python logging verbosity: DEBUG / INFO / WARNING / ERROR. |
 
 ---
@@ -67,6 +67,11 @@ generated/harness-files/
 
 Config-file paths and the database URL are remapped **before** importing `core.bot`, so
 the harness never touches `./generated/files/prod.db` or your real config.
+
+`run_harness.bash` additionally runs the container with `--network none`: the harness can
+never reach the real Discord API, even if an unstubbed code path (e.g. a `fetch_channel`
+fallback triggered by real channel IDs in a prod snapshot) tries to.  Such calls fail
+instantly with a connection error and are caught by the per-feature error handlers.
 
 ---
 
@@ -117,6 +122,32 @@ Overall events/sec, RSS at start and end (via `psutil`).
 - Mock objects use `spec=nextcord.X` so `isinstance` checks pass.  Every attribute the
   handlers read is explicitly configured; bare Mock attributes that could silently swallow
   errors were identified by tracing each handler's code path.
+
+---
+
+## Expected log noise with `--db-path` (benign)
+
+Snapshot guilds carry **real** config (channel IDs, role IDs) that cannot resolve inside
+the harness's fabricated Discord world, so runs against a prod snapshot log warnings that
+a synthetic run never produces.  All of the following are **expected and benign** — they
+do not indicate defects in the snapshot DB or the codebase:
+
+- `WARNING - send_error_message_to_server_owner - Bot is not ready. Skipping...` —
+  A guild has join messages enabled; its real channel ID misses the mock cache, the
+  stubbed `bot.fetch_channel` raises `NotFound`, and `trigger_join_message` tries to DM
+  the server owner about the "missing" channel.  The DM is skipped because the harness
+  never connects to the gateway (`bot.is_ready()` is always false).
+- `WARNING - add_roles_for_new_member - Role <id> was not found in the guild ... Skipping...` —
+  The guild has default roles configured; the mock guild only contains fabricated roles,
+  so the lookup misses and the code skips gracefully (same as a deleted role in prod).
+- **`on_member_join` p95/max of ~1 s is a harness artefact** in snapshot runs:
+  `send_error_message_to_server_owner` starts with `asyncio.sleep(1)`, and the fake world
+  makes every configured join channel look deleted.  Read the p50 (~5 ms) as the
+  representative join latency; in prod, guilds with a valid join channel never enter this
+  path.
+
+Errors that are **not** expected: any `nextcord.errors.Unauthorized` / connection attempt
+to `discord.com` means the network isolation or the `fetch_channel` stub has regressed.
 
 ---
 
