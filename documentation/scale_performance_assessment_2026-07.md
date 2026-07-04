@@ -6,6 +6,9 @@ analysis of slow boot, prod-only timeouts, and the memory leak, plus research fi
 on guild chunking, Components V2, and a prioritized remediation plan.
 Updated 2026-07-04 by Anthropic Claude Fable 5 via Claude Code (CLI): added empirical
 validation from the synthetic event harness and a progress log.
+Updated 2026-07-04 by Anthropic Claude Opus 4.8 via Claude Code (CLI): marked plan item 1
+(JSONFile in-memory cache) done; implementation was written by hand and reviewed/verified
+by Claude. Recorded the before/after harness benchmark results (proportions only).
 -->
 
 # InfiniBot Scale & Performance Assessment (July 2026)
@@ -102,6 +105,18 @@ long enough to delay gateway heartbeats (silent shard disconnect/resume) and mis
 
 The 15-minute scheduler (`src/core/scheduling.py`) iterates all guilds doing the same
 synchronous per-guild reads on the loop, compounding the stalls.
+
+**Update (2026-07-04):** the JSON-file half of this is fixed (plan item 1). `JSONFile` now
+keeps a class-level in-memory cache keyed by file path: reads are served from the cache
+(returned as deepcopies so callers can't corrupt it), writes go through to disk and update
+the cache, and `delete_file()` evicts. `get_global_kill_status()`/`get_configs()` still
+construct new objects per call, but the ~50 file opens + JSON parses per call are now zero
+disk I/O after the first read (see `documentation/JSONFile.md`). Trade-off: hand-editing a
+config JSON on a running bot is no longer picked up until restart. The SQLite half of the
+hot path (per-message `INSERT`, per-property `SELECT`s) remains — plan items 4–5. A
+before/after harness run against the prod snapshot confirms the fix: median `on_message`
+handler time dropped by roughly 40–45% and mean event-loop lag nearly halved, with the
+remaining cost dominated by the synchronous SQLite work.
 
 ---
 
@@ -231,8 +246,8 @@ snapshot) before and after each change.
 | # | Change | Effort | Fixes | Status |
 | --- | --- | --- | --- | --- |
 | 0 | Synthetic event harness + prod-snapshot benchmarking (§6) | — | Baseline & regression metric for everything below | ✅ Done (PR #70) |
-| 1 | In-memory cache for `JSONFile` config reads (invalidate on write; `GlobalSetting` API unchanged) | ~1 day | ~99% of hot-path file I/O; most prod flakiness | Next up |
-| 2 | Fix view/modal leak (finite timeouts, `stop()` in terminal callbacks) | ~1–2 days | OOM crash | Not started |
+| 1 | In-memory cache for `JSONFile` config reads (invalidate on write; `GlobalSetting` API unchanged) | ~1 day | ~99% of hot-path file I/O; most prod flakiness | ✅ Done (2026-07-04) |
+| 2 | Fix view/modal leak (finite timeouts, `stop()` in terminal callbacks) | ~1–2 days | OOM crash | Next up |
 | 3 | Disable startup chunking + raw-event migration (§1) | ~1–2 days | Boot time; GBs of RSS | Not started |
 | 4 | Per-guild settings cache: one `SELECT *` per table per guild in a `TTLCache(maxsize≈5000)`, invalidated on write | ~2–3 days | Remaining hot-path queries | Not started |
 | 5 | Wrap residual DB calls in `asyncio.to_thread` (or aiosqlite) | ~1 day | Belt-and-suspenders loop protection | Not started |
@@ -241,10 +256,21 @@ snapshot) before and after each change.
 
 ### Next steps
 
-1. Item 1 (config cache) — smallest diff, expected to remove the bulk of the per-message
-   synchronous file I/O on its own.
-2. Re-run the harness benchmark (same seed, same prod snapshot) and compare the
-   `on_message` median and loop-lag stats against the §6 baseline.
+1. ✅ Item 1 (config cache) — done 2026-07-04. Write-through cache in
+   `src/config/file_manager.py`; full test suite passes (33/33). A micro-benchmark of the
+   `feature_is_active`-style read pattern (fresh `JSONFile` + `in` check + 2 reads) shows
+   ~3.7× less CPU and, more importantly, zero file opens/JSON parses on the hot path
+   (previously ~10 opens per iteration).
+2. ✅ Harness re-benchmark (same seed, same prod snapshot) — done 2026-07-04. Median
+   `on_message` handler time dropped by roughly 40–45% and p95 by about a third;
+   `on_raw_message_edit` improved by a similar proportion. Mean event-loop lag nearly
+   halved, and the worst observed loop stall shrank by about a third — though stalls in
+   the hundreds-of-milliseconds range remain, consistent with the SQLite work still on
+   the loop. The ~1 s tails on `on_member_join` (known harness artefact, §6) and
+   `on_raw_message_delete` are unchanged, as expected. RSS is unchanged — the cache
+   holds two small config files, so this was never a memory trade-off. Conclusion: item
+   1 delivered as predicted; the remaining `on_message` cost points squarely at items
+   4–5 (per-guild settings cache, async DB calls).
 3. Continue down the table in order; re-benchmark after each hot-path change. Items 2
    and 3 (leak, chunking) don't show up in harness numbers — verify those with the view-
    store counter (§3) and boot-time/RSS measurements respectively.

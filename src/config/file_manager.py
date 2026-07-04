@@ -1,3 +1,4 @@
+import copy
 import json
 import logging
 import os
@@ -61,6 +62,8 @@ class JSONFile:
     >>> print(file.get_variable("key"))
     'value'
     """
+
+    _cache: dict[str, dict] = {}   # keyed by absolute path -> parsed data
     
     def __init__(self, name):
         self.name = name
@@ -108,10 +111,15 @@ class JSONFile:
         :return: The data from the file.
         :rtype: dict
         """
+        if self.path in self._cache:
+            return copy.deepcopy(self._cache[self.path]) # Return a copy to prevent external modifications
+
         self.ensure_existence()
 
         with open(self.path, "r") as file:
-            return json.loads(file.read())
+            data = json.loads(file.read())
+            self._cache[self.path] = data
+            return copy.deepcopy(data)  # Return a copy to prevent external modifications
         
     def _set_data(self, data: dict) -> None:
         """
@@ -119,13 +127,14 @@ class JSONFile:
 
         :param data: The data to set.
         :type data: dict
-        :return: None
+        :return: None~
         :rtype: None
         """
         self.ensure_existence()
 
         with open(self.path, "w") as file:
             file.write(json.dumps(data, indent=2))
+            self._cache[self.path] = copy.deepcopy(json.loads(json.dumps(data)))  # Store a copy to prevent external modifications & ensure consistent formatting
 
     def _update_nested(self, data: dict, keys: list, value: any) -> None:
         """
@@ -350,8 +359,19 @@ class JSONFile:
         :return: None
         :rtype: None
         """
+        self._cache.pop(self.path, None)  # Remove from cache if present
         os.remove(self.path)
         logging.warning(f"Deleted {self.path}")
+
+    def clear_cache(self) -> None:
+        """
+        Clears the cache for this specific JSON file.
+
+        :return: None
+        :rtype: None
+        """
+        self._cache.pop(self.path, None)
+        logging.info(f"Cleared cache for {self.path}")
 
     def get(self, key: str, default=None) -> any:
         """

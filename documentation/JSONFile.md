@@ -11,6 +11,22 @@ methods to read, write, and manage data stored in JSON format.
 The `JSONFile` class is designed to simplify interaction with JSON files. It handles file creation, 
 reading, writing, and ensures data integrity by validating file content.
 
+### Caching
+
+`JSONFile` keeps a class-level in-memory cache of parsed file contents, keyed by file path and 
+shared across all instances pointing at the same file. Reads are served from the cache (no disk 
+I/O or JSON parsing after the first read); writes go through to disk and update the cache 
+(write-through), so the cache is always authoritative. `delete_file()` evicts the file's cache 
+entry.
+
+Two consequences to be aware of:
+
+- **All reads return copies.** Mutating a dict returned by `_get_data()`, `items()`, etc. does 
+  not affect the cache or the file — persist changes via `__setitem__`/`add_variable` as usual.
+- **External edits are not seen.** Editing a JSON file on disk while the bot is running will not 
+  be picked up until restart (or a `clear_cache()` call), because reads no longer touch disk. 
+  All runtime writes must go through `JSONFile`.
+
 ### Constructor
 
 ```python
@@ -151,13 +167,21 @@ JSONFile.add_variable(key: str, value: Any)
   - `KeyError`: If the key already exists. Use `__setitem__()` to update an existing key.
 
 #### `delete_file`
-Deletes the JSON file from disk.
+Deletes the JSON file from disk and evicts it from the in-memory cache.
 
 ```python
 JSONFile.delete_file()
 ```
 
 - **Warning**: This action is irreversible.
+
+#### `clear_cache`
+Evicts this file's entry from the in-memory cache. The next read re-parses the file from disk. 
+Only needed if the file was modified outside of `JSONFile` (e.g., a manual edit while running).
+
+```python
+JSONFile.clear_cache()
+```
 
 ---
 
