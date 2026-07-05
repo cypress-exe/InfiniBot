@@ -298,7 +298,7 @@ async def _get_member_in_support_server(member_id: int):
 
 class JokeView(CustomView):
     def __init__(self):
-        super().__init__(timeout=3600) # 1 hour timeout
+        super().__init__(timeout=None)
 
         if utils.feature_is_active(feature="joke_submissions"):
             self.button = nextcord.ui.Button(

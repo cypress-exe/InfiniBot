@@ -25,14 +25,19 @@ def _get_nextcord_cache_stats() -> Optional[Dict[str, int]]:
         guilds = bot.guilds
         chunked_guilds = sum(1 for guild in guilds if guild.chunked)
 
-        # all_views() de-duplicates by view id (a view can have multiple
-        # dispatchable items, each with its own entry in the raw store dict).
-        all_views = connection._view_store.all_views()
+        # _view_store._views maps (component_type, message_id, custom_id) -> (view, item),
+        # so a single view with N dispatchable items occupies N entries. Both view metrics
+        # report on this raw-entry scale (rather than the de-duplicated all_views()) so the
+        # duplicated in-memory entries are actually visible and so "active" and "raw_total"
+        # stay comparable (active <= raw_total, the difference being unswept/finished entries).
+        view_entries = connection._view_store._views.values()
+        view_store_active = sum(1 for (view, _item) in view_entries if not view.is_finished())
+        view_store_raw_total = len(connection._view_store._views)
         all_modals = list(connection._modal_store._modals.values())
 
         return {
-            'view_store_active': sum(1 for v in all_views if not v.is_finished()),
-            'view_store_raw_total': len(all_views),
+            'view_store_active': view_store_active,
+            'view_store_raw_total': view_store_raw_total,
             'modal_store_active': sum(1 for m in all_modals if not m.is_finished()),
             'modal_store_raw_total': len(all_modals),
             'chunked_guilds': chunked_guilds,

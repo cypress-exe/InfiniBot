@@ -332,7 +332,9 @@ def apply_generic_replacements(
     :rtype: nextcord.Embed
     """
     if not skip_placeholder_replacement:
-        replacements = custom_replacements
+        # Defensive copy: custom_replacements defaults to a shared {} and callers
+        # may reuse their dict, so never mutate the passed-in object in place.
+        replacements = dict(custom_replacements)
 
         if member:
             # Add member-related replacements

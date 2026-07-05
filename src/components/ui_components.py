@@ -175,7 +175,7 @@ class CustomView(nextcord.ui.View):
         """
         Initializes the CustomView.
 
-        :param timeout: The timeout for the view. Defaults to None.
+        :param timeout: The timeout for the view. Defaults to VIEW_TIMEOUT. 
         :type timeout: float | None
         """
         super().__init__(timeout=timeout, auto_defer=auto_defer, prevent_update=prevent_update)
