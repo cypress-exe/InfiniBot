@@ -11,7 +11,7 @@ from features.action_logging import trigger_edit_log
 
 class EditReactionRole(CustomView):
     def __init__(self, message_id: int):
-        super().__init__(timeout=None)
+        super().__init__()
         self.message_id = message_id
         
     async def load_buttons(self, interaction: Interaction):
@@ -110,7 +110,7 @@ class EditReactionRole(CustomView):
         
         class EditOptionsView(CustomView):
             def __init__(self, outer, message_info):
-                super().__init__(timeout=None)
+                super().__init__()
                 self.outer = outer
                 self.message_info = message_info
                 self.added_reactions__emojis = []
@@ -345,7 +345,7 @@ class EditReactionRole(CustomView):
 
                 class EmojiSelectView(CustomView):
                     def __init__(self, outer, selection):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         self.selection = selection
                         

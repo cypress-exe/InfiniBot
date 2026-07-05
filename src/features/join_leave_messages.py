@@ -62,30 +62,32 @@ async def trigger_join_message(member: nextcord.Member) -> None:
         
         await channel.send(embeds = embeds)
             
-async def trigger_leave_message(member: nextcord.Member) -> None:
+async def trigger_leave_message(guild: nextcord.Guild, member: nextcord.abc.User) -> None:
     """
     |coro|
 
     Trigger the leave message functionality.
-    
-    :param member: The member that has left. This is a required parameter.
-    :type member: nextcord.Member
+
+    :param guild: The guild the member left. This is a required parameter.
+    :type guild: nextcord.Guild
+    :param member: The member that has left.
+    :type member: nextcord.abc.User
     :return: None
     :rtype: None
     """
     if member == None: return
-    if member.guild == None: return
-    if member.guild.id == None: return
-    
-    server = Server(member.guild.id)
-            
+    if guild == None: return
+    if guild.id == None: return
+
+    server = Server(guild.id)
+
     if utils.feature_is_active(server = server, feature = "leave_messages"): # Check if leave messages are enabled
         if server.leave_message_profile.channel != UNSET_VALUE: # Find join channel
             channel_id = server.leave_message_profile.channel
             channel = await utils.get_channel(channel_id)
             if channel == None:
                 await utils.send_error_message_to_server_owner(
-                    member.guild,
+                    guild,
                     None,
                     message=(
                         f"InfiniBot is unable to find your leave message channel. "
@@ -95,18 +97,18 @@ async def trigger_leave_message(member: nextcord.Member) -> None:
                 )
                 return
         else:
-            if member.guild.system_channel != None:
-                channel = member.guild.system_channel
+            if guild.system_channel != None:
+                channel = guild.system_channel
             else:
                 return
-        
+
         # Double check permissions
         if channel and not await utils.check_text_channel_permissions(channel, True, custom_channel_name = f"Leave Message Channel (#{channel.name})"):
             return
-            
+
         # Send message
         leave_message_embed: nextcord.Embed = server.leave_message_profile.embed.to_embed()
-        leave_message_embed = utils.apply_generic_replacements(leave_message_embed, member, member.guild)
+        leave_message_embed = utils.apply_generic_replacements(leave_message_embed, member, guild)
         leave_message_embed.timestamp = datetime.datetime.now()
-        
+
         await channel.send(embed = leave_message_embed)

@@ -64,7 +64,7 @@ bot = commands.AutoShardedBot(intents = intents,
                             allowed_mentions = nextcord.AllowedMentions(everyone = True), 
                             help_command=None,
                             max_messages=1000,
-                            chunk_guilds_at_startup=True,
+                            chunk_guilds_at_startup=False,
                             guild_ready_timeout=5,  # 5 second timeout for guilds to be ready (default is 2 seconds)
                             shard_count=shard_count)
 
@@ -72,41 +72,6 @@ def get_bot() -> commands.AutoShardedBot: return bot
 
 connected_shards = set()
 post_shards_connected_called = False
-
-async def ensure_guilds_ready(waited=False):
-    """
-    Ensure guilds are properly loaded with retry logic.
-    """
-    unchunked = [guild for guild in bot.guilds if not guild.chunked]
-    if not unchunked:
-        logging.info("✅ All guilds are ready")
-        return
-    
-    if not waited:
-        logging.info(f"⏳ Waiting 15 seconds for guilds to be ready. {len(unchunked)} guilds unchunked.")
-        await asyncio.sleep(15)  # Let auto-chunking finish
-        await ensure_guilds_ready(waited=True)
-        return
-
-    logging.warning(f"Retrying chunking for {len(unchunked)} guilds...")
-
-    for guild in unchunked:
-        try:
-            await asyncio.wait_for(guild.chunk(), timeout=20)
-        except asyncio.TimeoutError:
-            logging.warning(f"⏱️ Guild {guild.name} timed out waiting for chunk; trying REST fallback.")
-            try:
-                # Fallback: Fetch members via REST
-                async for member in guild.fetch_members(limit=None):
-                    pass
-                logging.info(f"✅ Guild {guild.name} fetched via REST fallback.")
-            except Exception as e:
-                logging.warning(f"⚠️ Guild {guild.name} failed REST fallback: {e}")
-        except Exception as e:
-            logging.warning(f"⚠️ Guild {guild.name} failed to chunk: {e}")
-
-    still_unchunked = [g for g in bot.guilds if not g.chunked]
-    logging.info(f"Chunking complete. Remaining unchunked: {len(still_unchunked)}")
 
 @bot.event
 async def on_shard_connect(shard_id: int):
@@ -162,9 +127,6 @@ async def on_ready() -> None: # Bot load
     await bot.wait_until_ready()
     logging.info(f"============================== Logged in as: {bot.user.name} with all shards ready. ==============================")
     logging.info(f"Bot is running with {bot.shard_count} shards across {len(bot.guilds)} guilds.")
-
-    # Start Manual Guild Chunking Sequence
-    await ensure_guilds_ready()
 
     # Initialize core systems
     global_settings.set_bot_load_status(True)
@@ -245,9 +207,7 @@ async def on_shard_ready(shard_id: int) -> None:
 
         # Check if all shards are loaded
         if len(shards_loaded) == bot.shard_count:
-            total_guilds = len(bot.guilds)
-            chunked_guilds = len([g for g in bot.guilds if g.chunked])
-            logging.info(f"All {bot.shard_count} shards loaded. Guilds chunked: {chunked_guilds}/{total_guilds}")
+            logging.info(f"All {bot.shard_count} shards loaded.")
 
 @bot.event
 async def on_close() -> None:
@@ -581,10 +541,7 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
         guild = channel.guild
         if guild is None or not guild.me: 
             return
-        
-        if not guild.chunked:
-            await guild.chunk()
-        
+
         # If we have it, grab the original message
         original_message = payload.cached_message
         if original_message is None:
@@ -600,6 +557,13 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
         with LogIfFailure(feature="cached_messages.remove_cached_message & cached_messages.cache_message"):
             cached_messages.remove_cached_message(edited_message.id, channel.id)
             cached_messages.cache_message(edited_message)
+
+        # Resolve the author if it's not a Member object (e.g., if the member is not cached)
+        if not isinstance(edited_message.author, nextcord.Member):
+            with LogIfFailure(feature="utils.get_member (message edit profanity check)"):
+                resolved_author = await utils.get_member(guild, edited_message.author.id)
+                if resolved_author is not None:
+                    edited_message.author = resolved_author
 
         # Punish profanity (if any)
         with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
@@ -648,9 +612,6 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
             channel = await utils.get_channel(payload.channel_id, bot=bot)
             if channel is None: 
                 return
-
-            if not guild.chunked:
-                await guild.chunk()
 
             message = payload.cached_message
 
@@ -727,38 +688,41 @@ async def on_member_join(member: nextcord.Member) -> None:
         await default_roles.add_roles_for_new_member(member)
 
 @bot.event
-async def on_member_remove(member: nextcord.Member) -> None:
+async def on_raw_member_remove(payload: nextcord.RawMemberRemoveEvent) -> None:
     """
     Handles member removal events.
 
-    :param member: The member that was removed.
-    :type member: nextcord.Member
+    :param payload: The raw member removal event.
+    :type payload: nextcord.RawMemberRemoveEvent
     :return: None
     :rtype: None
     """
-    if member.id == bot.user.id: return # Don't do anything if WE are removed
-    if member.guild == None: return # Can't do anything if the guild is None
+    guild = payload.guild
+    user = payload.user
+
+    if user.id == bot.user.id: return # Don't do anything if WE are removed
+    if guild is None: return # Can't do anything if the guild is unknown
 
     # Verify that the member was not autobanned
-    if autobans.member_has_autoban(member):
-        logging.info(f"Member {member.id} ({member.name}) was autobanned, skipping leave message and removal handling.")
-        
+    if autobans.member_has_autoban(guild.id, user.id):
+        logging.info(f"Member {user.id} ({user.name}) was autobanned, skipping leave message and removal handling.")
+
         # Log the removal
         with LogIfFailure(feature="action_logging.log_member_removal"):
-            await action_logging.log_member_removal(member.guild, member)
+            await action_logging.log_member_removal(guild, user)
         return
 
     # Trigger the farewell message
     with LogIfFailure(feature="join_leave_messages.trigger_leave_message"):
-        await join_leave_messages.trigger_leave_message(member)
+        await join_leave_messages.trigger_leave_message(guild, user)
 
     # Remove levels
     with LogIfFailure(feature="leveling.handle_member_removal"):
-        await leveling.handle_member_removal(member)
+        await leveling.handle_member_removal(guild.id, user.id)
 
     # Log the removal
     with LogIfFailure(feature="action_logging.log_member_removal"):
-        await action_logging.log_member_removal(member.guild, member)
+        await action_logging.log_member_removal(guild, user)
 
 @bot.event
 async def on_guild_join(guild: nextcord.Guild) -> None:

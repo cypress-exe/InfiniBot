@@ -1,12 +1,14 @@
 import asyncio
 import copy
 import logging
+from typing import Optional
 
 import nextcord
 from nextcord import Interaction
+from nextcord.utils import MISSING
 
 from components import utils
-from config.global_settings import bot_loaded, get_configs, required_permissions
+from config.global_settings import bot_loaded, get_configs, required_permissions, VIEW_TIMEOUT
 from core.log_manager import get_uuid_for_logging
 
 # View overrides
@@ -165,6 +167,18 @@ class CustomView(nextcord.ui.View):
     :return: None
     :rtype: None
     """
+    def __init__(self,
+        *,
+        timeout: Optional[float] = VIEW_TIMEOUT,
+        auto_defer: bool = True,
+        prevent_update: bool = True):
+        """
+        Initializes the CustomView.
+
+        :param timeout: The timeout for the view. Defaults to VIEW_TIMEOUT. 
+        :type timeout: float | None
+        """
+        super().__init__(timeout=timeout, auto_defer=auto_defer, prevent_update=prevent_update)
     async def on_error(self, error: Exception, item, interaction: Interaction) -> None:
         """
         Handles exceptions raised in the view's item callbacks.
@@ -206,6 +220,21 @@ class CustomModal(nextcord.ui.Modal):
     :return: None
     :rtype: None
     """
+    def __init__(
+        self,
+        title: str,
+        *,
+        timeout: Optional[float] = VIEW_TIMEOUT,
+        custom_id: str = MISSING,
+        auto_defer: bool = True,
+    ) -> None:
+        """
+        Initializes the CustomModal.
+
+        :param title: The title of the modal.
+        :type title: str
+        """
+        super().__init__(title=title, timeout=timeout, custom_id=custom_id, auto_defer=auto_defer)
     async def on_error(self, error: Exception, interaction: Interaction) -> None:
         """
         Handles exceptions raised in the modal's execution.
@@ -346,7 +375,7 @@ class SelectView(CustomView):
         del xindex, yindex
         
         # Add select menu
-        self.select = nextcord.ui.Select(options = [nextcord.SelectOption(label = "PLACEHOLDER!!!")], placeholder=placeholder)
+        self.select = nextcord.ui.Select(custom_id="select_view_select", options = [nextcord.SelectOption(label = "PLACEHOLDER!!!")], placeholder=placeholder)
         self.add_item(self.select)
         
         # Add buttons

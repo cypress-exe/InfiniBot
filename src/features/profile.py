@@ -11,7 +11,7 @@ class Profile(CustomView):
     View for the profile command.
     """
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         level_card_btn = self.LevelCardButton(self)
         self.add_item(level_card_btn)
@@ -49,7 +49,7 @@ class Profile(CustomView):
             
         class LevelCardView(CustomView):
             def __init__(self, outer, interaction: Interaction):
-                super().__init__(timeout = None)
+                super().__init__()
                 self.outer = outer
                 
                 member = Member(interaction.user.id)
@@ -107,7 +107,7 @@ class Profile(CustomView):
                     
                 class ChangeTextModal(CustomModal):
                     def __init__(self, outer, interaction: Interaction):
-                        super().__init__(title = "Level-Up Card", timeout = None)
+                        super().__init__(title = "Level-Up Card")
                         self.outer = outer
                         
                         member = Member(interaction.user.id)
@@ -144,7 +144,7 @@ class Profile(CustomView):
                     
                 class ChangeColorView(CustomView):
                     def __init__(self, outer, interaction: Interaction):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         
                         options = ["Red", "Green", "Blue", "Yellow", "White", "Blurple", "Greyple", "Teal", "Purple", "Gold", "Magenta", "Fuchsia"]
@@ -155,7 +155,7 @@ class Profile(CustomView):
                         for option in options:
                             select_options.append(nextcord.SelectOption(label = option, value = option, default = (option == member.level_up_card_embed["color"])))
                                 
-                        self.select = nextcord.ui.Select(options = select_options, placeholder = "Select a Color")
+                        self.select = nextcord.ui.Select(custom_id="level_card_color_select", options = select_options, placeholder = "Select a Color")
                         self.add_item(self.select)
                         
                         back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
@@ -208,7 +208,7 @@ class Profile(CustomView):
                     
                 class EnableDisableView(CustomView):
                     def __init__(self, outer, enabled):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         self.enabled = enabled
                         
@@ -268,7 +268,7 @@ class Profile(CustomView):
             
         class JoinCardView(CustomView):
             def __init__(self, outer, interaction: Interaction):
-                super().__init__(timeout = None)
+                super().__init__()
                 self.outer = outer
                 
                 member = Member(interaction.user.id)
@@ -326,7 +326,7 @@ class Profile(CustomView):
                     
                 class ChangeTextModal(CustomModal):
                     def __init__(self, outer, interaction: Interaction):
-                        super().__init__(title = "Join Card", timeout = None)
+                        super().__init__(title = "Join Card")
                         self.outer = outer
                         
                         member = Member(interaction.user.id)
@@ -363,7 +363,7 @@ class Profile(CustomView):
                     
                 class ChangeColorView(CustomView):
                     def __init__(self, outer, interaction: Interaction):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         
                         options = ["Red", "Green", "Blue", "Yellow", "White", "Blurple", "Greyple", "Teal", "Purple", "Gold", "Magenta", "Fuchsia"]
@@ -374,7 +374,7 @@ class Profile(CustomView):
                         for option in options:
                             select_options.append(nextcord.SelectOption(label = option, value = option, default = (option == member.join_card_embed["color"])))
                                 
-                        self.select = nextcord.ui.Select(options = select_options, placeholder = "Select a Color")
+                        self.select = nextcord.ui.Select(custom_id="join_card_color_select", options = select_options, placeholder = "Select a Color")
                         self.add_item(self.select)
                         
                         back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
@@ -427,7 +427,7 @@ class Profile(CustomView):
                     
                 class EnableDisableView(CustomView):
                     def __init__(self, outer, enabled):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         self.enabled = enabled
                         
@@ -487,7 +487,7 @@ class Profile(CustomView):
             
         class SettingsView(CustomView):
             def __init__(self, outer):
-                super().__init__(timeout = None)
+                super().__init__()
                 self.outer = outer
                 
                 dms_btn = self.DmsButton(self)
@@ -528,7 +528,7 @@ class Profile(CustomView):
         
                 class DmsView(CustomView):
                     def __init__(self, outer, interaction: Interaction):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         
                         backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger)
@@ -582,7 +582,7 @@ class Profile(CustomView):
                     
                 class DataView(CustomView):
                     def __init__(self, outer):
-                        super().__init__(timeout = None)
+                        super().__init__()
                         self.outer = outer
                         
                         backBtn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger)

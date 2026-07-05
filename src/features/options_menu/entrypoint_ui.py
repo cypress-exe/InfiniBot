@@ -14,7 +14,7 @@ from config.server import Server
 
 class OptionsView(ui_components.CustomView):
     def __init__(self, interaction: Interaction, has_config_perms: bool, buttons: list, relevant_object: (nextcord.Message | nextcord.Member)):
-        super().__init__(timeout = None)
+        super().__init__()
         self.interaction = interaction
         self.has_config_perms = has_config_perms
         

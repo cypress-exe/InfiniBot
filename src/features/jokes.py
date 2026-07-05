@@ -310,7 +310,7 @@ class JokeView(CustomView):
 
     class SubmitJokeModal(CustomModal):
         def __init__(self):
-            super().__init__(title="Submit a Joke", timeout=None)
+            super().__init__(title="Submit a Joke")
 
             self.joke_title = nextcord.ui.TextInput(
                 label="Title",
@@ -409,7 +409,7 @@ class JokeVerificationView(CustomView):
     async def deny(self, button: nextcord.ui.Button, interaction: Interaction):
         class Modal(CustomModal):
             def __init__(self, message: nextcord.Message, member: nextcord.Member):
-                super().__init__(title="Reason to Deny", timeout=None)
+                super().__init__(title="Reason to Deny")
                 self.message = message
                 self.member = member
 
@@ -426,7 +426,7 @@ class JokeVerificationView(CustomView):
 
                 class ConfirmView(CustomView):
                     def __init__(self, message: nextcord.Message, reason: str, member: nextcord.Member | None):
-                        super().__init__(timeout=None)
+                        super().__init__()
                         self.message = message
                         self.reason = reason
                         self.member = member
@@ -522,7 +522,7 @@ class JokeVerificationView(CustomView):
     async def verify(self, button: nextcord.ui.Button, interaction: Interaction):
         class Modal(CustomModal):
             def __init__(self, message: nextcord.Message):
-                super().__init__(title="Finalize Joke", timeout=None)
+                super().__init__(title="Finalize Joke")
                 self.message = message
 
                 joke, extracted_info = _extract_info_from_joke_submission_embed(message.embeds[0])
@@ -570,7 +570,7 @@ class JokeVerificationView(CustomView):
                         member_id: int,
                         member: nextcord.Member | None
                     ):
-                        super().__init__(timeout=None)
+                        super().__init__()
                         self.message = message
                         self.joke_title = joke_title
                         self.joke_body = joke_body

@@ -150,9 +150,12 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
     server = Server(guild.id)
     if not utils.feature_is_active(server = server, feature = "moderation__profanity"): return
 
-    if not guild.chunked:
-        await guild.chunk()
-    
+    # Note: with chunk_guilds_at_startup disabled, on_member_update is only ever
+    # dispatched for members nextcord has already cached (join, voice state, or a
+    # prior update), so `member`/`after` here are always fully populated. The very
+    # first nickname change for a not-yet-cached member is silently missed by
+    # nextcord itself before this handler is even invoked - an accepted limitation
+    # (see documentation/scale_performance_assessment_2026-07.md section 1).
     if nickname == None: return
     if member.guild_permissions.administrator: return
 
@@ -222,7 +225,7 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
 
             {f"{member.mention} was timed out for {timeout_time}" if strikes == 0 else f"{member.mention} is now at strike {strikes} / {server.profanity_moderation_profile.max_strikes}"}
 
-            {"InfiniBot automatically reverted their nickname to their original name." if nickname_removed else "InfiniBot could not revert their nickname due to lack of permissions."}
+            {"InfiniBot automatically reverted their nickname to their base name." if nickname_removed else "InfiniBot could not revert their nickname due to lack of permissions."}
             """
             description = utils.standardize_str_indention(description)
             embed =  nextcord.Embed(title = "Profanity Detected", description = description, color = nextcord.Color.dark_red())

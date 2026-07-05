@@ -62,7 +62,7 @@ class BanButton(OptionsButton):
             
     class BanView(CustomView):
         def __init__(self, outer, parent, message: nextcord.Message):
-            super().__init__(timeout = None)
+            super().__init__()
             self.outer = outer
             self.parent = parent
             self.message = message

@@ -889,7 +889,7 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> 
     if before.communication_disabled_until != after.communication_disabled_until:
         await log_timeout_change(before, after, entry, log_channel)
 
-async def log_member_removal(guild: nextcord.Guild, member: nextcord.Member) -> None:
+async def log_member_removal(guild: nextcord.Guild, member: nextcord.abc.User) -> None:
     """
     |coro|
 
@@ -898,7 +898,7 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.Member) -> 
     :param guild: The guild the member was removed from.
     :type guild: nextcord.Guild
     :param member: The member that was removed.
-    :type member: nextcord.Member
+    :type member: nextcord.abc.User
     :return: None
     :rtype: None
     """
@@ -908,9 +908,6 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.Member) -> 
     log_channel = await get_logging_channel(guild)
     if not log_channel: return # Logging is not enabled for this guild
 
-    if not guild.chunked:
-        await guild.chunk()
-        
     if guild.me == None: return
     
     try:
