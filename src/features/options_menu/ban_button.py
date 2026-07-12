@@ -8,7 +8,8 @@ from features.options_menu.options_btn_interface import OptionsButton
 
 class BanButton(OptionsButton):
     def get_label(self) -> str:
-        return "Ban Message Author" if self._type == "message" else "Ban Member"
+        # Case-insensitive: the view passes "Message" (capitalized)
+        return "Ban Message Author" if str(self._type).lower() == "message" else "Ban Member"
 
     async def load(self, interaction: Interaction, data: dict):
         self.message: nextcord.Message = data.get("message", None)
