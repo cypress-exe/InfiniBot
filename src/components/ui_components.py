@@ -199,7 +199,7 @@ class CustomView(nextcord.ui.View):
         logging.error(f"Error ID: {error_id} - Exception in view interaction", exc_info=error)
 
         # Inform the user about the error with the ID
-        embed = INFINIBOT_ERROR_EMBED
+        embed = INFINIBOT_ERROR_EMBED.copy()  # fresh copy per error - concurrent errors must not overwrite each other's footer
         embed.set_footer(text = f"View Interaction - Error ID: {error_id}")
 
         if not interaction.response.is_done():
@@ -253,7 +253,7 @@ class CustomModal(nextcord.ui.Modal):
         logging.error(f"Error ID: {error_id} - Exception in modal interaction", exc_info=error)
 
         # Inform the user about the error with the ID
-        embed = INFINIBOT_ERROR_EMBED
+        embed = INFINIBOT_ERROR_EMBED.copy()  # fresh copy per error - concurrent errors must not overwrite each other's footer
         embed.set_footer(text = f"Modal Interaction - Error ID: {error_id}")
         await interaction.response.send_message(
             embed=embed, ephemeral=True, view=SupportView()
