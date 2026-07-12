@@ -570,10 +570,10 @@ class Simple_TableManager(TableManager):
                 return self.properties
                 
             def to_embed(self):
-                properties = self.properties
+                properties = dict(self.properties)  # copy so the stored dict keeps its color string
                 if "color" in properties:
                     properties["color"] = get_discord_color_from_string(properties["color"])
-                
+
                 return NextcordEmbed(**properties)
             
             def get(self, key, default=None):
