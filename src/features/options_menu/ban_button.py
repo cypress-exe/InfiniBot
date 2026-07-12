@@ -20,10 +20,11 @@ class BanButton(OptionsButton):
         
         self.relevant_member = self.message.author if self.message else self.member
 
-        self.relevant_member_fetched = await get_member(interaction.guild, self.relevant_member.id)
-        
-
-        # Confirm that the member is not already banned
+        # Avoid a REST fetch when we already have a Member object
+        if isinstance(self.relevant_member, nextcord.Member):
+            self.relevant_member_fetched = self.relevant_member
+        else:
+            self.relevant_member_fetched = await get_member(interaction.guild, self.relevant_member.id)
 
         enabled = (
             interaction.user.guild_permissions.ban_members
@@ -33,31 +34,15 @@ class BanButton(OptionsButton):
                 self.relevant_member_fetched is None
                 or (
                     interaction.guild.me.id != self.relevant_member.id
-                    and interaction.guild.me.top_role.position > self.relevant_member.top_role.position
+                    and interaction.guild.me.top_role.position > self.relevant_member_fetched.top_role.position
                 )
             )
         )
-        
-        if enabled:
-            
-            # Ensure that the member is not already banned
-            if interaction.guild.me.guild_permissions.ban_members:
-                try:
-                    ban_entry = await interaction.guild.fetch_ban(self.relevant_member)
-                except nextcord.NotFound:
-                    # If the member is not banned, we can add the button
-                    pass
-                except nextcord.Forbidden:
-                    # If the bot does not have permission to fetch bans, we can still add the button
-                    pass
-                else:
-                    # If the member is already banned, we do not add the button
-                    if ban_entry:
-                        return False
 
+        if enabled:
             self.outer.add_item(self)
             return True
-        
+
         return False
             
     class BanView(CustomView):
@@ -79,6 +64,22 @@ class BanButton(OptionsButton):
             if not feature_is_active(feature="options_menu__banning", guild_id=interaction.guild.id):
                 await disabled_feature_override(self, interaction)
                 return
+
+            # Deferred from BanButton.load so the menu build doesn't pay this REST call
+            if interaction.guild.me.guild_permissions.ban_members:
+                try:
+                    ban_entry = await interaction.guild.fetch_ban(self.parent.relevant_member)
+                except (nextcord.NotFound, nextcord.Forbidden):
+                    ban_entry = None
+
+                if ban_entry:
+                    embed = nextcord.Embed(
+                        title="Already Banned",
+                        description=f"`{self.parent.relevant_member}` is already banned from this server.",
+                        color=nextcord.Color.orange()
+                    )
+                    await interaction.response.edit_message(embed=embed, view=None)
+                    return
 
             if self.parent.relevant_member_fetched:
                 # If the member is in the server

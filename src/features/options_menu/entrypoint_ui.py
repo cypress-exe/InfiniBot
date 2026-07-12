@@ -62,9 +62,12 @@ class OptionsView(ui_components.CustomView):
                 "member": self.relevant_object
             })
 
-        # Load buttons
+        # Load buttons (isolated so that one failing button doesn't kill the whole menu)
         for button in self.buttons:
-            await button.load(interaction, data)
+            try:
+                await button.load(interaction, data)
+            except Exception as e:
+                logging.error(f"Options button {type(button).__name__} failed to load: {e}", exc_info=True)
 
         if len(self.children) == 0:
             await self.show_error(interaction, f"Hmmm. You don't have any options for this {self.relevant_object_type.lower()}.")
