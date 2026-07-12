@@ -102,24 +102,25 @@ class JSONFile:
                     except OSError as e2:
                         logging.error(f"Failed to remove malformed file {self.path}: {e2}")
 
-    def _get_data(self) -> dict:
+    def _get_data(self, mutable: bool = False) -> dict:
         """
         Retrieves the data from the file.
 
-        :param self: The instance of the JSONFile object.
-        :type self: JSONFile
+        :param mutable: If True, return a deep copy the caller may mutate (for write
+            paths). If False (default), return the cached dict directly — callers
+            must treat it as read-only. Read paths are hot (per-message feature
+            checks), so they must not deep-copy the whole file.
+        :type mutable: bool
         :return: The data from the file.
         :rtype: dict
         """
-        if self.path in self._cache:
-            return copy.deepcopy(self._cache[self.path]) # Return a copy to prevent external modifications
+        if self.path not in self._cache:
+            self.ensure_existence()
+            with open(self.path, "r") as file:
+                self._cache[self.path] = json.loads(file.read())
 
-        self.ensure_existence()
-
-        with open(self.path, "r") as file:
-            data = json.loads(file.read())
-            self._cache[self.path] = data
-            return copy.deepcopy(data)  # Return a copy to prevent external modifications
+        data = self._cache[self.path]
+        return copy.deepcopy(data) if mutable else data
         
     def _set_data(self, data: dict) -> None:
         """
@@ -224,14 +225,16 @@ class JSONFile:
         """
         data = self._get_data()
 
-        if key not in self:
+        try:
+            if isinstance(key, str) and '.' in key:
+                value = self._get_nested(data, key.split('.'))
+            else:
+                value = data[key]
+        except KeyError:
             raise KeyError(f"{key} does not exist in {self.file_name}.")
 
-        if isinstance(key, str) and '.' in key:
-            keys = key.split('.')
-            return self._get_nested(data, keys)
-        else:
-            return data[key]
+        # Deep-copy only the returned value so callers can't mutate the cache
+        return copy.deepcopy(value)
 
     def __setitem__(self, key: str, value: any) -> None:
         """
@@ -244,7 +247,7 @@ class JSONFile:
         :return: None
         :rtype: None
         """
-        data = self._get_data()
+        data = self._get_data(mutable=True)
         if isinstance(key, str) and '.' in key:
             keys = key.split('.')
             self._update_nested(data, keys, value)
@@ -263,11 +266,11 @@ class JSONFile:
         :rtype: None
         :raises KeyError: If the key does not exist in the JSON file.
         """
-        data = self._get_data()
+        data = self._get_data(mutable=True)
 
         if key not in self:
             raise KeyError(f"{key} does not exist in {self.file_name}.")
-        
+
         if isinstance(key, str) and '.' in key:
             keys = key.split('.')
             # Navigate to the parent and delete the final key
@@ -289,7 +292,7 @@ class JSONFile:
         :rtype: iter
         """
         data = self._get_data()
-        return iter(data)
+        return iter(list(data))  # snapshot the keys so writes during iteration can't break it
     
     def __str__(self) -> str:
         """
@@ -340,7 +343,7 @@ class JSONFile:
         :return: None
         :rtype: None
         """
-        data = self._get_data()
+        data = self._get_data(mutable=True)
 
         if key in self:
             raise KeyError(f"{key} already exists in {self.file_name}. Use __setitem__() instead. Implementation: JSONFile[key] = value")
@@ -398,5 +401,5 @@ class JSONFile:
         :return: An iterator over the key-value pairs in the JSON file.
         :rtype: iter
         """
-        data = self._get_data()
+        data = self._get_data(mutable=True)  # copy: callers get values they may mutate
         return data.items()
