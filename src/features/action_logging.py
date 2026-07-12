@@ -450,7 +450,8 @@ async def trigger_delete_log(bot: nextcord.Client, channel: nextcord.TextChannel
     if message and message.embeds != []:
         attachedMessage = "Attached below"
         if len(message.embeds) > 9:
-            attachedMessage = f"9/{len(message.embeds)} are attached below"
+            # The send below attaches embeds[0:8] alongside the log embed (9 total)
+            attachedMessage = f"8/{len(message.embeds)} are attached below"
             
         embed.add_field(name = "Embeds", value = f"This message contained one or more embeds. ({attachedMessage})", inline = False)
         embeds = message.embeds
