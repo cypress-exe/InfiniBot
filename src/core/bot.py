@@ -203,11 +203,14 @@ async def on_shard_ready(shard_id: int) -> None:
     logging.info(f"Shard {shard_id} ready with {len(shard_guilds)} guilds")
 
     with global_settings.ShardLoadedStatus() as shards_loaded:
-        shards_loaded.append(shard_id)
+        # Dedup: on_shard_ready re-fires on shard reconnects, and duplicate ids would
+        # both grow the list unboundedly and re-trigger the all-shards-loaded branch
+        if shard_id not in shards_loaded:
+            shards_loaded.append(shard_id)
 
-        # Check if all shards are loaded
-        if len(shards_loaded) == bot.shard_count:
-            logging.info(f"All {bot.shard_count} shards loaded.")
+            # Check if all shards are loaded
+            if len(shards_loaded) == bot.shard_count:
+                logging.info(f"All {bot.shard_count} shards loaded.")
 
 @bot.event
 async def on_close() -> None:
