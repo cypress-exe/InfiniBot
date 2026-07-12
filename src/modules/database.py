@@ -138,10 +138,10 @@ class Database:
                         session.commit()
                     return data if multiple_values else self.get_query_first_value(data)
 
-            except Exception as e:
+            except Exception:
                 logging.error(f"Error executing SQL query: {sql}", exc_info=True)
                 session.rollback()
-                raise Exception(e)
+                raise  # preserve the original exception type for callers
 
     def build_database(self, build_file_path: str) -> None:
         """
