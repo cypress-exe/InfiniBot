@@ -861,8 +861,9 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> 
     log_channel = await get_logging_channel(guild)
     if not log_channel: return
 
-    if not guild.chunked:
-        await guild.chunk()
+    # Note: no guild.chunk() here — on_member_update only fires for members nextcord
+    # already cached, and force-chunking large guilds on the first member update is
+    # exactly the gateway flood that disabling startup chunking was meant to avoid.
 
     if not guild.me: return
 
