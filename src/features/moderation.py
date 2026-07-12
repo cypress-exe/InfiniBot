@@ -167,12 +167,18 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
         if not guild.me.guild_permissions.view_audit_log:
             await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission=True)
             return
-        entry = await anext(guild.audit_logs(limit=1, action=nextcord.AuditLogAction.member_update), None)
+        # Find a recent member_update entry targeting this member
+        entry = None
+        async for _entry in guild.audit_logs(limit=5, action=nextcord.AuditLogAction.member_update):
+            target = getattr(_entry, "target", None)
+            if target is not None and getattr(target, "id", None) == member.id:
+                entry = _entry
+                break
         if entry == None: return
 
-        # Confirm that this entry is fresh (within 1 second)
-        entry_is_fresh = True
-        if (datetime.datetime.now(datetime.timezone.utc) - entry.created_at).seconds > 1: entry_is_fresh = False
+        # Confirm that this entry is fresh. Use total_seconds() (.seconds wraps at 24h)
+        # and a window that covers the ~1s audit-log sleep upstream in log_member_update.
+        entry_is_fresh = (datetime.datetime.now(datetime.timezone.utc) - entry.created_at).total_seconds() <= 10
         user = entry.user
         
         if entry_is_fresh and user.id == member.id:
