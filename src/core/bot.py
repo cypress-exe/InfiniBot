@@ -235,13 +235,13 @@ else:
 
 # SLASH COMMANDS ==============================================================================================================================================================
 @bot.slash_command(name="view", description="Requires Infinibot Mod", contexts=[nextcord.InteractionContextType.guild])
-async def view(interaction: Interaction): pass
+async def view_group(interaction: Interaction): pass
 
 @bot.slash_command(name="set", description="Requires Infinibot Mod", contexts=[nextcord.InteractionContextType.guild])
-async def set(interaction: Interaction): pass
+async def set_group(interaction: Interaction): pass
 
 @bot.slash_command(name="create", description="Requires Infinibot Mod", contexts=[nextcord.InteractionContextType.guild])
-async def create(interaction: Interaction): pass
+async def create_group(interaction: Interaction): pass
 
 @bot.slash_command(name="help", description="Get help with InfiniBot")
 async def help(interaction: Interaction): 
@@ -260,7 +260,7 @@ async def dashboard_command(interaction: Interaction):
 async def profile_command(interaction: Interaction):
     await profile.run_profile_command(interaction)
 
-@create.subcommand(name="infinibot-mod-role", description="Manually trigger InfiniBot to create the Infinibot Mod role")
+@create_group.subcommand(name="infinibot-mod-role", description="Manually trigger InfiniBot to create the Infinibot Mod role")
 async def create_infinibot_mod_role(interaction: Interaction):
     role_created = await utils.check_server_for_infinibot_mod_role(interaction.guild)
 
@@ -276,19 +276,19 @@ async def create_infinibot_mod_role(interaction: Interaction):
         await interaction.response.send_message(embed = embed, ephemeral = True, view=ui_components.SupportView())
 
 # Moderation Commands
-@view.subcommand(name="my-strikes", description="View your strikes")
+@view_group.subcommand(name="my-strikes", description="View your strikes")
 async def my_strikes(interaction: Interaction):
     await moderation.run_my_strikes_command(interaction)
 
-@view.subcommand(name="member-strikes", description="View another member's strikes. (Requires Infinibot Mod)")
+@view_group.subcommand(name="member-strikes", description="View another member's strikes. (Requires Infinibot Mod)")
 async def view_member_strikes(interaction: Interaction, member: nextcord.Member):
     await moderation.run_view_member_strikes_command(interaction, member)
 
-@set.subcommand(name="admin-channel", description="Use this channel to log strikes. Channel should only be viewable by admins. (Requires Infinibot Mod)")
+@set_group.subcommand(name="admin-channel", description="Use this channel to log strikes. Channel should only be viewable by admins. (Requires Infinibot Mod)")
 async def set_admin_channel(interaction: Interaction):
     await moderation.run_set_admin_channel_command(interaction)
 
-@set.subcommand(name="log-channel", description="Use this channel for logging. Channel should only be viewable by admins. (Requires Infinibot Mod)")
+@set_group.subcommand(name="log-channel", description="Use this channel for logging. Channel should only be viewable by admins. (Requires Infinibot Mod)")
 async def set_log_channel(interaction: Interaction):
     await action_logging.run_set_log_channel_command(interaction)
 
@@ -297,11 +297,11 @@ async def set_log_channel(interaction: Interaction):
 async def leaderboard(interaction: Interaction):
     await leveling.run_leaderboard_command(interaction)
 
-@view.subcommand(name="level", description="View your or someone else's level.")
+@view_group.subcommand(name="level", description="View your or someone else's level.")
 async def view_level(interaction: Interaction, member: nextcord.Member = SlashOption(description="The member to view the level of.", required=False)):
     await leveling.run_view_level_command(interaction, member)
 
-@set.subcommand(name="level", description="Set levels for any individual (Requires Infinibot Mod)")
+@set_group.subcommand(name="level", description="Set levels for any individual (Requires Infinibot Mod)")
 async def set_level(interaction: Interaction, 
                     member: nextcord.Member = SlashOption(description="The member to set the level of.", required=True), 
                     level: int = SlashOption(description="The level to set.", required=True)):
@@ -309,23 +309,23 @@ async def set_level(interaction: Interaction,
 
 # Reaction Role Commands
 REACTIONROLETYPES = ["Letters", "Numbers", "Custom"]
-@create.subcommand(name="reaction-role", description="Legacy: Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
+@create_group.subcommand(name="reaction-role", description="Legacy: Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
 async def reaction_role_command(interaction: Interaction, type: str = SlashOption(choices=["Letters", "Numbers"]), 
                               mention_roles: bool = SlashOption(name="mention-roles", description="Mention the roles with @mention", required=False, default=True)):
     await reaction_roles.run_reaction_role_command(interaction, type, mention_roles)
 
-@create.subcommand(name="custom-reaction-role", description="Legacy: Create a reaction role with customized emojis. (Requires Infinibot Mod)")
+@create_group.subcommand(name="custom-reaction-role", description="Legacy: Create a reaction role with customized emojis. (Requires Infinibot Mod)")
 async def custom_reaction_role_command(interaction: Interaction, options: str = SlashOption(description="Format: \"👍 = @Member, 🥸 = @Gamer\""), 
                                     mentionRoles: bool = SlashOption(name="mention_roles", description="Mention the roles with @mention", required = False, default = True)):   
     await reaction_roles.run_custom_reaction_role_command(interaction, options, mentionRoles)
 
 # Embed Commands
-@create.subcommand(name = "embed", description = "Create a beautiful embed!")
+@create_group.subcommand(name = "embed", description = "Create a beautiful embed!")
 async def create_embed(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Role to Ping", required = False)):
     await embeds.run_create_embed_command(interaction, role)
 
 # Role Message Commands
-@create.subcommand(name = "role_message", description = "Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
+@create_group.subcommand(name = "role_message", description = "Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
 async def create_role_message(interaction: Interaction):
     await role_messages.run_role_message_command(interaction)
 
