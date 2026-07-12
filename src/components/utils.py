@@ -812,6 +812,40 @@ async def get_guild_owner(guild: nextcord.Guild) -> nextcord.Member | None:
 
     return await get_member(guild, guild.owner_id)
 
+async def get_members_batch(guild: nextcord.Guild, user_ids: list[int]) -> dict[int, nextcord.Member] | None:
+    """
+    |coro|
+    Resolve many members at once: member cache first, then gateway member queries in
+    batches of 100 — instead of one REST fetch per uncached id (N+1).
+
+    :param guild: The guild to resolve members in.
+    :type guild: nextcord.Guild
+    :param user_ids: The user IDs to resolve.
+    :type user_ids: list[int]
+    :return: user_id -> Member for every id still in the guild (absent ids left the
+        guild), or None if the gateway query failed — callers must NOT interpret a
+        failure as "these members left".
+    :rtype: dict[int, nextcord.Member] | None
+    """
+    members_by_id: dict[int, nextcord.Member] = {}
+    uncached_ids: list[int] = []
+    for user_id in user_ids:
+        member = guild.get_member(user_id)
+        if member is not None:
+            members_by_id[user_id] = member
+        else:
+            uncached_ids.append(user_id)
+
+    try:
+        for i in range(0, len(uncached_ids), 100):
+            found = await guild.query_members(user_ids=uncached_ids[i:i + 100])
+            members_by_id.update({member.id: member for member in found})
+    except Exception as e:
+        logging.warning(f"Batched member query failed for guild {guild.id}: {e}")
+        return None
+
+    return members_by_id
+
 async def check_and_warn_if_channel_is_text_channel(interaction: Interaction) -> bool:
     """
     |coro|

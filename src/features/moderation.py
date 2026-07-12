@@ -958,10 +958,18 @@ async def daily_moderation_maintenance(bot: nextcord.Client, guild: nextcord.Gui
         if server.profanity_moderation_profile.strike_system_active == False: return
         if server.profanity_moderation_profile.strike_expiring_active == False: return
         
+        # Resolve all striked members up front (cache + batched gateway queries)
+        # instead of paying a REST fetch per row.
+        strike_infos = list(server.moderation_strikes)
+        members_by_id = await utils.get_members_batch(guild, [info.member_id for info in strike_infos])
+        if members_by_id is None:
+            logging.warning(f"Could not resolve members for moderation maintenance in guild {guild.id}; skipping this run.")
+            return
+
         # Go through each member and edit
-        for member_strike_info in server.moderation_strikes:
+        for member_strike_info in strike_infos:
             try:
-                member = await utils.get_member(guild, member_strike_info.member_id)
+                member = members_by_id.get(member_strike_info.member_id)
                 if member is None:
                     continue
                     

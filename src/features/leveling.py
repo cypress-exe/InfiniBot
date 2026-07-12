@@ -218,10 +218,18 @@ async def daily_leveling_maintenance(bot: nextcord.Client, guild: nextcord.Guild
         if server.leveling_profile.active == False: return
         if server.leveling_profile.points_lost_per_day == 0: return
         
+        # Resolve all leveled members up front (cache + batched gateway queries)
+        # instead of paying a REST fetch per row.
+        level_infos = list(server.member_levels)
+        members_by_id = await utils.get_members_batch(guild, [info.member_id for info in level_infos])
+        if members_by_id is None:
+            logging.warning(f"Could not resolve members for leveling maintenance in guild {guild.id}; skipping this run.")
+            return
+
         # Go through each member and edit
-        for member_level_info in server.member_levels:
+        for member_level_info in level_infos:
             try:
-                member = await utils.get_member(guild, member_level_info.member_id)
+                member = members_by_id.get(member_level_info.member_id)
                 if member == None:
                     logging.warning(f"Member {member_level_info.member_id} not found in guild {guild.id}. Removing from member levels.")
                     # Remove the member if they are not found
@@ -240,6 +248,9 @@ async def daily_leveling_maintenance(bot: nextcord.Client, guild: nextcord.Guild
                 await process_level_change(guild, member)
 
                 # Remove the member if they have no points
+                # This is purely a database optimization to reduce the number of rows in
+                # the member_levels table. Members without records are assumed to have 0
+                # points elsewhere in the codebase.
                 if member_level_info.points == 0:
                     server.member_levels.delete(member_level_info.member_id)
 
