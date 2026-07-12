@@ -8,7 +8,7 @@ from nextcord import Interaction
 from nextcord.utils import MISSING
 
 from components import utils
-from config.global_settings import bot_loaded, get_configs, required_permissions, VIEW_TIMEOUT
+from config.global_settings import get_bot_load_status, get_configs, required_permissions, VIEW_TIMEOUT
 from core.log_manager import get_uuid_for_logging
 
 # View overrides
@@ -103,10 +103,6 @@ async def chunk_guild_with_feedback(interaction: Interaction) -> int:
     if interaction.guild.chunked:
         return None
 
-    # Skip if bot is already fully loaded. If the guild still shows as unchunked, something is wrong, but chunking again won't help.
-    if bot_loaded:
-        return None
-    
     # Send loading message to user
     await interaction.response.send_message(
         embed=nextcord.Embed(
