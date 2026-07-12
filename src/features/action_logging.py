@@ -922,8 +922,11 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.abc.User) -
         entry = None
         async for _entry in entries:
             if _entry.action == AuditLogAction.kick or _entry.action == AuditLogAction.ban:
-                entry = _entry
-                break
+                # Only accept entries that target the member who actually left
+                target = getattr(_entry, "target", None)
+                if target is not None and getattr(target, "id", None) == member.id:
+                    entry = _entry
+                    break
     except nextcord.Forbidden:
         await utils.send_error_message_to_server_owner(guild, "View Audit Log", guild_permission=True)
         return
