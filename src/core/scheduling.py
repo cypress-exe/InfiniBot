@@ -48,7 +48,9 @@ async def run_scheduled_tasks() -> None:
         # Start new log if it is a new day
         if current_time_utc.hour == 0 and current_time_utc.minute == 0:
             logging.warning("New day, generating new log file")
-            setup_logging()
+            # Preserve the configured log level — the default (INFO) would silently
+            # revert a DEBUG deployment every midnight
+            setup_logging(level=logging.root.level)
 
         from core.bot import bot
         guilds = list(bot.guilds)
