@@ -495,9 +495,14 @@ async def check_and_trigger_profanity_moderation_for_message(
         logging.debug(f"Tried to check profanity for a non-member: {message.author}. Guild ID: {message.guild.id}")
         return False
     
-    if not skip_admin_check and message.author.guild_permissions.administrator:
-        logging.debug(f"Skipped profanity check for admin: {message.author}. Guild ID: {message.guild.id}")
-        return False
+    if not skip_admin_check:
+        if message.author.guild_permissions.administrator:
+            logging.debug(f"Skipped profanity check for admin: {message.author}. Guild ID: {message.guild.id}")
+            return False
+
+        if any(role.id in server.moderation_profile.admin_role_ids for role in message.author.roles):
+            logging.debug(f"Skipped profanity check for member with admin role: {message.author}. Guild ID: {message.guild.id}")
+            return False
         
     # Message Content - remove URLs to prevent false positives
     msg = remove_urls_from_text(message.content).lower()
