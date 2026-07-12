@@ -91,8 +91,13 @@ async def run_scheduled_tasks() -> None:
                 # Time calculation
                 current_time_local = current_time_utc.astimezone(tz)
 
-                # Birthday checks
-                await check_and_run_birthday_actions(bot, guild)
+                # Birthday checks (pass the cycle start so guilds processed late in the
+                # loop still match the window this cycle covers)
+                await check_and_run_birthday_actions(
+                    bot, guild,
+                    cycle_start=current_time_utc,
+                    interval_minutes=INTERVAL_MINUTES,
+                )
                 
                 # Daily maintenance
                 # 3am local time is a good time to run daily maintenance since it's a low traffic hour

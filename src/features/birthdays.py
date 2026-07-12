@@ -35,24 +35,35 @@ def calculate_age(local_datetime: datetime.datetime, birth_date: datetime.date |
     return age
 
 
-async def check_and_run_birthday_actions(bot: nextcord.Client, guild: nextcord.Guild) -> None:
+async def check_and_run_birthday_actions(
+    bot: nextcord.Client,
+    guild: nextcord.Guild,
+    cycle_start: datetime.datetime | None = None,
+    interval_minutes: int = 15,
+) -> None:
     """
     |coro|
 
     Run the 15-minute birthday task.
 
-    This function is intended to be run every 15 minutes. It checks if the runtime
-    for birthday messages is now, and if so, sends out birthday messages to the
-    specified channels.
+    This function is intended to be run every ``interval_minutes`` minutes. It checks
+    whether the guild's configured runtime falls inside the current scheduler cycle's
+    window, and if so, sends out birthday messages to the specified channels.
 
     :param bot: The bot client.
     :type bot: nextcord.Client
     :param guild: The guild to check for birthdays.
     :type guild: nextcord.Guild
+    :param cycle_start: The UTC time the scheduler cycle started. All guilds in a cycle
+        must share this value so late-processed guilds don't miss their window.
+        Defaults to the current UTC time.
+    :type cycle_start: datetime.datetime | None
+    :param interval_minutes: Width of the match window (the scheduler interval).
+    :type interval_minutes: int
     :return: None
     :rtype: None
     """
-    
+
     logging.debug(f"Running scheduled action for birthdays in on guild: {guild.name} ({guild.id})")
 
     if get_global_kill_status()["birthdays"]:
@@ -62,8 +73,13 @@ async def check_and_run_birthday_actions(bot: nextcord.Client, guild: nextcord.G
         logging.warning("SKIPPING birthdays because of bot load status.")
         return
 
-    now = datetime.datetime.now(datetime.timezone.utc).replace(second=0, microsecond=0)
-    hour_minute_now = now.strftime("%H:%M")
+    if cycle_start is None:
+        cycle_start = datetime.datetime.now(datetime.timezone.utc)
+    # Window: [cycle start floored to the interval grid, +interval_minutes). This also
+    # catches any hypothetical legacy runtimes not aligned to the grid, and runs that 
+    # start slightly late.
+    cycle_minutes = cycle_start.hour * 60 + cycle_start.minute
+    window_start = cycle_minutes - (cycle_minutes % interval_minutes)
 
     try:
         if guild is None:
@@ -82,10 +98,10 @@ async def check_and_run_birthday_actions(bot: nextcord.Client, guild: nextcord.G
         # Extract HH:MM from values like "18:00 UTC" or "8:00 PDT" or "18:00"
         runtime_text = str(server.birthdays_profile.runtime) # stored as UTC time
         m = re.search(r"\b(\d{1,2}):(\d{2})\b", runtime_text)
-        runtime = f"{m.group(1).zfill(2)}:{m.group(2)}" if m else None
-        logging.debug(f"Runtime: {runtime}, Current Time: {hour_minute_now}")
-        
-        if runtime is None or hour_minute_now != runtime:
+        runtime_minutes = int(m.group(1)) * 60 + int(m.group(2)) if m else None
+        logging.debug(f"Runtime: {runtime_text}, Cycle window start (min of day): {window_start}")
+
+        if runtime_minutes is None or not (window_start <= runtime_minutes < window_start + interval_minutes):
             return
 
         logging.debug(f"Found a server with runtime now. Server: {guild.name} (ID: {guild.id})")
