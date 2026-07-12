@@ -42,7 +42,7 @@ async def run_scheduled_tasks() -> None:
 
     log_on_correct_behavior = (current_time_utc.minute // INTERVAL_MINUTES) % 7 == 0
     if (not log_on_correct_behavior):
-        logging.info("Logging skipped due to intended behavior.")
+        logging.debug("Skipping progress/summary logging for this run (only 1 in 7 runs logs them).")
 
     try:
         # Start new log if it is a new day
@@ -175,8 +175,8 @@ logging.getLogger('apscheduler').setLevel(logging.WARNING)
 
 def start_scheduler() -> None:
     """
-    Starts the scheduler. Scheduler will run the job function every 5 minutes,
-    aligned to the nearest 5-minute interval (00:00, 00:05, 00:10, etc.).
+    Starts the scheduler. Scheduler will run the job function every INTERVAL_MINUTES
+    minutes (currently 15), aligned to the interval grid (00:00, 00:15, 00:30, 00:45).
     """
     global scheduler
 
