@@ -891,7 +891,14 @@ async def user_has_config_permissions(interaction: Interaction, notify: bool = T
     if infinibot_mod_role in interaction.user.roles:
         return True
 
-    if notify: await interaction.response.send_message(embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.\n\nGo to our [docs](https://cypress-exe.github.io/InfiniBot/docs/getting-started/install-and-setup/#the-infinibot-mod-role) for more information.", color = nextcord.Color.red()), ephemeral = True)
+    if notify:
+        embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.\n\nGo to our [docs](https://cypress-exe.github.io/InfiniBot/docs/getting-started/install-and-setup/#the-infinibot-mod-role) for more information.", color = nextcord.Color.red())
+        # An earlier step (e.g. chunk_guild_with_feedback) may have already sent the
+        # initial response — use the followup in that case instead of double-responding
+        if interaction.response.is_done():
+            await interaction.followup.send(embed = embed, ephemeral = True)
+        else:
+            await interaction.response.send_message(embed = embed, ephemeral = True)
     return False
 
 async def check_text_channel_permissions(channel: nextcord.abc.GuildChannel, auto_warn: bool, custom_channel_name: str = None) -> bool:
