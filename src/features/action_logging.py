@@ -838,8 +838,11 @@ async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, ch
     await asyncio.sleep(1) # We need this time delay for some other features
 
     # Do not trigger if confident that the message was InfiniBot's
+    # (author can be None on a DB-sourced record whose author fetch failed, so fall
+    # back to the record's author_id)
     if message:
-        if message.author.id == bot.application_id: 
+        author_id = message.author.id if message.author is not None else getattr(message, "author_id", None)
+        if author_id == bot.application_id:
             logging.debug(f"Message {message_id}'s author is InfiniBot; skipping delete log.")
             return
 

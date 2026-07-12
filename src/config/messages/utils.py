@@ -200,7 +200,7 @@ def message_to_message_record_type(message: nextcord.Message | MessageRecord) ->
     guild_id = get_var(message, 'guild.id', 'guild_id')
     author_id = get_var(message, 'author.id', 'author_id')
     content = message.content
-    last_updated = get_var(message, 'last_updated', 'created_at') or datetime.datetime.now()
+    last_updated = get_var(message, 'last_updated', 'created_at') or datetime.datetime.now(datetime.timezone.utc)
 
     embeds = getattr(message, 'embeds', [])
     attachments = getattr(message, 'attachments', [])

@@ -614,8 +614,11 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
                     # Actual values are important instead of object approximations, so replace them
                     message.guild = guild
                     message.channel = channel
-                    # Some additional info needs to be fetched
-                    await message.fetch("author")
+                    # Some additional info needs to be fetched. A failed fetch leaves
+                    # message.author as None (downstream logging handles that) — it
+                    # must not abort the delete log entirely.
+                    with LogIfFailure(feature="MessageRecord.fetch('author')"):
+                        await message.fetch("author")
 
             # Log the message
             with LogIfFailure(feature="action_logging.log_raw_message_delete"):

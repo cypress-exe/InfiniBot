@@ -25,12 +25,12 @@ def store_message_in_db(message: nextcord.Message | MessageRecord, override_chec
     message_record = message_to_message_record_type(message)
 
     query = """
-    INSERT INTO messages 
+    INSERT INTO messages
         (message_id, guild_id, channel_id, author_id, content, last_updated)
         VALUES (:message_id, :guild_id, :channel_id, :author_id, :content, :last_updated)
     ON CONFLICT(message_id) DO UPDATE SET
         content = excluded.content,
-        last_updated = CURRENT_TIMESTAMP
+        last_updated = :updated_now
     """
     affected_rows = get_database().execute_query(query, {
         'message_id': message_record.message_id,
@@ -38,7 +38,8 @@ def store_message_in_db(message: nextcord.Message | MessageRecord, override_chec
         'channel_id': message_record.channel_id,
         'author_id': message_record.author_id,
         'content': message_record.content,
-        'last_updated': message_record.last_updated
+        'last_updated': message_record.last_updated,
+        'updated_now': datetime.datetime.now(datetime.timezone.utc)
     }, commit=True, return_affected_rows=True)
 
     success = affected_rows > 0
