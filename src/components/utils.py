@@ -1147,10 +1147,10 @@ async def timeout(member: nextcord.Member, seconds: int, reason: str = None) -> 
     """
     # Check permissions
     if not member.guild.me.guild_permissions.moderate_members:
-        await send_error_message_to_server_owner(member.guild, None, 
-                                                 message = "InfiniBot is missing the **Moderate Members** permission which prevents it from timing out members.", 
+        await send_error_message_to_server_owner(member.guild, None,
+                                                 message = "InfiniBot is missing the **Moderate Members** permission which prevents it from timing out members.",
                                                  administrator=False)
-        return "Success revoked"
+        return "Failure Forbidden"
 
     try:
         if seconds == 0: await member.edit(timeout=None, reason = reason)
