@@ -1056,7 +1056,7 @@ async def send_error_message_to_server_owner(
         embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"{message}", color = nextcord.Color.red())
 
     embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
-    embed.timestamp = datetime.datetime.now()
+    embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
 
     try:
         dm = await member.create_dm()
@@ -1064,9 +1064,10 @@ async def send_error_message_to_server_owner(
             await dm.send(embed = embed, view = ErrorWhyAdminPrivilegesButton())
         else:
             await dm.send(embed = embed)
-    except:
+    except nextcord.errors.Forbidden:
         logging.debug("Failed to send error message to server owner. This is likely because the owner has DMs disabled for InfiniBot. Skipping...")
-        pass
+    except Exception as e:
+        logging.warning(f"Failed to DM the owner of guild {guild.id}: {e}")
     
     # Add to the set of sent messages
     messages_sent.add((guild.id, permission, message, administrator, channel, guild_permission))
