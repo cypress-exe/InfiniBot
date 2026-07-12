@@ -336,9 +336,6 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
             guild = _guild
     if guild == None: return
 
-    if not guild.chunked:
-        await guild.chunk()
-
     if not guild.me:
         return
 
