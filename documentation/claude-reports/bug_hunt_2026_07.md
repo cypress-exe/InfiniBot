@@ -9,6 +9,42 @@ options menu). Documentation only — no code changes were made in this pass.
 
 # InfiniBot Bug Hunt — July 2026
 
+> ## FIX PASS — July 12, 2026
+> **Applied by:** Anthropic Claude Fable 5 via Claude Code (CLI), on branch `fix/bug-fixes` (one commit per finding; commit subjects reference the IDs).
+> **Note:** all `file:line` references below predate the fixes — verify against the current tree.
+>
+> **Fixed (CONFIRMED findings):**
+> B1/B2/B3, B4, B6, B9, B10, B11, B13/B14, C1/C4, C2, C3, C5, C6, C7, C8/C9, C11, C12, C13,
+> C14, C15, C16, L1, L2, L3, L4, L5, L6, L7, L8, L9, L10/L12, L11, L13, L15, M1, M3, M4,
+> O2, O3, O4, O5/O6, O7, O8, P1, S1, S2, S3, S4, U1, U2, U3, U7, X1, X2, X3, and the
+> reaction-roles force-chunk. Test suite: **33/33 passing** (native and containerized).
+>
+> **Deliberate hardening (beyond CONFIRMED):**
+> - **B7** (PLAUSIBLE-UNCERTAIN) — the `typed_property` getter now tolerates malformed/legacy
+>   stored values, per the verifier's "harden anyway" note. No reachable trigger existed.
+>
+> **Deliberately NOT fixed, and why:**
+> - **O1, L14, U6, M6** — verified FALSE POSITIVE; no code change. The `send_robust`
+>   int/object-alternating variable (O1) remains fragile-but-working; refactor separately.
+> - **B5** (Feb-29 birthdays) — product decision needed (Feb 28 vs Mar 1 fallback vs skip);
+>   fixing means choosing behavior for users. Decide, then it's a one-line SQL change.
+> - **B12** (1-hour timezone cache TTL) — a design choice, not a defect; documented as cosmetic.
+> - **LV1** (anti-spam XP multiplier math) — intent unclear vs the documented anti-spam design
+>   notebook; changing it silently could alter leveling behavior. Needs a decision on intent.
+> - **LV2** — largely mitigated by the C8 fix (rank computation now costs one SELECT instead of
+>   N+1); a further SQL-side rank computation was skipped to preserve the tie-break semantics.
+> - **C10** (`_init_regular_entry` default assumptions) — latent only; triggers only if a future
+>   schema adds a non-defaulted column. Left as-is to keep the fix pass behavior-preserving.
+> - **U4** (`get_infinibot_mod_role` creates the role on lookup) — the auto-create side effect
+>   appears intentional (onboarding relies on it); changing it is a product decision.
+> - **U5** (`standardize_str_indention` dead indent logic) — "fixing" would change the visible
+>   formatting of nearly every message the bot sends; current output is accepted behavior.
+> - **S5** (autoban sleeps in `on_member_join`) — the sleeps look like deliberate settle/audit
+>   timing; they're async (don't block the loop) and removing them risks mistimed bans.
+> - Pre-existing latent circular import `components.utils` ↔ `components.ui_components`
+>   (import-order dependent, works in the app's import order) — out of scope for this pass;
+>   noted for a future cleanup.
+
 **Branch:** `bug-hunt-2026-07`
 **Scope:** Every `.py` file under `src/` (54 files, ~25.6k lines).
 **Method:** Manual read of every module, cross-checked against the installed `nextcord==3.2.0`
