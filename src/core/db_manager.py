@@ -685,9 +685,11 @@ class IntegratedList_TableManager(TableManager):
         Returns:
             tuple: The SQL row matching the primary and secondary key values, or None if not found.
         """
-        response = self.database.execute_query(f"SELECT * FROM {self.table_name} " \
-                                      f"WHERE {self.primary_key_sql_name} = {self.primary_key_value} " \
-                                      f"AND {self.secondary_key_sql_name} = {second_key_value}")
+        response = self.database.execute_query(
+            f"SELECT * FROM {self.table_name} "
+            f"WHERE {self.primary_key_sql_name} = :primary_key_value "
+            f"AND {self.secondary_key_sql_name} = :secondary_key_value",
+            {'primary_key_value': self.primary_key_value, 'secondary_key_value': second_key_value})
 
         return response
 
@@ -698,11 +700,11 @@ class IntegratedList_TableManager(TableManager):
         Yields:
             dataclass: A dataclass representing each entry in the list.
         """
-        # Get all entries in the table
-        for secondary_key_value in self._get_all_secondary_values():
-            data = self._get_entry(secondary_key_value)
-            if data is not None:
-                yield self._package_list_into_dataclass(data)
+        # One query for all rows
+        query = f"SELECT * FROM {self.table_name} WHERE {self.primary_key_sql_name} = :primary_key_value"
+        rows = self.database.execute_query(query, {'primary_key_value': self.primary_key_value}, multiple_values=True)
+        for row in rows or []:
+            yield self._package_list_into_dataclass(row)
 
     def _get_all_secondary_values(self):
         """
@@ -1034,7 +1036,10 @@ class IntegratedList_TableManager(TableManager):
         Returns:
             int: The length of the list.
         """
-        return len(list(self._get_all_entries()))
+        row = self.database.execute_query(
+            f"SELECT COUNT(*) FROM {self.table_name} WHERE {self.primary_key_sql_name} = :primary_key_value",
+            {'primary_key_value': self.primary_key_value})
+        return row[0] if row is not None else 0
     
     def __contains__(self, secondary_key_value):
         """
@@ -1056,16 +1061,7 @@ class IntegratedList_TableManager(TableManager):
             Generator: A generator yielding dataclass instances for each entry.
         """
         return self._get_all_entries()
-    
-    def __next__(self):
-        """
-        Return the next entry in the list.
 
-        Returns:
-            dataclass: A dataclass representing the next entry.
-        """
-        return next(self._get_all_entries())
-    
     def __str__(self) -> str:
         """
         Return a string representation of the list.
@@ -1085,11 +1081,9 @@ class IntegratedList_TableManager(TableManager):
             dict: A dictionary containing the entries in the list.
         """
         result = {}
-        for secondary_key_value in self._get_all_secondary_values():
-            data = self._get_entry(secondary_key_value)
-            if data is not None:
-                dataclass_entry = self._package_list_into_dataclass(data)
-                result[secondary_key_value] = dataclass_entry.get_data()
+        for dataclass_entry in self._get_all_entries():
+            secondary_key_value = getattr(dataclass_entry, self.secondary_key_sql_name)
+            result[secondary_key_value] = dataclass_entry.get_data()
         return result
 
 async def daily_database_maintenance(bot: nextcord.Client):
