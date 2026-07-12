@@ -14,7 +14,7 @@ class EditReactionRole(CustomView):
         super().__init__()
         self.message_id = message_id
         
-    async def load_buttons(self, interaction: Interaction):
+    async def load_buttons(self, interaction: Interaction) -> bool:
         self.message = await utils.get_message(interaction.channel, self.message_id)
         if self.message is None:
             # Message no longer exists or was recently not found
@@ -26,18 +26,32 @@ class EditReactionRole(CustomView):
                 ),
                 ephemeral=True
             )
-            return
+            return False
         self.server = Server(interaction.guild.id)
+        if self.message_id not in self.server.managed_messages:
+            # Message is no longer cataloged as an InfiniBot-managed message
+            await interaction.response.send_message(
+                embed=nextcord.Embed(
+                    title="Message Not Editable",
+                    description="This message is no longer tracked by InfiniBot and can't be edited.",
+                    color=nextcord.Color.red()
+                ),
+                ephemeral=True
+            )
+            return False
         self.message_info = self.server.managed_messages[self.message_id]
-        
+
         self.clear_items()
-        
+
         self.add_item(self.EditTextButton(self))
         self.add_item(self.EditOptionsButton(self, self.message_info))
-        
+
+        return True
+
     async def setup(self, interaction: Interaction):
-        await self.load_buttons(interaction)
-        
+        if not await self.load_buttons(interaction):
+            return  # load_buttons already responded with an error
+
         if not utils.feature_is_active(feature="options_menu__editing", guild_id=interaction.guild.id):
             await ui_components.disabled_feature_override(self, interaction)
             return

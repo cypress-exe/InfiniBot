@@ -549,7 +549,7 @@ class EditRoleMessage(CustomView):
         async def callback(self, interaction: Interaction):
             await self.MultiOrSingleSelectView(self.outer).setup(interaction)
        
-    async def load(self, interaction: Interaction):
+    async def load(self, interaction: Interaction) -> bool:
         self.message = await utils.get_message(interaction.channel, self.message_id)
         if self.message is None:
             # Message no longer exists or was recently not found
@@ -561,7 +561,7 @@ class EditRoleMessage(CustomView):
                 ),
                 ephemeral=True
             )
-            return
+            return False
         self.guild = interaction.guild
         
         if (self.title is None and self.description is None 
@@ -620,9 +620,12 @@ class EditRoleMessage(CustomView):
         )
         self.confirm_btn.callback = self.confirm_btn_callback
         self.add_item(self.confirm_btn)
-        
+
+        return True
+
     async def setup(self, interaction: Interaction):
-        await self.load(interaction)
+        if not await self.load(interaction):
+            return  # load already responded with an error
 
         description = utils.standardize_str_indention(
             """Edit your role message by making to the text, color, and options. Once finished, click on \"Confirm Edits\"
