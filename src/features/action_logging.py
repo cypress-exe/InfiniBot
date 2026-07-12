@@ -102,10 +102,10 @@ def entry_is_fresh(entry: nextcord.AuditLogEntry) -> bool:
     :return: A boolean indicating whether the entry is considered fresh.
     :rtype: bool
     """
-    return (entry.created_at.month == datetime.datetime.now(datetime.timezone.utc).month 
-                            and entry.created_at.day == datetime.datetime.now(datetime.timezone.utc).day 
-                            and entry.created_at.hour == datetime.datetime.now(datetime.timezone.utc).hour 
-                            and ((datetime.datetime.now(datetime.timezone.utc).minute - entry.created_at.minute) <= 5))
+    # Use a real time delta — comparing calendar fields breaks at hour boundaries and
+    # lets anything from earlier in the same hour count as "fresh".
+    now = datetime.datetime.now(datetime.timezone.utc)
+    return abs((now - entry.created_at).total_seconds()) <= 5 * 60
 
 
 # File Computation
