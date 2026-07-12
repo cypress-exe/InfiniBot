@@ -300,7 +300,12 @@ async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Mes
         
         completed_content_tasks = []
         for task in content_tasks:
-            content_message = await log_channel.send(content = task[2], reference = message)
+            # task[2] is raw user-authored content — never let it ping @everyone/roles/users
+            content_message = await log_channel.send(
+                content = task[2],
+                reference = message,
+                allowed_mentions = nextcord.AllowedMentions.none()
+            )
             completed_content_tasks.append([task[0], task[1], content_message.jump_url])
             
         completed_embed_tasks = []
