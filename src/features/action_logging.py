@@ -484,13 +484,16 @@ async def log_nickname_change(before: nextcord.Member, after: nextcord.Member, e
         logging.error("Log channel is None. Cannot log nickname change.")
         return
 
-    user = entry.user
-    fresh_audit_log = entry_is_fresh(entry)
+    fresh_audit_log = entry is not None and entry_is_fresh(entry)
+    user = entry.user if fresh_audit_log else None
 
     # Create an embed for the nickname change event
     embed = nextcord.Embed(
         title="Nickname Changed",
-        description=f"{user.mention} changed {after.mention}'s nickname.",
+        description=(
+            f"{user.mention} changed {after.mention}'s nickname."
+            if user else f"{after.mention}'s nickname was changed."
+        ),
         color=nextcord.Color.blue(),
         timestamp=datetime.datetime.now()
     )
@@ -671,11 +674,12 @@ async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry
         if guild.premium_subscriber_role.id in deleted_roles.ids():
             deleted_roles.remove(guild.premium_subscriber_role.id)
 
-    # Remove roles that were just logged
+    # Remove roles that were just logged (dedup key: actor if known, else the target)
+    dedup_actor_id = entry.user.id if entry is not None and entry.user else after.id
     added_roles_ids = [role.id for role in added_roles.roles]
     deleted_roles_ids = [role.id for role in deleted_roles.roles]
     for role_info in fresh_role_updates:
-        if role_info[0] == entry.user.id:
+        if role_info[0] == dedup_actor_id:
             if role_info[2] == "added" and role_info[1] in added_roles_ids:
                 added_roles.remove(role_info[1])
             elif role_info[2] == "removed" and role_info[1] in deleted_roles_ids:
@@ -683,15 +687,14 @@ async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry
 
     if len(added_roles) == 0 and len(deleted_roles) == 0:
         return
-    
-    # Add to fresh role updates
-    for role in added_roles: fresh_role_updates.add((entry.user.id, role.id, "added"))
-    for role in deleted_roles: fresh_role_updates.add((entry.user.id, role.id, "removed"))
 
-    user = entry.user
-    fresh_audit_log = entry_is_fresh(entry)
+    # Add to fresh role updates
+    for role in added_roles: fresh_role_updates.add((dedup_actor_id, role.id, "added"))
+    for role in deleted_roles: fresh_role_updates.add((dedup_actor_id, role.id, "removed"))
+
+    fresh_audit_log = entry is not None and entry_is_fresh(entry)
     if fresh_audit_log:
-        description = f"{user.mention} modified {after.mention}'s roles."
+        description = f"{entry.user.mention} modified {after.mention}'s roles."
     else:
         description = f"Someone modified {after.mention}'s roles."
 
@@ -729,9 +732,10 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
         logging.error("Log channel is None. Cannot log timeout change.")
         return
 
-    user = entry.user
-    fresh_audit_log = entry_is_fresh(entry)
-            
+    fresh_audit_log = entry is not None and entry_is_fresh(entry)
+    user = entry.user if fresh_audit_log else None
+    actor = user.mention if user else "Someone"
+
     if before.communication_disabled_until is None:
         # Member was not previously timed out, calculate the timeout duration
         timeout_time: datetime.timedelta = after.communication_disabled_until - datetime.datetime.now(datetime.timezone.utc)
@@ -745,7 +749,7 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
         # Create an embed for the timeout event
         embed = nextcord.Embed(
             title="Member Timed-Out",
-            description=f"{user.mention} timed out {after.mention} for about {timeout_time_ui_text}",
+            description=f"{actor} timed out {after.mention} for about {timeout_time_ui_text}",
             color=nextcord.Color.orange(),
             timestamp=datetime.datetime.now()
         )
@@ -761,7 +765,7 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
         # Timeout was revoked manually
         embed = nextcord.Embed(
             title="Timeout Revoked",
-            description=f"{user.mention} revoked {after.mention}'s timeout",
+            description=f"{actor} revoked {after.mention}'s timeout",
             color=nextcord.Color.orange(),
             timestamp=datetime.datetime.now()
         )
@@ -864,29 +868,32 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> 
     # Wait 1 second for the audit log to catch up
     await asyncio.sleep(1)
 
-    # Get audit log entry
-    try:
-        entry = await anext(
-            guild.audit_logs(limit=1),
-            None
-        )
-    except nextcord.errors.HTTPException:
-        return  # No audit log entry found
-
-    if entry == None:
-        # No audit log entry
-        return
+    async def find_audit_entry(action: AuditLogAction) -> nextcord.AuditLogEntry | None:
+        """Newest audit entry of the given action type that targets this member.
+        An unfiltered latest-entry lookup attributes changes to whoever performed
+        the most recent unrelated action (including InfiniBot's own role grants)."""
+        try:
+            async for _entry in guild.audit_logs(limit=5, action=action):
+                target = getattr(_entry, "target", None)
+                if target is not None and getattr(target, "id", None) == after.id:
+                    return _entry
+        except nextcord.errors.HTTPException:
+            pass
+        return None
 
     # Nickname change --------------------------------------------------------------
     if before.nick != after.nick:
+        entry = await find_audit_entry(AuditLogAction.member_update)
         await log_nickname_change(before, after, entry, log_channel)
 
-    # Roles change --------------------------------------------------------------  
+    # Roles change --------------------------------------------------------------
     if before.roles != after.roles:
+        entry = await find_audit_entry(AuditLogAction.member_role_update)
         await log_role_change(before, after, entry, guild, log_channel)
-            
+
     # Timeout change --------------------------------------------------------------
     if before.communication_disabled_until != after.communication_disabled_until:
+        entry = await find_audit_entry(AuditLogAction.member_update)
         await log_timeout_change(before, after, entry, log_channel)
 
 async def log_member_removal(guild: nextcord.Guild, member: nextcord.abc.User) -> None:
