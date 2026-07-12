@@ -389,6 +389,7 @@ async def trigger_delete_log(bot: nextcord.Client, channel: nextcord.TextChannel
     
     if entry and fresh_audit_log:
         # We prioritize the author of the message if we know it, but if we don't we use this
+        # (entry.target can be None when the message is uncached)
         if not message: user = entry.target
         else: user = message.author
         # Set the deleter (because we didn't know that before)
@@ -398,7 +399,13 @@ async def trigger_delete_log(bot: nextcord.Client, channel: nextcord.TextChannel
         # We don't actually need any of this information to exist then
         if not message: user = None
         deleter = None
-    
+
+    # A fresh entry can still have unresolvable user/deleter — treat that like a
+    # non-fresh entry instead of crashing on .id/.mention below
+    if fresh_audit_log and (user is None or deleter is None):
+        fresh_audit_log = False
+        deleter = None
+
     # Eliminate whether InfiniBot is the author / deleter (only do this if we're sure that the audit log is fresh)
     if fresh_audit_log and user.id == bot.application_id: return
     if fresh_audit_log and deleter.id == bot.application_id: return
@@ -421,7 +428,7 @@ async def trigger_delete_log(bot: nextcord.Client, channel: nextcord.TextChannel
         else:
             code = 2
     else:
-        if not message:
+        if not message or message.author is None:
             embed.description = f"A message was deleted from {channel.mention}"
             code = 3
         else:
