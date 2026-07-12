@@ -448,21 +448,21 @@ class SelectView(CustomView):
 # Common Add-On Views
 class SupportView(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         support_server_btn = nextcord.ui.Button(label = "Go to Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links.support-server-invite-link"])
         self.add_item(support_server_btn)
 
 class InviteView(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         invite_btn = nextcord.ui.Button(label = "Add to Your Server", style = nextcord.ButtonStyle.link, url = get_configs()["links.bot-invite-link"])
         self.add_item(invite_btn)
 
 class SupportAndInviteView(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links.support-server-invite-link"])
         self.add_item(support_server_btn)
@@ -472,7 +472,7 @@ class SupportAndInviteView(CustomView):
 
 class SupportInviteAndTopGGVoteView(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links.support-server-invite-link"])
         self.add_item(support_server_btn)
@@ -485,7 +485,7 @@ class SupportInviteAndTopGGVoteView(CustomView):
         
 class SupportInviteAndTopGGReviewView(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links.support-server-invite-link"])
         self.add_item(support_server_btn)
@@ -498,7 +498,7 @@ class SupportInviteAndTopGGReviewView(CustomView):
 
 class TopGGVoteView(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         topGG_vote_btn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = get_configs()["links.topgg-vote-link"])
         self.add_item(topGG_vote_btn)
@@ -508,7 +508,7 @@ class TopGGVoteView(CustomView):
         
 class TopGGAll(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         topGG_btn = nextcord.ui.Button(label = "Visit on Top.GG", style = nextcord.ButtonStyle.link, url = get_configs()["links.topgg-link"])
         self.add_item(topGG_btn)
