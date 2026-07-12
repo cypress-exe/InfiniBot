@@ -74,8 +74,9 @@ async def run_scheduled_tasks() -> None:
                         else:
                             delay = min(1.0, 0.3 * (cpu / throttle_cpu))  # Lighter throttling for normal high CPU
                             logging.debug(f"CPU {cpu}% > {throttle_cpu}%, throttling for {delay}s (normal)")
+                        # Delay, then still process this guild — skipping it would drop
+                        # its birthday/maintenance checks for the whole cycle (or day).
                         await asyncio.sleep(delay)
-                        continue
 
                 # Timezone caching
                 try:
