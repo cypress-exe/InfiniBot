@@ -4,6 +4,7 @@ import nextcord
 from components import utils
 from config.server import Server
 
+
 async def run_join_to_create_vc_member_update(member: nextcord.Member, before: nextcord.VoiceState, after: nextcord.VoiceState):
     """
     |coro|
@@ -47,7 +48,7 @@ async def run_join_to_create_vc_member_update(member: nextcord.Member, before: n
                 return
             if not voice_channel.permissions_for(member.guild.me).manage_channels:
                 return
-                
+
             # Create a new voice channel in the same category
             category = after.channel.category if after.channel.category else member.guild
             try:
@@ -56,12 +57,23 @@ async def run_join_to_create_vc_member_update(member: nextcord.Member, before: n
             except nextcord.errors.Forbidden:
                 await utils.send_error_message_to_server_owner(member.guild, "Manage Channels", guild_permission=True)
                 return
-            
+            except nextcord.errors.HTTPException as e:
+                logging.warning(f"Failed to create join-to-create VC in guild {member.guild.id}: {e}")
+                return
+
             # Attempt to move the member to the new voice channel
             try:
                 await member.move_to(new_vc)
             except nextcord.errors.Forbidden:
                 await utils.send_error_message_to_server_owner(member.guild, "Move Members")
+                return
+            except nextcord.errors.HTTPException as e:
+                # Don't leave an orphaned empty VC behind (nothing would ever delete it)
+                logging.warning(f"Failed to move member {member.id} to join-to-create VC in guild {member.guild.id}: {e}")
+                try:
+                    await new_vc.delete()
+                except nextcord.errors.HTTPException:
+                    pass
                 return
     
     # Handle member leaving a voice channel
