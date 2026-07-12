@@ -1137,20 +1137,24 @@ async def daily_database_maintenance(bot: nextcord.Client):
             logging.warning("SKIPPING: Bot load status prevents maintenance")
             return
         
+        # All blocking phases run in a worker thread (asyncio.to_thread) — VACUUM,
+        # checkpoints, and optimize's time.sleep throttling would otherwise freeze
+        # the event loop (and every interaction) for the duration.
+
         # WAL checkpoint phase -----------------------------------------------------------------------------------
         logging.info("Starting WAL checkpoint...")
         checkpoint_start = datetime.datetime.now(datetime.timezone.utc)
-        
-        get_database().checkpoint()
-        
+
+        await asyncio.to_thread(get_database().checkpoint)
+
         checkpoint_duration = datetime.datetime.now(datetime.timezone.utc) - checkpoint_start
         logging.info(f"WAL checkpoint completed in {checkpoint_duration.total_seconds():.2f}s")
 
         # Database optimization phase -----------------------------------------------------------------------------------
         logging.info("Starting database optimization...")
         optimize_start = datetime.datetime.now(datetime.timezone.utc)
-        
-        total_deleted += get_database().optimize_database(throttle=True)
+
+        total_deleted += await asyncio.to_thread(get_database().optimize_database, throttle=True)
 
         optimize_duration = datetime.datetime.now(datetime.timezone.utc) - optimize_start
         logging.info(f"Optimization completed in {optimize_duration.total_seconds():.2f}s")
@@ -1161,20 +1165,29 @@ async def daily_database_maintenance(bot: nextcord.Client):
         message_log_cleanup_start = datetime.datetime.now(datetime.timezone.utc)
 
         from config.messages import stored_messages
-        total_deleted += stored_messages.cleanup_db()
+        total_deleted += await asyncio.to_thread(stored_messages.cleanup_db)
 
         message_log_cleanup_duration = datetime.datetime.now(datetime.timezone.utc) - message_log_cleanup_start
         logging.info(f"Message log cleanup completed in {message_log_cleanup_duration.total_seconds():.2f}s")
 
 
         # Orphaned Guild Entries cleanup phase -----------------------------------------------------------------------------------
-        logging.info(f"Scanning tables for orphaned guild entries...")
-        orphaned_guild_entries_cleanup_start = datetime.datetime.now(datetime.timezone.utc)
+        # Safety: bot.guilds is incomplete while shards are (re)connecting or guilds
+        # are flagged unavailable — running the cleanup then would treat live servers
+        # as orphaned and delete their data.
+        if not bot.is_ready() or len(bot.guilds) == 0 or any(guild.unavailable for guild in bot.guilds):
+            logging.warning("SKIPPING orphaned-guild cleanup: shard(s) not ready or one or more guilds unavailable.")
+        else:
+            logging.info(f"Scanning tables for orphaned guild entries...")
+            orphaned_guild_entries_cleanup_start = datetime.datetime.now(datetime.timezone.utc)
 
-        total_deleted += cleanup_orphaned_guild_entries(set([int(guild.id) for guild in bot.guilds]), get_database())
+            # Runs on the loop (not to_thread): it relies on a per-connection SQLite
+            # TEMP table across queries, which needs serial use of the pooled connection.
+            valid_guild_ids = set([int(guild.id) for guild in bot.guilds])
+            total_deleted += cleanup_orphaned_guild_entries(valid_guild_ids, get_database())
 
-        orphaned_guild_entries_cleanup_duration = datetime.datetime.now(datetime.timezone.utc) - orphaned_guild_entries_cleanup_start
-        logging.info(f"Orphaned guild entries cleanup completed in {orphaned_guild_entries_cleanup_duration.total_seconds():.2f}s")
+            orphaned_guild_entries_cleanup_duration = datetime.datetime.now(datetime.timezone.utc) - orphaned_guild_entries_cleanup_start
+            logging.info(f"Orphaned guild entries cleanup completed in {orphaned_guild_entries_cleanup_duration.total_seconds():.2f}s")
 
         # Final report
         total_duration = datetime.datetime.now(datetime.timezone.utc) - start_time
