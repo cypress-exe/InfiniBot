@@ -327,7 +327,7 @@ class JSONFile:
         data = self._get_data()
         return len(data)
     
-    def __dict__(self) -> dict:
+    def to_dict(self) -> dict:
         """
         Return a dictionary representation of the data in the JSON file.
 
@@ -336,8 +336,7 @@ class JSONFile:
         :return: A dictionary representation of the data in the JSON file.
         :rtype: dict
         """
-        data = self._get_data()
-        return data
+        return self._get_data(mutable=True)
 
     def add_variable(self, key, value) -> None:
         """

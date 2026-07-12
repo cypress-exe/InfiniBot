@@ -52,9 +52,6 @@ class Joke:
 
         return values
     
-    def __dict__(self):
-        return self.to_dict()
-    
     def __hash__(self):
         return hash((self.title, self.body, self.punchline))
     
