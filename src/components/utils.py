@@ -331,6 +331,27 @@ def apply_generic_replacements(
     :return: The modified embed with replaced placeholders.
     :rtype: nextcord.Embed
     """
+    def _apply_text_transform(transform, include_url: bool = True) -> None:
+        # nextcord's .footer/.fields accessors return throwaway EmbedProxy objects,
+        # so writes must go through set_footer()/add_field() to reach the embed.
+        if embed.title:
+            embed.title = transform(embed.title)
+        if embed.description:
+            embed.description = transform(embed.description)
+        if include_url and embed.url:
+            embed.url = transform(embed.url)
+        if embed.footer and embed.footer.text:
+            embed.set_footer(text=transform(embed.footer.text), icon_url=embed.footer.icon_url)
+        if embed.fields:
+            fields = [(field.name, field.value, field.inline) for field in embed.fields]
+            embed.clear_fields()
+            for name, value, inline in fields:
+                embed.add_field(
+                    name=transform(name) if name else name,
+                    value=transform(value) if value else value,
+                    inline=inline if inline is not None else True,
+                )
+
     if not skip_placeholder_replacement:
         # Defensive copy: custom_replacements defaults to a shared {} and callers
         # may reuse their dict, so never mutate the passed-in object in place.
@@ -368,19 +389,12 @@ def apply_generic_replacements(
         replacements["@date"] = f"<t:{epoch}:D>"
 
         # Replace placeholders with values
-        for key, value in replacements.items():
-            if embed.title:
-                embed.title = embed.title.replace(key, value)
-            if embed.description:
-                embed.description = embed.description.replace(key, value)
-            if embed.footer and embed.footer.text:
-                embed.footer.text = embed.footer.text.replace(key, value)
-            if embed.url:
-                embed.url = embed.url.replace(key, value)
-            
-            for field in embed.fields:
-                field.name = field.name.replace(key, value)
-                field.value = field.value.replace(key, value)
+        def replace_placeholders(text: str) -> str:
+            for key, value in replacements.items():
+                text = text.replace(key, value)
+            return text
+
+        _apply_text_transform(replace_placeholders)
     
     if not skip_channel_replacement:
         # Optimization: Skip channel replacement if no "#" in the embed
@@ -401,23 +415,20 @@ def apply_generic_replacements(
             
             # Note: Voice channels and stage channels typically cannot be mentioned in the same way
             # as text channels, so we exclude them from channel replacement
-            
-            for channel in all_channels:
+
+            channel_replacements = {
+                f"#{channel.name}": channel.mention
+                for channel in all_channels
                 # Ensure the channel has a mention attribute before using it
-                if hasattr(channel, 'mention') and hasattr(channel, 'name'):
-                    channel_placeholder = f"#{channel.name}"
-                    channel_mention = channel.mention
-                    
-                    if embed.title:
-                        embed.title = embed.title.replace(channel_placeholder, channel_mention)
-                    if embed.description:
-                        embed.description = embed.description.replace(channel_placeholder, channel_mention)
-                    if embed.footer and embed.footer.text:
-                        embed.footer.text = embed.footer.text.replace(channel_placeholder, channel_mention)
-                    
-                    for field in embed.fields:
-                        field.name = field.name.replace(channel_placeholder, channel_mention)
-                        field.value = field.value.replace(channel_placeholder, channel_mention)
+                if hasattr(channel, 'mention') and hasattr(channel, 'name')
+            }
+
+            def replace_channels(text: str) -> str:
+                for channel_placeholder, channel_mention in channel_replacements.items():
+                    text = text.replace(channel_placeholder, channel_mention)
+                return text
+
+            _apply_text_transform(replace_channels, include_url=False)
     
     return embed
 
