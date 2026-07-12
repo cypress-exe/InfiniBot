@@ -262,12 +262,12 @@ class Database:
                 return 0
 
         column_defaults = self.all_column_defaults[table]
+        if not column_defaults:
+            return 0
 
-        # Construct a SQL query to select entries matching the default state
-        select_query = f"DELETE FROM {table} WHERE "
-        for col_name, default_val in column_defaults.items():
-            select_query += f"{col_name} = {default_val} AND "
-        select_query = select_query.rstrip(" AND")  # Remove the trailing "AND"
+        # Construct a SQL query to select entries matching the default state.
+        conditions = " AND ".join(f"{col_name} = {default_val}" for col_name, default_val in column_defaults.items())
+        select_query = f"DELETE FROM {table} WHERE {conditions}"
 
         # Execute the query
         return self.execute_query(select_query, commit=True, return_affected_rows=True)
