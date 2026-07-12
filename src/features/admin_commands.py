@@ -488,7 +488,7 @@ async def handle_info_command(message: nextcord.Message, message_parts: list):
     guild_name = guild.name if guild.name else "<<MISSING NAME>>"
     guild_name = guild_name.replace("@", "@\u200b")  # Prevent mentions in embed title
     
-    description = f"""Owner: {guild.owner} ({guild.owner.id})
+    description = f"""Owner: {guild.owner if guild.owner else "<uncached>"} ({guild.owner_id})
     Members: {guild.member_count}
 
     **Time In Server**: {duration.days} days"""

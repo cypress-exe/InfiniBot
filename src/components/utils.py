@@ -352,7 +352,12 @@ def apply_generic_replacements(
             replacements["@serverid"] = str(guild.id)
             replacements["@server"] = guild.name
             replacements["@membercount"] = str(guild.member_count)
-            replacements["@owner"] = guild.owner.display_name if guild.owner else "Unknown"
+            owner = guild.owner
+            if owner is None and guild.owner_id:
+                # Member cache miss (unchunked guild) — try the user cache (sync context)
+                from core.bot import get_bot
+                owner = get_bot().get_user(guild.owner_id)
+            replacements["@owner"] = owner.display_name if owner else "Unknown"
         
         # Add time and date replacements
         epoch = int(datetime.datetime.now().timestamp())
@@ -777,6 +782,25 @@ async def get_member(guild: nextcord.Guild, user_id: int, override_failed_cache:
         failed_member_fetches.add((guild.id, user_id))
         return None
 
+async def get_guild_owner(guild: nextcord.Guild) -> nextcord.Member | None:
+    """
+    |coro|
+    Resolve a guild's owner. `guild.owner` is a member-cache lookup and is often None
+    while the guild is unchunked, so fall back to fetching by `guild.owner_id`.
+
+    :param guild: The guild whose owner to resolve.
+    :type guild: nextcord.Guild
+    :return: The owner as a Member, or None if they can't be resolved.
+    :rtype: nextcord.Member | None
+    """
+    if not guild or guild.owner_id is None:
+        return None
+
+    if guild.owner is not None:
+        return guild.owner
+
+    return await get_member(guild, guild.owner_id)
+
 async def check_and_warn_if_channel_is_text_channel(interaction: Interaction) -> bool:
     """
     |coro|
@@ -815,7 +839,8 @@ async def user_has_config_permissions(interaction: Interaction, notify: bool = T
         Whether or not the interaction can continue.
     """
     
-    if interaction.guild.owner == interaction.user: return True
+    # Compare by owner_id — guild.owner is a cache lookup and can be None while unchunked
+    if interaction.user.id == interaction.guild.owner_id: return True
     
     infinibot_mod_role = await get_infinibot_mod_role(interaction.guild)
     if infinibot_mod_role in interaction.user.roles:
@@ -938,8 +963,10 @@ async def send_error_message_to_server_owner(
         logging.debug(f"Skipping sending error message to server owner (guild_id: {guild.id}) because it was already sent recently. ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
         return
     
-    member = guild.owner
-    if member == None: return
+    member = await get_guild_owner(guild)
+    if member == None:
+        logging.warning(f"Could not resolve owner of guild {guild.id}; owner error message not sent.")
+        return
 
     # Ensure that InfiniBot is still in this server
     if guild.id in recently_left_guilds:

@@ -200,7 +200,12 @@ async def _send_fallback_dm(guild: nextcord.Guild, view: NewServerJoinView) -> N
         )
         fallback_embed.set_footer(text=str(guild.id))
         
-        await guild.owner.send(embed=fallback_embed, view=ResendSetupMessageView())
+        owner = await utils.get_guild_owner(guild)
+        if owner is None:
+            logging.warning(f"Could not resolve owner of '{guild.name}' (ID: {guild.id}); fallback DM not sent")
+            return
+
+        await owner.send(embed=fallback_embed, view=ResendSetupMessageView())
         logging.info(f"Fallback DM sent to owner of '{guild.name}' due to no accessible channels")
         
     except Exception as err:
