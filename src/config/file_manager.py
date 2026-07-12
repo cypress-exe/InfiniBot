@@ -133,9 +133,18 @@ class JSONFile:
         """
         self.ensure_existence()
 
-        with open(self.path, "w") as file:
-            file.write(json.dumps(data, indent=2))
-            self._cache[self.path] = copy.deepcopy(json.loads(json.dumps(data)))  # Store a copy to prevent external modifications & ensure consistent formatting
+        # Atomic write: dump to a temp file and os.replace() it over the target, so a
+        # crash mid-write can't leave malformed JSON (which ensure_existence would
+        # 'repair' by silently resetting all settings to defaults).
+        serialized = json.dumps(data, indent=2)
+        temp_path = f"{self.path}.tmp"
+        with open(temp_path, "w") as file:
+            file.write(serialized)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(temp_path, self.path)
+
+        self._cache[self.path] = json.loads(serialized)  # Store a copy to prevent external modifications & ensure consistent formatting
 
     def _update_nested(self, data: dict, keys: list, value: any) -> None:
         """
