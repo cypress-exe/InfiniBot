@@ -202,7 +202,7 @@ async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Mes
     embed_tasks = []
 
     # Create an embed to edit
-    embed = nextcord.Embed(title = "Message Edited", description = edited_message.channel.mention, color = nextcord.Color.yellow(), timestamp = datetime.datetime.now(), url = edited_message.jump_url)
+    embed = nextcord.Embed(title = "Message Edited", description = edited_message.channel.mention, color = nextcord.Color.yellow(), timestamp = datetime.datetime.now(datetime.timezone.utc), url = edited_message.jump_url)
     
     # Check that the original message is still cached
     if not original_message:
@@ -403,7 +403,7 @@ async def trigger_delete_log(bot: nextcord.Client, channel: nextcord.TextChannel
         
     
     # Send log information!!! -------------------------------------------------------------------------------------------------------------------------------------------
-    embed = nextcord.Embed(title = "Message Deleted", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
+    embed = nextcord.Embed(title = "Message Deleted", color = nextcord.Color.red(), timestamp = datetime.datetime.now(datetime.timezone.utc))
     embeds = []
     code = 1
     
@@ -499,7 +499,7 @@ async def log_nickname_change(before: nextcord.Member, after: nextcord.Member, e
             if user else f"{after.mention}'s nickname was changed."
         ),
         color=nextcord.Color.blue(),
-        timestamp=datetime.datetime.now()
+        timestamp=datetime.datetime.now(datetime.timezone.utc)
     )
 
     # Add fields for the old and new nicknames
@@ -702,7 +702,7 @@ async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry
     else:
         description = f"Someone modified {after.mention}'s roles."
 
-    embed = nextcord.Embed(title="Roles Modified", description=description, color=nextcord.Color.blue(), timestamp=datetime.datetime.now())
+    embed = nextcord.Embed(title="Roles Modified", description=description, color=nextcord.Color.blue(), timestamp=datetime.datetime.now(datetime.timezone.utc))
 
     if len(added_roles) > 0:
         embed.add_field(name="Added", value="\n".join(added_roles.mentions()), inline=True)
@@ -755,7 +755,7 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
             title="Member Timed-Out",
             description=f"{actor} timed out {after.mention} for about {timeout_time_ui_text}",
             color=nextcord.Color.orange(),
-            timestamp=datetime.datetime.now()
+            timestamp=datetime.datetime.now(datetime.timezone.utc)
         )
         
         # Add a reason field if the audit log is fresh and a reason is provided
@@ -771,7 +771,7 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
             title="Timeout Revoked",
             description=f"{actor} revoked {after.mention}'s timeout",
             color=nextcord.Color.orange(),
-            timestamp=datetime.datetime.now()
+            timestamp=datetime.datetime.now(datetime.timezone.utc)
         )
         
         # Send the embed to the log channel
@@ -950,11 +950,11 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.abc.User) -
     reason = entry.reason
 
     if entry.action == AuditLogAction.kick:
-        embed = nextcord.Embed(title = "Member Kicked", description = f"{user} kicked {member}.", color = nextcord.Color.red(), timestamp = datetime.datetime.now())
+        embed = nextcord.Embed(title = "Member Kicked", description = f"{user} kicked {member}.", color = nextcord.Color.red(), timestamp = datetime.datetime.now(datetime.timezone.utc))
         if reason: embed.add_field(name = "Reason", value = f"{reason}", inline = False)
         
     elif entry.action == AuditLogAction.ban:
-        embed = nextcord.Embed(title = "Member Banned", description = f"{user} banned {member}.", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now())
+        embed = nextcord.Embed(title = "Member Banned", description = f"{user} banned {member}.", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now(datetime.timezone.utc))
         if reason: embed.add_field(name = "Reason", value = f"{reason}", inline = False)
         
     else:
