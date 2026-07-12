@@ -361,7 +361,7 @@ def update_strikes_for_member(guild_id:int, member_id:int, amount:int):
     if server.profanity_moderation_profile.strike_system_active:
         if member_id in server.moderation_strikes:
             old_strikes = server.moderation_strikes[member_id].strikes
-            server.moderation_strikes.edit(member_id=member_id, strikes=old_strikes + amount, last_strike=datetime.datetime.now())
+            server.moderation_strikes.edit(member_id=member_id, strikes=old_strikes + amount, last_strike=datetime.datetime.now(datetime.timezone.utc))
             updated_strike_count = server.moderation_strikes[member_id].strikes
 
             if updated_strike_count <= 0:
@@ -370,7 +370,7 @@ def update_strikes_for_member(guild_id:int, member_id:int, amount:int):
                 
         else:
             if amount > 0:
-                server.moderation_strikes.add(member_id=member_id, strikes=amount, last_strike=datetime.datetime.now())
+                server.moderation_strikes.add(member_id=member_id, strikes=amount, last_strike=datetime.datetime.now(datetime.timezone.utc))
                 updated_strike_count = amount
 
     return updated_strike_count
