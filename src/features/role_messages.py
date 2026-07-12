@@ -75,10 +75,13 @@ class RoleMessageButton_Single(CustomView):
             roles_add = []
             roles_remove = []
             for role in self.available_roles:
+                role_obj = interaction.guild.get_role(int(role))
+                if role_obj is None:
+                    continue  # Role was deleted from the guild; skip so add/remove_roles doesn't get None
                 if role in selected_roles:
-                    roles_add.append(interaction.guild.get_role(int(role)))
+                    roles_add.append(role_obj)
                 else:
-                    roles_remove.append(interaction.guild.get_role(int(role)))
+                    roles_remove.append(role_obj)
                     
             error = False
             try:
@@ -163,10 +166,13 @@ class RoleMessageButton_Multiple(CustomView):
             roles_add = []
             roles_remove = []
             for role in self.available_roles:
+                role_obj = interaction.guild.get_role(int(role))
+                if role_obj is None:
+                    continue  # Role was deleted from the guild; skip so add/remove_roles doesn't get None
                 if role in selected_roles:
-                    roles_add.append(interaction.guild.get_role(int(role)))
+                    roles_add.append(role_obj)
                 else:
-                    roles_remove.append(interaction.guild.get_role(int(role)))
+                    roles_remove.append(role_obj)
                     
             error = False
             try:
