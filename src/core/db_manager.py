@@ -224,7 +224,7 @@ class Simple_TableManager(TableManager):
             # Getter function for the property
             def getter(self):
                 # Create the private attribute if it doesn't exist
-                if private_name not in dir(self):
+                if not hasattr(self, private_name):
                     setattr(self, private_name, UNSET_VALUE)
                 
                 # If the private attribute doesn't have a value, get it from the SQL database

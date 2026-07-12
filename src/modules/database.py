@@ -435,11 +435,9 @@ class Database:
             bool: True if entry exists, False otherwise.
         """
         id_sql_name = self.get_id_sql_name(table)
-        entry = self.execute_query(
-            f"SELECT * FROM {table} WHERE {id_sql_name} = :id",
-            args={"id": id},
-            multiple_values=True,
-        )
+        entry = self.execute_query(f"SELECT 1 FROM {table} WHERE {id_sql_name} = :id LIMIT 1",
+                                   args={"id": id},
+                                   multiple_values=True)
         return bool(entry)
 
     def get_table_unique_entries(self, table: str) -> Generator[int, int, int]:
