@@ -4,7 +4,6 @@ import humanfriendly
 import io
 import logging
 import math
-import mmap
 from typing import Union
 from nextcord import AuditLogAction, Interaction
 import nextcord
@@ -118,18 +117,10 @@ async def file_computation(file: nextcord.Attachment) -> nextcord.File | None:
     :return: The processed file, or None if there was an error
     :rtype: nextcord.File or None
     """
-    # ChatGPT :)
     try:
         file_bytes = await file.read()
-        
-        with mmap.mmap(-1, len(file_bytes), access=mmap.ACCESS_WRITE) as mem:
-            mem.write(file_bytes)
-            mem.seek(0)
-            file_data = bytes(mem)
-            
-        file = nextcord.File(io.BytesIO(file_data), file.filename, description=file.description, spoiler=file.is_spoiler())
-        return file
-    except:
+        return nextcord.File(io.BytesIO(file_bytes), file.filename, description=file.description, spoiler=file.is_spoiler())
+    except Exception:
         return None
     
 async def files_computation(deleted_message: nextcord.Message, log_channel: nextcord.TextChannel, log_message: nextcord.Message) -> None:
