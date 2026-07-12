@@ -157,7 +157,10 @@ def message_checks(message: nextcord.Message | MessageRecord) -> bool:
     """
     if not message:
         return False
-    if hasattr(message, 'guild') and message.guild is None:
+    if isinstance(message, MessageRecord):
+        if message.guild_id is None:
+            return False
+    elif hasattr(message, 'guild') and message.guild is None:
         return False
     if hasattr(message, 'author') and hasattr(message.author, 'bot') and message.author.bot:
         return False  # Don't cache bot messages
