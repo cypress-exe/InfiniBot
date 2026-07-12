@@ -46,8 +46,13 @@ class LogIfFailure(ContextDecorator):
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type:
+            # Never suppress KeyboardInterrupt/SystemExit/CancelledError — swallowing
+            # them breaks shutdown and task cancellation
+            if not issubclass(exc_type, Exception):
+                return False
+
             # If an error occurs, log it and include the UUID
-            logging.error(f"Error occurred {f"in feature: {self.feature}" if self.feature else ""} with ID {self.error_id}: {exc_value}", 
+            logging.error(f"Error occurred {f"in feature: {self.feature}" if self.feature else ""} with ID {self.error_id}: {exc_value}",
                           exc_info=(exc_type, exc_value, traceback))
 
         return self.suppress
