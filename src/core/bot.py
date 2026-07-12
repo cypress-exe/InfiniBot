@@ -531,58 +531,50 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     if payload.guild_id is None:
         return
 
-    edited_message = None
-    try:
-        # Find guild and channel
-        channel = await utils.get_channel(payload.channel_id, bot=bot)
-        if channel is None: 
-            return
+    # Find guild and channel
+    channel = await utils.get_channel(payload.channel_id, bot=bot)
+    if channel is None:
+        return
 
-        guild = channel.guild
-        if guild is None or not guild.me: 
-            return
+    guild = channel.guild
+    if guild is None or not guild.me:
+        return
 
-        # If we have it, grab the original message
-        original_message = payload.cached_message
-        if original_message is None:
-            # Find db stored message
-            original_message = stored_messages.get_message_from_db(payload.message_id)
-        
-        # Find the message
-        edited_message = await utils.get_message(channel, payload.message_id)
-        if edited_message is None:
-            return
-        
-        # Update the message's cache
-        with LogIfFailure(feature="cached_messages.remove_cached_message & cached_messages.cache_message"):
-            cached_messages.remove_cached_message(edited_message.id, channel.id)
-            cached_messages.cache_message(edited_message)
+    # If we have it, grab the original message
+    original_message = payload.cached_message
+    if original_message is None:
+        # Find db stored message
+        original_message = stored_messages.get_message_from_db(payload.message_id)
 
-        # Resolve the author if it's not a Member object (e.g., if the member is not cached)
-        if not isinstance(edited_message.author, nextcord.Member):
-            with LogIfFailure(feature="utils.get_member (message edit profanity check)"):
-                resolved_author = await utils.get_member(guild, edited_message.author.id)
-                if resolved_author is not None:
-                    edited_message.author = resolved_author
+    # Find the message
+    edited_message = await utils.get_message(channel, payload.message_id)
+    if edited_message is None:
+        return
 
-        # Punish profanity (if any)
-        with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
-            await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message)
-                
-        # Log the message
-        with LogIfFailure(feature="action_logging.log_raw_message_edit"):
-            await action_logging.log_raw_message_edit(guild, original_message, edited_message)
+    # Update the message's cache
+    with LogIfFailure(feature="cached_messages.remove_cached_message & cached_messages.cache_message"):
+        cached_messages.remove_cached_message(edited_message.id, channel.id)
+        cached_messages.cache_message(edited_message)
 
-        # Add the edited message to the database
-        with LogIfFailure(feature="stored_messages.store_message_in_db(edited_message)"):
-            if utils.feature_is_active(guild_id=guild.id, feature="logging"):
-                stored_messages.store_message_in_db(edited_message)
+    # Resolve the author if it's not a Member object (e.g., if the member is not cached)
+    if not isinstance(edited_message.author, nextcord.Member):
+        with LogIfFailure(feature="utils.get_member (message edit profanity check)"):
+            resolved_author = await utils.get_member(guild, edited_message.author.id)
+            if resolved_author is not None:
+                edited_message.author = resolved_author
 
-    finally:
-        # Update the message in the database
-        with LogIfFailure(feature="stored_messages.remove_message_from_db"):
-            if utils.feature_is_active(guild_id=payload.guild_id, feature="logging"):
-                stored_messages.remove_message_from_db(payload.message_id)
+    # Punish profanity (if any)
+    with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
+        await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message)
+
+    # Log the message
+    with LogIfFailure(feature="action_logging.log_raw_message_edit"):
+        await action_logging.log_raw_message_edit(guild, original_message, edited_message)
+
+    # Keep the stored copy current (upsert) so future edit/delete logs can retrieve it
+    with LogIfFailure(feature="stored_messages.store_message_in_db(edited_message)"):
+        if utils.feature_is_active(guild_id=guild.id, feature="logging"):
+            stored_messages.store_message_in_db(edited_message)
 
 @bot.event
 async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None:
