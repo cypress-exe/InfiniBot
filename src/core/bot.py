@@ -554,9 +554,8 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     if edited_message is None:
         return
 
-    # Update the message's cache
-    with LogIfFailure(feature="cached_messages.remove_cached_message & cached_messages.cache_message"):
-        cached_messages.remove_cached_message(edited_message.id, channel.id)
+    # Update the message's cache (cache_message updates an existing entry in place)
+    with LogIfFailure(feature="cached_messages.cache_message"):
         cached_messages.cache_message(edited_message)
 
     # Resolve the author if it's not a Member object (e.g., if the member is not cached)
