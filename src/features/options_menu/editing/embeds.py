@@ -119,7 +119,7 @@ class EditEmbed(CustomView):
                 original_color = utils.get_string_from_discord_color(self.outer.message.embeds[0].color)        
                 select_options = []
                 for option in utils.COLOR_OPTIONS:
-                    select_options.append(nextcord.SelectOption(label=option, value=option, default=(option is original_color)))
+                    select_options.append(nextcord.SelectOption(label=option, value=option, default=(option == original_color)))
                 
                 self.select = nextcord.ui.Select(custom_id="edit_embed_color_select", placeholder="Choose a color", options=select_options)
                 

@@ -328,7 +328,7 @@ class RoleMessageSetup(CustomView):
                             original_color = utils.get_string_from_discord_color(self.outer.color)        
                             select_options = []
                             for option in utils.COLOR_OPTIONS:
-                                select_options.append(nextcord.SelectOption(label=option, value=option, default=(option is original_color)))
+                                select_options.append(nextcord.SelectOption(label=option, value=option, default=(option == original_color)))
                             
                             self.select = nextcord.ui.Select(custom_id="role_message_edit_color_select", placeholder="Choose a color", options=select_options)
 
