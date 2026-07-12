@@ -441,10 +441,24 @@ class Simple_TableManager(TableManager):
                 else: return 0
 
             # value = {"status": ('SET'|'UNSET'|'NONE'), "value": ______}
-            packet = json.loads(str(value))
-            if packet['status'] == 'UNSET':
+            try:
+                packet = json.loads(str(value))
+                status = packet['status']
+            except (ValueError, TypeError, KeyError):
+                # Non-JSON / malformed stored value (e.g. legacy schema). Don't let one
+                # bad column abort the caller.
+                logging.warning(f"typed_property '{property_name}' holds a malformed value {value!r}; treating as unset/raw.")
+                # Ints and floats in this fallback state can be assumed as raw values.
+                # String values are ambiguous, so we treat them as unset. This is a
+                # best-effort approach to avoid breaking the caller.
+                if isinstance(value, (int, float)):
+                    return value
+                if accept_unset_value: return UNSET_VALUE
+                if accept_none_value: return None
+                return 0
+            if status == 'UNSET':
                 return UNSET_VALUE
-            if packet['status'] == 'NONE':
+            if status == 'NONE':
                 return None
 
             return packet['value']
