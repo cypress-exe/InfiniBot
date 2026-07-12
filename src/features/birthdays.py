@@ -168,6 +168,18 @@ async def check_and_run_birthday_actions(
                 channel = guild.system_channel
             elif channel_id is not None:
                 channel = guild.get_channel(channel_id)
+                if channel is None:
+                    # Configured channel was deleted or is invisible — warn instead of silently dropping
+                    await utils.send_error_message_to_server_owner(
+                        guild,
+                        None,
+                        message=utils.standardize_str_indention(f"""
+                        InfiniBot couldn't find the configured birthday channel (ID: {channel_id}) to send a birthday message. To fix this, either:
+                        - Ensure the channel exists and InfiniBot can see it, or
+                        - Change the notification channel for birthdays in the dashboard (`/dashboard`).
+                        """),
+                        administrator=False
+                    )
             else:
                 logging.warning(f"Birthday channel id is NONE somehow in server {guild.id}. Ignoring...")
                 channel = None
