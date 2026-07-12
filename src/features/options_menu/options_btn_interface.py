@@ -17,5 +17,6 @@ class OptionsButton(nextcord.ui.Button, ABC):
 
     @abstractmethod
     async def load(self, interaction: Interaction, data: dict) -> bool:
-        """Load the button with the provided data and return whether it should be added to the view."""
+        """Load the button with the provided data. The button adds itself to the view
+        (self.outer.add_item(self)) when applicable and returns whether it did so."""
         pass
