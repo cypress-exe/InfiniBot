@@ -1,3 +1,4 @@
+import calendar
 import datetime
 import logging
 import re
@@ -28,9 +29,14 @@ def calculate_age(local_datetime: datetime.datetime, birth_date: datetime.date |
 
     local_date = local_datetime.date()
 
+    # Feb-29 birthdays are celebrated on Feb 28 in non-leap years
+    birth_month_day = (birth_date.month, birth_date.day)
+    if birth_month_day == (2, 29) and not calendar.isleap(local_date.year):
+        birth_month_day = (2, 28)
+
     # Calculate age by comparing year, month, and day
     age = local_date.year - birth_date.year - (
-        (local_date.month, local_date.day) < (birth_date.month, birth_date.day)
+        (local_date.month, local_date.day) < birth_month_day
     )
     return age
 
@@ -111,19 +117,25 @@ async def check_and_run_birthday_actions(
             zoneinfo.ZoneInfo(server.infinibot_settings_profile.timezone or "UTC")
         )
 
-        # Find members with birthdays (month-day match)
+        # Find members with birthdays (month-day match).
+        # On Feb 28 of a non-leap year, Feb-29 birthdays are celebrated too.
+        month_days = [local_datetime.strftime("%m-%d")]
+        if month_days[0] == "02-28" and not calendar.isleap(local_datetime.year):
+            month_days.append("02-29")
+
         # Based on IntegratedList_TableManager's get_matching() and _get_all_matching_indexes()
+        placeholders = ", ".join(f":month_day_{i}" for i in range(len(month_days)))
         query = (
             f"SELECT {server.birthdays.secondary_key_sql_name} "
             f"FROM {server.birthdays.table_name} "
             f"WHERE {server.birthdays.primary_key_sql_name} = :primary_key_value "
-            f"AND strftime('%m-%d', birth_date) = :month_day"
+            f"AND strftime('%m-%d', birth_date) IN ({placeholders})"
         )
         raw_values = server.birthdays.database.execute_query(
             query,
             {
                 "primary_key_value": server.birthdays.primary_key_value,
-                "month_day": local_datetime.strftime("%m-%d"),
+                **{f"month_day_{i}": month_day for i, month_day in enumerate(month_days)},
             },
             multiple_values=True,
         )
