@@ -23,27 +23,40 @@ options menu). Documentation only — no code changes were made in this pass.
 > - **B7** (PLAUSIBLE-UNCERTAIN) — the `typed_property` getter now tolerates malformed/legacy
 >   stored values, per the verifier's "harden anyway" note. No reachable trigger existed.
 >
-> **Deliberately NOT fixed, and why:**
-> - **O1, L14, U6, M6** — verified FALSE POSITIVE; no code change. The `send_robust`
->   int/object-alternating variable (O1) remains fragile-but-working; refactor separately.
-> - **B5** (Feb-29 birthdays) — product decision needed (Feb 28 vs Mar 1 fallback vs skip);
->   fixing means choosing behavior for users. Decide, then it's a one-line SQL change.
-> - **B12** (1-hour timezone cache TTL) — a design choice, not a defect; documented as cosmetic.
-> - **LV1** (anti-spam XP multiplier math) — intent unclear vs the documented anti-spam design
->   notebook; changing it silently could alter leveling behavior. Needs a decision on intent.
+> **Re-review pass — July 13, 2026** (every deliberately-unfixed item re-verified from scratch):
+> - **O1** — the FALSE POSITIVE retraction was right about the standard-flow hang, but
+>   `InteractionResponse.edit_message` returns the message only from the local cache (None for
+>   these ephemeral menus), so `message.id` crashed the ban-error recovery path and `disable_all`
+>   stored None. **Fixed**: `this_message_id` is now always an int.
+> - **L14** — FALSE POSITIVE for live per-message views, wrong for the post-restart singleton:
+>   `stop()` on it killed every pre-restart "Mark As Incorrect" button, and ShowMoreButton's
+>   label-based toggle leaked state between orphan messages (could strip a real embed). **Fixed.**
+> - **M2** — only existed as a cross-cutting-theme mention; the `.seconds` wraparound in the
+>   timeout-revoke freshness check was real. **Fixed** (`total_seconds()`).
+> - **M6** — FALSE POSITIVE verdict stands for the fallback, but legacy naive `CURRENT_TIMESTAMP`
+>   rows (pre-L10) still TypeError'd aware arithmetic at read time. **Fixed**: DB reads normalize
+>   naive `last_updated` to UTC.
+> - **B5** (Feb-29 birthdays) — **fixed**; policy chosen: celebrate on Feb 28 in non-leap years
+>   (SQL match + `calculate_age`).
+> - **B3 residual** — the scheduler's own `minute == 0` gates (log rotation, 3am/9am maintenance,
+>   memory stats, cache cleanup) had the same misfire fragility B3 documented. **Fixed** with
+>   window matching.
+> - Circular import `components.utils` ↔ `components.ui_components` — **fixed** (lazy import at
+>   the one call site).
+> - **U6** — FALSE POSITIVE verdict re-confirmed (all 27 features define a non-empty
+>   `global_kill`, so `key` is always bound).
+> - **LV1** — resolved as NOT a bug: the design notebook's `interact` slider sets
+>   `forgiveness=3` as the chosen value, matching the code exactly. Behavior is as designed.
+> - **B12** (1-hour timezone cache TTL) — re-confirmed a design choice, not a defect.
+> - **C10** (`_init_regular_entry` default assumptions) — re-confirmed latent only; triggers only
+>   if a future schema adds a non-defaulted column.
+> - **U4** — re-confirmed intentional (auto-create documented in both docstrings); the
+>   `guild.roles` "in-place mutation" is harmless — nextcord builds a fresh list per access.
+> - **U5** — re-confirmed: the second loop is provably dead (all lines already lstripped) and the
+>   flattened output is accepted behavior; left untouched.
+> - **S5** (autoban sleeps) — re-confirmed deliberate settle timing; async, doesn't block the loop.
 > - **LV2** — largely mitigated by the C8 fix (rank computation now costs one SELECT instead of
 >   N+1); a further SQL-side rank computation was skipped to preserve the tie-break semantics.
-> - **C10** (`_init_regular_entry` default assumptions) — latent only; triggers only if a future
->   schema adds a non-defaulted column. Left as-is to keep the fix pass behavior-preserving.
-> - **U4** (`get_infinibot_mod_role` creates the role on lookup) — the auto-create side effect
->   appears intentional (onboarding relies on it); changing it is a product decision.
-> - **U5** (`standardize_str_indention` dead indent logic) — "fixing" would change the visible
->   formatting of nearly every message the bot sends; current output is accepted behavior.
-> - **S5** (autoban sleeps in `on_member_join`) — the sleeps look like deliberate settle/audit
->   timing; they're async (don't block the loop) and removing them risks mistimed bans.
-> - Pre-existing latent circular import `components.utils` ↔ `components.ui_components`
->   (import-order dependent, works in the app's import order) — out of scope for this pass;
->   noted for a future cleanup.
 
 **Branch:** `bug-hunt-2026-07`
 **Scope:** Every `.py` file under `src/` (54 files, ~25.6k lines).
