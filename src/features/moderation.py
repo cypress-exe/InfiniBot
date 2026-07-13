@@ -64,7 +64,7 @@ class IncorrectButtonView(ui_components.CustomView):
                 # Has it been past the time that the timeout would have been?
                 current_time = datetime.datetime.now(datetime.timezone.utc)
                 message_time = interaction.message.created_at
-                delta_seconds = (current_time - message_time).seconds
+                delta_seconds = (current_time - message_time).total_seconds()
                 if delta_seconds <= server.profanity_moderation_profile.timeout_seconds:
                     # We can revoke the timeout
                     await utils.timeout(member = member, seconds = 0, reason = "Revoking Profanity Moderation Timeout")
