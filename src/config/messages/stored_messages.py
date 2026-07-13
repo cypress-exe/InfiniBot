@@ -7,6 +7,15 @@ from config.messages.utils import *
 from config.global_settings import get_configs
 
 
+def _parse_last_updated(value: str) -> datetime.datetime:
+    """Parse a stored last_updated value, treating legacy naive rows
+    (written by SQLite's CURRENT_TIMESTAMP before the L10 fix) as UTC."""
+    parsed = datetime.datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=datetime.timezone.utc)
+    return parsed
+
+
 def store_message_in_db(message: nextcord.Message | MessageRecord, override_checks=False) -> bool:
     """
     Store a message in the database.
@@ -68,7 +77,7 @@ def get_message_from_db(message_id: int) -> MessageRecord | None:
         channel_id=result[2],
         author_id=result[3],
         content=result[4],
-        last_updated=datetime.datetime.fromisoformat(result[5])
+        last_updated=_parse_last_updated(result[5])
     )
     
 
@@ -104,7 +113,7 @@ def get_all_messages_from_db(guild:nextcord.Guild=None, guild_id=None) -> list[M
             channel_id=message_data[2],
             author_id=message_data[3],
             content=message_data[4],
-            last_updated=datetime.datetime.fromisoformat(message_data[5])
+            last_updated=_parse_last_updated(message_data[5])
         )
         messages.append(message)
 
