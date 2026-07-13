@@ -34,15 +34,24 @@ class ShowMoreButton(ui_components.CustomView):
         await interaction.response.pong()
         return
     
-    if button.label == "Show More":
+    # Read the toggle state from the message itself, not from button.label: after a
+    # restart this view is a shared singleton handling every pre-restart message, so
+    # instance state leaks between messages and can strip a real embed.
+    rendered_label = "Show More"
+    for row in interaction.message.components:
+        for component in getattr(row, "children", []):
+            if getattr(component, "custom_id", None) == "show_more" and component.label:
+                rendered_label = component.label
+
+    if rendered_label == "Show More":
         # Show more
         embed = interaction.message.embeds[0]
         code = embed.footer.text.split(" ")[-1]
         index = int(code) - 1
-        
+
         info_embed = nextcord.Embed(title = "More Information", color = nextcord.Color.red())
         info_embed.add_field(name = self.possible_embeds[index][0], value = self.possible_embeds[index][1])
-        
+
         # Change the Name of the button
         button.label = "Show Less"
 

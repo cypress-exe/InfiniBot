@@ -82,10 +82,12 @@ class IncorrectButtonView(ui_components.CustomView):
                     return
 
         else:
+            # Respond with the edit so the disabled button actually renders; and never
+            # stop() here — after a restart this view is a shared singleton handling
+            # every pre-restart message, so stopping it would kill all of them.
             button.label = "Member no longer exists"
             button.disabled = True
-        
-        self.stop()
+            await interaction.response.edit_message(view=self)
 
 async def check_profanity_moderation_enabled_and_warn_if_not(interaction: nextcord.Interaction) -> bool:
     """
