@@ -77,7 +77,7 @@ class OptionsView(ui_components.CustomView):
     async def show_loading(self, interaction: Interaction):
         embed = nextcord.Embed(title=f"{self.relevant_object_type} Options", description="Syncing Data. Please Wait...", color=nextcord.Color.blue())
         await self.disable_all(interaction, edit=False)
-        self.this_message_id = await self.send_robust(interaction, embed=embed, view=self)
+        await self.send_robust(interaction, embed=embed, view=self)
 
     async def show_error(self, interaction: Interaction, description: str):
         embed = nextcord.Embed(title=f"{self.relevant_object_type} Options - Error", description=description, color=nextcord.Color.red())
@@ -87,16 +87,18 @@ class OptionsView(ui_components.CustomView):
         if self.this_message_id is not None:
             try:
                 message = await interaction.response.edit_message(**kwargs)
-                message_id = message.id
+                # edit_message returns the message only if it's in the local cache;
+                # ephemeral menus never are, so fall back to the id we already have.
+                message_id = message.id if message is not None else self.this_message_id
             except nextcord.errors.InteractionResponded:
                 message = await interaction.followup.edit_message(self.this_message_id, **kwargs)
                 message_id = message.id
-            
+
         else:
             # Ensure **kwargs has ephemeral set to True, unless explicitly set to False
             if "ephemeral" not in kwargs:
                 kwargs["ephemeral"] = True
-            
+
             try:
                 message = await interaction.response.send_message(**kwargs)
                 message_id = (await message.fetch()).id
@@ -104,7 +106,9 @@ class OptionsView(ui_components.CustomView):
                 message = await interaction.followup.send(**kwargs)
                 message_id = message.id
 
-        self.this_message_id = message
+        # Always store the id (never the message object) so followup.edit_message
+        # and disable_all get the int they expect.
+        self.this_message_id = message_id
         return message_id
 
     async def show_options(self, interaction: Interaction):
@@ -120,9 +124,9 @@ class OptionsView(ui_components.CustomView):
         if self.this_message_id is None: return
         
         try:
-            self.this_message_id = await interaction.response.edit_message(view=self, delete_after=0.0)
+            await interaction.response.edit_message(view=self, delete_after=0.0)
         except nextcord.errors.InteractionResponded:
-            await interaction.followup.edit_message(self.this_message_id.id, view=self, delete_after=0.0)
+            await interaction.followup.edit_message(self.this_message_id, view=self, delete_after=0.0)
 
 
 class MessageCommandOptionsView(OptionsView):
