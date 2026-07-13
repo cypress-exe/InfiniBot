@@ -7,7 +7,6 @@ from typing import Any
 import nextcord
 from nextcord import Interaction
 
-from components.ui_components import ErrorWhyAdminPrivilegesButton
 from config.global_settings import feature_dependencies, required_permissions, recently_left_guilds, get_global_kill_status, get_bot_load_status
 from modules.custom_types import ExpiringSet
 
@@ -1057,6 +1056,10 @@ async def send_error_message_to_server_owner(
 
     embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
     embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+
+    # Imported here (not at module level) to avoid a circular import with
+    # components.ui_components, which imports this module.
+    from components.ui_components import ErrorWhyAdminPrivilegesButton
 
     try:
         dm = await member.create_dm()
