@@ -2280,9 +2280,14 @@ class Dashboard(CustomView):
                                 self.add_item(self.input)
                                 
                             async def callback(self, interaction: Interaction):
-                                self.role_id
+                                # Check
+                                if (not self.input.value.strip().isdigit()) or not (1 <= int(self.input.value) <= 9999):
+                                    embed = nextcord.Embed(title = "Invalid Level", description = "The level needs to be a number between 1 and 9999.", color = nextcord.Color.red())
+                                    await interaction.response.send_message(embed = embed, ephemeral = True)
+                                    return
+
                                 level = int(self.input.value)
-                                
+
                                 server = Server(interaction.guild.id)
                                 server.level_rewards.add(role_id = self.role_id, level = level)
                                         
