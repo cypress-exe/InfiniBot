@@ -191,9 +191,14 @@ def setup_logging(level: int = logging.INFO) -> None:
     logfile_path, organization_messages = generate_logging_file_name()
     logfile_path = os.path.abspath(logfile_path)
 
-    # Remove all existing handlers to avoid conflicts
+    # Remove all existing handlers to avoid conflicts. Closing them releases the
+    # previous log file's descriptor; setup_logging re-runs on every midnight tick.
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
+        try:
+            handler.close()
+        except Exception:
+            pass
 
     # Custom formatter class to handle microseconds
     class CustomFormatter(logging.Formatter):
