@@ -300,23 +300,30 @@ def _generate_profanity_regex_pattern(word: str) -> str:
     :rtype: str
     """
     word = word.lower()
+
+    # Boundary logic. The markers are stripped before escaping so they don't end up
+    # as literal quote characters in the pattern.
+    exact_start = word.startswith("\"")
+    if exact_start:
+        word = word[1:]
+
+    exact_end = word.endswith("\"")
+    if exact_end:
+        word = word[:-1]
+
+    # Escape the word so regex metacharacters an admin typed into their filtered-word
+    # list (e.g. "(" or "[") are matched literally instead of breaking re.compile.
+    word = re.escape(word)
+
     # Handle required wildcards (* = exactly 1 character)
-    word = word.replace("*", ".")
+    word = word.replace(re.escape("*"), ".")
     # Add optional wildcards (? = 0 or 1 characters)
-    word = word.replace("?", ".?")
+    word = word.replace(re.escape("?"), ".?")
 
-    # Boundary logic
-    if not word.startswith("\""):
-        word = r"\w*" + word
-    else:
-        word = r"\b" + word[1:]
+    prefix = r"\b" if exact_start else r"\w*"
+    suffix = r"\b" if exact_end else r"\w*"
 
-    if not word.endswith("\""):
-        word = word + r"\w*"
-    else:
-        word = word[:-1] + r"\b"
-
-    return word
+    return prefix + word + suffix
 
 @functools.lru_cache(maxsize=256)
 def _get_compiled_profanity_patterns(words: tuple[str, ...]) -> tuple[re.Pattern, ...]:
