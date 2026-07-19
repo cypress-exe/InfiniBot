@@ -510,9 +510,6 @@ class JokeVerificationView(CustomView):
                                 logging.warning(f"Could not send dm to {self.member} ({self.member.id}). "
                                                 "User has DMs disabled or blocked the bot.")
 
-                        # Remove the message
-                        await interaction.response.edit_message(delete_after=0.0)
-
                 # Get confirmation that we will be able to dm the user
                 more_info = "\n\nThis will **not** send the submitter a dm."
                 if _get_infinibot_support_server():
