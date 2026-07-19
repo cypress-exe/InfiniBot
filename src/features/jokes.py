@@ -336,7 +336,21 @@ class JokeView(CustomView):
         async def callback(self, interaction: Interaction):
             # Try to post a message to the submission channel on the InfiniBot Support Server
             server = _get_infinibot_support_server()
-            if server is None: self.stop()
+            if server is None:
+                logging.error("Could not resolve the InfiniBot support server. Cannot send joke submission.")
+                await interaction.response.send_message(
+                    embed=nextcord.Embed(
+                        title="Joke Submission Failed",
+                        description=(
+                            "InfiniBot could not reach the support server. "
+                            "Please try again later, or contact the developers of InfiniBot if this persists."
+                        ),
+                        color=nextcord.Color.red()
+                    ),
+                    ephemeral=True
+                )
+                self.stop()
+                return
 
             # Get the submission channel ID
             submission_channel_id = get_configs()['support-server']['submission-channel-id']
@@ -365,6 +379,21 @@ class JokeView(CustomView):
             )
 
             channel = server.get_channel(submission_channel_id)
+            if channel is None:
+                logging.error(f"Joke submission channel {submission_channel_id} could not be resolved. Cannot send joke submission.")
+                await interaction.response.send_message(
+                    embed=nextcord.Embed(
+                        title="Joke Submission Failed",
+                        description=(
+                            "The joke submission channel is misconfigured. "
+                            "Please contact the developers of InfiniBot to fix this issue."
+                        ),
+                        color=nextcord.Color.red()
+                    ),
+                    ephemeral=True
+                )
+                return
+
             await channel.send(embed=embed, view=JokeVerificationView())
 
             # Inform the user that it was sent
