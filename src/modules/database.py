@@ -1,4 +1,5 @@
 import atexit
+import contextlib
 import logging
 import os
 import re
@@ -31,6 +32,46 @@ class DatabaseContextManager:
                     "Critical uncaught exception in database:",
                     exc_info=(exc_type, exc_value, exc_traceback),
                 )
+
+
+class PinnedConnection:
+    """
+    A query executor bound to one physical database connection.
+
+    Statements that depend on per-connection state (SQLite ``TEMPORARY`` tables,
+    for example) must all run here rather than through
+    :meth:`Database.execute_query`, which checks out an arbitrary pooled
+    connection per call.
+
+    Obtain one via :meth:`Database.pinned_connection`.
+    """
+
+    def __init__(self, database: "Database", connection):
+        self._database = database
+        self._connection = connection
+
+    def execute_query(
+        self,
+        sql: str,
+        args: dict = {},
+        commit: bool = False,
+        multiple_values: bool = False,
+        return_affected_rows: bool = False,
+        **kwargs,
+    ):
+        """
+        Execute an SQL query on the pinned connection.
+
+        Mirrors :meth:`Database.execute_query`; see it for argument semantics.
+        """
+        return self._database._execute_on(
+            self._connection,
+            sql,
+            args=args,
+            commit=commit,
+            multiple_values=multiple_values,
+            return_affected_rows=return_affected_rows,
+        )
 
 
 class Database:
@@ -122,26 +163,60 @@ class Database:
                 multiple_values = True: All query results wrapped in a list.
         """
         with self.Session() as session:
-            try:
-                result = session.execute(text(sql), args)
+            return self._execute_on(
+                session,
+                sql,
+                args=args,
+                commit=commit,
+                multiple_values=multiple_values,
+                return_affected_rows=return_affected_rows,
+            )
 
-                if return_affected_rows:
-                    # For INSERT/UPDATE/DELETE operations, return the number of affected rows
-                    affected_count = result.rowcount
-                    if commit:
-                        session.commit()
-                    return affected_count
-                else:
-                    # For SELECT operations, return the query results
-                    data = result.fetchall() if result.returns_rows else None
-                    if commit:
-                        session.commit()
-                    return data if multiple_values else self.get_query_first_value(data)
+    def _execute_on(
+        self,
+        executor,
+        sql: str,
+        args: dict = {},
+        commit: bool = False,
+        multiple_values: bool = False,
+        return_affected_rows: bool = False,
+    ):
+        """
+        Run a query on an open Session or Connection. See :meth:`execute_query`.
+        """
+        try:
+            result = executor.execute(text(sql), args)
 
-            except Exception:
-                logging.error(f"Error executing SQL query: {sql}", exc_info=True)
-                session.rollback()
-                raise  # preserve the original exception type for callers
+            if return_affected_rows:
+                # For INSERT/UPDATE/DELETE operations, return the number of affected rows
+                affected_count = result.rowcount
+                if commit:
+                    executor.commit()
+                return affected_count
+            else:
+                # For SELECT operations, return the query results
+                data = result.fetchall() if result.returns_rows else None
+                if commit:
+                    executor.commit()
+                return data if multiple_values else self.get_query_first_value(data)
+
+        except Exception:
+            logging.error(f"Error executing SQL query: {sql}", exc_info=True)
+            executor.rollback()
+            raise  # preserve the original exception type for callers
+
+    @contextlib.contextmanager
+    def pinned_connection(self) -> Generator["PinnedConnection", None, None]:
+        """
+        Yield a :class:`PinnedConnection` whose queries all run on one physical
+        connection, so per-connection state (SQLite ``TEMPORARY`` tables) stays
+        visible for the lifetime of the block.
+
+        A ``Session`` is unsuitable here: committing one releases its connection
+        back to the pool, so the next statement could land on a different one.
+        """
+        with self.engine.connect() as connection:
+            yield PinnedConnection(self, connection)
 
     def build_database(self, build_file_path: str) -> None:
         """

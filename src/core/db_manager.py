@@ -1168,8 +1168,6 @@ async def daily_database_maintenance(bot: nextcord.Client):
             logging.info(f"Scanning tables for orphaned guild entries...")
             orphaned_guild_entries_cleanup_start = datetime.datetime.now(datetime.timezone.utc)
 
-            # Runs on the loop (not to_thread): it relies on a per-connection SQLite
-            # TEMP table across queries, which needs serial use of the pooled connection.
             valid_guild_ids = set([int(guild.id) for guild in bot.guilds])
             total_deleted += cleanup_orphaned_guild_entries(valid_guild_ids, get_database())
 
@@ -1207,69 +1205,84 @@ def cleanup_orphaned_guild_entries(all_guild_ids:set, database:Database=None):
     if database is None:
         database = get_database()
 
-    try:
-        # Create temporary table for valid guild IDs - much more efficient than large IN clauses
-        database.execute_query("DROP TABLE IF EXISTS temp_valid_guilds")
-        database.execute_query("CREATE TEMPORARY TABLE temp_valid_guilds (guild_id INTEGER PRIMARY KEY)")
+    if not all_guild_ids:
+        logging.warning("Refusing to run orphaned-guild cleanup with an empty valid-guild set.")
+        return 0
 
-        # Insert all valid guild IDs in batches to avoid parameter limits
-        batch_size = 500  # SQLite parameter limit is typically 999
-        guild_ids_list = list(all_guild_ids)
-        
-        for i in range(0, len(guild_ids_list), batch_size):
-            batch = guild_ids_list[i:i + batch_size]
-            query_values = ",".join(f"({int(gid)})" for gid in batch)
-            database.execute_query(
-            f"INSERT INTO temp_valid_guilds (guild_id) VALUES {query_values}",
-            commit=True
-            )
+    # The temp table is per-connection state, so every statement below must run on
+    # the same physical connection.
+    with database.pinned_connection() as connection:
+        try:
+            # Temporary table for valid guild IDs - much more efficient than large IN clauses
+            connection.execute_query("DROP TABLE IF EXISTS temp_valid_guilds")
+            connection.execute_query("CREATE TEMPORARY TABLE temp_valid_guilds (guild_id INTEGER PRIMARY KEY)")
 
-        for table in database.tables:
-            try:
-                table_start = datetime.datetime.now(datetime.timezone.utc)
+            # Insert all valid guild IDs in batches to avoid parameter limits
+            batch_size = 500  # SQLite parameter limit is typically 999
+            guild_ids_list = list(all_guild_ids)
 
-                # Get the guild row
-                if table not in database.tags: continue
-                if "remove-if-guild-invalid" not in database.tags[table]: continue
-                guild_row = database.tags[table]["remove-if-guild-invalid"]
-
-                if guild_row not in database.all_column_names[table]:
-                    logging.warning(f"Table {table} does not have the reported guild column '{guild_row}'. Skipping.")
-                    continue
-
-                table_primary_key = database.all_primary_keys[table]
-                if table_primary_key is None:
-                    logging.warning(f"Table {table} does not have a primary key. Skipping.")
-                    continue
-                
-                logging.info(f"Processing table {table} with guild column '{guild_row}'")
-                
-                # Delete orphaned entries using LEFT JOIN - much more efficient than large IN clause
-                # SQLite will tell us how many rows were affected, so no need to count first
-                deleted_count = database.execute_query(
-                    f"""DELETE FROM {table} 
-                        WHERE {table}.{table_primary_key} IN (
-                            SELECT {table}.{table_primary_key} FROM {table} 
-                            LEFT JOIN temp_valid_guilds ON {table}.{guild_row} = temp_valid_guilds.guild_id 
-                            WHERE temp_valid_guilds.guild_id IS NULL
-                        )""",
-                    commit=True,
-                    return_affected_rows=True
+            for i in range(0, len(guild_ids_list), batch_size):
+                batch = guild_ids_list[i:i + batch_size]
+                query_values = ",".join(f"({int(gid)})" for gid in batch)
+                connection.execute_query(
+                    f"INSERT INTO temp_valid_guilds (guild_id) VALUES {query_values}",
+                    commit=True
                 )
-                
-                if deleted_count > 0:
-                    total_deleted += deleted_count
-                    logging.info(f"Deleted {deleted_count} orphaned entries from {table}")
-                else:
-                    logging.info(f"No orphaned entries found in {table}")
-                
-                logging.info(f"Completed {table} in {datetime.datetime.now(datetime.timezone.utc) - table_start}")
 
-            except Exception as table_err:
-                logging.error(f"Table {table} processing failed: {table_err}", exc_info=True)
+            # Guard against deleting everything if the inserts silently failed.
+            inserted_count = connection.execute_query("SELECT COUNT(*) FROM temp_valid_guilds")[0]
+            if inserted_count != len(all_guild_ids):
+                raise RuntimeError(
+                    f"temp_valid_guilds holds {inserted_count} rows but {len(all_guild_ids)} guilds were expected; "
+                    "aborting cleanup rather than risk deleting live guild data."
+                )
 
-    finally:
-        # Cleanup temporary table
-        database.execute_query("DROP TABLE IF EXISTS temp_valid_guilds")
+            for table in database.tables:
+                try:
+                    table_start = datetime.datetime.now(datetime.timezone.utc)
+
+                    # Get the guild row
+                    if table not in database.tags: continue
+                    if "remove-if-guild-invalid" not in database.tags[table]: continue
+                    guild_row = database.tags[table]["remove-if-guild-invalid"]
+
+                    if guild_row not in database.all_column_names[table]:
+                        logging.warning(f"Table {table} does not have the reported guild column '{guild_row}'. Skipping.")
+                        continue
+
+                    table_primary_key = database.all_primary_keys[table]
+                    if table_primary_key is None:
+                        logging.warning(f"Table {table} does not have a primary key. Skipping.")
+                        continue
+
+                    logging.info(f"Processing table {table} with guild column '{guild_row}'")
+
+                    # Delete orphaned entries using LEFT JOIN - much more efficient than large IN clause
+                    # SQLite will tell us how many rows were affected, so no need to count first
+                    deleted_count = connection.execute_query(
+                        f"""DELETE FROM {table}
+                            WHERE {table}.{table_primary_key} IN (
+                                SELECT {table}.{table_primary_key} FROM {table}
+                                LEFT JOIN temp_valid_guilds ON {table}.{guild_row} = temp_valid_guilds.guild_id
+                                WHERE temp_valid_guilds.guild_id IS NULL
+                            )""",
+                        commit=True,
+                        return_affected_rows=True
+                    )
+
+                    if deleted_count > 0:
+                        total_deleted += deleted_count
+                        logging.info(f"Deleted {deleted_count} orphaned entries from {table}")
+                    else:
+                        logging.info(f"No orphaned entries found in {table}")
+
+                    logging.info(f"Completed {table} in {datetime.datetime.now(datetime.timezone.utc) - table_start}")
+
+                except Exception as table_err:
+                    logging.error(f"Table {table} processing failed: {table_err}", exc_info=True)
+
+        finally:
+            # Cleanup temporary table
+            connection.execute_query("DROP TABLE IF EXISTS temp_valid_guilds")
 
     return total_deleted
