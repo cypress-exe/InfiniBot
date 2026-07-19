@@ -5,7 +5,21 @@ import logging
 import json
 
 from config.server import Server
-from components import ui_components, utils 
+from components import ui_components, utils
+
+ROLE_MENTION_PATTERN = re.compile(r"<@&(\d+)>")
+
+def extract_role_id(text: str) -> int | None:
+    """
+    Pull a role ID out of a role mention, tolerating any surrounding whitespace.
+
+    :param text: Text containing a role mention, e.g. " <@&123>".
+    :type text: str
+    :return: The role ID, or None if no role mention is present.
+    :rtype: int | None
+    """
+    match = ROLE_MENTION_PATTERN.search(text)
+    return int(match.group(1)) if match else None
 
 class ReactionRoleModal(ui_components.CustomModal):
     def __init__(self):
@@ -156,7 +170,9 @@ async def run_custom_reaction_role_command(interaction: Interaction, options: st
                                                                                 description="Every emoji has to be unique.", color=nextcord.Color.red()), ephemeral=True)
                 return
             
-            role_ID = int(option.split("=")[1][4:-1].strip())
+            role_ID = extract_role_id(option.split("=", 1)[1])
+            if role_ID is None:
+                raise Exception # Trigger the error message at end of try block
             role = [role for role in interaction.guild.roles if role.id == role_ID][0]
             if role_ID in role_IDs:
                 await interaction.response.send_message(embed = nextcord.Embed(title="Error: You can't use the same role twice", description="Every role has to be unique.", 
@@ -245,9 +261,9 @@ async def create_reaction_role(interaction: Interaction, title: str, message: st
         roles: list[nextcord.Role] = [role for role_name in roles_str for role in interaction.guild.roles if role.name == role_name]
         emojis = None
     else:
-        new_roles_str = [int(role.split("=")[1][4:-1].strip()) for role in roles_str]
+        new_roles_str = [extract_role_id(role.split("=", 1)[1]) for role in roles_str]
         roles: list[nextcord.Role] = [role for role_ID in new_roles_str for role in interaction.guild.roles if role.id == role_ID]
-        emojis: list[str] = [emoji.split("=")[0] for emoji in roles_str]
+        emojis: list[str] = [emoji.split("=", 1)[0].strip() for emoji in roles_str]
     
     # Ensure that these roles are grantable
     for role in roles:
