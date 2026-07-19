@@ -37,7 +37,11 @@ def create_environment():
             error_msg = f"Some environment variables don't exist: {', '.join(missing_vars)}"
             logging.warning(error_msg)
 
-        unset_vars = [var[0] for var in environment_vars if var[1] and os.environ.get(var[0]).lower() in ["", "none", "missing"]]
+        # A required var counts as unset whether it is absent entirely or present-but-blank.
+        unset_vars = [
+            var[0] for var in environment_vars
+            if var[1] and (os.environ.get(var[0]) or "").lower() in ["", "none", "missing"]
+        ]
         if unset_vars:
             error_msg = "Some required environment variables are unset or missing."
             logging.critical("Missing required environment variables: " + ", ".join(unset_vars))
