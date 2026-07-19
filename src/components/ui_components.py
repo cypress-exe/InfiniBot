@@ -336,32 +336,41 @@ class SelectView(CustomView):
     :type cancel_button_label: str
     :param preserve_order: Preserves the order of options. Defaults to False, where the options will be alphabetized.
     :type preserve_order: bool
+    :param empty_state_message: Message shown instead of the select when there are no options.
+                                Pages with a more specific explanation should pass their own.
+    :type empty_state_message: str
 
     :raises ValueError: If the arguments are incorrect.
+
+    An empty options list is not an error: `setup` renders `empty_state_message` with a
+    Back button that routes through the cancel path, so `return_command` still receives
+    `None`.
 
     Setup
     ------
     Call `await ~setup(nextcord.Interaction)` to begin setup.
     """
-    def __init__(self, embed: nextcord.Embed, 
-                 options: list[nextcord.SelectOption], 
-                 return_command, 
-                 placeholder: str = None, 
-                 continue_button_label = "Continue", 
-                 cancel_button_label = "Cancel", 
-                 preserve_order = False):
-        
+    def __init__(self, embed: nextcord.Embed,
+                 options: list[nextcord.SelectOption],
+                 return_command,
+                 placeholder: str = None,
+                 continue_button_label = "Continue",
+                 cancel_button_label = "Cancel",
+                 preserve_order = False,
+                 empty_state_message = "There's nothing to choose from here."):
+
         super().__init__()
         self.page = 0
         self.embed = embed
         self.options = options
         self.return_command = return_command
-        
+        self.empty_state_message = empty_state_message
+
         # Confirm objects
-        if self.options == None or self.options == []:
-            raise ValueError(f"'options' must be a 'list' with one or more 'nextcord.SelectOption' items.")       
+        if self.options is None:
+            self.options = []
         if type(self.options) != list:
-            raise ValueError(f"'options' must be of type 'list'. Received type '{type(self.options)}'")        
+            raise ValueError(f"'options' must be of type 'list'. Received type '{type(self.options)}'")
         for option in self.options:
             if type(option) != nextcord.SelectOption:
                 raise ValueError(f"'options' must only contain 'nextcord.SelectOption' items. Contained 1+ '{type(option)}'")
@@ -423,8 +432,30 @@ class SelectView(CustomView):
         self.add_item(self.continue_btn)
         
     async def setup(self, interaction):
+        if not self.options:
+            await self._show_empty_state(interaction)
+            return
+
         await self.setPage(interaction, 0)
-        
+
+    async def _show_empty_state(self, interaction: Interaction):
+        """
+        Render the empty-state message in place of the select. Discord rejects a select
+        menu with zero options, so the select and its pagination are dropped entirely
+        and only the cancel button (relabeled "Back") remains.
+        """
+        embed = copy.copy(self.embed)
+        embed.description = (embed.description or "") + f"\n\n{self.empty_state_message}"
+        embed.color = nextcord.Color.red()
+
+        self.clear_items()
+        self.cancel_btn.label = "Back"
+        self.cancel_btn.row = 0
+        self.add_item(self.cancel_btn)
+
+        await interaction.response.edit_message(embed = embed, view = self)
+
+
     async def setPage(self, interaction: Interaction, page: int):
         if page >= len(self.select_options): raise IndexError("Page (int) was out of bounds of self.selectOptions (list[nextcord.SelectOption]).")
         
