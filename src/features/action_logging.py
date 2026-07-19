@@ -15,6 +15,9 @@ from config.server import Server
 from modules.custom_types import UNSET_VALUE, ExpiringSet
 
 
+MAX_EMBEDS_PER_MESSAGE = 10
+"""Discord's hard limit on embeds in a single message."""
+
 class ShowMoreButton(ui_components.CustomView):
   """
   A View that will be used for the Action Logging feature.
@@ -44,6 +47,18 @@ class ShowMoreButton(ui_components.CustomView):
                 rendered_label = component.label
 
     if rendered_label == "Show More":
+        # Log messages sent before the button was gated can still be at the limit.
+        if len(interaction.message.embeds) >= MAX_EMBEDS_PER_MESSAGE:
+            await interaction.response.send_message(
+                embed = nextcord.Embed(
+                    title = "No Room to Show More",
+                    description = f"This log message already carries the maximum of {MAX_EMBEDS_PER_MESSAGE} embeds, so the extra information can't be attached to it.",
+                    color = nextcord.Color.red()
+                ),
+                ephemeral = True
+            )
+            return
+
         # Show more
         embed = interaction.message.embeds[0]
         code = embed.footer.text.split(" ")[-1]
@@ -471,8 +486,12 @@ async def trigger_delete_log(bot: nextcord.Client, channel: nextcord.TextChannel
     embed.set_footer(text = f"Message ID: {message_id}\nCode: {code}")
 
     # Actually send the embed
-    view = ShowMoreButton()
-    log_message = await log_channel.send(view = view, embeds = ([embed] + (embeds[0:8] if len(embeds) >= 10 else embeds)))
+    all_embeds = [embed] + (embeds[0:8] if len(embeds) >= 10 else embeds)
+
+    # "Show More" appends an 11th embed, which Discord rejects. Only offer it when
+    # the log message leaves room.
+    view = ShowMoreButton() if len(all_embeds) < MAX_EMBEDS_PER_MESSAGE else None
+    log_message = await log_channel.send(view = view, embeds = all_embeds)
     if message and message.attachments != []:
         await files_computation(message, log_channel, log_message)
 
