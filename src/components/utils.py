@@ -329,6 +329,12 @@ def apply_generic_replacements(
     :type skip_placeholder_replacement: bool
     :return: The modified embed with replaced placeholders.
     :rtype: nextcord.Embed
+
+    Best-effort fields: @joindate, @owner, and @accountage resolve to the literal
+    string "Unknown" when the underlying data isn't available (most commonly
+    @joindate on a leave message, or @owner when the guild owner isn't cached —
+    see get_guild_owner). See "Best-Effort Replacements" in
+    github-pages-site/docs/messaging/generic-replacements.md.
     """
     def _apply_text_transform(transform, include_url: bool = True) -> None:
         # nextcord's .footer/.fields accessors return throwaway EmbedProxy objects,

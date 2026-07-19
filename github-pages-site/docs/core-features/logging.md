@@ -37,16 +37,16 @@ InfiniBot logs the following activities, categorized into three main types:
 
 ### Member Events
 
-| Event Type         | Description                          |
-|--------------------|--------------------------------------|
-| Nickname Changes   | Tracks changes to member nicknames.  |
-| Role Changes       | Logs updates to member roles.        |
+| Event Type         | Description                                      |
+|--------------------|---------------------------------------------------|
+| Nickname Changes   | Tracks changes to member nicknames. (best-effort — see below) |
+| Role Changes       | Logs updates to member roles. (best-effort — see below)       |
 
 ### Moderation Events
 
 | Event Type         | Description                          |
 |--------------------|--------------------------------------|
-| Member Timeouts    | Logs when a member is timed out.     |
+| Member Timeouts    | Logs when a member is timed out. (best-effort — see below) |
 | Member Bans        | Tracks bans and unbans of members.   |
 | Member Kicks       | Logs when a member is kicked.        |
 
@@ -92,6 +92,13 @@ InfiniBot retains message data for a limited time to ensure effective logging wh
 Removing message data from InfiniBot's database does NOT delete the message from Discord or alter it in any way. However, logs for older messages may contain less detailed information due to this fact.
 
 For more information on InfiniBot's data handling and retention policies, please refer to our [Privacy Policy]({% link docs/legal/privacy-policy.md %}).
+
+## Member Event Limitations
+
+Nickname changes, role changes, and timeouts can only be logged for members InfiniBot currently has cached. InfiniBot does not proactively load the full member lists, so a member who hasn't recently interacted with the server may not be cached, and a change to that member will silently go unlogged.
+
+After a member interacts with the server or updates their information (nickname, roles, etc.), they will be cached by InfiniBot, and subsequent changes to that member can be logged.
+
 
 ## Tips for Effective Logging
 

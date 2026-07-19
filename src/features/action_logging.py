@@ -860,6 +860,15 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> 
 
     Logs a member update event.
 
+    Caching limitation: this is only ever called for members nextcord already has
+    cached (see the on_member_update note below). Nextcord never evicts a cached
+    member for inactivity — only on guild leave — so once a member is cached
+    (message sent, command run, button clicked, etc., or the guild was chunked via
+    /dashboard or a purge) they stay logged for the rest of the process's life.
+    But a member who hasn't done any of that since the bot's last restart is
+    uncached, and their nickname/role/timeout changes go silently unlogged. See
+    "Member Event Limitations" in github-pages-site/docs/core-features/logging.md.
+
     :param before: The member before the update.
     :type before: nextcord.Member
     :param after: The member after the update.

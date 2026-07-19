@@ -644,6 +644,10 @@ async def on_member_update(before: nextcord.Member, after: nextcord.Member) -> N
     """
     Handles member update events.
 
+    Note: nextcord only dispatches this event for members it already has cached
+    (there's no raw/uncached variant of this event) — see the caching-limitation
+    note on action_logging.log_member_update for what that means for logging.
+
     :param before: The member before the update.
     :type before: nextcord.Member
     :param after: The member after the update.
@@ -651,7 +655,7 @@ async def on_member_update(before: nextcord.Member, after: nextcord.Member) -> N
     :return: None
     :rtype: None
     """
-    
+
     # Log the update
     with LogIfFailure(feature="action_logging.log_member_update"):
         await action_logging.log_member_update(before, after)
