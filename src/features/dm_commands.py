@@ -54,7 +54,7 @@ async def run_opt_out_of_dms_command(interaction: nextcord.Interaction) -> None:
     
     embed = nextcord.Embed(
         title="Opted Out of DMs", 
-        description=f"You opted out of DMs from InfiniBot. You will no longer recieve permission errors, birthday updates, or strike notices. To re-opt-into this feature, use `/opt-into-dms`", 
+        description=f"You opted out of DMs from InfiniBot. You will no longer recieve permission errors, birthday updates, or strike notices. To re-opt-into this feature, use `/opt_into_dms`", 
         color=nextcord.Color.green()
     )
     await interaction.response.send_message(embed=embed)
@@ -86,7 +86,7 @@ async def run_opt_into_dms_command(interaction: nextcord.Interaction) -> None:
     
     embed = nextcord.Embed(
         title="Opted Into DMs", 
-        description=f"You opted into DMs from InfiniBot. You will now recieve permission errors, birthday updates, and strike notices. To re-opt-out of this feature, use `/opt-out-of-dms`", 
+        description=f"You opted into DMs from InfiniBot. You will now recieve permission errors, birthday updates, and strike notices. To re-opt-out of this feature, use `/opt_out_of_dms`", 
         color=nextcord.Color.green()
     )
     await interaction.response.send_message(embed=embed)
