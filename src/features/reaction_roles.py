@@ -261,9 +261,22 @@ async def create_reaction_role(interaction: Interaction, title: str, message: st
         roles: list[nextcord.Role] = [role for role_name in roles_str for role in interaction.guild.roles if role.name == role_name]
         emojis = None
     else:
-        new_roles_str = [extract_role_id(role.split("=", 1)[1]) for role in roles_str]
-        roles: list[nextcord.Role] = [role for role_ID in new_roles_str for role in interaction.guild.roles if role.id == role_ID]
-        emojis: list[str] = [emoji.split("=", 1)[0].strip() for emoji in roles_str]
+        # Roles and emojis are collected in lockstep: a role deleted between validation
+        # and now drops its emoji too, so the two lists stay index-aligned.
+        guild_roles_by_id = {role.id: role for role in interaction.guild.roles}
+        roles: list[nextcord.Role] = []
+        emojis: list[str] = []
+        for option in roles_str:
+            emoji_str, separator, role_str = option.partition("=")
+            if not separator:
+                continue
+
+            role = guild_roles_by_id.get(extract_role_id(role_str))
+            if role is None:
+                continue
+
+            roles.append(role)
+            emojis.append(emoji_str.strip())
     
     # Ensure that these roles are grantable
     for role in roles:
