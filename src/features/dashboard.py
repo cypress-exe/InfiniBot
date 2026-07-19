@@ -868,8 +868,10 @@ class Dashboard(CustomView):
                                                     self.member_id = user_selection.id
 
                                                     server = Server(guild.id)
-                                                    self.member_strikes = server.moderation_strikes.get(self.member_id, 0)
-                                                    
+                                                    strike_record = server.moderation_strikes.get(self.member_id)
+                                                    self.member_strikes = strike_record.strikes if strike_record else 0
+
+
                                                     strike_levels = [
                                                         nextcord.SelectOption(label=str(level), default=(level==self.member_strikes))
                                                         for level in range(server.profanity_moderation_profile.max_strikes + 1)
