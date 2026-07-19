@@ -1169,7 +1169,7 @@ async def daily_database_maintenance(bot: nextcord.Client):
             orphaned_guild_entries_cleanup_start = datetime.datetime.now(datetime.timezone.utc)
 
             valid_guild_ids = set([int(guild.id) for guild in bot.guilds])
-            total_deleted += cleanup_orphaned_guild_entries(valid_guild_ids, get_database())
+            total_deleted += await asyncio.to_thread(cleanup_orphaned_guild_entries, valid_guild_ids, get_database())
 
             orphaned_guild_entries_cleanup_duration = datetime.datetime.now(datetime.timezone.utc) - orphaned_guild_entries_cleanup_start
             logging.info(f"Orphaned guild entries cleanup completed in {orphaned_guild_entries_cleanup_duration.total_seconds():.2f}s")
