@@ -8,7 +8,11 @@ from config.server import Server
 class EmbedModal(CustomModal):        
     def __init__(self):
         super().__init__(title = "Create Embed")
-   
+
+        # Stay None until the modal is submitted, so a timeout is detectable.
+        self.title_value = None
+        self.description_value = None
+
         self.title_text_input = nextcord.ui.TextInput(label="Title", style=nextcord.TextInputStyle.short, required=True, max_length=256)
         self.description_text_input = nextcord.ui.TextInput(label="Description", style=nextcord.TextInputStyle.paragraph, required=True, max_length=4000)
         
@@ -63,7 +67,10 @@ class EmbedInfoView(CustomView):
 class EmbedColorView(CustomView):
     def __init__(self):
         super().__init__()
-                
+
+        # Stays None until "Create" is pressed with a color chosen.
+        self.selection = None
+
         select_options = []
         for option in utils.COLOR_OPTIONS:
             select_options.append(nextcord.SelectOption(label=option, value=option))
@@ -77,9 +84,19 @@ class EmbedColorView(CustomView):
         self.add_item(self.button)
              
     async def create_callback(self, interaction: Interaction):
+        if not self.select.values:
+            await interaction.response.send_message(
+                embed=nextcord.Embed(
+                    title="No Color Chosen",
+                    description="Choose a color from the dropdown before clicking Create.",
+                    color=nextcord.Color.red()
+                ),
+                ephemeral=True
+            )
+            return
+
         self.selection = self.select.values[0]
-        if self.selection == []: return
-        
+
         self.select.disabled = True
         self.button.disabled = True
 
@@ -119,10 +136,10 @@ async def run_create_embed_command(interaction: Interaction, role: nextcord.Role
     await interaction.response.send_message(embed=info_embed, view=info_view, ephemeral=True)
     await info_view.wait()
 
-    if info_view.return_modal is None:
-        # User cancelled the modal
+    if info_view.return_modal is None or info_view.return_modal.title_value is None:
+        # The user never continued, or the modal timed out unsubmitted
         return
-    
+
     embed_title = info_view.return_modal.title_value
     embed_description = info_view.return_modal.description_value
 
@@ -142,9 +159,13 @@ async def run_create_embed_command(interaction: Interaction, role: nextcord.Role
     await interaction.edit_original_message(embed=embed, view=view)
     
     await view.wait()
-    
+
     color = view.selection
-    
+    if color is None:
+        # The color view timed out without a selection
+        return
+
+
     # Translate the color to a discord color
     discord_color = utils.get_discord_color_from_string(color)
     
