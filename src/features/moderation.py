@@ -216,10 +216,17 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
             if strikes == 0: strikes_info = f"\n\nYou were timed out for {timeout_time}"
             else: strikes_info = f"\n\nYou are now at strike {strikes} / {server.profanity_moderation_profile.max_strikes}"
             
-            embed = nextcord.Embed(title = "Profanity Detected", description = f"You were flagged for your nickname.\n\n**Server**: {guild.name}\n**Nickname:** {nickname}{strikes_info}", color = nextcord.Color.dark_red())
-            embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
-            await member.send(embed = embed)
-            
+            if Member(member.id).direct_messages_enabled:
+                try:
+                    embed = nextcord.Embed(title = "Profanity Detected", description = f"You were flagged for your nickname.\n\n**Server**: {guild.name}\n**Nickname:** {nickname}{strikes_info}", color = nextcord.Color.dark_red())
+                    embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
+                    await member.send(embed = embed)
+                except (nextcord.Forbidden, nextcord.HTTPException):
+                    pass # The user has dms turned off. It's not a big deal, they just don't get notified.
+                except Exception as e:
+                    logging.error(f"Error sending nickname profanity DM to {member}: {e}", exc_info=True)
+
+
             # Send a message to the admin channel
             admin_channel_id = server.profanity_moderation_profile.channel
             if admin_channel_id == UNSET_VALUE: return
