@@ -20,12 +20,15 @@ class RoleMessageButton_Single(CustomView):
             
             options_selected = False
             options = []
-            for field in self.message.embeds[0].fields:
+            # Option values are field indices; role IDs would overflow Discord's
+            # 100-char value cap once an option grants 6+ roles.
+            self.option_roles: dict[str, list[int]] = {}
+            for field_index, field in enumerate(self.message.embeds[0].fields):
                 name = field.name
                 description = "\n".join(field.value.split("\n")[:-1])
                 roles = self.extract_ids(field.value.split("\n")[-1])
                 self.add_available_roles(roles)
-                
+
                 # Check if the user has the roles
                 selected = False
                 for index, role in enumerate(roles):
@@ -37,15 +40,17 @@ class RoleMessageButton_Single(CustomView):
                                 selected = True
                                 options_selected = True
                             break
-                        
+
                 # Truncate name and description if too long
                 if len(name) > 100:
                     name = name[:97] + "..."
-                    
+
                 if len(description) > 100:
                     description = description[:97] + "..."
-                
-                options.append(nextcord.SelectOption(label=name, description=description, value="|".join(roles), default=selected))
+
+                value = str(field_index)
+                self.option_roles[value] = [int(role) for role in roles]
+                options.append(nextcord.SelectOption(label=name, description=description, value=value, default=selected))
                 
             self.select = nextcord.ui.Select(custom_id="role_message_single_select", placeholder="Choose a Role", min_values=0, options=options)
             self.select.callback = self.select_callback
@@ -68,9 +73,8 @@ class RoleMessageButton_Single(CustomView):
             selection = self.select.values
             selected_roles = []
             for option in selection:
-                for role in option.split("|"):
-                    selected_roles.append(int(role))
-                    
+                selected_roles.extend(self.option_roles.get(option, []))
+
             # Get the roles
             roles_add = []
             roles_remove = []
@@ -82,19 +86,19 @@ class RoleMessageButton_Single(CustomView):
                     roles_add.append(role_obj)
                 else:
                     roles_remove.append(role_obj)
-                    
+
             error = False
             try:
                 await interaction.user.add_roles(*roles_add)
                 await interaction.user.remove_roles(*roles_remove)
             except nextcord.errors.Forbidden:
                 error = True
-                
+
             embed = nextcord.Embed(title = "Modified Roles", color = nextcord.Color.green())
             if error: embed.description = "Warning: An error occurred with one or more roles. Please notify server admins."
-            
+
             await interaction.response.edit_message(embed=embed, view=None, delete_after=2.0)
-    
+
     @nextcord.ui.button(label = "Get Role", style = nextcord.ButtonStyle.blurple, custom_id = "get_role")
     async def event(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
         message = interaction.message
@@ -113,12 +117,15 @@ class RoleMessageButton_Multiple(CustomView):
             user_role_ids = [role.id for role in user.roles if role.name != "@everyone"]
             
             options = []
-            for field in self.message.embeds[0].fields:
+            # Option values are field indices; role IDs would overflow Discord's
+            # 100-char value cap once an option grants 6+ roles.
+            self.option_roles: dict[str, list[int]] = {}
+            for field_index, field in enumerate(self.message.embeds[0].fields):
                 name = field.name
                 description = "\n".join(field.value.split("\n")[:-1])
                 roles = self.extract_ids(field.value.split("\n")[-1])
                 self.add_available_roles(roles)
-                
+
                 # Check if the user has the roles
                 selected = False
                 for index, role in enumerate(roles):
@@ -128,15 +135,17 @@ class RoleMessageButton_Multiple(CustomView):
                         if index == (len(roles) - 1): # If this is the last role to check
                             selected = True
                             break
-                        
+
                 # Truncate name and description if too long
                 if len(name) > 100:
                     name = name[:97] + "..."
 
                 if len(description) > 100:
                     description = description[:97] + "..."
-                
-                options.append(nextcord.SelectOption(label=name, description=description, value="|".join(roles), default=selected))
+
+                value = str(field_index)
+                self.option_roles[value] = [int(role) for role in roles]
+                options.append(nextcord.SelectOption(label=name, description=description, value=value, default=selected))
                 
             self.select = nextcord.ui.Select(custom_id="role_message_multi_select", placeholder="Choose Roles", min_values=0, max_values=len(options), options=options)
             self.select.callback = self.select_callback
@@ -159,9 +168,8 @@ class RoleMessageButton_Multiple(CustomView):
             selection = self.select.values
             selected_roles = []
             for option in selection:
-                for role in option.split("|"):
-                    selected_roles.append(int(role))
-                    
+                selected_roles.extend(self.option_roles.get(option, []))
+
             # Get the roles
             roles_add = []
             roles_remove = []
