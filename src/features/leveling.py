@@ -251,7 +251,7 @@ async def daily_leveling_maintenance(bot: nextcord.Client, guild: nextcord.Guild
                 # This is purely a database optimization to reduce the number of rows in
                 # the member_levels table. Members without records are assumed to have 0
                 # points elsewhere in the codebase.
-                if member_level_info.points == 0:
+                if _points == 0:
                     server.member_levels.delete(member_level_info.member_id)
 
             except Exception as err:
