@@ -775,7 +775,11 @@ class Dashboard(CustomView):
 
                                         self.members = await self.get_members(interaction, limit=25)
                                         if self.members:
-                                            members_string = "\n".join([f"{item[2]} - {item[0]}" for item in self.members])
+                                            # The overflow row (member_id None) carries only a summary line.
+                                            members_string = "\n".join([
+                                                item[0] if item[1] is None else f"{item[2]} - {item[0]}"
+                                                for item in self.members
+                                            ])
                                         else:
                                             members_string = "Your server doesn't have any members with strikes yet."
 
@@ -806,7 +810,7 @@ class Dashboard(CustomView):
                                         for i, item in enumerate(data):
                                             if limit and i >= limit:
                                                 returned_data.append([f"{len(data) - limit} more. Use */get_strikes* to view specific member strikes", None, None])
-                                                return
+                                                break
                                             # EX: [member_mention, member_id, strike#]
                                             returned_data.append([item[0], item[1], item[2]])
 
