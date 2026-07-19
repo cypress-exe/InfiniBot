@@ -3429,19 +3429,20 @@ class Dashboard(CustomView):
                     birthday_channel = interaction.guild.get_channel(server.birthdays_profile.channel)
                     birthday_channel_ui_text = birthday_channel.mention if birthday_channel else "#unknown"
 
-                # Ensure runtime is set
-                server.birthdays_profile.runtime = server.birthdays_profile.runtime or "00:00:00"
-
                 # Convert stored UTC time to server's timezone for display
-                try:
-                    tz = ZoneInfo(server.infinibot_settings_profile.timezone or "UTC")
-                    utc_time = datetime.datetime.strptime(server.birthdays_profile.runtime, "%H:%M:%S").time()
-                    utc_datetime = datetime.datetime.combine(datetime.date.today(), utc_time).replace(tzinfo=datetime.timezone.utc)
-                    local_datetime = utc_datetime.astimezone(tz)
-                    message_time_ui_text = f"{local_datetime.strftime('%H:%M')} ({tz})"
-                except Exception as e:
-                    logging.error(f"Birthdays time display error: {str(e)}")
+                runtime = server.birthdays_profile.runtime
+                if not runtime:
                     message_time_ui_text = "Not set"
+                else:
+                    try:
+                        tz = ZoneInfo(server.infinibot_settings_profile.timezone or "UTC")
+                        utc_time = datetime.datetime.strptime(str(runtime), "%H:%M:%S").time()
+                        utc_datetime = datetime.datetime.combine(datetime.date.today(), utc_time).replace(tzinfo=datetime.timezone.utc)
+                        local_datetime = utc_datetime.astimezone(tz)
+                        message_time_ui_text = f"{local_datetime.strftime('%H:%M')} ({tz})"
+                    except Exception as e:
+                        logging.error(f"Birthdays time display error: {str(e)}")
+                        message_time_ui_text = "Not set"
 
                 description = f"""
                 Celebrate birthdays with InfiniBot's personalized messages.
@@ -3457,7 +3458,7 @@ class Dashboard(CustomView):
 
                 Utilize InfiniBot's [Generic Replacements](https://cypress-exe.github.io/InfiniBot/docs/messaging/generic-replacements/) to customize your birthday message.
                 View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/messaging/birthdays/) for more information.
-                """ + ("" if server.birthdays_profile.runtime else "\n⚠️ **You must set a message time before birthdays will work!**")
+                """ + ("" if runtime else "\n⚠️ **You must set a message time before birthdays will work!**")
                 
                 description = utils.standardize_str_indention(description)
                 
