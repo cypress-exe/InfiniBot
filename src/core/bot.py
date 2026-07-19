@@ -48,6 +48,8 @@ from features.options_menu import entrypoint_ui
 import humanfriendly
 
 startup_time = None
+startup_completed = False
+"""Set once on_ready has finished its one-time work, so a re-fire can skip it."""
 
 # INIT BOT ==============================================================================================================================================================
 intents = nextcord.Intents.default()
@@ -122,8 +124,8 @@ async def on_ready() -> None: # Bot load
     :return: None
     :rtype: None
     """
-    global startup_time
-    
+    global startup_time, startup_completed
+
     await bot.wait_until_ready()
     logging.info(f"============================== Logged in as: {bot.user.name} with all shards ready. ==============================")
     logging.info(f"Bot is running with {bot.shard_count} shards across {len(bot.guilds)} guilds.")
@@ -131,6 +133,14 @@ async def on_ready() -> None: # Bot load
     # Initialize core systems
     global_settings.set_bot_load_status(True)
     start_scheduler()
+
+    if startup_completed:
+        # nextcord dispatches on_ready again when a session is re-established.
+        # Persistent views survive that (parse_ready clears with views=False), so the
+        # one-time work below must not repeat — and the startup duration measured
+        # against the original startup_time would be meaningless.
+        logging.info("Session re-established. Skipping one-time startup work.")
+        return
 
     # Initialize the bot's view cache
     init_views(bot)
@@ -186,6 +196,8 @@ async def on_ready() -> None: # Bot load
     total_startup_time = time.time() - startup_time
     formatted_time = humanfriendly.format_timespan(round(total_startup_time))
     logging.info(f"🚀 STARTUP COMPLETE: Total time {formatted_time} for {len(bot.guilds)} guilds ({len(bot.guilds)/total_startup_time:.1f} guilds/sec)")
+
+    startup_completed = True
 
 
 @bot.event
