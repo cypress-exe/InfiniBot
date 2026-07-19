@@ -52,6 +52,7 @@ def asci_to_emoji(letter, fallback_letter = "1"):
     if letter == "8": return "8️⃣", "8"
     if letter == "9": return "9️⃣", "9"
     if letter == "0": return "0️⃣", "0"
+    if letter == "10": return "🔟", "10"
 
     return asci_to_emoji(fallback_letter)
 
