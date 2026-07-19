@@ -25,6 +25,42 @@ Documentation only — **no code was changed.**
 
 **Reported symptoms:** none — this was a general sweep, not symptom-driven.
 
+## Verification status
+
+All 28 findings were independently re-checked by bug-verifier subagents (6 batches,
+static tracing against the repo plus installed nextcord 3.2.0 / SQLAlchemy 2.0.46
+source). Result: **26 CONFIRMED, 2 FALSE POSITIVE, 0 PLAUSIBLE-UNCERTAIN.**
+
+Exceptions and corrections found by the verifiers:
+
+- **M2 — FALSE POSITIVE.** nextcord 3.2.0's `Member.communication_disabled_until`
+  is a computed property that returns `None` once the timeout is in the past
+  (nextcord/member.py:658-671), so an expired timeout can never read as active.
+  The finding's premise is impossible; retained below for the record.
+- **J4 — FALSE POSITIVE.** There is no `await` between the shared-state write
+  (jokes.py:510) and its use as a call argument (jokes.py:513) — coroutine
+  arguments are evaluated synchronously before any suspension — so the claimed
+  race window does not exist. Retained below for the record.
+- **C3 — CONFIRMED in part.** The `on_ready` re-fire and stale `startup_time`
+  logging are confirmed against nextcord's `AutoShardedConnectionState.parse_ready`.
+  The view-store-accumulation sub-claim is **refuted**: `ViewStore` keys entries by
+  `(component_type, message_id, custom_id)`, so repeated `add_view` overwrites
+  rather than accumulates.
+- **M3 — CONFIRMED with corrections.** The uncached per-message recompilation is
+  real (up to 150 patterns for servers with large custom lists), but two supporting
+  details were wrong: the *default* word list is small (~10 entries), and the
+  "re module 512-pattern cache thrashing" point is moot because explicit
+  `re.compile` bypasses that cache entirely.
+- **D1 — CONFIRMED root cause; worst case not independently reproduced.** The
+  verifier confirmed Session-per-call checkout, FIFO `QueuePool` (default
+  `use_lifo=False` in SQLAlchemy 2.0.46), and that nothing enforces the
+  "serial use of the pooled connection" assumption. The mass-delete outcome is a
+  plausible consequence of the confirmed root cause, requiring a specific
+  multi-run sequence that static tracing cannot prove end-to-end.
+- **R2 — CONFIRMED mechanism.** The verifier could not establish whether the
+  failure surfaces as a client-side ValueError or a Discord-side 400, but the
+  100-char overflow with 6+ roles per option is confirmed reachable.
+
 ## Severity legend
 
 - **CRITICAL** — data loss / security / breaks the bot broadly
@@ -37,6 +73,7 @@ Documentation only — **no code was changed.**
 ## CRITICAL
 
 ### D1 — Orphaned-guild cleanup's SQLite TEMP table does not survive across pooled connections; a stale empty copy can trigger mass deletion
+**[VERIFIED: CONFIRMED — root cause verified against SQLAlchemy 2.0.46 source; worst-case mass delete is a plausible consequence, not independently reproduced]**
 **src/core/db_manager.py:1195-1273**, **src/modules/database.py:124-144**
 
 `Database.execute_query()` opens a **new Session (and pool connection) per call**
@@ -71,6 +108,7 @@ or batched `NOT IN` parameter lists.
 ## HIGH
 
 ### M1 — Nickname-profanity path DMs the member unguarded; a closed DM aborts the admin-channel report, and the DM ignores the /opt_out_of_dms setting
+**[VERIFIED: CONFIRMED]**
 **src/features/moderation.py:213-241** (`check_and_punish_nickname_for_profanity`)
 
 `await member.send(embed=embed)` (line 221) is not wrapped in try/except and is not
@@ -85,6 +123,7 @@ still get this DM.
 try/except Forbidden, mirroring `check_and_trigger_profanity_moderation_for_message`.
 
 ### H1 — "Manage Members" strike list shows "no members with strikes" whenever a server has more than the display limit
+**[VERIFIED: CONFIRMED]**
 **src/features/dashboard.py:790-813** (`ManageMembersView.get_members`)
 
 When the member count exceeds `limit` (25), the code appends the "N more…" row and
@@ -99,6 +138,7 @@ caller (`setup`, line 776-780) does `if self.members:` → falsy → renders
 ## MEDIUM
 
 ### R1 — "Numbers" reaction roles: the 10th role gets emoji 1️⃣ again, making it unobtainable
+**[VERIFIED: CONFIRMED]**
 **src/features/reaction_roles.py:218-224**, **src/components/utils.py:15-56**
 
 For `Numbers` type, `utils.asci_to_emoji(count)` is called with `count` up to 10
@@ -111,6 +151,7 @@ line 262).
 **Fix direction:** support 🔟 for 10 (or cap Numbers-type at 9 selections).
 
 ### R2 — Role-message select options break Discord's 100-char value limit when an option grants ≥6 roles
+**[VERIFIED: CONFIRMED — overflow mechanism confirmed; client-side vs Discord-side failure mode undetermined]**
 **src/features/role_messages.py:48, 139**
 
 `SelectOption(value="|".join(roles))` packs role IDs (≈19 chars each) into the
@@ -123,6 +164,7 @@ time it is clicked, permanently breaking that role message.
 the embed field at callback time.
 
 ### M2 — `communication_disabled_until is not None` mistakes an *expired* timeout for an active one
+**[VERIFIED: FALSE POSITIVE — nextcord computes communication_disabled_until freshness at access time (member.py:658-671); premise impossible]**
 **src/features/moderation.py:529** (`check_and_trigger_profanity_moderation_for_message`)
 
 Discord leaves `communication_disabled_until` set to a **past** timestamp after a
@@ -136,6 +178,7 @@ raises KeyError inside the DM try-block.
 (`cdu is not None and cdu > now`).
 
 ### C1 — Log rotation leaks a file descriptor every midnight (removed handlers are never closed)
+**[VERIFIED: CONFIRMED]**
 **src/core/log_manager.py:194-196** (`setup_logging`)
 
 The scheduler re-runs `setup_logging()` at every midnight tick (scheduling.py:50-54).
@@ -147,6 +190,7 @@ log files is not reclaimed until restart.
 **Fix direction:** `handler.close()` after `removeHandler`.
 
 ### J1 — Joke submission: missing `return` after `self.stop()` when the support server is unavailable → AttributeError
+**[VERIFIED: CONFIRMED]**
 **src/features/jokes.py:336-368** (`SubmitJokeModal.callback`)
 
 `if server is None: self.stop()` falls through; `server.get_channel(...)` then
@@ -157,6 +201,7 @@ The user gets the generic error embed instead of a useful message.
 **Fix direction:** `return` after `stop()`; guard `channel is None`.
 
 ### J2 — Joke deny flow responds to the same interaction twice → InteractionResponded error on every deny-with-DM
+**[VERIFIED: CONFIRMED — second edit_message always raises InteractionResponded when a member was resolved]**
 **src/features/jokes.py:450, 485** (`ConfirmView.confirm`)
 
 `interaction.response.edit_message(delete_after=0.0)` is called at line 450, and
@@ -167,6 +212,7 @@ succeeded).
 **Fix direction:** delete the duplicate response at line 485.
 
 ### E1 — /create embed: crashes on empty color selection and on view/modal timeout
+**[VERIFIED: CONFIRMED — both sub-claims]**
 **src/features/embeds.py:79-81, 120-126, 144-146**
 
 (a) `EmbedColorView.create_callback` does `self.selection = self.select.values[0]`
@@ -180,6 +226,7 @@ generic error embed.
 bail out when the modal/view produced no result.
 
 ### C2 — Missing (unset) DISCORD_AUTH_TOKEN crashes with AttributeError instead of the intended fatal message
+**[VERIFIED: CONFIRMED]**
 **src/main.py:35-53** (`get_token`)
 
 The existence check only logs a warning; the next line unconditionally does
@@ -190,6 +237,7 @@ returns None and `.lower()` raises AttributeError, so the friendly
 into `unset_vars`.
 
 ### M3 — Profanity regexes are recompiled for every message (and every nickname change)
+**[VERIFIED: CONFIRMED — mechanism real; see Verification status for two corrected details]**
 **src/features/moderation.py:330** (`str_is_profane`)
 
 Each call compiles `len(filtered_words)` regex patterns (default list is large) —
@@ -200,6 +248,7 @@ compounds with guild count.
 with TTL/invalidation on word edits.
 
 ### R4 — Every reaction anywhere triggers member/channel/message resolution before checking whether the message is the bot's
+**[VERIFIED: CONFIRMED — both sub-claims]**
 **src/features/reaction_roles.py:332-355** (`run_raw_reaction_add`)
 
 For *every* `on_raw_reaction_add` in every guild, the handler resolves the member
@@ -213,6 +262,7 @@ missing Manage Messages raises Forbidden into the default event error handler.
 `remove_reaction`; consider an LRU of known non-reaction-role message IDs.
 
 ### B1 — Merely opening Dashboard → Birthdays silently activates birthdays at midnight UTC
+**[VERIFIED: CONFIRMED — all three sub-claims]**
 **src/features/dashboard.py:3429, 3456** (`BirthdaysView.setup`)
 
 `server.birthdays_profile.runtime = server.birthdays_profile.runtime or "00:00:00"`
@@ -224,6 +274,7 @@ warning at line 3456 is dead code (runtime was just set two lines earlier).
 warning check the pre-assignment value.
 
 ### X1 — A failed autoban (missing permission) permanently deletes the autoban entry
+**[VERIFIED: CONFIRMED]**
 **src/features/autobans.py:24-40** (`check_and_run_autoban_for_member`)
 
 When `member.ban()` raises Forbidden, the code still falls through to
@@ -238,12 +289,14 @@ notify the owner it will retry).
 ## LOW
 
 ### DASH2 — Strike-edit dropdown never preselects the member's current strike count
+**[VERIFIED: CONFIRMED]**
 **src/features/dashboard.py:867-872** — `server.moderation_strikes.get(member_id, 0)`
 returns a row *dataclass* (or 0), which is compared to `int` levels
 (`default=(level==self.member_strikes)`) — never equal for members with strikes, so
 no option is preselected. Should compare `.strikes`.
 
 ### DASH3 — Dashboard strike edits store naive `datetime.now()` for `last_strike`
+**[VERIFIED: CONFIRMED]**
 **src/features/dashboard.py:897, 902** — everywhere else `last_strike` is stored
 UTC-aware. `parse_datetime_string` assumes naive = UTC on read, so on a host whose
 local TZ ≠ UTC the expiry math shifts by the offset. (Container runs UTC → latent.)
@@ -252,6 +305,7 @@ Related cosmetic naive timestamps: join/leave embed timestamps
 (moderation.py:563, 633).
 
 ### DASH4 — Channel-select pages crash when no channel is selectable
+**[VERIFIED: CONFIRMED]**
 **src/features/dashboard.py:616-639, 1791-1822** and **src/components/ui_components.py:331-333**
 — `SelectView` raises ValueError on an empty options list. If InfiniBot cannot
 send/view in *any* text channel, opening the profanity Admin-Channel page (which is
@@ -259,48 +313,57 @@ force-redirected to when the channel is UNSET) or Logging channel page throws th
 generic error embed instead of an actionable message.
 
 ### DASH5 — Level-reward "Choose Level" modal crashes on non-numeric input
+**[VERIFIED: CONFIRMED]**
 **src/features/dashboard.py:2260-2262** — `level = int(self.input.value)` has no
 validation (unlike its sibling modals) → ValueError → generic modal error.
 
 ### L1 — Daily leveling maintenance deletes zero-point rows one day late
+**[VERIFIED: CONFIRMED]**
 **src/features/leveling.py:250-255** — the cleanup checks the *pre-decrement* value
 (`member_level_info.points == 0`) instead of the freshly computed `_points`, so a
 member who just hit 0 keeps their row until the next day's run. Harmless but
 presumably not the intent.
 
 ### M4 — Strikes of members who left the guild are never cleaned up
+**[VERIFIED: CONFIRMED]**
 **src/features/moderation.py:977-981** — `daily_moderation_maintenance` skips rows
 whose member is no longer resolvable (`continue`), unlike leveling maintenance which
 deletes them (leveling.py:233-237). Rows for departed members persist until the
 guild itself is orphaned.
 
 ### A1 — Delete-log "Show More" can push the message over the 10-embed limit
+**[VERIFIED: CONFIRMED]**
 **src/features/action_logging.py:453-475** + **:58-59** — a deleted message carrying
 exactly 9 embeds produces a 10-embed log message; clicking "Show More" appends an
 11th embed → HTTP 400 on `edit_message`, surfaced as the generic view error.
 
 ### J3 — /joke crashes when the jokes list is empty
+**[VERIFIED: CONFIRMED]**
 **src/features/jokes.py:718-724** — `random.choice(all_jokes)` raises IndexError on
 an empty list (e.g. jokes.json failed to load); the `if joke is None` guard after it
 can never fire.
 
 ### J4 — Deny flow stores per-interaction state on the shared persistent view
+**[VERIFIED: FALSE POSITIVE — no await between write (jokes.py:510) and use (jokes.py:513); no race window]**
 **src/features/jokes.py:509-513** — `self.member_id` is written to the
 `JokeVerificationView` singleton registered in `init_views`; two moderators denying
 different submissions concurrently can cross their member lookups (an `await` sits
 between write and use).
 
 ### R3 — Custom reaction-role parsing depends on exactly one space around `=`
+**[VERIFIED: CONFIRMED — slice arithmetic verified for all three spacing variants]**
 **src/features/reaction_roles.py:159, 248** — `option.split("=")[1][4:-1]` assumes
 the value is ` <@&ID>` (one leading space). `👍=<@&123>` (no space) slices off a
 digit and fails; two spaces mis-slices too. Falls into the generic "You formatted
 that wrong" path even for reasonable input. A regex (`<@&(\d+)>`) would be robust.
 
 ### X2 — /opt_out_of_dms embeds reference slash commands with dashes that don't exist
+**[VERIFIED: CONFIRMED]**
 **src/features/dm_commands.py:57, 89** — text says `/opt-into-dms` /
 `/opt-out-of-dms`; the registered commands are `/opt_into_dms` / `/opt_out_of_dms`.
 
 ### C3 — `on_ready` re-runs registration work on session re-establishment
+**[VERIFIED: CONFIRMED in part — re-fire and stale startup_time confirmed; view-store accumulation sub-claim refuted (ViewStore overwrites by key)]**
 **src/core/bot.py:115-188** — nextcord can dispatch `on_ready` again after an
 invalidated session resume. `start_scheduler()` handles restart, but `init_views`
 re-registers all 10 persistent views (view-store growth), the emoji cache refetches
@@ -308,6 +371,7 @@ re-registers all 10 persistent views (view-store growth), the emoji cache refetc
 nonsense durations. Latent memory/log noise, not a crash.
 
 ### X3 — Autoban add-modal passes a string user ID to `utils.get_member`
+**[VERIFIED: CONFIRMED]**
 **src/features/dashboard.py:4640-4656** — `user_id` stays a `str`; the
 `guild.get_member(user_id)` cache lookup always misses (dict keyed by int), forcing
 a REST fetch on every check. Works, but defeats the cache; `int(user_id)` before
