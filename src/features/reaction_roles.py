@@ -339,6 +339,32 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
     if not guild.me:
         return
 
+    # InfiniBot seeds its own reaction-role messages with reactions; ignore those
+    # before doing any lookups.
+    if bot.user is not None and payload.user_id == bot.user.id:
+        return
+
+    # Get the message. Everything that can disqualify the message is checked before
+    # the member is resolved, so reactions on messages InfiniBot could never act on
+    # cost no member lookup (and no REST fetch on a cache miss).
+    channel = await utils.get_channel(payload.channel_id)
+    if channel is None:
+        return  # If the channel doesn't exist, we can't do anything
+    message = await utils.get_message(channel, payload.message_id)
+    if message is None:
+        return  # Message doesn't exist or was recently not found
+
+    # Not our message, so it cannot be a reaction role
+    if message.author.id != bot.application_id:
+        return
+
+    if not message.embeds:
+        return
+
+    # Check to see if this is actually a reaction role
+    if not (len(message.embeds[0].fields) >= 1 and message.embeds[0].fields[0].name.lower().startswith("react")):
+        return
+
     # Get the user
     user = await utils.get_member(guild, payload.user_id)
     if user is None:
@@ -346,13 +372,8 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
         logging.warning(f"User {payload.user_id} not found in guild {guild.id}. Ignoring reaction.")
         return
 
-    # Get the message
-    channel = await utils.get_channel(payload.channel_id)
-    if channel is None: 
-        return  # If the channel doesn't exist, we can't do anything
-    message = await utils.get_message(channel, payload.message_id)
-    if message is None: 
-        return  # Message doesn't exist or was recently not found
+    if user.bot:
+        return
 
     # Declare some functions
     def get_role(string: str):
@@ -376,48 +397,47 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
 
     action = None
 
-    # If it was our message and it was not a bot reacting,
-    if message.author.id == bot.application_id and not user.bot:
-        if message.embeds:
-            # Check to see if this is actually a reaction role
-            if len(message.embeds[0].fields) >= 1 and message.embeds[0].fields[0].name.lower().startswith("react"): # This message IS a reaction role
-                # Get all options
-                info = message.embeds[0].fields[0].value
-                info = info.split("\n")
-                
-                # For each option
-                for line in info:
-                    line_split = line.split(" ")
-                    if str(line_split[0]) == str(emoji): # Ensure that this is a real option
-                        # Get the discord role
-                        discord_role = get_role(" ".join(line_split[1:]))
-                        if discord_role: # If it exists
-                            # Check the user's roles
-                            user_role = nextcord.utils.get(user.roles, id=discord_role.id)
-                            # Give / Take the role
-                            try:
-                                if user_role:
-                                    await user.remove_roles(discord_role)
-                                    action = "removed"
-                                else:
-                                    await user.add_roles(discord_role)
-                                    action = "added"
-                            except nextcord.errors.Forbidden:
-                                # No permissions. Send an error
-                                await send_no_permissions_error(discord_role, user)
-                            
-                            # Remove their reaction
-                            await message.remove_reaction(emoji, user)
-                        else:
-                            # If the discord role does not exist, send an error
-                            await send_no_role_error()
-                            # Try to remove their reaction. If we can't, it's fine
-                            try:
-                                await message.remove_reaction(emoji, user)
-                            except nextcord.errors.Forbidden:
-                                pass
-                            return
-    
+    # Get all options
+    info = message.embeds[0].fields[0].value
+    info = info.split("\n")
+
+    # For each option
+    for line in info:
+        line_split = line.split(" ")
+        if str(line_split[0]) == str(emoji): # Ensure that this is a real option
+            # Get the discord role
+            discord_role = get_role(" ".join(line_split[1:]))
+            if discord_role: # If it exists
+                # Check the user's roles
+                user_role = nextcord.utils.get(user.roles, id=discord_role.id)
+                # Give / Take the role
+                try:
+                    if user_role:
+                        await user.remove_roles(discord_role)
+                        action = "removed"
+                    else:
+                        await user.add_roles(discord_role)
+                        action = "added"
+                except nextcord.errors.Forbidden:
+                    # No permissions. Send an error
+                    await send_no_permissions_error(discord_role, user)
+
+                # Remove their reaction. If we can't, it's fine
+                try:
+                    await message.remove_reaction(emoji, user)
+                except nextcord.errors.Forbidden:
+                    pass
+            else:
+                # If the discord role does not exist, send an error
+                await send_no_role_error()
+                # Try to remove their reaction. If we can't, it's fine
+                try:
+                    await message.remove_reaction(emoji, user)
+                except nextcord.errors.Forbidden:
+                    pass
+                return
+
+
     # Send embed notifying the user of the action
     if action:
         embed = nextcord.Embed(
