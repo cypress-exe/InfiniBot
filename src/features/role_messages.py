@@ -1,12 +1,9 @@
 from nextcord import Interaction
 import nextcord
-import re
 
 from components import utils, ui_components
 from components.ui_components import CustomModal, CustomView
 from config.server import Server
-
-ROLE_MENTION_PATTERN = re.compile(r"<@&(\d+)>")
 
 class RoleMessageSelectView(CustomView):
     """
@@ -38,7 +35,7 @@ class RoleMessageSelectView(CustomView):
         for field_index, field in enumerate(self.message.embeds[0].fields):
             name = field.name
             description = "\n".join(field.value.split("\n")[:-1])
-            roles = self.extract_ids(field.value.split("\n")[-1])
+            roles = utils.extract_role_ids(field.value.split("\n")[-1])
             self.add_available_roles(roles)
 
             # Preselect the option only if the user already has every role it grants
@@ -68,9 +65,6 @@ class RoleMessageSelectView(CustomView):
         )
         self.select.callback = self.select_callback
         self.add_item(self.select)
-
-    def extract_ids(self, input_string):
-        return ROLE_MENTION_PATTERN.findall(input_string)
 
     def add_available_roles(self, roles_list):
         for role in roles_list:

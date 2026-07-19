@@ -1,6 +1,5 @@
 from nextcord import Interaction
 import nextcord
-import re
 
 from components import utils, ui_components
 from components.ui_components import CustomModal, CustomView
@@ -575,7 +574,7 @@ class EditRoleMessage(CustomView):
             for field in self.message.embeds[0].fields:
                 name = field.name
                 description = "\n".join(field.value.split("\n")[:-1])
-                roles = self.extract_ids(field.value.split("\n")[-1])
+                roles = utils.extract_role_ids(field.value.split("\n")[-1])
                 self.options.append([roles, name, description])
                 
             # Get Mode
@@ -713,11 +712,6 @@ class EditRoleMessage(CustomView):
         
         embed.add_field(name=title, value=value, inline=False)
         return True
-    
-    def extract_ids(self, input_string):
-        pattern = r"<@&(\d+)>"
-        matches = re.findall(pattern, input_string)
-        return matches
     
     async def disable_view(self, interaction: Interaction):
         for child in self.children:

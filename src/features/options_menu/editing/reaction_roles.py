@@ -1,7 +1,6 @@
 import logging
 from nextcord import Interaction
 import nextcord
-import re
 import json
 
 from config.server import Server
@@ -195,10 +194,9 @@ class EditReactionRole(CustomView):
                 if "⚠️" in string:
                     return None
                     
-                # Original regex pattern with improved handling
-                match = re.search(r"^(<@&)?(\d+)>?$", string)
-                if match:
-                    return nextcord.utils.get(guild.roles, id=int(match.group(2)))
+                role_id = utils.extract_role_id(string, allow_bare_id=True)
+                if role_id is not None:
+                    return nextcord.utils.get(guild.roles, id=role_id)
                 return nextcord.utils.get(guild.roles, name=string) if string else None
            
             def format_options(self, guild: nextcord.Guild, lines: list[str], packet_to_modify=None, display_errors=True):

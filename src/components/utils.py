@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import logging
 import datetime
+import re
 from typing import Any
 
 import nextcord
@@ -11,6 +12,40 @@ from config.global_settings import feature_dependencies, required_permissions, r
 from modules.custom_types import ExpiringSet
 
 COLOR_OPTIONS = ["Red", "Green", "Blue", "Yellow", "White", "Blurple", "Greyple", "Teal", "Purple", "Gold", "Magenta", "Fuchsia"]
+
+ROLE_MENTION_PATTERN = re.compile(r"<@&(\d+)>")
+
+def extract_role_id(text: str, allow_bare_id: bool = False) -> int | None:
+    """
+    Pull the first role ID out of a role mention, tolerating any surrounding text
+    or whitespace.
+
+    :param text: Text containing a role mention, e.g. " <@&123>".
+    :type text: str
+    :param allow_bare_id: Also accept text that is just the ID digits, e.g. "123".
+    :type allow_bare_id: bool
+    :return: The role ID, or None if no role mention is present.
+    :rtype: int | None
+    """
+    match = ROLE_MENTION_PATTERN.search(text)
+    if match:
+        return int(match.group(1))
+
+    if allow_bare_id and text.strip().isdigit():
+        return int(text.strip())
+
+    return None
+
+def extract_role_ids(text: str) -> list[int]:
+    """
+    Pull every role ID out of the role mentions in a string, in order.
+
+    :param text: Text containing zero or more role mentions.
+    :type text: str
+    :return: The role IDs.
+    :rtype: list[int]
+    """
+    return [int(role_id) for role_id in ROLE_MENTION_PATTERN.findall(text)]
 
 def asci_to_emoji(letter, fallback_letter = "1"):
     letter = str(letter)

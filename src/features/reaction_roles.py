@@ -1,4 +1,3 @@
-import re
 import nextcord
 from nextcord import Interaction
 import logging
@@ -6,20 +5,6 @@ import json
 
 from config.server import Server
 from components import ui_components, utils
-
-ROLE_MENTION_PATTERN = re.compile(r"<@&(\d+)>")
-
-def extract_role_id(text: str) -> int | None:
-    """
-    Pull a role ID out of a role mention, tolerating any surrounding whitespace.
-
-    :param text: Text containing a role mention, e.g. " <@&123>".
-    :type text: str
-    :return: The role ID, or None if no role mention is present.
-    :rtype: int | None
-    """
-    match = ROLE_MENTION_PATTERN.search(text)
-    return int(match.group(1)) if match else None
 
 class ReactionRoleModal(ui_components.CustomModal):
     def __init__(self):
@@ -170,7 +155,7 @@ async def run_custom_reaction_role_command(interaction: Interaction, options: st
                                                                                 description="Every emoji has to be unique.", color=nextcord.Color.red()), ephemeral=True)
                 return
             
-            role_ID = extract_role_id(option.split("=", 1)[1])
+            role_ID = utils.extract_role_id(option.split("=", 1)[1])
             if role_ID is None:
                 raise Exception # Trigger the error message at end of try block
             role = [role for role in interaction.guild.roles if role.id == role_ID][0]
@@ -271,7 +256,7 @@ async def create_reaction_role(interaction: Interaction, title: str, message: st
             if not separator:
                 continue
 
-            role = guild_roles_by_id.get(extract_role_id(role_str))
+            role = guild_roles_by_id.get(utils.extract_role_id(role_str))
             if role is None:
                 continue
 
@@ -406,14 +391,10 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
 
     # Declare some functions
     def get_role(string: str):
-        pattern = r"^(<@&)(.*)>$"  # Regular expression pattern with a capturing group
-        match = re.search(pattern, string)
-        if match:
-            role_id = int(match.group(2)) # Role ID
-            role = nextcord.utils.get(guild.roles, id=role_id)
-        else:
-            role = nextcord.utils.get(guild.roles, name=string)
-        return role
+        role_id = utils.extract_role_id(string)
+        if role_id is not None:
+            return nextcord.utils.get(guild.roles, id=role_id)
+        return nextcord.utils.get(guild.roles, name=string)
     
     async def send_no_role_error():
         await message.channel.send(embed = nextcord.Embed(title="Role Not Found", description=f"Infinibot cannot find one or more of those roles. Check to make sure all roles still exist.", color=nextcord.Color.red()), reference=message)
