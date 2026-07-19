@@ -148,7 +148,7 @@ duplicate reaction is a no-op on Discord (already present), and the reaction han
 matches only the first line with that emoji — so the 10th role can never be granted.
 The same fallback logic affects `editing/reaction_roles.py` (`json_data["type"] == 1`,
 line 262).
-**Fix direction:** support 🔟 for 10 (or cap Numbers-type at 9 selections).
+**Fix direction:** support 🔟 for 10.
 
 ### R2 — Role-message select options break Discord's 100-char value limit when an option grants ≥6 roles
 **[VERIFIED: CONFIRMED — overflow mechanism confirmed; client-side vs Discord-side failure mode undetermined]**
@@ -162,6 +162,7 @@ the "Get Role"/"Get Roles" button then fails (HTTP 400 / validation error) every
 time it is clicked, permanently breaking that role message.
 **Fix direction:** use the field index as the option value and resolve role IDs from
 the embed field at callback time.
+Note: This change MUST ensure backwards compatibility with existing role messages.
 
 ### M2 — `communication_disabled_until is not None` mistakes an *expired* timeout for an active one
 **[VERIFIED: FALSE POSITIVE — nextcord computes communication_disabled_until freshness at access time (member.py:658-671); premise impossible]**
@@ -236,6 +237,8 @@ returns None and `.lower()` raises AttributeError, so the friendly
 **Fix direction:** `(os.environ.get(var[0]) or "").lower()` or fold missing vars
 into `unset_vars`.
 
+Human notes: This deserves another look, because the "FATAL ERROR ... EXITING" path *does* run. This may be a false issue, and should be investigated before "fixing".
+
 ### M3 — Profanity regexes are recompiled for every message (and every nickname change)
 **[VERIFIED: CONFIRMED — mechanism real; see Verification status for two corrected details]**
 **src/features/moderation.py:330** (`str_is_profane`)
@@ -270,8 +273,7 @@ writes a runtime the moment an admin *views* the page. The scheduler treats any
 non-UNSET runtime as armed (birthdays.py:99), so birthdays start firing at 00:00 UTC
 even though the admin never picked a time — and the "⚠️ You must set a message time"
 warning at line 3456 is dead code (runtime was just set two lines earlier).
-**Fix direction:** keep runtime UNSET until the user actually sets a time; make the
-warning check the pre-assignment value.
+**Fix direction:** keep runtime UNSET until the user actually sets a time.
 
 ### X1 — A failed autoban (missing permission) permanently deletes the autoban entry
 **[VERIFIED: CONFIRMED]**
@@ -324,18 +326,23 @@ validation (unlike its sibling modals) → ValueError → generic modal error.
 member who just hit 0 keeps their row until the next day's run. Harmless but
 presumably not the intent.
 
+Human edit: Actually, even more than that, currently I don't think it's updating the actual member levels at all. Am I right? If so, that needs to be fixed too.
+
 ### M4 — Strikes of members who left the guild are never cleaned up
-**[VERIFIED: CONFIRMED]**
+**[VERIFIED: CONFIRMED] — SKIP: INTENDED BEHAVIOR** 
 **src/features/moderation.py:977-981** — `daily_moderation_maintenance` skips rows
 whose member is no longer resolvable (`continue`), unlike leveling maintenance which
 deletes them (leveling.py:233-237). Rows for departed members persist until the
 guild itself is orphaned.
+
+Human edit: This is intended behavior. The member leaving the guild shouldn't be a way to cheat their strike count and remove it.
 
 ### A1 — Delete-log "Show More" can push the message over the 10-embed limit
 **[VERIFIED: CONFIRMED]**
 **src/features/action_logging.py:453-475** + **:58-59** — a deleted message carrying
 exactly 9 embeds produces a 10-embed log message; clicking "Show More" appends an
 11th embed → HTTP 400 on `edit_message`, surfaced as the generic view error.
+Solution: hide show more button when the message already has 10 embeds to prevent exceeding the limit.
 
 ### J3 — /joke crashes when the jokes list is empty
 **[VERIFIED: CONFIRMED]**
@@ -377,9 +384,11 @@ nonsense durations. Latent memory/log noise, not a crash.
 a REST fetch on every check. Works, but defeats the cache; `int(user_id)` before
 the call fixes it.
 
+Human notes: While fixing this, also make get_member more robust by ensuring it can handle both string and integer IDs gracefully, converting as necessary to avoid cache misses.
+
 ---
 
-## Infra notes (no defects found worth an ID)
+## Infra notes (no defects found worth an ID). DO NOT "FIX" THESE.
 
 - `build.bash` references an undefined `buildx_cache_args` array — harmless empty
   expansion (no `set -u`), just cruft alongside the also-unused `buildx_cache=""`.
