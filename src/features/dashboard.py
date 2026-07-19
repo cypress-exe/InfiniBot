@@ -900,12 +900,12 @@ class Dashboard(CustomView):
                                                     
                                                     if self.member_id in server.moderation_strikes:
                                                         if strikes != 0: 
-                                                            server.moderation_strikes.edit(self.member_id, strikes=strikes, last_strike=datetime.datetime.now())
+                                                            server.moderation_strikes.edit(self.member_id, strikes=strikes, last_strike=datetime.datetime.now(datetime.timezone.utc))
                                                         else:
                                                             server.moderation_strikes.delete(self.member_id)
                                                     else:
                                                         if strikes != 0:
-                                                            server.moderation_strikes.add(member_id=self.member_id, strikes=strikes, last_strike=datetime.datetime.now())
+                                                            server.moderation_strikes.add(member_id=self.member_id, strikes=strikes, last_strike=datetime.datetime.now(datetime.timezone.utc))
                                                     
                                                     await self.outer.setup(interaction)
 

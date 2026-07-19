@@ -583,7 +583,7 @@ async def check_and_trigger_profanity_moderation_for_message(
                 description += "\nYou're getting this message because your server has enabled Profanity Moderation for messages. If you believe this was a mistake, please contact a server admin, and they can [disable it](https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/profanity/#how-to-disable-profanity-moderation)."
 
                 description = utils.standardize_str_indention(description)
-                embed = nextcord.Embed(title="Profanity Log", description=description, color=nextcord.Color.red(), timestamp=datetime.datetime.now())
+                embed = nextcord.Embed(title="Profanity Log", description=description, color=nextcord.Color.red(), timestamp=datetime.datetime.now(datetime.timezone.utc))
                 embed.set_footer(text="To opt out of dm notifications, use /opt_out_of_dms")
                 await message.author.send(embed=embed)
 
@@ -653,7 +653,7 @@ async def check_and_trigger_profanity_moderation_for_message(
 
             description = utils.standardize_str_indention(description)
             
-            embed = nextcord.Embed(title="Profanity Detected", description=description, color=nextcord.Color.dark_red(), timestamp=datetime.datetime.now())
+            embed = nextcord.Embed(title="Profanity Detected", description=description, color=nextcord.Color.dark_red(), timestamp=datetime.datetime.now(datetime.timezone.utc))
             embed.set_footer(text=f"Member ID: {str(message.author.id)}")
             
             await admin_channel.send(view=view, embed=embed)
