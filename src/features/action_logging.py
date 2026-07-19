@@ -18,6 +18,13 @@ from modules.custom_types import UNSET_VALUE, ExpiringSet
 MAX_EMBEDS_PER_MESSAGE = 10
 """Discord's hard limit on embeds in a single message."""
 
+# By extension:
+MAX_ATTACHED_EMBEDS = MAX_EMBEDS_PER_MESSAGE - 1
+"""How many of a deleted message's embeds fit alongside the log embed itself."""
+
+TRUNCATED_ATTACHED_EMBEDS = MAX_EMBEDS_PER_MESSAGE - 2
+"""How many are attached once truncation kicks in, leaving a slot for "Show More"."""
+
 class ShowMoreButton(ui_components.CustomView):
   """
   A View that will be used for the Action Logging feature.
@@ -464,9 +471,8 @@ async def trigger_delete_log(bot: nextcord.Client, channel: nextcord.TextChannel
     # Attached Embeds
     if message and message.embeds != []:
         attachedMessage = "Attached below"
-        if len(message.embeds) > 9:
-            # The send below attaches embeds[0:8] alongside the log embed (9 total)
-            attachedMessage = f"8/{len(message.embeds)} are attached below"
+        if len(message.embeds) > MAX_ATTACHED_EMBEDS:
+            attachedMessage = f"{TRUNCATED_ATTACHED_EMBEDS}/{len(message.embeds)} are attached below"
             
         embed.add_field(name = "Embeds", value = f"This message contained one or more embeds. ({attachedMessage})", inline = False)
         embeds = message.embeds
@@ -486,7 +492,7 @@ async def trigger_delete_log(bot: nextcord.Client, channel: nextcord.TextChannel
     embed.set_footer(text = f"Message ID: {message_id}\nCode: {code}")
 
     # Actually send the embed
-    all_embeds = [embed] + (embeds[0:8] if len(embeds) >= 10 else embeds)
+    all_embeds = [embed] + (embeds[0:TRUNCATED_ATTACHED_EMBEDS] if len(embeds) > MAX_ATTACHED_EMBEDS else embeds)
 
     # "Show More" appends an 11th embed, which Discord rejects. Only offer it when
     # the log message leaves room.
