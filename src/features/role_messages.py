@@ -6,98 +6,121 @@ from components import utils, ui_components
 from components.ui_components import CustomModal, CustomView
 from config.server import Server
 
+ROLE_MENTION_PATTERN = re.compile(r"<@&(\d+)>")
+
+class RoleMessageSelectView(CustomView):
+    """
+    The role picker behind a role message's button, shared by the single-choice and
+    multiple-choice variants.
+
+    Each embed field is one option: its last line holds the role mentions the option
+    grants, and the lines above it are the option's description.
+
+    Subclasses set :attr:`select_custom_id`, :attr:`select_placeholder` and
+    :attr:`allow_multiple`.
+    """
+    select_custom_id: str
+    select_placeholder: str
+    allow_multiple: bool
+
+    def __init__(self, user: nextcord.Member, message: nextcord.Message):
+        super().__init__()
+        self.message = message
+        self.available_roles = []
+
+        user_role_ids = [role.id for role in user.roles if role.name != "@everyone"]
+
+        options = []
+        # Option values are field indices; role IDs would overflow Discord's
+        # 100-char value cap once an option grants 6+ roles.
+        self.option_roles: dict[str, list[int]] = {}
+        has_default_option = False
+        for field_index, field in enumerate(self.message.embeds[0].fields):
+            name = field.name
+            description = "\n".join(field.value.split("\n")[:-1])
+            roles = self.extract_ids(field.value.split("\n")[-1])
+            self.add_available_roles(roles)
+
+            # Preselect the option only if the user already has every role it grants
+            selected = bool(roles) and all(int(role) in user_role_ids for role in roles)
+            if selected and not self.allow_multiple:
+                # A single-choice select accepts only one default option.
+                selected = not has_default_option
+                has_default_option = True
+
+            # Truncate name and description if too long
+            if len(name) > 100:
+                name = name[:97] + "..."
+
+            if len(description) > 100:
+                description = description[:97] + "..."
+
+            value = str(field_index)
+            self.option_roles[value] = [int(role) for role in roles]
+            options.append(nextcord.SelectOption(label=name, description=description, value=value, default=selected))
+
+        self.select = nextcord.ui.Select(
+            custom_id=self.select_custom_id,
+            placeholder=self.select_placeholder,
+            min_values=0,
+            max_values=(max(len(options), 1) if self.allow_multiple else 1),
+            options=options
+        )
+        self.select.callback = self.select_callback
+        self.add_item(self.select)
+
+    def extract_ids(self, input_string):
+        return ROLE_MENTION_PATTERN.findall(input_string)
+
+    def add_available_roles(self, roles_list):
+        for role in roles_list:
+            if int(role) not in self.available_roles:
+                self.available_roles.append(int(role))
+
+    async def setup(self, interaction: Interaction):
+        await interaction.response.send_message(view = self, ephemeral = True)
+
+    async def select_callback(self, interaction: Interaction):
+        selected_roles = []
+        for option in self.select.values:
+            selected_roles.extend(self.option_roles.get(option, []))
+
+        # Get the roles
+        roles_add = []
+        roles_remove = []
+        for role in self.available_roles:
+            role_obj = interaction.guild.get_role(int(role))
+            if role_obj is None:
+                continue  # Role was deleted from the guild; skip so add/remove_roles doesn't get None
+            if role in selected_roles:
+                roles_add.append(role_obj)
+            else:
+                roles_remove.append(role_obj)
+
+        error = False
+        try:
+            await interaction.user.add_roles(*roles_add)
+            await interaction.user.remove_roles(*roles_remove)
+        except nextcord.errors.Forbidden:
+            error = True
+
+        embed = nextcord.Embed(title="Modified Roles", color=nextcord.Color.green())
+        if error: embed.description = "Warning: An error occurred with one or more roles. Please notify server admins."
+
+        try:
+            await interaction.response.edit_message(embed=embed, view=None, delete_after=2.0)
+        except nextcord.errors.NotFound:
+            # Message was deleted, so we can't edit it
+            pass
+
 class RoleMessageButton_Single(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
-    
-    class View(CustomView):
-        def __init__(self, user: nextcord.Member, message: nextcord.Message):
-            super().__init__()
-            self.message = message
-            self.available_roles = []
-            
-            user_role_ids = [role.id for role in user.roles if role.name != "@everyone"]
-            
-            options_selected = False
-            options = []
-            # Option values are field indices; role IDs would overflow Discord's
-            # 100-char value cap once an option grants 6+ roles.
-            self.option_roles: dict[str, list[int]] = {}
-            for field_index, field in enumerate(self.message.embeds[0].fields):
-                name = field.name
-                description = "\n".join(field.value.split("\n")[:-1])
-                roles = self.extract_ids(field.value.split("\n")[-1])
-                self.add_available_roles(roles)
 
-                # Check if the user has the roles
-                selected = False
-                for index, role in enumerate(roles):
-                    if not int(role) in user_role_ids:
-                        break
-                    else:
-                        if index == (len(roles) - 1): # If this is the last role to check
-                            if not options_selected:
-                                selected = True
-                                options_selected = True
-                            break
-
-                # Truncate name and description if too long
-                if len(name) > 100:
-                    name = name[:97] + "..."
-
-                if len(description) > 100:
-                    description = description[:97] + "..."
-
-                value = str(field_index)
-                self.option_roles[value] = [int(role) for role in roles]
-                options.append(nextcord.SelectOption(label=name, description=description, value=value, default=selected))
-                
-            self.select = nextcord.ui.Select(custom_id="role_message_single_select", placeholder="Choose a Role", min_values=0, options=options)
-            self.select.callback = self.select_callback
-            self.add_item(self.select)
-                
-        def extract_ids(self, input_string):
-            pattern = r"<@&(\d+)>"
-            matches = re.findall(pattern, input_string)
-            return matches
-            
-        def add_available_roles(self, roles_list):
-            for role in roles_list:
-                if int(role) not in self.available_roles:
-                    self.available_roles.append(int(role))
-            
-        async def setup(self, interaction: Interaction):
-            await interaction.response.send_message(view = self, ephemeral = True)
-            
-        async def select_callback(self, interaction: Interaction):
-            selection = self.select.values
-            selected_roles = []
-            for option in selection:
-                selected_roles.extend(self.option_roles.get(option, []))
-
-            # Get the roles
-            roles_add = []
-            roles_remove = []
-            for role in self.available_roles:
-                role_obj = interaction.guild.get_role(int(role))
-                if role_obj is None:
-                    continue  # Role was deleted from the guild; skip so add/remove_roles doesn't get None
-                if role in selected_roles:
-                    roles_add.append(role_obj)
-                else:
-                    roles_remove.append(role_obj)
-
-            error = False
-            try:
-                await interaction.user.add_roles(*roles_add)
-                await interaction.user.remove_roles(*roles_remove)
-            except nextcord.errors.Forbidden:
-                error = True
-
-            embed = nextcord.Embed(title = "Modified Roles", color = nextcord.Color.green())
-            if error: embed.description = "Warning: An error occurred with one or more roles. Please notify server admins."
-
-            await interaction.response.edit_message(embed=embed, view=None, delete_after=2.0)
+    class View(RoleMessageSelectView):
+        select_custom_id = "role_message_single_select"
+        select_placeholder = "Choose a Role"
+        allow_multiple = False
 
     @nextcord.ui.button(label = "Get Role", style = nextcord.ButtonStyle.blurple, custom_id = "get_role")
     async def event(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
@@ -107,96 +130,11 @@ class RoleMessageButton_Single(CustomView):
 class RoleMessageButton_Multiple(CustomView):
     def __init__(self):
         super().__init__(timeout = None)
-    
-    class View(CustomView):
-        def __init__(self, user: nextcord.Member, message: nextcord.Message):
-            super().__init__()
-            self.message = message
-            self.available_roles = []
-            
-            user_role_ids = [role.id for role in user.roles if role.name != "@everyone"]
-            
-            options = []
-            # Option values are field indices; role IDs would overflow Discord's
-            # 100-char value cap once an option grants 6+ roles.
-            self.option_roles: dict[str, list[int]] = {}
-            for field_index, field in enumerate(self.message.embeds[0].fields):
-                name = field.name
-                description = "\n".join(field.value.split("\n")[:-1])
-                roles = self.extract_ids(field.value.split("\n")[-1])
-                self.add_available_roles(roles)
 
-                # Check if the user has the roles
-                selected = False
-                for index, role in enumerate(roles):
-                    if not int(role) in user_role_ids:
-                        break
-                    else:
-                        if index == (len(roles) - 1): # If this is the last role to check
-                            selected = True
-                            break
-
-                # Truncate name and description if too long
-                if len(name) > 100:
-                    name = name[:97] + "..."
-
-                if len(description) > 100:
-                    description = description[:97] + "..."
-
-                value = str(field_index)
-                self.option_roles[value] = [int(role) for role in roles]
-                options.append(nextcord.SelectOption(label=name, description=description, value=value, default=selected))
-                
-            self.select = nextcord.ui.Select(custom_id="role_message_multi_select", placeholder="Choose Roles", min_values=0, max_values=len(options), options=options)
-            self.select.callback = self.select_callback
-            self.add_item(self.select)
-                
-        def extract_ids(self, input_string):
-            pattern = r"<@&(\d+)>"
-            matches = re.findall(pattern, input_string)
-            return matches
-            
-        def add_available_roles(self, rolesList):
-            for role in rolesList:
-                if int(role) not in self.available_roles:
-                    self.available_roles.append(int(role))
-            
-        async def setup(self, interaction: Interaction):
-            await interaction.response.send_message(view = self, ephemeral = True)
-            
-        async def select_callback(self, interaction: Interaction):
-            selection = self.select.values
-            selected_roles = []
-            for option in selection:
-                selected_roles.extend(self.option_roles.get(option, []))
-
-            # Get the roles
-            roles_add = []
-            roles_remove = []
-            for role in self.available_roles:
-                role_obj = interaction.guild.get_role(int(role))
-                if role_obj is None:
-                    continue  # Role was deleted from the guild; skip so add/remove_roles doesn't get None
-                if role in selected_roles:
-                    roles_add.append(role_obj)
-                else:
-                    roles_remove.append(role_obj)
-                    
-            error = False
-            try:
-                await interaction.user.add_roles(*roles_add)
-                await interaction.user.remove_roles(*roles_remove)
-            except nextcord.errors.Forbidden:
-                error = True
-                
-            embed = nextcord.Embed(title="Modified Roles", color=nextcord.Color.green())
-            if error: embed.description = "Warning: An error occurred with one or more roles. Please notify server admins."
-            
-            try:
-                await interaction.response.edit_message(embed=embed, view=None, delete_after=2.0)
-            except nextcord.errors.NotFound:
-                # Message was deleted, so we can't edit it
-                pass
+    class View(RoleMessageSelectView):
+        select_custom_id = "role_message_multi_select"
+        select_placeholder = "Choose Roles"
+        allow_multiple = True
 
     @nextcord.ui.button(label = "Get Roles", style = nextcord.ButtonStyle.blurple, custom_id = "get_roles")
     async def event(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
