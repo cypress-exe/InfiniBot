@@ -22,8 +22,10 @@ async def check_and_run_autoban_for_member(member: nextcord.Member) -> bool:
         await asyncio.sleep(1)
 
         # Now proceed with the autoban
+        banned = False
         try:
             await member.ban(reason="Autoban triggered")
+            banned = True
             logging.info(f"Autobanned member {member.id} ({member.name}) in guild {member.guild.id}")
         except nextcord.Forbidden:
             logging.error(f"Failed to autoban member {member.id} ({member.name}) in guild {member.guild.id}: Forbidden")
@@ -31,8 +33,13 @@ async def check_and_run_autoban_for_member(member: nextcord.Member) -> bool:
         except Exception as e:
             logging.error(f"Failed to autoban member {member.id} ({member.name}) in guild {member.guild.id}: {e}")
 
+        if not banned:
+            # Keep the entry so the autoban retries once the permission is granted.
+            # The member is still here, so treat the join as a normal one.
+            return False
+
         await asyncio.sleep(5)  # Ensure the ban is processed before removing autoban entry
-        
+
         # Remove autoban entry after banning
         server = Server(member.guild.id)
         server.autobans.delete(member.id)
