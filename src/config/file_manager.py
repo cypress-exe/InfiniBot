@@ -1,4 +1,5 @@
 import copy
+import functools
 import json
 import logging
 import os
@@ -16,6 +17,7 @@ def update_base_path(new_path: str) -> None:
     """
     global base_path
     base_path = new_path
+    _read_txt_to_list_cached.cache_clear()
 
 def read_txt_to_list(file_name: str) -> list:
     """
@@ -44,8 +46,38 @@ def read_txt_to_list(file_name: str) -> list:
             continue
         
         result.append(line_strip)
-    
+
     return result
+
+@functools.lru_cache(maxsize=32)
+def _read_txt_to_list_cached(file_name: str, _base_path: str) -> tuple:
+    """
+    Cached variant of :func:`read_txt_to_list` for internal use.
+
+    :param file_name: The name of the text file.
+    :type file_name: str
+    :param _base_path: No Op. Used for caching purposes only. The base path for the text file.
+    :type _base_path: str
+    :return: A tuple of lines from the text file.
+    :rtype: tuple
+    """
+    # _base_path is part of the cache key only; read_txt_to_list reads the global.
+    return tuple(read_txt_to_list(file_name))
+
+def read_txt_to_list_cached(file_name: str) -> list:
+    """
+    Cached variant of :func:`read_txt_to_list` for files that don't change while
+    InfiniBot is running (the shipped defaults). Callers on hot paths should use this
+    rather than paying a disk read and parse per call.
+
+    Edits to the file are picked up on the next restart.
+
+    :param file_name: The name of the text file.
+    :type file_name: str
+    :return: A list of lines from the text file.
+    :rtype: list
+    """
+    return list(_read_txt_to_list_cached(file_name, base_path))
 
 class JSONFile:
     """

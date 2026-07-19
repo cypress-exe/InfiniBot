@@ -2,7 +2,7 @@ import logging
 
 from nextcord import Guild as NextcordGuild
 
-from config.file_manager import read_txt_to_list
+from config.file_manager import read_txt_to_list_cached
 from config.messages.cached_messages import remove_cached_messages_from_guild
 from config.messages.stored_messages import remove_db_messages_from_guild
 from core.db_manager import get_database, Simple_TableManager, IntegratedList_TableManager, TableManager
@@ -170,7 +170,7 @@ class Server:
             """Get filtered words with default values when list is empty."""      
             # If the list is empty, return default words
             if not words_list:
-                default_words = read_txt_to_list("default_profane_words.txt")
+                default_words = read_txt_to_list_cached("default_profane_words.txt")
                 return default_words if default_words else []
                 
             return words_list         
@@ -178,7 +178,7 @@ class Server:
             """Set filtered words with storage optimization."""
             # Storage optimization: if the input exactly matches default values, store []
             if words_list:  # Only optimize if list is not empty
-                default_words = read_txt_to_list("default_profane_words.txt")
+                default_words = read_txt_to_list_cached("default_profane_words.txt")
                 if default_words and set(words_list) == set(default_words):
                     # Store empty list when contents match defaults exactly
                     return []
