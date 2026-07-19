@@ -780,11 +780,19 @@ async def get_member(guild: nextcord.Guild, user_id: int, override_failed_cache:
     :rtype: nextcord.Member | None
     """
     global failed_member_fetches
-    
+
     if not guild or guild.unavailable:
         logging.warning(f"Guild {guild} is unavailable or None. Cannot get member.")
         return None
-    
+
+    # guild._members and the failed-fetch cache are both keyed by int; a str id would
+    # miss both and force a REST fetch every call.
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        logging.warning(f"Invalid user_id passed to get_member: {user_id!r}")
+        return None
+
     if member := guild.get_member(user_id):
         return member
 

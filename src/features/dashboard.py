@@ -4681,6 +4681,8 @@ class Dashboard(CustomView):
                                 )
                                 return
 
+                            user_id = int(user_id)
+
                             if await utils.get_member(interaction.guild, user_id):
                                 embed = nextcord.Embed(
                                     title="User Already In Server", 
@@ -4697,7 +4699,7 @@ class Dashboard(CustomView):
                                 try:
                                     async for ban_entry in interaction.guild.bans():
                                         if not ban_entry.user: continue
-                                        if ban_entry.user.id == int(user_id):
+                                        if ban_entry.user.id == user_id:
                                             embed = nextcord.Embed(
                                                 title="User Already Banned",
                                                 description=(f"InfiniBot won't add \"{user_name} (ID: {user_id})\" as an "
@@ -4715,7 +4717,7 @@ class Dashboard(CustomView):
                                 # Use the correct autobans property and its methods
                                 new_autoban = {
                                     'member_name': user_name,
-                                    'member_id': int(user_id)
+                                    'member_id': user_id
                                 }
 
                                 try:
