@@ -4693,22 +4693,19 @@ class Dashboard(CustomView):
                                 )
                                 
                             elif interaction.guild.me.guild_permissions.ban_members:
-                                # Check if user is already banned by iterating through bans
-                                # Unfortunately, nextcord doesn't provide a direct method to check if a user is banned through an ID
-                                # We would need to have a nextcord.User mention, and we don't have one here...
+                                # Single REST lookup for this one user; raises NotFound when they aren't banned.
                                 try:
-                                    async for ban_entry in interaction.guild.bans():
-                                        if not ban_entry.user: continue
-                                        if ban_entry.user.id == user_id:
-                                            embed = nextcord.Embed(
-                                                title="User Already Banned",
-                                                description=(f"InfiniBot won't add \"{user_name} (ID: {user_id})\" as an "
-                                                           f"autoban because they are already banned in this server."),
-                                                color=nextcord.Color.red()
-                                            )
-                                            break
-                                except Exception:
+                                    await interaction.guild.fetch_ban(nextcord.Object(id=user_id))
+                                    embed = nextcord.Embed(
+                                        title="User Already Banned",
+                                        description=(f"InfiniBot won't add \"{user_name} (ID: {user_id})\" as an "
+                                                   f"autoban because they are already banned in this server."),
+                                        color=nextcord.Color.red()
+                                    )
+                                except nextcord.NotFound:
                                     pass
+                                except Exception:
+                                    logging.warning(f"Could not check ban status for user {user_id} in guild {interaction.guild.id}", exc_info=True)
                             
                             if embed is None:
                                 # Save data
