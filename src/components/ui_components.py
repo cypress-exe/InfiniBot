@@ -139,6 +139,35 @@ async def chunk_guild_with_feedback(interaction: Interaction) -> int:
     )
     return None
 
+async def show_no_selectable_channels(interaction: Interaction, title: str, back_callback):
+    """
+    Render an actionable message for channel-select pages when InfiniBot cannot use
+    any text channel. SelectView rejects an empty options list, so these pages must
+    not be opened at all in that state.
+
+    :param interaction: The interaction to respond to.
+    :type interaction: Interaction
+    :param title: The title to show, matching the page the user was headed to.
+    :type title: str
+    :param back_callback: Coroutine function taking the interaction, used by the Back button.
+    """
+    description = """
+    InfiniBot can't view and send messages in any of your text channels, so there are no channels to choose from.
+
+    **How to fix this**
+    Give InfiniBot both *View Channel* and *Send Messages* permission in at least one text channel, then return to this page.
+    """
+    embed = nextcord.Embed(title=title,
+                           description=utils.standardize_str_indention(description),
+                           color=nextcord.Color.red())
+
+    view = CustomView()
+    back_btn = nextcord.ui.Button(label="Back", style=nextcord.ButtonStyle.danger)
+    back_btn.callback = back_callback
+    view.add_item(back_btn)
+
+    await interaction.response.edit_message(embed=embed, view=view)
+    
 # Components
 def get_colors_available_ui_component():
     description = ""

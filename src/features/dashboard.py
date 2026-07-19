@@ -11,7 +11,7 @@ import nextcord
 from nextcord import Interaction
 
 from components import ui_components, utils
-from components.ui_components import CustomView, CustomModal, chunk_guild_with_feedback
+from components.ui_components import CustomView, CustomModal, chunk_guild_with_feedback, show_no_selectable_channels
 from config.global_settings import ShardLoadedStatus # Leave import
 from config.server import Server
 from features.action_logging import get_logging_channel
@@ -622,7 +622,14 @@ class Dashboard(CustomView):
                             
                             if self.skipped: title = "Dashboard - Moderation - Profanity"
                             else: title = "Dashboard - Moderation - Profanity - Admin Channel"
-                            
+
+                            if not select_options:
+                                async def go_back(interaction: Interaction):
+                                    await self.select_view_callback(interaction, None)
+                                await show_no_selectable_channels(interaction, title, go_back)
+                                return
+
+
                             description = """
                             Where should InfiniBot send moderation reports?
                             
@@ -1818,9 +1825,18 @@ class Dashboard(CustomView):
                     """
                     description = utils.standardize_str_indention(description)
                     
-                    embed = nextcord.Embed(title = ("Dashboard - Logging" if self.skipped else "Dashboard - Logging - Log Channel"), 
+                    title = ("Dashboard - Logging" if self.skipped else "Dashboard - Logging - Log Channel")
+
+                    if not select_options:
+                        async def go_back(interaction: Interaction):
+                            await self.select_view_callback(interaction, None)
+                        await show_no_selectable_channels(interaction, title, go_back)
+                        return
+
+                    embed = nextcord.Embed(title = title,
                                            description = description, color = nextcord.Color.blue())
-                    
+
+
                     await ui_components.SelectView(embed, 
                                      select_options, 
                                      self.select_view_callback, 
