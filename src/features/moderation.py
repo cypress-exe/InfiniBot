@@ -1,6 +1,7 @@
 import asyncio
 from collections import defaultdict
 import datetime
+import functools
 import humanfriendly
 import logging
 import math
@@ -286,6 +287,52 @@ def remove_urls_from_text(text: str) -> str:
     
     return cleaned_text
 
+def _generate_profanity_regex_pattern(word: str) -> str:
+    """
+    Generates a regular expression pattern from a given string.
+
+    This function generates a regular expression pattern from a given string,
+    which is used to match profane words or phrases in a given string.
+
+    :param word: The string to generate a regular expression pattern for.
+    :type word: str
+    :return: The generated regular expression pattern.
+    :rtype: str
+    """
+    word = word.lower()
+    # Handle required wildcards (* = exactly 1 character)
+    word = word.replace("*", ".")
+    # Add optional wildcards (? = 0 or 1 characters)
+    word = word.replace("?", ".?")
+
+    # Boundary logic
+    if not word.startswith("\""):
+        word = r"\w*" + word
+    else:
+        word = r"\b" + word[1:]
+
+    if not word.endswith("\""):
+        word = word + r"\w*"
+    else:
+        word = word[:-1] + r"\b"
+
+    return word
+
+@functools.lru_cache(maxsize=256)
+def _get_compiled_profanity_patterns(words: tuple[str, ...]) -> tuple[re.Pattern, ...]:
+    """
+    Compile (and cache) the regex patterns for a word list.
+
+    Keyed on the word list itself, so an edit to a server's filtered words yields
+    a different key and recompiles. Servers on the default list share one entry.
+
+    :param words: The filtered-word list, as a hashable tuple.
+    :type words: tuple[str, ...]
+    :return: The compiled patterns, in order.
+    :rtype: tuple[re.Pattern, ...]
+    """
+    return tuple(re.compile(_generate_profanity_regex_pattern(word)) for word in words)
+
 def str_is_profane(message: str, database: list[str]) -> str | None:
     """
     Checks if a given string contains any profanity.
@@ -303,38 +350,7 @@ def str_is_profane(message: str, database: list[str]) -> str | None:
     :rtype: str | None
     """
 
-    def generate_regex_pattern(word: str):
-        """
-        Generates a regular expression pattern from a given string.
-
-        This function generates a regular expression pattern from a given string,
-        which is used to match profane words or phrases in a given string.
-
-        :param word: The string to generate a regular expression pattern for.
-        :type word: str
-        :return: The generated regular expression pattern.
-        :rtype: str
-        """
-        word = word.lower()
-        # Handle required wildcards (* = exactly 1 character)
-        word = word.replace("*", ".")  
-        # Add optional wildcards (? = 0 or 1 characters)
-        word = word.replace("?", ".?")  # NEW
-        
-        # Existing boundary logic
-        if not word.startswith("\""):
-            word = r"\w*" + word
-        else:
-            word = r"\b" + word[1:]
-
-        if not word.endswith("\""):
-            word = word + r"\w*"
-        else:
-            word = word[:-1] + r"\b"
-
-        return word
-
-    regex_patterns = [re.compile(generate_regex_pattern(pattern)) for pattern in database]
+    regex_patterns = _get_compiled_profanity_patterns(tuple(database))
 
     message = message.lower()
     # Check the pattern
