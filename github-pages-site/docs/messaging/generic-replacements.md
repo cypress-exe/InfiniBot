@@ -43,6 +43,18 @@ Generic replacements can be used in embeds, join/leave messages, role messages, 
 
 Any channel referenced with `#channel` format (for example, `#welcome` or `#rules`) will be automatically converted to a proper Discord channel mention.
 
+## Role Replacements
+
+Any text matching `@RoleName` (for example, `@Moderator`) will be automatically converted to a mention of the server role with that exact name.
+
+- The fixed placeholders on this page (`@mention`, `@server`, `@owner`, `@time`, etc.) always take priority. If a role happens to share a name with one of them, the fixed placeholder wins.
+- To reference a role unambiguously — for example, when its name collides with a fixed placeholder — use the explicit form: `@role:RoleName` (for example, `@role:server`).
+- The `@everyone` role is never matched by name.
+- If no role matches the name given, the text is left as-is.
+
+{: .info }
+Role mentions placed in an embed (which is where these replacements are used) don't trigger a notification ping for members of that role — Discord only sends ping notifications for mentions in plain message content.
+
 ## Examples
 
 Welcome message example:
@@ -53,6 +65,16 @@ Welcome @mention to @server! Please check out #rules to get started!
 This would appear as:
 ```
 Welcome @discord-user to Awesome Server! Please check out #rules to get started!
+```
+
+Role mention example:
+```
+Reach out to @Moderator if you need help getting started.
+```
+
+This would appear as:
+```
+Reach out to @Moderator-role-mention if you need help getting started.
 ```
 
 ## Best-Effort Replacements

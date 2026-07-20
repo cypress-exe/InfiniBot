@@ -371,6 +371,13 @@ def apply_generic_replacements(
     @joindate on a leave message, or @owner when the guild owner isn't cached —
     see get_guild_owner). See "Best-Effort Replacements" in
     github-pages-site/docs/messaging/generic-replacements.md.
+
+    Role replacements: "@RoleName" is replaced with a mention for the
+    guild role of that exact name (the @everyone role is never matched this
+    way). The fixed placeholders above and custom_replacements always take
+    priority over a role of the same name — use the explicit "@role:RoleName"
+    form to unambiguously reference a role whose name collides with one of
+    them. Role names that don't match any role are left as literal text.
     """
     def _apply_text_transform(transform, include_url: bool = True) -> None:
         # nextcord's .footer/.fields accessors return throwaway EmbedProxy objects,
@@ -420,7 +427,22 @@ def apply_generic_replacements(
                 from core.bot import get_bot
                 owner = get_bot().get_user(guild.owner_id)
             replacements["@owner"] = owner.display_name if owner else "Unknown"
-        
+
+            # Add role replacements. The @everyone role is excluded since it isn't a
+            # name anyone is referring to by typing "@everyone" here. Explicit
+            # "@role:Name" is added alongside the bare "@Name" form so a role can
+            # still be referenced even if its name collides with a fixed placeholder
+            # above (fixed placeholders always win — only add the bare key if unused).
+            for role in guild.roles:
+                if role == guild.default_role:
+                    continue
+                explicit_key = f"@role:{role.name}"
+                if explicit_key not in replacements:
+                    replacements[explicit_key] = role.mention
+                bare_key = f"@{role.name}"
+                if bare_key not in replacements:
+                    replacements[bare_key] = role.mention
+
         # Add time and date replacements
         epoch = int(datetime.datetime.now().timestamp())
 
@@ -429,9 +451,13 @@ def apply_generic_replacements(
         replacements["@datelong"] = f"<t:{epoch}:D>"
         replacements["@date"] = f"<t:{epoch}:D>"
 
-        # Replace placeholders with values
+        # Replace placeholders with values. Sorted longest-key-first so that, e.g., a
+        # role named "Mod" can't eat the front of "@Moderator" before it's matched
+        # (role/member names are arbitrary, unlike the small fixed set of placeholders,
+        # so this can't be avoided by careful insertion order alone).
+        sorted_replacements = sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True)
         def replace_placeholders(text: str) -> str:
-            for key, value in replacements.items():
+            for key, value in sorted_replacements:
                 text = text.replace(key, value)
             return text
 
