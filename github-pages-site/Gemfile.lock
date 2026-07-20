@@ -11,7 +11,7 @@ GEM
     em-websocket (0.5.3)
       eventmachine (>= 0.12.9)
       http_parser.rb (~> 0)
-    erb (6.0.4)
+    erb (6.0.5)
     eventmachine (1.2.7)
     eventmachine (1.2.7-x86-mingw32)
     ffi (1.17.3-arm64-darwin)
