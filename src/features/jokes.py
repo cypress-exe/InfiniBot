@@ -471,7 +471,7 @@ class JokeVerificationView(CustomView):
                                 description=(
                                     f"{interaction.user} denied this submission.\n\n"
                                     f"Reason: {self.reason}\n\n"
-                                    f"Submission owner was {'**not**' if not self.member else ''} sent a dm."
+                                    f"Submission owner was {'**not** ' if not self.member else ''}sent a dm."
                                 ),
                                 color=nextcord.Color.red()
                             )
