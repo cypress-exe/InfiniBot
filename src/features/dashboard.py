@@ -1554,7 +1554,7 @@ class Dashboard(CustomView):
                         **How It Works**
                         When a member with an admin role attempts to perform an action that would normally be moderated by InfiniBot, InfiniBot will ignore the action and allow it to proceed as normal.
 
-                        View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/admin-roles.md) for more information.
+                        View the [help docs](https://cypress-exe.github.io/InfiniBot/docs/core-features/moderation/admin-roles/) for more information.
                         """
                         description = utils.standardize_str_indention(description)
                         self.embed = nextcord.Embed(title = "Dashboard - Moderation - Admin Roles", 
