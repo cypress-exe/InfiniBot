@@ -13,11 +13,12 @@ import threading
 import time
 import unittest
 import uuid
+from unittest.mock import Mock
 from typing import Any, List, Dict
 from zoneinfo import ZoneInfo
 
 import core.db_manager as db_manager
-from components.utils import feature_is_active
+from components.utils import apply_generic_replacements, feature_is_active
 from config.file_manager import JSONFile, update_base_path as file_manager_update_base_path, read_txt_to_list
 from config.global_settings import required_permissions, get_global_kill_status
 from config.member import Member
@@ -2190,6 +2191,88 @@ class TestUtils(unittest.TestCase):
                     # Ensure that it exists
                     if not hasattr(nextcord.Permissions, backend_perm):
                         self.fail(f"Required permission `{backend_perm}` does not exist in nextcord.Permissions")
+
+    def make_mock_role(self, name: str, mention: str) -> Mock:
+        """Builds a mock nextcord.Role with just the attributes apply_generic_replacements reads."""
+        role = Mock(spec=nextcord.Role)
+        role.name = name
+        role.mention = mention
+        return role
+
+    def make_mock_guild(self, roles: list) -> Mock:
+        """
+        Builds a mock nextcord.Guild carrying the given roles (plus an
+        @everyone default role), with the other guild-replacement fields
+        (name, id, member_count, owner) set to simple fixed values.
+        """
+        default_role = self.make_mock_role("@everyone", "@everyone")
+
+        guild = Mock(spec=nextcord.Guild)
+        guild.id = 1
+        guild.name = "Test Guild"
+        guild.member_count = 10
+        guild.owner = Mock(display_name="GuildOwner")
+        guild.owner_id = 999
+        guild.default_role = default_role
+        guild.roles = [default_role] + roles
+        return guild
+
+    def apply_role_replacements(self, guild, text: str) -> str:
+        """Runs apply_generic_replacements on a single-description embed and returns the result."""
+        embed = nextcord.Embed(description=text)
+        result = apply_generic_replacements(embed, None, guild, skip_channel_replacement=True)
+        return result.description
+
+    def test_role_replacement_bare_name(self) -> None:
+        """A bare @RoleName is replaced with that role's mention."""
+        guild = self.make_mock_guild([self.make_mock_role("Moderator", "<@&111>")])
+
+        result = self.apply_role_replacements(guild, "Hello @Moderator!")
+
+        self.assertEqual(result, "Hello <@&111>!")
+
+    def test_role_replacement_no_match_left_literal(self) -> None:
+        """A name with no matching role is left untouched."""
+        guild = self.make_mock_guild([self.make_mock_role("Moderator", "<@&111>")])
+
+        result = self.apply_role_replacements(guild, "Hello @NoSuchRole!")
+
+        self.assertEqual(result, "Hello @NoSuchRole!")
+
+    def test_role_replacement_everyone_excluded(self) -> None:
+        """The @everyone default role is never matched by name."""
+        guild = self.make_mock_guild([])
+
+        result = self.apply_role_replacements(guild, "Welcome @everyone!")
+
+        self.assertEqual(result, "Welcome @everyone!")
+
+    def test_role_replacement_reserved_placeholder_wins(self) -> None:
+        """A role sharing a name with a reserved placeholder (e.g. "server") loses to the placeholder."""
+        guild = self.make_mock_guild([self.make_mock_role("server", "<@&222>")])
+
+        result = self.apply_role_replacements(guild, "Welcome to @server!")
+
+        self.assertEqual(result, "Welcome to Test Guild!")
+
+    def test_role_replacement_explicit_syntax_disambiguates(self) -> None:
+        """@role:Name reaches a role even when its bare name collides with a reserved placeholder."""
+        guild = self.make_mock_guild([self.make_mock_role("server", "<@&222>")])
+
+        result = self.apply_role_replacements(guild, "Welcome to @role:server!")
+
+        self.assertEqual(result, "Welcome to <@&222>!")
+
+    def test_role_replacement_longest_name_first(self) -> None:
+        """A shorter role name (e.g. "Mod") must not eat the front of a longer one (e.g. "Moderator")."""
+        guild = self.make_mock_guild([
+            self.make_mock_role("Mod", "<@&111>"),
+            self.make_mock_role("Moderator", "<@&222>"),
+        ])
+
+        result = self.apply_role_replacements(guild, "Ping @Moderator now, not @Mod.")
+
+        self.assertEqual(result, "Ping <@&222> now, not <@&111>.")
 
 class TestDailyDBMaintenance(unittest.TestCase):
     # Most of the processes conducted in daily_db_maintenance are previously tested.
