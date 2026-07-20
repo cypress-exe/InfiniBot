@@ -211,7 +211,7 @@ class Dashboard(CustomView):
                         if server.profanity_moderation_profile.channel == None: admin_channel_ui_text = "None"
                         elif server.profanity_moderation_profile.channel == UNSET_VALUE: admin_channel_ui_text = "UNSET"
                         else: 
-                            admin_channel = interaction.guild.get_channel(server.profanity_moderation_profile.channel)
+                            admin_channel = await utils.get_channel(server.profanity_moderation_profile.channel)
                             if admin_channel: admin_channel_ui_text = admin_channel.mention
                             else: admin_channel_ui_text = "#unknown"
 
@@ -669,7 +669,7 @@ class Dashboard(CustomView):
                                 color = nextcord.Color.green()
                             )
                             embed.set_footer(text = f"Action done by {interaction.user}")
-                            discord_channel = interaction.guild.get_channel(server.profanity_moderation_profile.channel)
+                            discord_channel = await utils.get_channel(server.profanity_moderation_profile.channel)
                             await discord_channel.send(embed = embed, view = ui_components.SupportAndInviteView())
 
                     class ManageStrikeSystemButton(nextcord.ui.Button):
@@ -1855,7 +1855,8 @@ class Dashboard(CustomView):
                     
                     embed = nextcord.Embed(title = "Log Channel Set", description = f"This channel will now be used for logging.\n\n**Notification Settings**\nSet notification settings for this channel to \"Nothing\". InfiniBot will constantly be sending log messages in this channel.", color =  nextcord.Color.green())
                     embed.set_footer(text = f"Action done by {interaction.user}")
-                    await interaction.guild.get_channel(server.logging_profile.channel).send(embed = embed, view = ui_components.SupportAndInviteView())
+                    channel = await utils.get_channel(server.logging_profile.channel)
+                    await channel.send(embed = embed, view = ui_components.SupportAndInviteView())
             
             class EnableDisableButton(nextcord.ui.Button):
                 def __init__(self, outer):
@@ -1977,7 +1978,7 @@ class Dashboard(CustomView):
                 if server.leveling_profile.channel == None: leveling_channel_ui_text = "No Notifications (disabled)"
                 elif server.leveling_profile.channel == UNSET_VALUE: leveling_channel_ui_text = "System Messages Channel"
                 else: 
-                    leveling_channel = interaction.guild.get_channel(server.leveling_profile.channel)
+                    leveling_channel = await utils.get_channel(server.leveling_profile.channel)
                     if leveling_channel: leveling_channel_ui_text = leveling_channel.mention
                     else: leveling_channel_ui_text = "#unknown"
                 
@@ -2673,7 +2674,7 @@ class Dashboard(CustomView):
                                 
                                 leveling_exempt_channels:list[nextcord.abc.GuildChannel] = []
                                 for channel_id in server.leveling_profile.exempt_channels:
-                                    channel = interaction.guild.get_channel(channel_id)
+                                    channel = await utils.get_channel(channel_id)
                                     if channel == None:
                                         logging.warning(f"Leveling exempt channel ({channel_id}) not found in server {interaction.guild.id}. Deleting...")
                                         leveling_exempt_channel_ids = server.leveling_profile.exempt_channels
@@ -2753,7 +2754,7 @@ class Dashboard(CustomView):
                                     options = []
                                     server = Server(interaction.guild.id)
                                     for channel_id in server.leveling_profile.exempt_channels:
-                                        channel = interaction.guild.get_channel(channel_id)
+                                        channel = await utils.get_channel(channel_id)
                                         if channel == None: # Should never happen due to previous checks.
                                             logging.warning(f"Leveling exempt channel ({channel_id}) not found in server {interaction.guild.id}. Ignoring...")
                                             continue
@@ -2944,7 +2945,7 @@ class Dashboard(CustomView):
                         
                         if server.join_message_profile.channel == UNSET_VALUE: channel_ui_text = "System Messages Channel"
                         else: 
-                            channel = interaction.guild.get_channel(server.join_message_profile.channel)
+                            channel = await utils.get_channel(server.join_message_profile.channel)
                             if channel: channel_ui_text = channel.mention
                             else: channel_ui_text = "#unknown"
 
@@ -3204,7 +3205,7 @@ class Dashboard(CustomView):
                         
                         if server.leave_message_profile.channel == UNSET_VALUE: channel_ui_text = "System Messages Channel"
                         else: 
-                            channel = interaction.guild.get_channel(server.leave_message_profile.channel)
+                            channel = await utils.get_channel(server.leave_message_profile.channel)
                             if channel: channel_ui_text = channel.mention
                             else: channel_ui_text = "#unknown"
 
@@ -3223,7 +3224,7 @@ class Dashboard(CustomView):
                         """
                         description = utils.standardize_str_indention(description)
 
-                        embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Join Messages", description = description, color = nextcord.Color.blue())
+                        embed = nextcord.Embed(title = "Dashboard - Join / Leave Messages - Leave Messages", description = description, color = nextcord.Color.blue())
                         await interaction.response.edit_message(embed = embed, view = self)
 
                     class LeaveMessagesButton(nextcord.ui.Button):
@@ -3449,7 +3450,7 @@ class Dashboard(CustomView):
                 if server.birthdays_profile.channel == UNSET_VALUE:
                     birthday_channel_ui_text = "System Messages Channel"
                 else: 
-                    birthday_channel = interaction.guild.get_channel(server.birthdays_profile.channel)
+                    birthday_channel = await utils.get_channel(server.birthdays_profile.channel)
                     birthday_channel_ui_text = birthday_channel.mention if birthday_channel else "#unknown"
 
                 # Convert stored UTC time to server's timezone for display
@@ -4284,15 +4285,24 @@ class Dashboard(CustomView):
                 self.onboarding_modifier = onboarding_modifier
                 self.onboarding_embed = onboarding_embed
 
-                server = Server(self.guild.id)
-                        
+                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
+                self.back_btn.callback = self.back_btn_callback
+                self.add_item(self.back_btn)
+
+            async def setup(self, interaction: Interaction):
+                if self.onboarding_modifier: self.onboarding_modifier(self)
+
+                if not utils.feature_is_active(server_id = interaction.guild.id, feature = "join_to_create_vcs"): # server_id won't be used here, but it's required as an input
+                    await ui_components.disabled_feature_override(self, interaction)
+                    return
+
                 # Find all join-to-create VCs (log which ones have errors)
                 # This needs to be done here because the buttons need this info to determine
                 # whether or not to be disabled
                 self.join_to_create_vcs_with_error_info = []
-                for vc_id in server.join_to_create_vcs.channels:
-                    voice_channel = guild.get_channel(vc_id)
-                    
+                for vc_id in Server(self.guild.id).join_to_create_vcs.channels:
+                    voice_channel = await utils.get_channel(vc_id)
+
                     error = False
                     if not voice_channel: error = True; logging.warning(f"Join-to-create VC {vc_id} in guild {self.guild.id} was not found. Ignoring, but marking it as an error...")
                     elif not voice_channel.permissions_for(self.guild.me).view_channel: error = True; logging.warning(f"Join-to-create VC {vc_id} in guild {self.guild.id} does not have view_channel permission for InfiniBot. Ignoring, but marking it as an error...")
@@ -4300,23 +4310,12 @@ class Dashboard(CustomView):
 
                     self.join_to_create_vcs_with_error_info.append([voice_channel, error])
 
-                self.add_btn = self.AddButton(self, guild, self.join_to_create_vcs_with_error_info)
+                self.add_btn = self.AddButton(self, self.guild, self.join_to_create_vcs_with_error_info)
                 self.add_item(self.add_btn)
-                
-                self.delete_btn = self.DeleteButton(self, guild)
+
+                self.delete_btn = self.DeleteButton(self, self.guild)
                 self.add_item(self.delete_btn)
-                
-                self.back_btn = nextcord.ui.Button(label = "Back", style = nextcord.ButtonStyle.danger, row = 1)
-                self.back_btn.callback = self.back_btn_callback
-                self.add_item(self.back_btn)
-        
-            async def setup(self, interaction: Interaction):
-                if self.onboarding_modifier: self.onboarding_modifier(self)
-                
-                if not utils.feature_is_active(server_id = interaction.guild.id, feature = "join_to_create_vcs"): # server_id won't be used here, but it's required as an input
-                    await ui_components.disabled_feature_override(self, interaction)
-                    return
-                
+
                 # Get server data
                 server = Server(interaction.guild.id)
                 join_to_create_voice_channels:list = server.join_to_create_vcs.channels
@@ -4328,7 +4327,7 @@ class Dashboard(CustomView):
                 if len(join_to_create_voice_channels) > 0:
                     vcs_ui_text_list = []
                     for vc_id in join_to_create_voice_channels:
-                        voice_channel = interaction.guild.get_channel(vc_id)
+                        voice_channel = await utils.get_channel(vc_id)
                         
                         error = False
                         if not voice_channel: 
@@ -4468,7 +4467,7 @@ class Dashboard(CustomView):
                     server = Server(interaction.guild.id)
                     select_options = []
                     for vc_id in server.join_to_create_vcs.channels:
-                        voice_channel = interaction.guild.get_channel(vc_id)
+                        voice_channel = await utils.get_channel(vc_id)
                         if voice_channel:
                             label = voice_channel.name
                             description = (voice_channel.category.name if voice_channel.category else None)

@@ -179,7 +179,7 @@ async def check_and_run_birthday_actions(
             if channel_id == UNSET_VALUE:
                 channel = guild.system_channel
             elif channel_id is not None:
-                channel = guild.get_channel(channel_id)
+                channel = await utils.get_channel(channel_id)
                 if channel is None:
                     # Configured channel was deleted or is invisible — warn instead of silently dropping
                     await utils.send_error_message_to_server_owner(

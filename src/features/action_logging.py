@@ -113,7 +113,7 @@ async def get_logging_channel(guild: nextcord.Guild) -> nextcord.TextChannel:
     if log_channel_id == UNSET_VALUE:
         return None
     
-    log_channel = guild.get_channel(log_channel_id)
+    log_channel = await utils.get_channel(log_channel_id)
     if not log_channel:
         return None
 

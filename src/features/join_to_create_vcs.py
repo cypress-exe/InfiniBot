@@ -41,7 +41,7 @@ async def run_join_to_create_vc_member_update(member: nextcord.Member, before: n
         # Check if the channel is a join-to-create channel
         if after.channel.id in voice_channels:
             # Ensure bot has necessary permissions
-            voice_channel = member.guild.get_channel(after.channel.id)
+            voice_channel = await utils.get_channel(after.channel.id)
             if not voice_channel:
                 return
             if not voice_channel.permissions_for(member.guild.me).view_channel:

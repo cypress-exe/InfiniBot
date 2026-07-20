@@ -416,7 +416,7 @@ async def process_level_change(guild: nextcord.Guild, member: nextcord.Member, l
             leveling_channel_id = server.leveling_profile.channel
             if leveling_channel_id == None: _continue = False # Level messages are disabled
             elif leveling_channel_id == UNSET_VALUE: leveling_channel = guild.system_channel # Use the system messages channel
-            else: leveling_channel = guild.get_channel(leveling_channel_id) # Use the leveling channel
+            else: leveling_channel = await utils.get_channel(leveling_channel_id) # Use the leveling channel
             
             if leveling_channel == None: _continue = False # Either the system messages channel is not set, or the leveling channel does not exist
             if not await utils.check_text_channel_permissions(leveling_channel, auto_warn=True, custom_channel_name="the leveling channel"): _continue = False

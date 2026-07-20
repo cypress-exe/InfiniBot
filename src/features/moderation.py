@@ -231,7 +231,7 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
             # Send a message to the admin channel
             admin_channel_id = server.profanity_moderation_profile.channel
             if admin_channel_id == UNSET_VALUE: return
-            admin_channel = guild.get_channel(admin_channel_id)
+            admin_channel = await utils.get_channel(admin_channel_id)
             if admin_channel == None: return
             if not await utils.check_text_channel_permissions(admin_channel, True, custom_channel_name = f"Admin Channel (#{admin_channel.name})"): return
 
@@ -253,7 +253,7 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
             # Send a message to the admin channel
             admin_channel_id = server.profanity_moderation_profile.channel
             if admin_channel_id == UNSET_VALUE: return
-            admin_channel = guild.get_channel(admin_channel_id)
+            admin_channel = await utils.get_channel(admin_channel_id)
             if admin_channel == None: return
             if not await utils.check_text_channel_permissions(admin_channel, True, custom_channel_name = f"Admin Channel (#{admin_channel.name})"): return
 
@@ -467,7 +467,7 @@ async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: n
             message = f"Failed to timeout {member.mention} for profanity moderation. Missing permissions."
             embed = nextcord.Embed(title = "Failed to Timeout", description = message, color = nextcord.Color.red())
 
-            admin_channel = guild.get_channel(server.profanity_moderation_profile.channel)
+            admin_channel = await utils.get_channel(server.profanity_moderation_profile.channel)
             if admin_channel is None: return False
             await admin_channel.send(embed = embed)
             return False
@@ -478,7 +478,7 @@ async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: n
             embed = nextcord.Embed(title = "Failed to Timeout", description = message, color = nextcord.Color.red())
             embed.set_footer(text = f"Error ID: {uuid}")
 
-            admin_channel = guild.get_channel(server.profanity_moderation_profile.channel)
+            admin_channel = await utils.get_channel(server.profanity_moderation_profile.channel)
             if admin_channel is None: return False
             await admin_channel.send(embed = embed)
 
@@ -626,7 +626,7 @@ async def check_and_trigger_profanity_moderation_for_message(
     
     # Send message to admin channel (if enabled)
     if server.profanity_moderation_profile.channel != UNSET_VALUE:
-        admin_channel = message.guild.get_channel(server.profanity_moderation_profile.channel)
+        admin_channel = await utils.get_channel(server.profanity_moderation_profile.channel)
         if admin_channel is None: 
             description = f"InfiniBot couldn't find your server's admin channel (Moderation -> Profanity -> Admin Channel). It was either deleted, or the bot does not have permission to view it. Please go to the Moderation -> Profanity page of the `/dashboard` and configure the admin channel."
             await utils.send_error_message_to_server_owner(message.guild, None, message=description, administrator=False)
