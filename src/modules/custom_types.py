@@ -56,6 +56,9 @@ class ExpiringSet:
         with self.lock:
             # Overwriting the timestamp effectively "renews" the item
             self.store[item] = time.time() + self.expiration_time
+            # Purge here too — a write-mostly set (adds without reads) would
+            # otherwise grow unboundedly until the next read
+            self._purge_expired()
 
     def remove(self, item):
         """Removes an item if present."""

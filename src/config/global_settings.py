@@ -289,6 +289,21 @@ class Configs(GlobalSetting):
         super().__init__("config", variable_list)
 
 
+# Module-level singletons: constructing a GlobalSetting re-syncs every leaf key
+# against the file, which is far too expensive for the per-message/per-guild hot
+# paths these getters sit on. Keyed by file_manager.base_path so tests that
+# repoint the config directory get fresh instances.
+_global_setting_singletons: dict = {}
+
+def _get_global_setting_singleton(cls):
+    from config import file_manager
+    cache_key = (cls, file_manager.base_path)
+    instance = _global_setting_singletons.get(cache_key)
+    if instance is None:
+        instance = cls()
+        _global_setting_singletons[cache_key] = instance
+    return instance
+
 def get_global_kill_status() -> GlobalKillStatus:
     """
     Retrieve the global kill status.
@@ -297,7 +312,7 @@ def get_global_kill_status() -> GlobalKillStatus:
     :rtype: GlobalKillStatus
     """
 
-    return GlobalKillStatus()
+    return _get_global_setting_singleton(GlobalKillStatus)
 
 def get_configs() -> Configs:
     """
@@ -306,7 +321,7 @@ def get_configs() -> Configs:
     :return: An instance representing the config.
     :rtype: Configs
     """
-    return Configs()
+    return _get_global_setting_singleton(Configs)
 
 
 def get_bot_load_status() -> bool:

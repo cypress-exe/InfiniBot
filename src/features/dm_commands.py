@@ -18,7 +18,11 @@ async def check_and_run_dm_commands(bot: nextcord.Client, message: nextcord.Mess
     if message.author.id == bot.application_id: return
 
     if message.content.lower() == "clear-last": # Clear last message
-        await message.channel.purge(limit=1, check=lambda m: m.author.id == bot.application_id)
+        # DMChannel has no purge(); find the bot's most recent message and delete it
+        async for dm_message in message.channel.history(limit=50):
+            if dm_message.author.id == bot.application_id:
+                await dm_message.delete()
+                break
 
         embed = nextcord.Embed(title = "Cleared Last Message", description="Last message has been cleared.", color = nextcord.Color.green())
         await message.channel.send(embed = embed, delete_after = 3)
@@ -50,7 +54,7 @@ async def run_opt_out_of_dms_command(interaction: nextcord.Interaction) -> None:
     
     embed = nextcord.Embed(
         title="Opted Out of DMs", 
-        description=f"You opted out of DMs from InfiniBot. You will no longer recieve permission errors, birthday updates, or strike notices. To re-opt-into this feature, use `/opt-into-dms`", 
+        description=f"You opted out of DMs from InfiniBot. You will no longer recieve permission errors, birthday updates, or strike notices. To re-opt-into this feature, use `/opt_into_dms`", 
         color=nextcord.Color.green()
     )
     await interaction.response.send_message(embed=embed)
@@ -82,7 +86,7 @@ async def run_opt_into_dms_command(interaction: nextcord.Interaction) -> None:
     
     embed = nextcord.Embed(
         title="Opted Into DMs", 
-        description=f"You opted into DMs from InfiniBot. You will now recieve permission errors, birthday updates, and strike notices. To re-opt-out of this feature, use `/opt-out-of-dms`", 
+        description=f"You opted into DMs from InfiniBot. You will now recieve permission errors, birthday updates, and strike notices. To re-opt-out of this feature, use `/opt_out_of_dms`", 
         color=nextcord.Color.green()
     )
     await interaction.response.send_message(embed=embed)

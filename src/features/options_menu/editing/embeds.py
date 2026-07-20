@@ -11,7 +11,7 @@ class EditEmbed(CustomView):
         super().__init__()
         self.message_id = message_id
         
-    async def load_buttons(self, interaction: Interaction):
+    async def load_buttons(self, interaction: Interaction) -> bool:
         self.message = await utils.get_message(interaction.channel, self.message_id)
         if self.message is None:
             # Message no longer exists or was recently not found
@@ -23,21 +23,35 @@ class EditEmbed(CustomView):
                 ),
                 ephemeral=True
             )
-            return
+            return False
         self.server = Server(interaction.guild.id)
+        if self.message_id not in self.server.managed_messages:
+            # Message is no longer cataloged as an InfiniBot-managed message
+            await interaction.response.send_message(
+                embed=nextcord.Embed(
+                    title="Message Not Editable",
+                    description="This message is no longer tracked by InfiniBot and can't be edited.",
+                    color=nextcord.Color.red()
+                ),
+                ephemeral=True
+            )
+            return False
         self.message_info = self.server.managed_messages[self.message_id]
-        
+
         self.clear_items()
-        
+
         edit_text_btn = self.EditTextButton(self)
         self.add_item(edit_text_btn)
-        
+
         edit_color_btn = self.EditColorButton(self)
         self.add_item(edit_color_btn)
-        
+
+        return True
+
     async def setup(self, interaction: Interaction):
-        await self.load_buttons(interaction)
-        
+        if not await self.load_buttons(interaction):
+            return  # load_buttons already responded with an error
+
         if not utils.feature_is_active(guild_id=interaction.guild.id, feature="options_menu__editing"):
             await ui_components.disabled_feature_override(self, interaction)
             return
@@ -105,7 +119,7 @@ class EditEmbed(CustomView):
                 original_color = utils.get_string_from_discord_color(self.outer.message.embeds[0].color)        
                 select_options = []
                 for option in utils.COLOR_OPTIONS:
-                    select_options.append(nextcord.SelectOption(label=option, value=option, default=(option is original_color)))
+                    select_options.append(nextcord.SelectOption(label=option, value=option, default=(option == original_color)))
                 
                 self.select = nextcord.ui.Select(custom_id="edit_embed_color_select", placeholder="Choose a color", options=select_options)
                 

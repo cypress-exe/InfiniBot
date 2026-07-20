@@ -35,7 +35,7 @@ async def add_roles_for_new_member(member: nextcord.Member):
         logging.warning(
             f"Cannot add roles to member {member.id} in guild {member.guild.name} ({member.guild.id}). Warning owner..."
         )
-        send_error_message_to_server_owner(
+        await send_error_message_to_server_owner(
             member.guild,
             "Manage Roles",
             message=(

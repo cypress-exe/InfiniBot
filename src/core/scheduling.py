@@ -42,13 +42,16 @@ async def run_scheduled_tasks() -> None:
 
     log_on_correct_behavior = (current_time_utc.minute // INTERVAL_MINUTES) % 7 == 0
     if (not log_on_correct_behavior):
-        logging.info("Logging skipped due to intended behavior.")
+        logging.debug("Skipping progress/summary logging for this run (only 1 in 7 runs logs them).")
 
     try:
-        # Start new log if it is a new day
-        if current_time_utc.hour == 0 and current_time_utc.minute == 0:
+        # Start new log if it is a new day. Window match (not minute == 0) so a tick
+        # that fires late — the misfire case from B3 — still rotates the log.
+        if current_time_utc.hour == 0 and current_time_utc.minute < INTERVAL_MINUTES:
             logging.warning("New day, generating new log file")
-            setup_logging()
+            # Preserve the configured log level — the default (INFO) would silently
+            # revert a DEBUG deployment every midnight
+            setup_logging(level=logging.root.level)
 
         from core.bot import bot
         guilds = list(bot.guilds)
@@ -74,8 +77,9 @@ async def run_scheduled_tasks() -> None:
                         else:
                             delay = min(1.0, 0.3 * (cpu / throttle_cpu))  # Lighter throttling for normal high CPU
                             logging.debug(f"CPU {cpu}% > {throttle_cpu}%, throttling for {delay}s (normal)")
+                        # Delay, then still process this guild — skipping it would drop
+                        # its birthday/maintenance checks for the whole cycle (or day).
                         await asyncio.sleep(delay)
-                        continue
 
                 # Timezone caching
                 try:
@@ -91,12 +95,18 @@ async def run_scheduled_tasks() -> None:
                 # Time calculation
                 current_time_local = current_time_utc.astimezone(tz)
 
-                # Birthday checks
-                await check_and_run_birthday_actions(bot, guild)
+                # Birthday checks (pass the cycle start so guilds processed late in the
+                # loop still match the window this cycle covers)
+                await check_and_run_birthday_actions(
+                    bot, guild,
+                    cycle_start=current_time_utc,
+                    interval_minutes=INTERVAL_MINUTES,
+                )
                 
                 # Daily maintenance
                 # 3am local time is a good time to run daily maintenance since it's a low traffic hour
-                if current_time_local.hour == 3 and current_time_local.minute == 0:
+                # (window match so a late-firing tick doesn't skip the whole day)
+                if current_time_local.hour == 3 and current_time_local.minute < INTERVAL_MINUTES:
                     await daily_leveling_maintenance(bot, guild)
                     await daily_moderation_maintenance(bot, guild)
                 
@@ -119,25 +129,24 @@ async def run_scheduled_tasks() -> None:
                     f"Mem: {psutil.virtual_memory().percent}%"
                 )
 
-        if (current_time_utc.hour == 9 and current_time_utc.minute == 0): # 9am utc time = LOW TRAFFIC HOUR GLOBALLY
+        if (current_time_utc.hour == 9 and current_time_utc.minute < INTERVAL_MINUTES): # 9am utc time = LOW TRAFFIC HOUR GLOBALLY
             try:
                 await daily_database_maintenance(bot)
             except Exception as e:
                 logging.error(f"Daily database maintenance failed: {e}", exc_info=True)
 
-        # Memory monitoring (every hour at the top of the hour)
-        if current_time_utc.minute == 0:
+        # Memory monitoring (first tick of each hour)
+        if current_time_utc.minute < INTERVAL_MINUTES:
             try:
                 log_memory_stats()
             except Exception as e:
                 logging.error(f"Memory profiling failed: {e}", exc_info=True)
 
-        # Message cache cleanup (every 15 minutes)
-        if current_time_utc.minute % 15 == 0:
-            try:
-                cleanup_stale_channels()
-            except Exception as e:
-                logging.error(f"Message cache cleanup failed: {e}", exc_info=True)
+        # Message cache cleanup (every run — the ticks are the 15-minute cadence)
+        try:
+            cleanup_stale_channels()
+        except Exception as e:
+            logging.error(f"Message cache cleanup failed: {e}", exc_info=True)
 
         # Final monitoring report
         if log_on_correct_behavior:
@@ -167,8 +176,8 @@ logging.getLogger('apscheduler').setLevel(logging.WARNING)
 
 def start_scheduler() -> None:
     """
-    Starts the scheduler. Scheduler will run the job function every 5 minutes,
-    aligned to the nearest 5-minute interval (00:00, 00:05, 00:10, etc.).
+    Starts the scheduler. Scheduler will run the job function every INTERVAL_MINUTES
+    minutes (currently 15), aligned to the interval grid (00:00, 00:15, 00:30, 00:45).
     """
     global scheduler
 

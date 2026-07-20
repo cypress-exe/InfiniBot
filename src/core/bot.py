@@ -48,6 +48,8 @@ from features.options_menu import entrypoint_ui
 import humanfriendly
 
 startup_time = None
+startup_completed = False
+"""Set once on_ready has finished its one-time work, so a re-fire can skip it."""
 
 # INIT BOT ==============================================================================================================================================================
 intents = nextcord.Intents.default()
@@ -122,8 +124,8 @@ async def on_ready() -> None: # Bot load
     :return: None
     :rtype: None
     """
-    global startup_time
-    
+    global startup_time, startup_completed
+
     await bot.wait_until_ready()
     logging.info(f"============================== Logged in as: {bot.user.name} with all shards ready. ==============================")
     logging.info(f"Bot is running with {bot.shard_count} shards across {len(bot.guilds)} guilds.")
@@ -131,6 +133,14 @@ async def on_ready() -> None: # Bot load
     # Initialize core systems
     global_settings.set_bot_load_status(True)
     start_scheduler()
+
+    if startup_completed:
+        # nextcord dispatches on_ready again when a session is re-established.
+        # Persistent views survive that (parse_ready clears with views=False), so the
+        # one-time work below must not repeat — and the startup duration measured
+        # against the original startup_time would be meaningless.
+        logging.info("Session re-established. Skipping one-time startup work.")
+        return
 
     # Initialize the bot's view cache
     init_views(bot)
@@ -187,6 +197,8 @@ async def on_ready() -> None: # Bot load
     formatted_time = humanfriendly.format_timespan(round(total_startup_time))
     logging.info(f"🚀 STARTUP COMPLETE: Total time {formatted_time} for {len(bot.guilds)} guilds ({len(bot.guilds)/total_startup_time:.1f} guilds/sec)")
 
+    startup_completed = True
+
 
 @bot.event
 async def on_shard_ready(shard_id: int) -> None:
@@ -203,11 +215,14 @@ async def on_shard_ready(shard_id: int) -> None:
     logging.info(f"Shard {shard_id} ready with {len(shard_guilds)} guilds")
 
     with global_settings.ShardLoadedStatus() as shards_loaded:
-        shards_loaded.append(shard_id)
+        # Dedup: on_shard_ready re-fires on shard reconnects, and duplicate ids would
+        # both grow the list unboundedly and re-trigger the all-shards-loaded branch
+        if shard_id not in shards_loaded:
+            shards_loaded.append(shard_id)
 
-        # Check if all shards are loaded
-        if len(shards_loaded) == bot.shard_count:
-            logging.info(f"All {bot.shard_count} shards loaded.")
+            # Check if all shards are loaded
+            if len(shards_loaded) == bot.shard_count:
+                logging.info(f"All {bot.shard_count} shards loaded.")
 
 @bot.event
 async def on_close() -> None:
@@ -232,13 +247,13 @@ else:
 
 # SLASH COMMANDS ==============================================================================================================================================================
 @bot.slash_command(name="view", description="Requires Infinibot Mod", contexts=[nextcord.InteractionContextType.guild])
-async def view(interaction: Interaction): pass
+async def view_group(interaction: Interaction): pass
 
 @bot.slash_command(name="set", description="Requires Infinibot Mod", contexts=[nextcord.InteractionContextType.guild])
-async def set(interaction: Interaction): pass
+async def set_group(interaction: Interaction): pass
 
 @bot.slash_command(name="create", description="Requires Infinibot Mod", contexts=[nextcord.InteractionContextType.guild])
-async def create(interaction: Interaction): pass
+async def create_group(interaction: Interaction): pass
 
 @bot.slash_command(name="help", description="Get help with InfiniBot")
 async def help(interaction: Interaction): 
@@ -257,7 +272,7 @@ async def dashboard_command(interaction: Interaction):
 async def profile_command(interaction: Interaction):
     await profile.run_profile_command(interaction)
 
-@create.subcommand(name="infinibot-mod-role", description="Manually trigger InfiniBot to create the Infinibot Mod role")
+@create_group.subcommand(name="infinibot-mod-role", description="Manually trigger InfiniBot to create the Infinibot Mod role")
 async def create_infinibot_mod_role(interaction: Interaction):
     role_created = await utils.check_server_for_infinibot_mod_role(interaction.guild)
 
@@ -273,19 +288,19 @@ async def create_infinibot_mod_role(interaction: Interaction):
         await interaction.response.send_message(embed = embed, ephemeral = True, view=ui_components.SupportView())
 
 # Moderation Commands
-@view.subcommand(name="my-strikes", description="View your strikes")
+@view_group.subcommand(name="my-strikes", description="View your strikes")
 async def my_strikes(interaction: Interaction):
     await moderation.run_my_strikes_command(interaction)
 
-@view.subcommand(name="member-strikes", description="View another member's strikes. (Requires Infinibot Mod)")
+@view_group.subcommand(name="member-strikes", description="View another member's strikes. (Requires Infinibot Mod)")
 async def view_member_strikes(interaction: Interaction, member: nextcord.Member):
     await moderation.run_view_member_strikes_command(interaction, member)
 
-@set.subcommand(name="admin-channel", description="Use this channel to log strikes. Channel should only be viewable by admins. (Requires Infinibot Mod)")
+@set_group.subcommand(name="admin-channel", description="Use this channel to log strikes. Channel should only be viewable by admins. (Requires Infinibot Mod)")
 async def set_admin_channel(interaction: Interaction):
     await moderation.run_set_admin_channel_command(interaction)
 
-@set.subcommand(name="log-channel", description="Use this channel for logging. Channel should only be viewable by admins. (Requires Infinibot Mod)")
+@set_group.subcommand(name="log-channel", description="Use this channel for logging. Channel should only be viewable by admins. (Requires Infinibot Mod)")
 async def set_log_channel(interaction: Interaction):
     await action_logging.run_set_log_channel_command(interaction)
 
@@ -294,11 +309,11 @@ async def set_log_channel(interaction: Interaction):
 async def leaderboard(interaction: Interaction):
     await leveling.run_leaderboard_command(interaction)
 
-@view.subcommand(name="level", description="View your or someone else's level.")
+@view_group.subcommand(name="level", description="View your or someone else's level.")
 async def view_level(interaction: Interaction, member: nextcord.Member = SlashOption(description="The member to view the level of.", required=False)):
     await leveling.run_view_level_command(interaction, member)
 
-@set.subcommand(name="level", description="Set levels for any individual (Requires Infinibot Mod)")
+@set_group.subcommand(name="level", description="Set levels for any individual (Requires Infinibot Mod)")
 async def set_level(interaction: Interaction, 
                     member: nextcord.Member = SlashOption(description="The member to set the level of.", required=True), 
                     level: int = SlashOption(description="The level to set.", required=True)):
@@ -306,23 +321,23 @@ async def set_level(interaction: Interaction,
 
 # Reaction Role Commands
 REACTIONROLETYPES = ["Letters", "Numbers", "Custom"]
-@create.subcommand(name="reaction-role", description="Legacy: Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
+@create_group.subcommand(name="reaction-role", description="Legacy: Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
 async def reaction_role_command(interaction: Interaction, type: str = SlashOption(choices=["Letters", "Numbers"]), 
                               mention_roles: bool = SlashOption(name="mention-roles", description="Mention the roles with @mention", required=False, default=True)):
     await reaction_roles.run_reaction_role_command(interaction, type, mention_roles)
 
-@create.subcommand(name="custom-reaction-role", description="Legacy: Create a reaction role with customized emojis. (Requires Infinibot Mod)")
+@create_group.subcommand(name="custom-reaction-role", description="Legacy: Create a reaction role with customized emojis. (Requires Infinibot Mod)")
 async def custom_reaction_role_command(interaction: Interaction, options: str = SlashOption(description="Format: \"👍 = @Member, 🥸 = @Gamer\""), 
                                     mentionRoles: bool = SlashOption(name="mention_roles", description="Mention the roles with @mention", required = False, default = True)):   
     await reaction_roles.run_custom_reaction_role_command(interaction, options, mentionRoles)
 
 # Embed Commands
-@create.subcommand(name = "embed", description = "Create a beautiful embed!")
+@create_group.subcommand(name = "embed", description = "Create a beautiful embed!")
 async def create_embed(interaction: Interaction, role: nextcord.Role = SlashOption(description = "Role to Ping", required = False)):
     await embeds.run_create_embed_command(interaction, role)
 
 # Role Message Commands
-@create.subcommand(name = "role_message", description = "Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
+@create_group.subcommand(name = "role_message", description = "Create a message allowing users to add/remove roles by themselves. (Requires Infinibot Mod)")
 async def create_role_message(interaction: Interaction):
     await role_messages.run_role_message_command(interaction)
 
@@ -460,7 +475,7 @@ async def on_application_command_error(interaction: Interaction, error) -> None:
     logging.error(f"Error ID: {error_id} - Unhandled exception in application command", exc_info=error)
 
     # Send a user-friendly error message
-    embed = ui_components.INFINIBOT_ERROR_EMBED
+    embed = ui_components.INFINIBOT_ERROR_EMBED.copy()  # fresh copy per error - concurrent errors must not overwrite each other's footer
     embed.set_footer(text = f"Command Execution - Error ID: {error_id}")
     try:
         await interaction.response.send_message(embed=embed, ephemeral=True, view=ui_components.SupportView())
@@ -531,58 +546,49 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     if payload.guild_id is None:
         return
 
-    edited_message = None
-    try:
-        # Find guild and channel
-        channel = await utils.get_channel(payload.channel_id, bot=bot)
-        if channel is None: 
-            return
+    # Find guild and channel
+    channel = await utils.get_channel(payload.channel_id, bot=bot)
+    if channel is None:
+        return
 
-        guild = channel.guild
-        if guild is None or not guild.me: 
-            return
+    guild = channel.guild
+    if guild is None or not guild.me:
+        return
 
-        # If we have it, grab the original message
-        original_message = payload.cached_message
-        if original_message is None:
-            # Find db stored message
-            original_message = stored_messages.get_message_from_db(payload.message_id)
-        
-        # Find the message
-        edited_message = await utils.get_message(channel, payload.message_id)
-        if edited_message is None:
-            return
-        
-        # Update the message's cache
-        with LogIfFailure(feature="cached_messages.remove_cached_message & cached_messages.cache_message"):
-            cached_messages.remove_cached_message(edited_message.id, channel.id)
-            cached_messages.cache_message(edited_message)
+    # If we have it, grab the original message
+    original_message = payload.cached_message
+    if original_message is None:
+        # Find db stored message
+        original_message = stored_messages.get_message_from_db(payload.message_id)
 
-        # Resolve the author if it's not a Member object (e.g., if the member is not cached)
-        if not isinstance(edited_message.author, nextcord.Member):
-            with LogIfFailure(feature="utils.get_member (message edit profanity check)"):
-                resolved_author = await utils.get_member(guild, edited_message.author.id)
-                if resolved_author is not None:
-                    edited_message.author = resolved_author
+    # Find the message
+    edited_message = await utils.get_message(channel, payload.message_id)
+    if edited_message is None:
+        return
 
-        # Punish profanity (if any)
-        with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
-            await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message)
-                
-        # Log the message
-        with LogIfFailure(feature="action_logging.log_raw_message_edit"):
-            await action_logging.log_raw_message_edit(guild, original_message, edited_message)
+    # Update the message's cache (cache_message updates an existing entry in place)
+    with LogIfFailure(feature="cached_messages.cache_message"):
+        cached_messages.cache_message(edited_message)
 
-        # Add the edited message to the database
-        with LogIfFailure(feature="stored_messages.store_message_in_db(edited_message)"):
-            if utils.feature_is_active(guild_id=guild.id, feature="logging"):
-                stored_messages.store_message_in_db(edited_message)
+    # Resolve the author if it's not a Member object (e.g., if the member is not cached)
+    if not isinstance(edited_message.author, nextcord.Member):
+        with LogIfFailure(feature="utils.get_member (message edit profanity check)"):
+            resolved_author = await utils.get_member(guild, edited_message.author.id)
+            if resolved_author is not None:
+                edited_message.author = resolved_author
 
-    finally:
-        # Update the message in the database
-        with LogIfFailure(feature="stored_messages.remove_message_from_db"):
-            if utils.feature_is_active(guild_id=payload.guild_id, feature="logging"):
-                stored_messages.remove_message_from_db(payload.message_id)
+    # Punish profanity (if any)
+    with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
+        await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message)
+
+    # Log the message
+    with LogIfFailure(feature="action_logging.log_raw_message_edit"):
+        await action_logging.log_raw_message_edit(guild, original_message, edited_message)
+
+    # Keep the stored copy current (upsert) so future edit/delete logs can retrieve it
+    with LogIfFailure(feature="stored_messages.store_message_in_db(edited_message)"):
+        if utils.feature_is_active(guild_id=guild.id, feature="logging"):
+            stored_messages.store_message_in_db(edited_message)
 
 @bot.event
 async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None:
@@ -622,8 +628,11 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
                     # Actual values are important instead of object approximations, so replace them
                     message.guild = guild
                     message.channel = channel
-                    # Some additional info needs to be fetched
-                    await message.fetch("author")
+                    # Some additional info needs to be fetched. A failed fetch leaves
+                    # message.author as None (downstream logging handles that) — it
+                    # must not abort the delete log entirely.
+                    with LogIfFailure(feature="MessageRecord.fetch('author')"):
+                        await message.fetch("author")
 
             # Log the message
             with LogIfFailure(feature="action_logging.log_raw_message_delete"):
@@ -647,6 +656,10 @@ async def on_member_update(before: nextcord.Member, after: nextcord.Member) -> N
     """
     Handles member update events.
 
+    Note: nextcord only dispatches this event for members it already has cached
+    (there's no raw/uncached variant of this event) — see the caching-limitation
+    note on action_logging.log_member_update for what that means for logging.
+
     :param before: The member before the update.
     :type before: nextcord.Member
     :param after: The member after the update.
@@ -654,7 +667,7 @@ async def on_member_update(before: nextcord.Member, after: nextcord.Member) -> N
     :return: None
     :rtype: None
     """
-    
+
     # Log the update
     with LogIfFailure(feature="action_logging.log_member_update"):
         await action_logging.log_member_update(before, after)

@@ -14,10 +14,13 @@ class EditButton(OptionsButton):
         self.message_info: dict = data["message_info"]
 
         # Check Message Compatibility
-        if not interaction.guild: return
-        
+        if not interaction.guild: return False
+
         if self.determine_editability(interaction):
             self.outer.add_item(self)
+            return True
+
+        return False
 
     def determine_editability(self, interaction: Interaction):
         if not interaction.guild: return

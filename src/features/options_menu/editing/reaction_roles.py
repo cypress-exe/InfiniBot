@@ -1,7 +1,6 @@
 import logging
 from nextcord import Interaction
 import nextcord
-import re
 import json
 
 from config.server import Server
@@ -14,7 +13,7 @@ class EditReactionRole(CustomView):
         super().__init__()
         self.message_id = message_id
         
-    async def load_buttons(self, interaction: Interaction):
+    async def load_buttons(self, interaction: Interaction) -> bool:
         self.message = await utils.get_message(interaction.channel, self.message_id)
         if self.message is None:
             # Message no longer exists or was recently not found
@@ -26,18 +25,32 @@ class EditReactionRole(CustomView):
                 ),
                 ephemeral=True
             )
-            return
+            return False
         self.server = Server(interaction.guild.id)
+        if self.message_id not in self.server.managed_messages:
+            # Message is no longer cataloged as an InfiniBot-managed message
+            await interaction.response.send_message(
+                embed=nextcord.Embed(
+                    title="Message Not Editable",
+                    description="This message is no longer tracked by InfiniBot and can't be edited.",
+                    color=nextcord.Color.red()
+                ),
+                ephemeral=True
+            )
+            return False
         self.message_info = self.server.managed_messages[self.message_id]
-        
+
         self.clear_items()
-        
+
         self.add_item(self.EditTextButton(self))
         self.add_item(self.EditOptionsButton(self, self.message_info))
-        
+
+        return True
+
     async def setup(self, interaction: Interaction):
-        await self.load_buttons(interaction)
-        
+        if not await self.load_buttons(interaction):
+            return  # load_buttons already responded with an error
+
         if not utils.feature_is_active(feature="options_menu__editing", guild_id=interaction.guild.id):
             await ui_components.disabled_feature_override(self, interaction)
             return
@@ -181,10 +194,9 @@ class EditReactionRole(CustomView):
                 if "⚠️" in string:
                     return None
                     
-                # Original regex pattern with improved handling
-                match = re.search(r"^(<@&)?(\d+)>?$", string)
-                if match:
-                    return nextcord.utils.get(guild.roles, id=int(match.group(2)))
+                role_id = utils.extract_role_id(string, allow_bare_id=True)
+                if role_id is not None:
+                    return nextcord.utils.get(guild.roles, id=role_id)
                 return nextcord.utils.get(guild.roles, name=string) if string else None
            
             def format_options(self, guild: nextcord.Guild, lines: list[str], packet_to_modify=None, display_errors=True):

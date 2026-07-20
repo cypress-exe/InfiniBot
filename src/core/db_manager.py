@@ -162,13 +162,6 @@ class Simple_TableManager(TableManager):
 
         return properties
     
-    def __dict__(self):
-        """
-        Returns a dictionary representation of the object, including nested objects.
-        This is useful for serialization or debugging purposes.
-        """
-        return self.to_dict()
-       
     def get_column_names_and_types(self):
         return self.database.all_column_types[self.table_name]
     
@@ -231,7 +224,7 @@ class Simple_TableManager(TableManager):
             # Getter function for the property
             def getter(self):
                 # Create the private attribute if it doesn't exist
-                if private_name not in dir(self):
+                if not hasattr(self, private_name):
                     setattr(self, private_name, UNSET_VALUE)
                 
                 # If the private attribute doesn't have a value, get it from the SQL database
@@ -441,10 +434,24 @@ class Simple_TableManager(TableManager):
                 else: return 0
 
             # value = {"status": ('SET'|'UNSET'|'NONE'), "value": ______}
-            packet = json.loads(str(value))
-            if packet['status'] == 'UNSET':
+            try:
+                packet = json.loads(str(value))
+                status = packet['status']
+            except (ValueError, TypeError, KeyError):
+                # Non-JSON / malformed stored value (e.g. legacy schema). Don't let one
+                # bad column abort the caller.
+                logging.warning(f"typed_property '{property_name}' holds a malformed value {value!r}; treating as unset/raw.")
+                # Ints and floats in this fallback state can be assumed as raw values.
+                # String values are ambiguous, so we treat them as unset. This is a
+                # best-effort approach to avoid breaking the caller.
+                if isinstance(value, (int, float)):
+                    return value
+                if accept_unset_value: return UNSET_VALUE
+                if accept_none_value: return None
+                return 0
+            if status == 'UNSET':
                 return UNSET_VALUE
-            if packet['status'] == 'NONE':
+            if status == 'NONE':
                 return None
 
             return packet['value']
@@ -570,10 +577,10 @@ class Simple_TableManager(TableManager):
                 return self.properties
                 
             def to_embed(self):
-                properties = self.properties
+                properties = dict(self.properties)  # copy so the stored dict keeps its color string
                 if "color" in properties:
                     properties["color"] = get_discord_color_from_string(properties["color"])
-                
+
                 return NextcordEmbed(**properties)
             
             def get(self, key, default=None):
@@ -671,9 +678,11 @@ class IntegratedList_TableManager(TableManager):
         Returns:
             tuple: The SQL row matching the primary and secondary key values, or None if not found.
         """
-        response = self.database.execute_query(f"SELECT * FROM {self.table_name} " \
-                                      f"WHERE {self.primary_key_sql_name} = {self.primary_key_value} " \
-                                      f"AND {self.secondary_key_sql_name} = {second_key_value}")
+        response = self.database.execute_query(
+            f"SELECT * FROM {self.table_name} "
+            f"WHERE {self.primary_key_sql_name} = :primary_key_value "
+            f"AND {self.secondary_key_sql_name} = :secondary_key_value",
+            {'primary_key_value': self.primary_key_value, 'secondary_key_value': second_key_value})
 
         return response
 
@@ -684,11 +693,11 @@ class IntegratedList_TableManager(TableManager):
         Yields:
             dataclass: A dataclass representing each entry in the list.
         """
-        # Get all entries in the table
-        for secondary_key_value in self._get_all_secondary_values():
-            data = self._get_entry(secondary_key_value)
-            if data is not None:
-                yield self._package_list_into_dataclass(data)
+        # One query for all rows
+        query = f"SELECT * FROM {self.table_name} WHERE {self.primary_key_sql_name} = :primary_key_value"
+        rows = self.database.execute_query(query, {'primary_key_value': self.primary_key_value}, multiple_values=True)
+        for row in rows or []:
+            yield self._package_list_into_dataclass(row)
 
     def _get_all_secondary_values(self):
         """
@@ -1020,7 +1029,10 @@ class IntegratedList_TableManager(TableManager):
         Returns:
             int: The length of the list.
         """
-        return len(list(self._get_all_entries()))
+        row = self.database.execute_query(
+            f"SELECT COUNT(*) FROM {self.table_name} WHERE {self.primary_key_sql_name} = :primary_key_value",
+            {'primary_key_value': self.primary_key_value})
+        return row[0] if row is not None else 0
     
     def __contains__(self, secondary_key_value):
         """
@@ -1042,16 +1054,7 @@ class IntegratedList_TableManager(TableManager):
             Generator: A generator yielding dataclass instances for each entry.
         """
         return self._get_all_entries()
-    
-    def __next__(self):
-        """
-        Return the next entry in the list.
 
-        Returns:
-            dataclass: A dataclass representing the next entry.
-        """
-        return next(self._get_all_entries())
-    
     def __str__(self) -> str:
         """
         Return a string representation of the list.
@@ -1071,11 +1074,9 @@ class IntegratedList_TableManager(TableManager):
             dict: A dictionary containing the entries in the list.
         """
         result = {}
-        for secondary_key_value in self._get_all_secondary_values():
-            data = self._get_entry(secondary_key_value)
-            if data is not None:
-                dataclass_entry = self._package_list_into_dataclass(data)
-                result[secondary_key_value] = dataclass_entry.get_data()
+        for dataclass_entry in self._get_all_entries():
+            secondary_key_value = getattr(dataclass_entry, self.secondary_key_sql_name)
+            result[secondary_key_value] = dataclass_entry.get_data()
         return result
 
 async def daily_database_maintenance(bot: nextcord.Client):
@@ -1123,20 +1124,24 @@ async def daily_database_maintenance(bot: nextcord.Client):
             logging.warning("SKIPPING: Bot load status prevents maintenance")
             return
         
+        # All blocking phases run in a worker thread (asyncio.to_thread) — VACUUM,
+        # checkpoints, and optimize's time.sleep throttling would otherwise freeze
+        # the event loop (and every interaction) for the duration.
+
         # WAL checkpoint phase -----------------------------------------------------------------------------------
         logging.info("Starting WAL checkpoint...")
         checkpoint_start = datetime.datetime.now(datetime.timezone.utc)
-        
-        get_database().checkpoint()
-        
+
+        await asyncio.to_thread(get_database().checkpoint)
+
         checkpoint_duration = datetime.datetime.now(datetime.timezone.utc) - checkpoint_start
         logging.info(f"WAL checkpoint completed in {checkpoint_duration.total_seconds():.2f}s")
 
         # Database optimization phase -----------------------------------------------------------------------------------
         logging.info("Starting database optimization...")
         optimize_start = datetime.datetime.now(datetime.timezone.utc)
-        
-        total_deleted += get_database().optimize_database(throttle=True)
+
+        total_deleted += await asyncio.to_thread(get_database().optimize_database, throttle=True)
 
         optimize_duration = datetime.datetime.now(datetime.timezone.utc) - optimize_start
         logging.info(f"Optimization completed in {optimize_duration.total_seconds():.2f}s")
@@ -1147,20 +1152,27 @@ async def daily_database_maintenance(bot: nextcord.Client):
         message_log_cleanup_start = datetime.datetime.now(datetime.timezone.utc)
 
         from config.messages import stored_messages
-        total_deleted += stored_messages.cleanup_db()
+        total_deleted += await asyncio.to_thread(stored_messages.cleanup_db)
 
         message_log_cleanup_duration = datetime.datetime.now(datetime.timezone.utc) - message_log_cleanup_start
         logging.info(f"Message log cleanup completed in {message_log_cleanup_duration.total_seconds():.2f}s")
 
 
         # Orphaned Guild Entries cleanup phase -----------------------------------------------------------------------------------
-        logging.info(f"Scanning tables for orphaned guild entries...")
-        orphaned_guild_entries_cleanup_start = datetime.datetime.now(datetime.timezone.utc)
+        # Safety: bot.guilds is incomplete while shards are (re)connecting or guilds
+        # are flagged unavailable — running the cleanup then would treat live servers
+        # as orphaned and delete their data.
+        if not bot.is_ready() or len(bot.guilds) == 0 or any(guild.unavailable for guild in bot.guilds):
+            logging.warning("SKIPPING orphaned-guild cleanup: shard(s) not ready or one or more guilds unavailable.")
+        else:
+            logging.info(f"Scanning tables for orphaned guild entries...")
+            orphaned_guild_entries_cleanup_start = datetime.datetime.now(datetime.timezone.utc)
 
-        total_deleted += cleanup_orphaned_guild_entries(set([int(guild.id) for guild in bot.guilds]), get_database())
+            valid_guild_ids = set([int(guild.id) for guild in bot.guilds])
+            total_deleted += await asyncio.to_thread(cleanup_orphaned_guild_entries, valid_guild_ids, get_database())
 
-        orphaned_guild_entries_cleanup_duration = datetime.datetime.now(datetime.timezone.utc) - orphaned_guild_entries_cleanup_start
-        logging.info(f"Orphaned guild entries cleanup completed in {orphaned_guild_entries_cleanup_duration.total_seconds():.2f}s")
+            orphaned_guild_entries_cleanup_duration = datetime.datetime.now(datetime.timezone.utc) - orphaned_guild_entries_cleanup_start
+            logging.info(f"Orphaned guild entries cleanup completed in {orphaned_guild_entries_cleanup_duration.total_seconds():.2f}s")
 
         # Final report
         total_duration = datetime.datetime.now(datetime.timezone.utc) - start_time
@@ -1193,69 +1205,84 @@ def cleanup_orphaned_guild_entries(all_guild_ids:set, database:Database=None):
     if database is None:
         database = get_database()
 
-    try:
-        # Create temporary table for valid guild IDs - much more efficient than large IN clauses
-        database.execute_query("DROP TABLE IF EXISTS temp_valid_guilds")
-        database.execute_query("CREATE TEMPORARY TABLE temp_valid_guilds (guild_id INTEGER PRIMARY KEY)")
+    if not all_guild_ids:
+        logging.warning("Refusing to run orphaned-guild cleanup with an empty valid-guild set.")
+        return 0
 
-        # Insert all valid guild IDs in batches to avoid parameter limits
-        batch_size = 500  # SQLite parameter limit is typically 999
-        guild_ids_list = list(all_guild_ids)
-        
-        for i in range(0, len(guild_ids_list), batch_size):
-            batch = guild_ids_list[i:i + batch_size]
-            query_values = ",".join(f"({int(gid)})" for gid in batch)
-            database.execute_query(
-            f"INSERT INTO temp_valid_guilds (guild_id) VALUES {query_values}",
-            commit=True
-            )
+    # The temp table is per-connection state, so every statement below must run on
+    # the same physical connection.
+    with database.pinned_connection() as connection:
+        try:
+            # Temporary table for valid guild IDs - much more efficient than large IN clauses
+            connection.execute_query("DROP TABLE IF EXISTS temp_valid_guilds")
+            connection.execute_query("CREATE TEMPORARY TABLE temp_valid_guilds (guild_id INTEGER PRIMARY KEY)")
 
-        for table in database.tables:
-            try:
-                table_start = datetime.datetime.now(datetime.timezone.utc)
+            # Insert all valid guild IDs in batches to avoid parameter limits
+            batch_size = 500  # SQLite parameter limit is typically 999
+            guild_ids_list = list(all_guild_ids)
 
-                # Get the guild row
-                if table not in database.tags: continue
-                if "remove-if-guild-invalid" not in database.tags[table]: continue
-                guild_row = database.tags[table]["remove-if-guild-invalid"]
-
-                if guild_row not in database.all_column_names[table]:
-                    logging.warning(f"Table {table} does not have the reported guild column '{guild_row}'. Skipping.")
-                    continue
-
-                table_primary_key = database.all_primary_keys[table]
-                if table_primary_key is None:
-                    logging.warning(f"Table {table} does not have a primary key. Skipping.")
-                    continue
-                
-                logging.info(f"Processing table {table} with guild column '{guild_row}'")
-                
-                # Delete orphaned entries using LEFT JOIN - much more efficient than large IN clause
-                # SQLite will tell us how many rows were affected, so no need to count first
-                deleted_count = database.execute_query(
-                    f"""DELETE FROM {table} 
-                        WHERE {table}.{table_primary_key} IN (
-                            SELECT {table}.{table_primary_key} FROM {table} 
-                            LEFT JOIN temp_valid_guilds ON {table}.{guild_row} = temp_valid_guilds.guild_id 
-                            WHERE temp_valid_guilds.guild_id IS NULL
-                        )""",
-                    commit=True,
-                    return_affected_rows=True
+            for i in range(0, len(guild_ids_list), batch_size):
+                batch = guild_ids_list[i:i + batch_size]
+                query_values = ",".join(f"({int(gid)})" for gid in batch)
+                connection.execute_query(
+                    f"INSERT INTO temp_valid_guilds (guild_id) VALUES {query_values}",
+                    commit=True
                 )
-                
-                if deleted_count > 0:
-                    total_deleted += deleted_count
-                    logging.info(f"Deleted {deleted_count} orphaned entries from {table}")
-                else:
-                    logging.info(f"No orphaned entries found in {table}")
-                
-                logging.info(f"Completed {table} in {datetime.datetime.now(datetime.timezone.utc) - table_start}")
 
-            except Exception as table_err:
-                logging.error(f"Table {table} processing failed: {table_err}", exc_info=True)
+            # Guard against deleting everything if the inserts silently failed.
+            inserted_count = connection.execute_query("SELECT COUNT(*) FROM temp_valid_guilds")[0]
+            if inserted_count != len(all_guild_ids):
+                raise RuntimeError(
+                    f"temp_valid_guilds holds {inserted_count} rows but {len(all_guild_ids)} guilds were expected; "
+                    "aborting cleanup rather than risk deleting live guild data."
+                )
 
-    finally:
-        # Cleanup temporary table
-        database.execute_query("DROP TABLE IF EXISTS temp_valid_guilds")
+            for table in database.tables:
+                try:
+                    table_start = datetime.datetime.now(datetime.timezone.utc)
+
+                    # Get the guild row
+                    if table not in database.tags: continue
+                    if "remove-if-guild-invalid" not in database.tags[table]: continue
+                    guild_row = database.tags[table]["remove-if-guild-invalid"]
+
+                    if guild_row not in database.all_column_names[table]:
+                        logging.warning(f"Table {table} does not have the reported guild column '{guild_row}'. Skipping.")
+                        continue
+
+                    table_primary_key = database.all_primary_keys[table]
+                    if table_primary_key is None:
+                        logging.warning(f"Table {table} does not have a primary key. Skipping.")
+                        continue
+
+                    logging.info(f"Processing table {table} with guild column '{guild_row}'")
+
+                    # Delete orphaned entries using LEFT JOIN - much more efficient than large IN clause
+                    # SQLite will tell us how many rows were affected, so no need to count first
+                    deleted_count = connection.execute_query(
+                        f"""DELETE FROM {table}
+                            WHERE {table}.{table_primary_key} IN (
+                                SELECT {table}.{table_primary_key} FROM {table}
+                                LEFT JOIN temp_valid_guilds ON {table}.{guild_row} = temp_valid_guilds.guild_id
+                                WHERE temp_valid_guilds.guild_id IS NULL
+                            )""",
+                        commit=True,
+                        return_affected_rows=True
+                    )
+
+                    if deleted_count > 0:
+                        total_deleted += deleted_count
+                        logging.info(f"Deleted {deleted_count} orphaned entries from {table}")
+                    else:
+                        logging.info(f"No orphaned entries found in {table}")
+
+                    logging.info(f"Completed {table} in {datetime.datetime.now(datetime.timezone.utc) - table_start}")
+
+                except Exception as table_err:
+                    logging.error(f"Table {table} processing failed: {table_err}", exc_info=True)
+
+        finally:
+            # Cleanup temporary table
+            connection.execute_query("DROP TABLE IF EXISTS temp_valid_guilds")
 
     return total_deleted

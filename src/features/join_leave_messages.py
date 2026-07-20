@@ -49,7 +49,7 @@ async def trigger_join_message(member: nextcord.Member) -> None:
         # Send message
         join_message_embed: nextcord.Embed = server.join_message_profile.embed.to_embed()
         join_message_embed = utils.apply_generic_replacements(join_message_embed, member, member.guild)
-        join_message_embed.timestamp = datetime.datetime.now()
+        join_message_embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
         embeds = [join_message_embed]
         
         # Join Card (If enabled)
@@ -109,6 +109,6 @@ async def trigger_leave_message(guild: nextcord.Guild, member: nextcord.abc.User
         # Send message
         leave_message_embed: nextcord.Embed = server.leave_message_profile.embed.to_embed()
         leave_message_embed = utils.apply_generic_replacements(leave_message_embed, member, guild)
-        leave_message_embed.timestamp = datetime.datetime.now()
+        leave_message_embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
 
         await channel.send(embed = leave_message_embed)

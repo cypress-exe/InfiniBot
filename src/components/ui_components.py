@@ -8,7 +8,7 @@ from nextcord import Interaction
 from nextcord.utils import MISSING
 
 from components import utils
-from config.global_settings import bot_loaded, get_configs, required_permissions, VIEW_TIMEOUT
+from config.global_settings import get_bot_load_status, get_configs, required_permissions, VIEW_TIMEOUT
 from core.log_manager import get_uuid_for_logging
 
 # View overrides
@@ -103,10 +103,6 @@ async def chunk_guild_with_feedback(interaction: Interaction) -> int:
     if interaction.guild.chunked:
         return None
 
-    # Skip if bot is already fully loaded. If the guild still shows as unchunked, something is wrong, but chunking again won't help.
-    if bot_loaded:
-        return None
-    
     # Send loading message to user
     await interaction.response.send_message(
         embed=nextcord.Embed(
@@ -143,6 +139,35 @@ async def chunk_guild_with_feedback(interaction: Interaction) -> int:
     )
     return None
 
+async def show_no_selectable_channels(interaction: Interaction, title: str, back_callback):
+    """
+    Render an actionable message for channel-select pages when InfiniBot cannot use
+    any text channel. SelectView rejects an empty options list, so these pages must
+    not be opened at all in that state.
+
+    :param interaction: The interaction to respond to.
+    :type interaction: Interaction
+    :param title: The title to show, matching the page the user was headed to.
+    :type title: str
+    :param back_callback: Coroutine function taking the interaction, used by the Back button.
+    """
+    description = """
+    InfiniBot can't view and send messages in any of your text channels, so there are no channels to choose from.
+
+    **How to fix this**
+    Give InfiniBot both *View Channel* and *Send Messages* permission in at least one text channel, then return to this page.
+    """
+    embed = nextcord.Embed(title=title,
+                           description=utils.standardize_str_indention(description),
+                           color=nextcord.Color.red())
+
+    view = CustomView()
+    back_btn = nextcord.ui.Button(label="Back", style=nextcord.ButtonStyle.danger)
+    back_btn.callback = back_callback
+    view.add_item(back_btn)
+
+    await interaction.response.edit_message(embed=embed, view=view)
+    
 # Components
 def get_colors_available_ui_component():
     description = ""
@@ -199,7 +224,7 @@ class CustomView(nextcord.ui.View):
         logging.error(f"Error ID: {error_id} - Exception in view interaction", exc_info=error)
 
         # Inform the user about the error with the ID
-        embed = INFINIBOT_ERROR_EMBED
+        embed = INFINIBOT_ERROR_EMBED.copy()  # fresh copy per error - concurrent errors must not overwrite each other's footer
         embed.set_footer(text = f"View Interaction - Error ID: {error_id}")
 
         if not interaction.response.is_done():
@@ -253,7 +278,7 @@ class CustomModal(nextcord.ui.Modal):
         logging.error(f"Error ID: {error_id} - Exception in modal interaction", exc_info=error)
 
         # Inform the user about the error with the ID
-        embed = INFINIBOT_ERROR_EMBED
+        embed = INFINIBOT_ERROR_EMBED.copy()  # fresh copy per error - concurrent errors must not overwrite each other's footer
         embed.set_footer(text = f"Modal Interaction - Error ID: {error_id}")
         await interaction.response.send_message(
             embed=embed, ephemeral=True, view=SupportView()
@@ -311,32 +336,41 @@ class SelectView(CustomView):
     :type cancel_button_label: str
     :param preserve_order: Preserves the order of options. Defaults to False, where the options will be alphabetized.
     :type preserve_order: bool
+    :param empty_state_message: Message shown instead of the select when there are no options.
+                                Pages with a more specific explanation should pass their own.
+    :type empty_state_message: str
 
     :raises ValueError: If the arguments are incorrect.
+
+    An empty options list is not an error: `setup` renders `empty_state_message` with a
+    Back button that routes through the cancel path, so `return_command` still receives
+    `None`.
 
     Setup
     ------
     Call `await ~setup(nextcord.Interaction)` to begin setup.
     """
-    def __init__(self, embed: nextcord.Embed, 
-                 options: list[nextcord.SelectOption], 
-                 return_command, 
-                 placeholder: str = None, 
-                 continue_button_label = "Continue", 
-                 cancel_button_label = "Cancel", 
-                 preserve_order = False):
-        
+    def __init__(self, embed: nextcord.Embed,
+                 options: list[nextcord.SelectOption],
+                 return_command,
+                 placeholder: str = None,
+                 continue_button_label = "Continue",
+                 cancel_button_label = "Cancel",
+                 preserve_order = False,
+                 empty_state_message = "There's nothing to choose from here."):
+
         super().__init__()
         self.page = 0
         self.embed = embed
         self.options = options
         self.return_command = return_command
-        
+        self.empty_state_message = empty_state_message
+
         # Confirm objects
-        if self.options == None or self.options == []:
-            raise ValueError(f"'options' must be a 'list' with one or more 'nextcord.SelectOption' items.")       
+        if self.options is None:
+            self.options = []
         if type(self.options) != list:
-            raise ValueError(f"'options' must be of type 'list'. Received type '{type(self.options)}'")        
+            raise ValueError(f"'options' must be of type 'list'. Received type '{type(self.options)}'")
         for option in self.options:
             if type(option) != nextcord.SelectOption:
                 raise ValueError(f"'options' must only contain 'nextcord.SelectOption' items. Contained 1+ '{type(option)}'")
@@ -398,8 +432,30 @@ class SelectView(CustomView):
         self.add_item(self.continue_btn)
         
     async def setup(self, interaction):
+        if not self.options:
+            await self._show_empty_state(interaction)
+            return
+
         await self.setPage(interaction, 0)
-        
+
+    async def _show_empty_state(self, interaction: Interaction):
+        """
+        Render the empty-state message in place of the select. Discord rejects a select
+        menu with zero options, so the select and its pagination are dropped entirely
+        and only the cancel button (relabeled "Back") remains.
+        """
+        embed = copy.copy(self.embed)
+        embed.description = (embed.description or "") + f"\n\n{self.empty_state_message}"
+        embed.color = nextcord.Color.red()
+
+        self.clear_items()
+        self.cancel_btn.label = "Back"
+        self.cancel_btn.row = 0
+        self.add_item(self.cancel_btn)
+
+        await interaction.response.edit_message(embed = embed, view = self)
+
+
     async def setPage(self, interaction: Interaction, page: int):
         if page >= len(self.select_options): raise IndexError("Page (int) was out of bounds of self.selectOptions (list[nextcord.SelectOption]).")
         
@@ -452,21 +508,21 @@ class SelectView(CustomView):
 # Common Add-On Views
 class SupportView(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         support_server_btn = nextcord.ui.Button(label = "Go to Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links.support-server-invite-link"])
         self.add_item(support_server_btn)
 
 class InviteView(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         invite_btn = nextcord.ui.Button(label = "Add to Your Server", style = nextcord.ButtonStyle.link, url = get_configs()["links.bot-invite-link"])
         self.add_item(invite_btn)
 
 class SupportAndInviteView(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links.support-server-invite-link"])
         self.add_item(support_server_btn)
@@ -476,7 +532,7 @@ class SupportAndInviteView(CustomView):
 
 class SupportInviteAndTopGGVoteView(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links.support-server-invite-link"])
         self.add_item(support_server_btn)
@@ -489,7 +545,7 @@ class SupportInviteAndTopGGVoteView(CustomView):
         
 class SupportInviteAndTopGGReviewView(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         support_server_btn = nextcord.ui.Button(label = "Support Server", style = nextcord.ButtonStyle.link, url = get_configs()["links.support-server-invite-link"])
         self.add_item(support_server_btn)
@@ -502,7 +558,7 @@ class SupportInviteAndTopGGReviewView(CustomView):
 
 class TopGGVoteView(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         topGG_vote_btn = nextcord.ui.Button(label = "Vote for InfiniBot", style = nextcord.ButtonStyle.link, url = get_configs()["links.topgg-vote-link"])
         self.add_item(topGG_vote_btn)
@@ -512,7 +568,7 @@ class TopGGVoteView(CustomView):
         
 class TopGGAll(CustomView):
     def __init__(self):
-        super().__init__(timeout = None)
+        super().__init__()
         
         topGG_btn = nextcord.ui.Button(label = "Visit on Top.GG", style = nextcord.ButtonStyle.link, url = get_configs()["links.topgg-link"])
         self.add_item(topGG_btn)

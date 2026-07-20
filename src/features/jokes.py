@@ -52,9 +52,6 @@ class Joke:
 
         return values
     
-    def __dict__(self):
-        return self.to_dict()
-    
     def __hash__(self):
         return hash((self.title, self.body, self.punchline))
     
@@ -339,7 +336,21 @@ class JokeView(CustomView):
         async def callback(self, interaction: Interaction):
             # Try to post a message to the submission channel on the InfiniBot Support Server
             server = _get_infinibot_support_server()
-            if server is None: self.stop()
+            if server is None:
+                logging.error("Could not resolve the InfiniBot support server. Cannot send joke submission.")
+                await interaction.response.send_message(
+                    embed=nextcord.Embed(
+                        title="Joke Submission Failed",
+                        description=(
+                            "InfiniBot could not reach the support server. "
+                            "Please try again later, or contact the developers of InfiniBot if this persists."
+                        ),
+                        color=nextcord.Color.red()
+                    ),
+                    ephemeral=True
+                )
+                self.stop()
+                return
 
             # Get the submission channel ID
             submission_channel_id = get_configs()['support-server']['submission-channel-id']
@@ -368,6 +379,21 @@ class JokeView(CustomView):
             )
 
             channel = server.get_channel(submission_channel_id)
+            if channel is None:
+                logging.error(f"Joke submission channel {submission_channel_id} could not be resolved. Cannot send joke submission.")
+                await interaction.response.send_message(
+                    embed=nextcord.Embed(
+                        title="Joke Submission Failed",
+                        description=(
+                            "The joke submission channel is misconfigured. "
+                            "Please contact the developers of InfiniBot to fix this issue."
+                        ),
+                        color=nextcord.Color.red()
+                    ),
+                    ephemeral=True
+                )
+                return
+
             await channel.send(embed=embed, view=JokeVerificationView())
 
             # Inform the user that it was sent
@@ -483,9 +509,6 @@ class JokeVerificationView(CustomView):
                                 # User has DMs disabled. Do not send a message.
                                 logging.warning(f"Could not send dm to {self.member} ({self.member.id}). "
                                                 "User has DMs disabled or blocked the bot.")
-
-                        # Remove the message
-                        await interaction.response.edit_message(delete_after=0.0)
 
                 # Get confirmation that we will be able to dm the user
                 more_info = "\n\nThis will **not** send the submitter a dm."
@@ -719,13 +742,25 @@ async def run_joke_command(interaction: Interaction):
         return
     
     all_jokes = JokeManager().jokes
-    
+
+    if not all_jokes:
+        logging.error("No jokes are available. The jokes file is empty or failed to load.")
+        await interaction.response.send_message(
+            embed=nextcord.Embed(
+                title="No Jokes Available",
+                description=(
+                    "InfiniBot couldn't load its jokes. "
+                    "Please try again later, or contact the developers of InfiniBot if this persists."
+                ),
+                color=nextcord.Color.red()
+            ),
+            ephemeral=True
+        )
+        return
+
     joke = random.choice(all_jokes)
 
-    if joke is None: 
-        logging.error("Joke is None")
-        return
-    
+
     embed = _format_joke_embed(joke)
     
     await interaction.response.send_message(embed=embed, view=JokeView())

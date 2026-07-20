@@ -1,4 +1,5 @@
 import copy
+import functools
 import json
 import logging
 import os
@@ -16,6 +17,7 @@ def update_base_path(new_path: str) -> None:
     """
     global base_path
     base_path = new_path
+    _read_txt_to_list_cached.cache_clear()
 
 def read_txt_to_list(file_name: str) -> list:
     """
@@ -44,8 +46,38 @@ def read_txt_to_list(file_name: str) -> list:
             continue
         
         result.append(line_strip)
-    
+
     return result
+
+@functools.lru_cache(maxsize=32)
+def _read_txt_to_list_cached(file_name: str, _base_path: str) -> tuple:
+    """
+    Cached variant of :func:`read_txt_to_list` for internal use.
+
+    :param file_name: The name of the text file.
+    :type file_name: str
+    :param _base_path: No Op. Used for caching purposes only. The base path for the text file.
+    :type _base_path: str
+    :return: A tuple of lines from the text file.
+    :rtype: tuple
+    """
+    # _base_path is part of the cache key only; read_txt_to_list reads the global.
+    return tuple(read_txt_to_list(file_name))
+
+def read_txt_to_list_cached(file_name: str) -> list:
+    """
+    Cached variant of :func:`read_txt_to_list` for files that don't change while
+    InfiniBot is running (the shipped defaults). Callers on hot paths should use this
+    rather than paying a disk read and parse per call.
+
+    Edits to the file are picked up on the next restart.
+
+    :param file_name: The name of the text file.
+    :type file_name: str
+    :return: A list of lines from the text file.
+    :rtype: list
+    """
+    return list(_read_txt_to_list_cached(file_name, base_path))
 
 class JSONFile:
     """
@@ -102,24 +134,25 @@ class JSONFile:
                     except OSError as e2:
                         logging.error(f"Failed to remove malformed file {self.path}: {e2}")
 
-    def _get_data(self) -> dict:
+    def _get_data(self, mutable: bool = False) -> dict:
         """
         Retrieves the data from the file.
 
-        :param self: The instance of the JSONFile object.
-        :type self: JSONFile
+        :param mutable: If True, return a deep copy the caller may mutate (for write
+            paths). If False (default), return the cached dict directly — callers
+            must treat it as read-only. Read paths are hot (per-message feature
+            checks), so they must not deep-copy the whole file.
+        :type mutable: bool
         :return: The data from the file.
         :rtype: dict
         """
-        if self.path in self._cache:
-            return copy.deepcopy(self._cache[self.path]) # Return a copy to prevent external modifications
+        if self.path not in self._cache:
+            self.ensure_existence()
+            with open(self.path, "r") as file:
+                self._cache[self.path] = json.loads(file.read())
 
-        self.ensure_existence()
-
-        with open(self.path, "r") as file:
-            data = json.loads(file.read())
-            self._cache[self.path] = data
-            return copy.deepcopy(data)  # Return a copy to prevent external modifications
+        data = self._cache[self.path]
+        return copy.deepcopy(data) if mutable else data
         
     def _set_data(self, data: dict) -> None:
         """
@@ -132,9 +165,18 @@ class JSONFile:
         """
         self.ensure_existence()
 
-        with open(self.path, "w") as file:
-            file.write(json.dumps(data, indent=2))
-            self._cache[self.path] = copy.deepcopy(json.loads(json.dumps(data)))  # Store a copy to prevent external modifications & ensure consistent formatting
+        # Atomic write: dump to a temp file and os.replace() it over the target, so a
+        # crash mid-write can't leave malformed JSON (which ensure_existence would
+        # 'repair' by silently resetting all settings to defaults).
+        serialized = json.dumps(data, indent=2)
+        temp_path = f"{self.path}.tmp"
+        with open(temp_path, "w") as file:
+            file.write(serialized)
+            file.flush()
+            os.fsync(file.fileno())
+        os.replace(temp_path, self.path)
+
+        self._cache[self.path] = json.loads(serialized)  # Store a copy to prevent external modifications & ensure consistent formatting
 
     def _update_nested(self, data: dict, keys: list, value: any) -> None:
         """
@@ -224,14 +266,16 @@ class JSONFile:
         """
         data = self._get_data()
 
-        if key not in self:
+        try:
+            if isinstance(key, str) and '.' in key:
+                value = self._get_nested(data, key.split('.'))
+            else:
+                value = data[key]
+        except KeyError:
             raise KeyError(f"{key} does not exist in {self.file_name}.")
 
-        if isinstance(key, str) and '.' in key:
-            keys = key.split('.')
-            return self._get_nested(data, keys)
-        else:
-            return data[key]
+        # Deep-copy only the returned value so callers can't mutate the cache
+        return copy.deepcopy(value)
 
     def __setitem__(self, key: str, value: any) -> None:
         """
@@ -244,7 +288,7 @@ class JSONFile:
         :return: None
         :rtype: None
         """
-        data = self._get_data()
+        data = self._get_data(mutable=True)
         if isinstance(key, str) and '.' in key:
             keys = key.split('.')
             self._update_nested(data, keys, value)
@@ -263,11 +307,11 @@ class JSONFile:
         :rtype: None
         :raises KeyError: If the key does not exist in the JSON file.
         """
-        data = self._get_data()
+        data = self._get_data(mutable=True)
 
         if key not in self:
             raise KeyError(f"{key} does not exist in {self.file_name}.")
-        
+
         if isinstance(key, str) and '.' in key:
             keys = key.split('.')
             # Navigate to the parent and delete the final key
@@ -289,7 +333,7 @@ class JSONFile:
         :rtype: iter
         """
         data = self._get_data()
-        return iter(data)
+        return iter(list(data))  # snapshot the keys so writes during iteration can't break it
     
     def __str__(self) -> str:
         """
@@ -315,7 +359,7 @@ class JSONFile:
         data = self._get_data()
         return len(data)
     
-    def __dict__(self) -> dict:
+    def to_dict(self) -> dict:
         """
         Return a dictionary representation of the data in the JSON file.
 
@@ -324,8 +368,7 @@ class JSONFile:
         :return: A dictionary representation of the data in the JSON file.
         :rtype: dict
         """
-        data = self._get_data()
-        return data
+        return self._get_data(mutable=True)
 
     def add_variable(self, key, value) -> None:
         """
@@ -340,7 +383,7 @@ class JSONFile:
         :return: None
         :rtype: None
         """
-        data = self._get_data()
+        data = self._get_data(mutable=True)
 
         if key in self:
             raise KeyError(f"{key} already exists in {self.file_name}. Use __setitem__() instead. Implementation: JSONFile[key] = value")
@@ -398,5 +441,5 @@ class JSONFile:
         :return: An iterator over the key-value pairs in the JSON file.
         :rtype: iter
         """
-        data = self._get_data()
+        data = self._get_data(mutable=True)  # copy: callers get values they may mutate
         return data.items()

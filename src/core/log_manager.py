@@ -46,8 +46,13 @@ class LogIfFailure(ContextDecorator):
 
     def __exit__(self, exc_type, exc_value, traceback):
         if exc_type:
+            # Never suppress KeyboardInterrupt/SystemExit/CancelledError — swallowing
+            # them breaks shutdown and task cancellation
+            if not issubclass(exc_type, Exception):
+                return False
+
             # If an error occurs, log it and include the UUID
-            logging.error(f"Error occurred {f"in feature: {self.feature}" if self.feature else ""} with ID {self.error_id}: {exc_value}", 
+            logging.error(f"Error occurred {f"in feature: {self.feature}" if self.feature else ""} with ID {self.error_id}: {exc_value}",
                           exc_info=(exc_type, exc_value, traceback))
 
         return self.suppress
@@ -186,9 +191,14 @@ def setup_logging(level: int = logging.INFO) -> None:
     logfile_path, organization_messages = generate_logging_file_name()
     logfile_path = os.path.abspath(logfile_path)
 
-    # Remove all existing handlers to avoid conflicts
+    # Remove all existing handlers to avoid conflicts. Closing them releases the
+    # previous log file's descriptor; setup_logging re-runs on every midnight tick.
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
+        try:
+            handler.close()
+        except Exception:
+            pass
 
     # Custom formatter class to handle microseconds
     class CustomFormatter(logging.Formatter):

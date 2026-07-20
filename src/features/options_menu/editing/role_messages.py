@@ -1,6 +1,5 @@
 from nextcord import Interaction
 import nextcord
-import re
 
 from components import utils, ui_components
 from components.ui_components import CustomModal, CustomView
@@ -549,7 +548,7 @@ class EditRoleMessage(CustomView):
         async def callback(self, interaction: Interaction):
             await self.MultiOrSingleSelectView(self.outer).setup(interaction)
        
-    async def load(self, interaction: Interaction):
+    async def load(self, interaction: Interaction) -> bool:
         self.message = await utils.get_message(interaction.channel, self.message_id)
         if self.message is None:
             # Message no longer exists or was recently not found
@@ -561,7 +560,7 @@ class EditRoleMessage(CustomView):
                 ),
                 ephemeral=True
             )
-            return
+            return False
         self.guild = interaction.guild
         
         if (self.title is None and self.description is None 
@@ -575,7 +574,7 @@ class EditRoleMessage(CustomView):
             for field in self.message.embeds[0].fields:
                 name = field.name
                 description = "\n".join(field.value.split("\n")[:-1])
-                roles = self.extract_ids(field.value.split("\n")[-1])
+                roles = utils.extract_role_ids(field.value.split("\n")[-1])
                 self.options.append([roles, name, description])
                 
             # Get Mode
@@ -620,9 +619,12 @@ class EditRoleMessage(CustomView):
         )
         self.confirm_btn.callback = self.confirm_btn_callback
         self.add_item(self.confirm_btn)
-        
+
+        return True
+
     async def setup(self, interaction: Interaction):
-        await self.load(interaction)
+        if not await self.load(interaction):
+            return  # load already responded with an error
 
         description = utils.standardize_str_indention(
             """Edit your role message by making to the text, color, and options. Once finished, click on \"Confirm Edits\"
@@ -710,11 +712,6 @@ class EditRoleMessage(CustomView):
         
         embed.add_field(name=title, value=value, inline=False)
         return True
-    
-    def extract_ids(self, input_string):
-        pattern = r"<@&(\d+)>"
-        matches = re.findall(pattern, input_string)
-        return matches
     
     async def disable_view(self, interaction: Interaction):
         for child in self.children:

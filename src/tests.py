@@ -423,6 +423,227 @@ class TestDatabase(unittest.TestCase):
 
         self.cleanup(database)
 
+class TestPinnedConnection(unittest.TestCase):
+    """
+    Tests for `Database.pinned_connection()`.
+
+    A pinned connection exists so that statements depending on per-connection state
+    (SQLite ``TEMPORARY`` tables) all land on the same physical connection, which
+    `Database.execute_query()` cannot promise — it checks out a pooled connection
+    per call.
+
+    These use a file-backed database rather than `sqlite://`, because every
+    connection to an in-memory database is a separate, empty database; the tests
+    below need two connections that see the same data.
+    """
+
+    def setUp(self) -> None:
+        self.db_path = f"./generated/test-files/files/pinned_{uuid.uuid4().hex}.db"
+        self.database = Database(f"sqlite:///{self.db_path}", "resources/test_db_build.sql")
+
+    def tearDown(self) -> None:
+        self.database.cleanup()
+        if os.path.exists(self.db_path):
+            os.remove(self.db_path)
+
+    def warm_pool(self, count: int = 3) -> None:
+        """
+        Leave several distinct connections idle in the pool.
+
+        Without this the pool holds a single connection, so a connection released
+        mid-block is immediately handed back on the next statement and a
+        release-on-commit bug stays invisible. QueuePool is FIFO by default
+        (`use_lifo=False`), so with older idle connections queued ahead of it, a
+        released connection is *not* the one returned next.
+
+        :param count: How many connections to leave idle.
+        :type count: int
+        """
+        connections = [self.database.engine.connect() for _ in range(count)]
+        for connection in connections:
+            connection.close()
+
+    def test_temp_table_visible_to_later_queries(self) -> None:
+        """
+        The whole point: a TEMP table created on a pinned connection is still
+        visible to subsequent statements on that connection.
+        """
+        logging.info("Testing that a TEMP table stays visible across pinned queries...")
+        with self.database.pinned_connection() as connection:
+            connection.execute_query("CREATE TEMPORARY TABLE temp_ids (id INTEGER PRIMARY KEY)")
+            connection.execute_query("INSERT INTO temp_ids (id) VALUES (1), (2), (3)", commit=True)
+
+            count = connection.execute_query("SELECT COUNT(*) FROM temp_ids")[0]
+            self.assertEqual(count, 3)
+
+            connection.execute_query("DROP TABLE IF EXISTS temp_ids")
+
+    def test_temp_table_survives_commit(self) -> None:
+        """
+        Regression test for D1. A Session releases its connection back to the pool on
+        commit, so a committing write would move later statements onto a different
+        connection and lose the TEMP table. A pinned connection must not do that.
+
+        The warm pool is what makes this bite: with other connections queued ahead,
+        a released connection is not the one handed back next. That is the real
+        condition D1 described — maintenance committing while other checkouts are
+        live.
+        """
+        logging.info("Testing that a TEMP table survives a commit on a pinned connection...")
+        self.warm_pool()
+
+        with self.database.pinned_connection() as connection:
+            connection.execute_query("CREATE TEMPORARY TABLE temp_ids (id INTEGER PRIMARY KEY)")
+
+            # Several committing writes interleaved with reads: each commit is a chance
+            # for the connection to be swapped out from under us.
+            for value in range(5):
+                connection.execute_query(f"INSERT INTO temp_ids (id) VALUES ({value})", commit=True)
+                running_total = connection.execute_query("SELECT COUNT(*) FROM temp_ids")[0]
+                self.assertEqual(running_total, value + 1)
+
+            connection.execute_query("DROP TABLE IF EXISTS temp_ids")
+
+    def test_temp_table_is_not_visible_to_other_connections(self) -> None:
+        """
+        The TEMP table must be private to the pinned connection. This is the failure
+        D1 hinged on: statements that leak onto another pooled connection either don't
+        see the table at all, or see a stale copy of it.
+        """
+        logging.info("Testing that a pinned TEMP table is invisible to other connections...")
+        self.warm_pool()
+
+        with self.database.pinned_connection() as connection:
+            connection.execute_query("CREATE TEMPORARY TABLE temp_ids (id INTEGER PRIMARY KEY)")
+            connection.execute_query("INSERT INTO temp_ids (id) VALUES (1)", commit=True)
+
+            # The pinned connection is still checked out, so this must take a different
+            # one from the pool, which has no such table.
+            with self.assertRaises(Exception):
+                self.database.execute_query("SELECT COUNT(*) FROM temp_ids")
+
+            connection.execute_query("DROP TABLE IF EXISTS temp_ids")
+
+    def test_dropped_temp_table_does_not_outlive_the_block(self) -> None:
+        """
+        Pooled connections are long-lived, so a TEMP table dropped inside the block
+        must really be gone once that connection is handed back out.
+        """
+        logging.info("Testing that a dropped TEMP table does not persist in the pool...")
+        with self.database.pinned_connection() as connection:
+            connection.execute_query("CREATE TEMPORARY TABLE temp_ids (id INTEGER PRIMARY KEY)")
+            connection.execute_query("INSERT INTO temp_ids (id) VALUES (1)", commit=True)
+            connection.execute_query("DROP TABLE IF EXISTS temp_ids")
+
+        # Reuse the same connection by pinning again; the pool hands back the one just
+        # released, so a leaked table would still be there.
+        with self.database.pinned_connection() as connection:
+            with self.assertRaises(Exception):
+                connection.execute_query("SELECT COUNT(*) FROM temp_ids")
+
+    def test_writes_persist_to_the_real_database(self) -> None:
+        """
+        A committed write on a pinned connection is visible afterwards through the
+        ordinary pooled path.
+        """
+        logging.info("Testing that pinned writes persist to the database...")
+        with self.database.pinned_connection() as connection:
+            connection.execute_query(
+                "INSERT INTO table_1 (primary_key, example_integer) VALUES (55, 777)",
+                commit=True
+            )
+
+        result = self.database.execute_query("SELECT example_integer FROM table_1 WHERE primary_key = 55")
+        self.assertEqual(result[0], 777)
+
+    def test_return_value_semantics_match_execute_query(self) -> None:
+        """
+        `PinnedConnection.execute_query` shares its implementation with
+        `Database.execute_query`, so the return shapes must agree.
+        """
+        logging.info("Testing that pinned queries return the same shapes as execute_query...")
+        self.database.execute_query(
+            "INSERT INTO table_1 (primary_key, example_integer) VALUES (1, 10), (2, 20)",
+            commit=True
+        )
+
+        with self.database.pinned_connection() as connection:
+            # multiple_values=True returns every row
+            self.assertEqual(
+                connection.execute_query("SELECT example_integer FROM table_1 ORDER BY primary_key", multiple_values=True),
+                self.database.execute_query("SELECT example_integer FROM table_1 ORDER BY primary_key", multiple_values=True)
+            )
+
+            # multiple_values=False collapses to the first row
+            self.assertEqual(
+                connection.execute_query("SELECT example_integer FROM table_1 ORDER BY primary_key"),
+                self.database.execute_query("SELECT example_integer FROM table_1 ORDER BY primary_key")
+            )
+
+            # No rows at all returns None either way
+            self.assertIsNone(connection.execute_query("SELECT example_integer FROM table_1 WHERE primary_key = 999"))
+
+            # return_affected_rows reports the row count of a write
+            affected = connection.execute_query(
+                "UPDATE table_1 SET example_integer = 99",
+                commit=True,
+                return_affected_rows=True
+            )
+            self.assertEqual(affected, 2)
+
+    def test_failed_query_reraises_and_leaves_connection_usable(self) -> None:
+        """
+        A failing statement must propagate (callers depend on the original exception
+        type) and must roll back, leaving the pinned connection usable.
+        """
+        logging.info("Testing pinned connection error handling...")
+        with self.database.pinned_connection() as connection:
+            with self.assertRaises(Exception):
+                connection.execute_query("SELECT * FROM a_table_that_does_not_exist")
+
+            # The rollback should leave the connection healthy for further work.
+            connection.execute_query(
+                "INSERT INTO table_1 (primary_key, example_integer) VALUES (7, 70)",
+                commit=True
+            )
+            self.assertEqual(connection.execute_query("SELECT example_integer FROM table_1 WHERE primary_key = 7")[0], 70)
+
+    def test_connection_is_released_on_exception(self) -> None:
+        """
+        The context manager must hand its connection back to the pool even when the
+        body raises, or repeated failures would exhaust the pool.
+        """
+        logging.info("Testing that a pinned connection is released when the body raises...")
+
+        class ExpectedError(Exception):
+            pass
+
+        for _ in range(10):  # more iterations than the pool size (5)
+            with self.assertRaises(ExpectedError):
+                with self.database.pinned_connection() as connection:
+                    connection.execute_query("SELECT 1")
+                    raise ExpectedError()
+
+        # The pool is not exhausted: ordinary queries still work.
+        self.assertEqual(self.database.execute_query("SELECT 1")[0], 1)
+
+    def test_cleanup_orphaned_guild_entries_refuses_an_empty_guild_set(self) -> None:
+        """
+        Guard from the same fix: with no valid guilds, every row looks orphaned. The
+        cleanup must decline rather than empty the tables.
+        """
+        logging.info("Testing that orphan cleanup refuses an empty guild set...")
+        self.database.execute_query(
+            "INSERT INTO table_1 (primary_key, example_integer) VALUES (1, 111), (2, 222)",
+            commit=True
+        )
+
+        deleted = db_manager.cleanup_orphaned_guild_entries(set(), self.database)
+
+        self.assertEqual(deleted, 0)
+        remaining = self.database.execute_query("SELECT COUNT(*) FROM table_1")[0]
+        self.assertEqual(remaining, 2)
+
 class TestStoredMessages(unittest.TestCase):
     def _steps(self):
         for name in dir(self): # dir() result is implicitly sorted

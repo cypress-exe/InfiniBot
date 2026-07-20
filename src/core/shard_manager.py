@@ -40,7 +40,7 @@ def calculate_shard_count():
             return None
         
         # Calculate optimal shard count
-        calculated_shards = max(1, (previous_guild_count // guilds_per_shard) + 1)
+        calculated_shards = max(1, -(-previous_guild_count // guilds_per_shard))  # ceil division - '// + 1' over-allocated a shard on exact multiples
         logging.info(f"Calculated {calculated_shards} shards for {previous_guild_count} guilds ({guilds_per_shard} guilds per shard)")
         
         return calculated_shards
@@ -102,7 +102,7 @@ def log_and_store_shard_distribution(bot: nextcord.Client):
         # Intelligent recommendations (cached config)
         if sharding_config["enabled"]:
             guilds_per_shard = sharding_config["guilds-per-shard"]
-            optimal_shards = max(1, (total_guilds // guilds_per_shard) + 1)
+            optimal_shards = max(1, -(-total_guilds // guilds_per_shard))  # ceil division
             
             if max_guilds_per_shard > guilds_per_shard * 1.5:  # 50% over target
                 logging.warning(f"⚠️  HIGH SHARD LOAD: Some shards have {max_guilds_per_shard} guilds (target: {guilds_per_shard}). Consider restarting - next startup will use {optimal_shards} shards.")

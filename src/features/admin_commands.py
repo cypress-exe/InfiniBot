@@ -488,7 +488,7 @@ async def handle_info_command(message: nextcord.Message, message_parts: list):
     guild_name = guild.name if guild.name else "<<MISSING NAME>>"
     guild_name = guild_name.replace("@", "@\u200b")  # Prevent mentions in embed title
     
-    description = f"""Owner: {guild.owner} ({guild.owner.id})
+    description = f"""Owner: {guild.owner if guild.owner else "<uncached>"} ({guild.owner_id})
     Members: {guild.member_count}
 
     **Time In Server**: {duration.days} days"""
@@ -890,7 +890,7 @@ async def handle_send_message_to_all_servers_command(message: nextcord.Message):
             if guild.id == support_server_id:
                 # Special handling for InfiniBot support server
                 logging.info("Running special behavior for the InfiniBot Support Server.")
-                channel = guild.get_channel(support_server_config['updates-channel-id'])
+                channel = await utils.get_channel(support_server_config['updates-channel-id'])
                 role = guild.get_role(support_server_config['infinibot-updates-role-id'])
                 role_mention = role.mention if role else ""
             else:

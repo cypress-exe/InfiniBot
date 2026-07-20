@@ -157,7 +157,10 @@ def message_checks(message: nextcord.Message | MessageRecord) -> bool:
     """
     if not message:
         return False
-    if hasattr(message, 'guild') and message.guild is None:
+    if isinstance(message, MessageRecord):
+        if message.guild_id is None:
+            return False
+    elif hasattr(message, 'guild') and message.guild is None:
         return False
     if hasattr(message, 'author') and hasattr(message.author, 'bot') and message.author.bot:
         return False  # Don't cache bot messages
@@ -200,7 +203,7 @@ def message_to_message_record_type(message: nextcord.Message | MessageRecord) ->
     guild_id = get_var(message, 'guild.id', 'guild_id')
     author_id = get_var(message, 'author.id', 'author_id')
     content = message.content
-    last_updated = get_var(message, 'last_updated', 'created_at') or datetime.datetime.now()
+    last_updated = get_var(message, 'last_updated', 'created_at') or datetime.datetime.now(datetime.timezone.utc)
 
     embeds = getattr(message, 'embeds', [])
     attachments = getattr(message, 'attachments', [])

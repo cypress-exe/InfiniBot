@@ -1,11 +1,10 @@
-import re
 import nextcord
 from nextcord import Interaction
 import logging
 import json
 
 from config.server import Server
-from components import ui_components, utils 
+from components import ui_components, utils
 
 class ReactionRoleModal(ui_components.CustomModal):
     def __init__(self):
@@ -156,7 +155,9 @@ async def run_custom_reaction_role_command(interaction: Interaction, options: st
                                                                                 description="Every emoji has to be unique.", color=nextcord.Color.red()), ephemeral=True)
                 return
             
-            role_ID = int(option.split("=")[1][4:-1].strip())
+            role_ID = utils.extract_role_id(option.split("=", 1)[1])
+            if role_ID is None:
+                raise Exception # Trigger the error message at end of try block
             role = [role for role in interaction.guild.roles if role.id == role_ID][0]
             if role_ID in role_IDs:
                 await interaction.response.send_message(embed = nextcord.Embed(title="Error: You can't use the same role twice", description="Every role has to be unique.", 
@@ -245,9 +246,22 @@ async def create_reaction_role(interaction: Interaction, title: str, message: st
         roles: list[nextcord.Role] = [role for role_name in roles_str for role in interaction.guild.roles if role.name == role_name]
         emojis = None
     else:
-        new_roles_str = [int(role.split("=")[1][4:-1].strip()) for role in roles_str]
-        roles: list[nextcord.Role] = [role for role_ID in new_roles_str for role in interaction.guild.roles if role.id == role_ID]
-        emojis: list[str] = [emoji.split("=")[0] for emoji in roles_str]
+        # Roles and emojis are collected in lockstep: a role deleted between validation
+        # and now drops its emoji too, so the two lists stay index-aligned.
+        guild_roles_by_id = {role.id: role for role in interaction.guild.roles}
+        roles: list[nextcord.Role] = []
+        emojis: list[str] = []
+        for option in roles_str:
+            emoji_str, separator, role_str = option.partition("=")
+            if not separator:
+                continue
+
+            role = guild_roles_by_id.get(utils.extract_role_id(role_str))
+            if role is None:
+                continue
+
+            roles.append(role)
+            emojis.append(emoji_str.strip())
     
     # Ensure that these roles are grantable
     for role in roles:
@@ -336,10 +350,33 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
             guild = _guild
     if guild == None: return
 
-    if not guild.chunked:
-        await guild.chunk()
-
     if not guild.me:
+        return
+
+    # InfiniBot seeds its own reaction-role messages with reactions; ignore those
+    # before doing any lookups.
+    if bot.user is not None and payload.user_id == bot.user.id:
+        return
+
+    # Get the message. Everything that can disqualify the message is checked before
+    # the member is resolved, so reactions on messages InfiniBot could never act on
+    # cost no member lookup (and no REST fetch on a cache miss).
+    channel = await utils.get_channel(payload.channel_id)
+    if channel is None:
+        return  # If the channel doesn't exist, we can't do anything
+    message = await utils.get_message(channel, payload.message_id)
+    if message is None:
+        return  # Message doesn't exist or was recently not found
+
+    # Not our message, so it cannot be a reaction role
+    if message.author.id != bot.application_id:
+        return
+
+    if not message.embeds:
+        return
+
+    # Check to see if this is actually a reaction role
+    if not (len(message.embeds[0].fields) >= 1 and message.embeds[0].fields[0].name.lower().startswith("react")):
         return
 
     # Get the user
@@ -349,24 +386,15 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
         logging.warning(f"User {payload.user_id} not found in guild {guild.id}. Ignoring reaction.")
         return
 
-    # Get the message
-    channel = await utils.get_channel(payload.channel_id)
-    if channel is None: 
-        return  # If the channel doesn't exist, we can't do anything
-    message = await utils.get_message(channel, payload.message_id)
-    if message is None: 
-        return  # Message doesn't exist or was recently not found
+    if user.bot:
+        return
 
     # Declare some functions
     def get_role(string: str):
-        pattern = r"^(<@&)(.*)>$"  # Regular expression pattern with a capturing group
-        match = re.search(pattern, string)
-        if match:
-            role_id = int(match.group(2)) # Role ID
-            role = nextcord.utils.get(guild.roles, id=role_id)
-        else:
-            role = nextcord.utils.get(guild.roles, name=string)
-        return role
+        role_id = utils.extract_role_id(string)
+        if role_id is not None:
+            return nextcord.utils.get(guild.roles, id=role_id)
+        return nextcord.utils.get(guild.roles, name=string)
     
     async def send_no_role_error():
         await message.channel.send(embed = nextcord.Embed(title="Role Not Found", description=f"Infinibot cannot find one or more of those roles. Check to make sure all roles still exist.", color=nextcord.Color.red()), reference=message)
@@ -379,48 +407,47 @@ async def run_raw_reaction_add(payload: nextcord.RawReactionActionEvent, bot: ne
 
     action = None
 
-    # If it was our message and it was not a bot reacting,
-    if message.author.id == bot.application_id and not user.bot:
-        if message.embeds:
-            # Check to see if this is actually a reaction role
-            if len(message.embeds[0].fields) >= 1 and message.embeds[0].fields[0].name.lower().startswith("react"): # This message IS a reaction role
-                # Get all options
-                info = message.embeds[0].fields[0].value
-                info = info.split("\n")
-                
-                # For each option
-                for line in info:
-                    line_split = line.split(" ")
-                    if str(line_split[0]) == str(emoji): # Ensure that this is a real option
-                        # Get the discord role
-                        discord_role = get_role(" ".join(line_split[1:]))
-                        if discord_role: # If it exists
-                            # Check the user's roles
-                            user_role = nextcord.utils.get(user.roles, id=discord_role.id)
-                            # Give / Take the role
-                            try:
-                                if user_role:
-                                    await user.remove_roles(discord_role)
-                                    action = "removed"
-                                else:
-                                    await user.add_roles(discord_role)
-                                    action = "added"
-                            except nextcord.errors.Forbidden:
-                                # No permissions. Send an error
-                                await send_no_permissions_error(discord_role, user)
-                            
-                            # Remove their reaction
-                            await message.remove_reaction(emoji, user)
-                        else:
-                            # If the discord role does not exist, send an error
-                            await send_no_role_error()
-                            # Try to remove their reaction. If we can't, it's fine
-                            try:
-                                await message.remove_reaction(emoji, user)
-                            except nextcord.errors.Forbidden:
-                                pass
-                            return
-    
+    # Get all options
+    info = message.embeds[0].fields[0].value
+    info = info.split("\n")
+
+    # For each option
+    for line in info:
+        line_split = line.split(" ")
+        if str(line_split[0]) == str(emoji): # Ensure that this is a real option
+            # Get the discord role
+            discord_role = get_role(" ".join(line_split[1:]))
+            if discord_role: # If it exists
+                # Check the user's roles
+                user_role = nextcord.utils.get(user.roles, id=discord_role.id)
+                # Give / Take the role
+                try:
+                    if user_role:
+                        await user.remove_roles(discord_role)
+                        action = "removed"
+                    else:
+                        await user.add_roles(discord_role)
+                        action = "added"
+                except nextcord.errors.Forbidden:
+                    # No permissions. Send an error
+                    await send_no_permissions_error(discord_role, user)
+
+                # Remove their reaction. If we can't, it's fine
+                try:
+                    await message.remove_reaction(emoji, user)
+                except nextcord.errors.Forbidden:
+                    pass
+            else:
+                # If the discord role does not exist, send an error
+                await send_no_role_error()
+                # Try to remove their reaction. If we can't, it's fine
+                try:
+                    await message.remove_reaction(emoji, user)
+                except nextcord.errors.Forbidden:
+                    pass
+                return
+
+
     # Send embed notifying the user of the action
     if action:
         embed = nextcord.Embed(

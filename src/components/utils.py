@@ -2,16 +2,50 @@ import asyncio
 import datetime
 import logging
 import datetime
+import re
 from typing import Any
 
 import nextcord
 from nextcord import Interaction
 
-from components.ui_components import ErrorWhyAdminPrivilegesButton
 from config.global_settings import feature_dependencies, required_permissions, recently_left_guilds, get_global_kill_status, get_bot_load_status
 from modules.custom_types import ExpiringSet
 
 COLOR_OPTIONS = ["Red", "Green", "Blue", "Yellow", "White", "Blurple", "Greyple", "Teal", "Purple", "Gold", "Magenta", "Fuchsia"]
+
+ROLE_MENTION_PATTERN = re.compile(r"<@&(\d+)>")
+
+def extract_role_id(text: str, allow_bare_id: bool = False) -> int | None:
+    """
+    Pull the first role ID out of a role mention, tolerating any surrounding text
+    or whitespace.
+
+    :param text: Text containing a role mention, e.g. " <@&123>".
+    :type text: str
+    :param allow_bare_id: Also accept text that is just the ID digits, e.g. "123".
+    :type allow_bare_id: bool
+    :return: The role ID, or None if no role mention is present.
+    :rtype: int | None
+    """
+    match = ROLE_MENTION_PATTERN.search(text)
+    if match:
+        return int(match.group(1))
+
+    if allow_bare_id and text.strip().isdigit():
+        return int(text.strip())
+
+    return None
+
+def extract_role_ids(text: str) -> list[int]:
+    """
+    Pull every role ID out of the role mentions in a string, in order.
+
+    :param text: Text containing zero or more role mentions.
+    :type text: str
+    :return: The role IDs.
+    :rtype: list[int]
+    """
+    return [int(role_id) for role_id in ROLE_MENTION_PATTERN.findall(text)]
 
 def asci_to_emoji(letter, fallback_letter = "1"):
     letter = str(letter)
@@ -53,6 +87,7 @@ def asci_to_emoji(letter, fallback_letter = "1"):
     if letter == "8": return "8️⃣", "8"
     if letter == "9": return "9️⃣", "9"
     if letter == "0": return "0️⃣", "0"
+    if letter == "10": return "🔟", "10"
 
     return asci_to_emoji(fallback_letter)
 
@@ -330,7 +365,34 @@ def apply_generic_replacements(
     :type skip_placeholder_replacement: bool
     :return: The modified embed with replaced placeholders.
     :rtype: nextcord.Embed
+
+    Best-effort fields: @joindate, @owner, and @accountage resolve to the literal
+    string "Unknown" when the underlying data isn't available (most commonly
+    @joindate on a leave message, or @owner when the guild owner isn't cached —
+    see get_guild_owner). See "Best-Effort Replacements" in
+    github-pages-site/docs/messaging/generic-replacements.md.
     """
+    def _apply_text_transform(transform, include_url: bool = True) -> None:
+        # nextcord's .footer/.fields accessors return throwaway EmbedProxy objects,
+        # so writes must go through set_footer()/add_field() to reach the embed.
+        if embed.title:
+            embed.title = transform(embed.title)
+        if embed.description:
+            embed.description = transform(embed.description)
+        if include_url and embed.url:
+            embed.url = transform(embed.url)
+        if embed.footer and embed.footer.text:
+            embed.set_footer(text=transform(embed.footer.text), icon_url=embed.footer.icon_url)
+        if embed.fields:
+            fields = [(field.name, field.value, field.inline) for field in embed.fields]
+            embed.clear_fields()
+            for name, value, inline in fields:
+                embed.add_field(
+                    name=transform(name) if name else name,
+                    value=transform(value) if value else value,
+                    inline=inline if inline is not None else True,
+                )
+
     if not skip_placeholder_replacement:
         # Defensive copy: custom_replacements defaults to a shared {} and callers
         # may reuse their dict, so never mutate the passed-in object in place.
@@ -352,7 +414,12 @@ def apply_generic_replacements(
             replacements["@serverid"] = str(guild.id)
             replacements["@server"] = guild.name
             replacements["@membercount"] = str(guild.member_count)
-            replacements["@owner"] = guild.owner.display_name if guild.owner else "Unknown"
+            owner = guild.owner
+            if owner is None and guild.owner_id:
+                # Member cache miss (unchunked guild) — try the user cache (sync context)
+                from core.bot import get_bot
+                owner = get_bot().get_user(guild.owner_id)
+            replacements["@owner"] = owner.display_name if owner else "Unknown"
         
         # Add time and date replacements
         epoch = int(datetime.datetime.now().timestamp())
@@ -363,19 +430,12 @@ def apply_generic_replacements(
         replacements["@date"] = f"<t:{epoch}:D>"
 
         # Replace placeholders with values
-        for key, value in replacements.items():
-            if embed.title:
-                embed.title = embed.title.replace(key, value)
-            if embed.description:
-                embed.description = embed.description.replace(key, value)
-            if embed.footer and embed.footer.text:
-                embed.footer.text = embed.footer.text.replace(key, value)
-            if embed.url:
-                embed.url = embed.url.replace(key, value)
-            
-            for field in embed.fields:
-                field.name = field.name.replace(key, value)
-                field.value = field.value.replace(key, value)
+        def replace_placeholders(text: str) -> str:
+            for key, value in replacements.items():
+                text = text.replace(key, value)
+            return text
+
+        _apply_text_transform(replace_placeholders)
     
     if not skip_channel_replacement:
         # Optimization: Skip channel replacement if no "#" in the embed
@@ -396,23 +456,20 @@ def apply_generic_replacements(
             
             # Note: Voice channels and stage channels typically cannot be mentioned in the same way
             # as text channels, so we exclude them from channel replacement
-            
-            for channel in all_channels:
+
+            channel_replacements = {
+                f"#{channel.name}": channel.mention
+                for channel in all_channels
                 # Ensure the channel has a mention attribute before using it
-                if hasattr(channel, 'mention') and hasattr(channel, 'name'):
-                    channel_placeholder = f"#{channel.name}"
-                    channel_mention = channel.mention
-                    
-                    if embed.title:
-                        embed.title = embed.title.replace(channel_placeholder, channel_mention)
-                    if embed.description:
-                        embed.description = embed.description.replace(channel_placeholder, channel_mention)
-                    if embed.footer and embed.footer.text:
-                        embed.footer.text = embed.footer.text.replace(channel_placeholder, channel_mention)
-                    
-                    for field in embed.fields:
-                        field.name = field.name.replace(channel_placeholder, channel_mention)
-                        field.value = field.value.replace(channel_placeholder, channel_mention)
+                if hasattr(channel, 'mention') and hasattr(channel, 'name')
+            }
+
+            def replace_channels(text: str) -> str:
+                for channel_placeholder, channel_mention in channel_replacements.items():
+                    text = text.replace(channel_placeholder, channel_mention)
+                return text
+
+            _apply_text_transform(replace_channels, include_url=False)
     
     return embed
 
@@ -758,11 +815,19 @@ async def get_member(guild: nextcord.Guild, user_id: int, override_failed_cache:
     :rtype: nextcord.Member | None
     """
     global failed_member_fetches
-    
+
     if not guild or guild.unavailable:
         logging.warning(f"Guild {guild} is unavailable or None. Cannot get member.")
         return None
-    
+
+    # guild._members and the failed-fetch cache are both keyed by int; a str id would
+    # miss both and force a REST fetch every call.
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        logging.warning(f"Invalid user_id passed to get_member: {user_id!r}")
+        return None
+
     if member := guild.get_member(user_id):
         return member
 
@@ -776,6 +841,59 @@ async def get_member(guild: nextcord.Guild, user_id: int, override_failed_cache:
         logging.debug(f"Member with ID {user_id} was not found in guild {guild.name}. Caching failed fetch.")
         failed_member_fetches.add((guild.id, user_id))
         return None
+
+async def get_guild_owner(guild: nextcord.Guild) -> nextcord.Member | None:
+    """
+    |coro|
+    Resolve a guild's owner. `guild.owner` is a member-cache lookup and is often None
+    while the guild is unchunked, so fall back to fetching by `guild.owner_id`.
+
+    :param guild: The guild whose owner to resolve.
+    :type guild: nextcord.Guild
+    :return: The owner as a Member, or None if they can't be resolved.
+    :rtype: nextcord.Member | None
+    """
+    if not guild or guild.owner_id is None:
+        return None
+
+    if guild.owner is not None:
+        return guild.owner
+
+    return await get_member(guild, guild.owner_id)
+
+async def get_members_batch(guild: nextcord.Guild, user_ids: list[int]) -> dict[int, nextcord.Member] | None:
+    """
+    |coro|
+    Resolve many members at once: member cache first, then gateway member queries in
+    batches of 100 — instead of one REST fetch per uncached id (N+1).
+
+    :param guild: The guild to resolve members in.
+    :type guild: nextcord.Guild
+    :param user_ids: The user IDs to resolve.
+    :type user_ids: list[int]
+    :return: user_id -> Member for every id still in the guild (absent ids left the
+        guild), or None if the gateway query failed — callers must NOT interpret a
+        failure as "these members left".
+    :rtype: dict[int, nextcord.Member] | None
+    """
+    members_by_id: dict[int, nextcord.Member] = {}
+    uncached_ids: list[int] = []
+    for user_id in user_ids:
+        member = guild.get_member(user_id)
+        if member is not None:
+            members_by_id[user_id] = member
+        else:
+            uncached_ids.append(user_id)
+
+    try:
+        for i in range(0, len(uncached_ids), 100):
+            found = await guild.query_members(user_ids=uncached_ids[i:i + 100])
+            members_by_id.update({member.id: member for member in found})
+    except Exception as e:
+        logging.warning(f"Batched member query failed for guild {guild.id}: {e}")
+        return None
+
+    return members_by_id
 
 async def check_and_warn_if_channel_is_text_channel(interaction: Interaction) -> bool:
     """
@@ -815,13 +933,21 @@ async def user_has_config_permissions(interaction: Interaction, notify: bool = T
         Whether or not the interaction can continue.
     """
     
-    if interaction.guild.owner == interaction.user: return True
+    # Compare by owner_id — guild.owner is a cache lookup and can be None while unchunked
+    if interaction.user.id == interaction.guild.owner_id: return True
     
     infinibot_mod_role = await get_infinibot_mod_role(interaction.guild)
     if infinibot_mod_role in interaction.user.roles:
         return True
 
-    if notify: await interaction.response.send_message(embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.\n\nGo to our [docs](https://cypress-exe.github.io/InfiniBot/docs/getting-started/install-and-setup/#the-infinibot-mod-role) for more information.", color = nextcord.Color.red()), ephemeral = True)
+    if notify:
+        embed = nextcord.Embed(title = "Missing Permissions", description = "You need to have the Infinibot Mod role to use this command.\n\nGo to our [docs](https://cypress-exe.github.io/InfiniBot/docs/getting-started/install-and-setup/#the-infinibot-mod-role) for more information.", color = nextcord.Color.red())
+        # An earlier step (e.g. chunk_guild_with_feedback) may have already sent the
+        # initial response — use the followup in that case instead of double-responding
+        if interaction.response.is_done():
+            await interaction.followup.send(embed = embed, ephemeral = True)
+        else:
+            await interaction.response.send_message(embed = embed, ephemeral = True)
     return False
 
 async def check_text_channel_permissions(channel: nextcord.abc.GuildChannel, auto_warn: bool, custom_channel_name: str = None) -> bool:
@@ -938,8 +1064,10 @@ async def send_error_message_to_server_owner(
         logging.debug(f"Skipping sending error message to server owner (guild_id: {guild.id}) because it was already sent recently. ({guild}, {permission}, {message}, {administrator}, {channel}, {guild_permission})")
         return
     
-    member = guild.owner
-    if member == None: return
+    member = await get_guild_owner(guild)
+    if member == None:
+        logging.warning(f"Could not resolve owner of guild {guild.id}; owner error message not sent.")
+        return
 
     # Ensure that InfiniBot is still in this server
     if guild.id in recently_left_guilds:
@@ -977,7 +1105,11 @@ async def send_error_message_to_server_owner(
         embed = nextcord.Embed(title = f"Missing Permissions in \"{guild.name}\" Server", description = f"{message}", color = nextcord.Color.red())
 
     embed.set_footer(text = "To opt out of dm notifications, use /opt_out_of_dms")
-    embed.timestamp = datetime.datetime.now()
+    embed.timestamp = datetime.datetime.now(datetime.timezone.utc)
+
+    # Imported here (not at module level) to avoid a circular import with
+    # components.ui_components, which imports this module.
+    from components.ui_components import ErrorWhyAdminPrivilegesButton
 
     try:
         dm = await member.create_dm()
@@ -985,9 +1117,10 @@ async def send_error_message_to_server_owner(
             await dm.send(embed = embed, view = ErrorWhyAdminPrivilegesButton())
         else:
             await dm.send(embed = embed)
-    except:
+    except nextcord.errors.Forbidden:
         logging.debug("Failed to send error message to server owner. This is likely because the owner has DMs disabled for InfiniBot. Skipping...")
-        pass
+    except Exception as e:
+        logging.warning(f"Failed to DM the owner of guild {guild.id}: {e}")
     
     # Add to the set of sent messages
     messages_sent.add((guild.id, permission, message, administrator, channel, guild_permission))
@@ -1068,10 +1201,10 @@ async def timeout(member: nextcord.Member, seconds: int, reason: str = None) -> 
     """
     # Check permissions
     if not member.guild.me.guild_permissions.moderate_members:
-        await send_error_message_to_server_owner(member.guild, None, 
-                                                 message = "InfiniBot is missing the **Moderate Members** permission which prevents it from timing out members.", 
+        await send_error_message_to_server_owner(member.guild, None,
+                                                 message = "InfiniBot is missing the **Moderate Members** permission which prevents it from timing out members.",
                                                  administrator=False)
-        return "Success revoked"
+        return "Failure Forbidden"
 
     try:
         if seconds == 0: await member.edit(timeout=None, reason = reason)
