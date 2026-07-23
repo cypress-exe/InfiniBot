@@ -2568,6 +2568,75 @@ class TestActionLogging(unittest.IsolatedAsyncioTestCase):
 
         logging.info("✅ log_timeout_change revoked-timeout test passed")
 
+class TestGetMember(unittest.IsolatedAsyncioTestCase):
+    """
+    Tests for utils.get_member resilience to Discord HTTP errors.
+    """
+
+    @staticmethod
+    def _make_guild(fetch_side_effect) -> Mock:
+        from unittest.mock import AsyncMock
+        guild = Mock(spec=nextcord.Guild)
+        guild.id = 111
+        guild.name = "Test Guild"
+        guild.unavailable = False
+        guild.get_member = Mock(return_value=None)  # not in cache -> forces a fetch
+        guild.fetch_member = AsyncMock(side_effect=fetch_side_effect)
+        return guild
+
+    @staticmethod
+    def _server_error() -> Exception:
+        # DiscordServerError(response, message) reads response.status / .reason
+        resp = Mock()
+        resp.status = 503
+        resp.reason = "Service Unavailable"
+        return nextcord.DiscordServerError(resp, "upstream connect error")
+
+    async def test_get_member_returns_none_on_discord_server_error(self) -> None:
+        """
+        Regression for the prod ERROR (logfile 2026-07-22 20:09 / 22:56):
+        a transient 503 from Discord while fetching a member propagated out of
+        get_member (which caught only Forbidden/NotFound) and surfaced as a
+        feature error. get_member should absorb HTTP errors and return None,
+        mirroring its sibling get_message.
+        """
+        import components.utils as utils
+
+        member_id = 987654321
+        guild = self._make_guild(self._server_error())
+        utils.failed_member_fetches.remove((guild.id, member_id))
+
+        result = await utils.get_member(guild, member_id)
+
+        self.assertIsNone(result, "get_member must return None on a 503, not raise")
+        # A 503 is transient: it must NOT be cached, so a later retry can succeed.
+        self.assertNotIn(
+            (guild.id, member_id), utils.failed_member_fetches,
+            msg="Transient 503 must not be cached in failed_member_fetches",
+        )
+
+        logging.info("✅ get_member 503 test passed")
+
+    async def test_get_member_caches_not_found(self) -> None:
+        """A genuine NotFound still returns None AND is cached (unchanged behavior)."""
+        import components.utils as utils
+
+        member_id = 987654322
+        resp = Mock(); resp.status = 404; resp.reason = "Not Found"
+        guild = self._make_guild(nextcord.NotFound(resp, "Unknown Member"))
+        utils.failed_member_fetches.remove((guild.id, member_id))
+
+        result = await utils.get_member(guild, member_id)
+
+        self.assertIsNone(result)
+        self.assertIn(
+            (guild.id, member_id), utils.failed_member_fetches,
+            msg="A real NotFound should be cached to suppress repeat fetches",
+        )
+        utils.failed_member_fetches.remove((guild.id, member_id))
+
+        logging.info("✅ get_member NotFound-caching test passed")
+
 def cleanup_environment():
     """
     Cleans up the environment after tests are run.
