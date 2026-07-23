@@ -825,7 +825,7 @@ async def get_message(channel: nextcord.abc.Messageable, message_id: int, overri
         failed_message_fetches.add(cache_key)
         return None
 
-failed_member_fetches = ExpiringSet(60 * 1)  # 1 minute expiration
+failed_member_fetches = ExpiringSet(60 * 15)  # 15 minute expiration
 async def get_member(guild: nextcord.Guild, user_id: int, override_failed_cache: bool = False) -> nextcord.Member | None:
     """
     |coro|  
