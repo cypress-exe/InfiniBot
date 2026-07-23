@@ -2479,6 +2479,95 @@ class TestExpiringSet(unittest.TestCase):
         
         logging.info("✅ ExpiringSet.__repr__ test passed")
 
+class TestActionLogging(unittest.IsolatedAsyncioTestCase):
+    """
+    Tests for action_logging edge cases observed in production.
+    """
+
+    async def test_log_timeout_change_survives_timeout_lapsing_mid_event(self) -> None:
+        """
+        Regression for the prod TypeError (logfile 2026-07-22 22:05):
+            'unsupported operand type(s) for -: NoneType and datetime.datetime'
+
+        nextcord's Member.communication_disabled_until returns None once the timeout
+        instant has passed, so its value can flip from a datetime to None *between*
+        log_member_update's `before != after` check and the read inside
+        log_timeout_change (the intervening audit-log fetch is awaited). If the
+        timeout lapses in that window, the "newly timed out" branch dereferences
+        after.communication_disabled_until while it is None -> TypeError.
+
+        log_timeout_change must not raise when the timeout has already lapsed.
+        """
+        from unittest.mock import AsyncMock
+        import features.action_logging as action_logging
+
+        # before: no prior timeout. after: timeout has already lapsed (property -> None).
+        before = Mock(spec=nextcord.Member)
+        before.communication_disabled_until = None
+        after = Mock(spec=nextcord.Member)
+        after.communication_disabled_until = None
+        after.mention = "@LapsedUser"
+
+        log_channel = Mock(spec=nextcord.TextChannel)
+        log_channel.send = AsyncMock()
+
+        # Must not raise TypeError (entry=None -> actor resolves to "Someone").
+        await action_logging.log_timeout_change(before, after, entry=None, log_channel=log_channel)
+
+        # Nothing meaningful to report for a lapsed-before-logged timeout -> no message.
+        log_channel.send.assert_not_awaited()
+
+        logging.info("✅ log_timeout_change lapsed-timeout test passed")
+
+    async def test_log_timeout_change_logs_new_timeout(self) -> None:
+        """A genuine new timeout (before None, after a future datetime) still logs a
+        'Member Timed-Out' embed with a duration."""
+        from unittest.mock import AsyncMock
+        import features.action_logging as action_logging
+
+        before = Mock(spec=nextcord.Member)
+        before.communication_disabled_until = None
+        after = Mock(spec=nextcord.Member)
+        after.communication_disabled_until = (
+            datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=10)
+        )
+        after.mention = "@TimedOutUser"
+
+        log_channel = Mock(spec=nextcord.TextChannel)
+        log_channel.send = AsyncMock()
+
+        await action_logging.log_timeout_change(before, after, entry=None, log_channel=log_channel)
+
+        log_channel.send.assert_awaited_once()
+        embed = log_channel.send.await_args.kwargs["embed"]
+        self.assertEqual(embed.title, "Member Timed-Out")
+
+        logging.info("✅ log_timeout_change new-timeout test passed")
+
+    async def test_log_timeout_change_logs_revoked_timeout(self) -> None:
+        """A manual revoke (before a datetime, after None) still logs 'Timeout Revoked'."""
+        from unittest.mock import AsyncMock
+        import features.action_logging as action_logging
+
+        before = Mock(spec=nextcord.Member)
+        before.communication_disabled_until = (
+            datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=5)
+        )
+        after = Mock(spec=nextcord.Member)
+        after.communication_disabled_until = None
+        after.mention = "@RevokedUser"
+
+        log_channel = Mock(spec=nextcord.TextChannel)
+        log_channel.send = AsyncMock()
+
+        await action_logging.log_timeout_change(before, after, entry=None, log_channel=log_channel)
+
+        log_channel.send.assert_awaited_once()
+        embed = log_channel.send.await_args.kwargs["embed"]
+        self.assertEqual(embed.title, "Timeout Revoked")
+
+        logging.info("✅ log_timeout_change revoked-timeout test passed")
+
 def cleanup_environment():
     """
     Cleans up the environment after tests are run.
