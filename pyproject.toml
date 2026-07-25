@@ -36,7 +36,8 @@ package = false
 [tool.pytest.ini_options]
 # Imports are rooted at src/ to match the container's WORKDIR (`python3 ./src/...`),
 # so `import core.db_manager` resolves the same on the host and in Docker.
-pythonpath = ["src"]
+# The repo root comes first so `tests.support` resolves to the tests package.
+pythonpath = [".", "src"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "--strict-markers -ra"

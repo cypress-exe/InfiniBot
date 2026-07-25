@@ -1,18 +1,16 @@
 """
 Shared pytest fixtures for the InfiniBot suite.
 
-Two things every test needs and neither should have to arrange itself:
+InfiniBot reaches most of its state through module-level globals — base paths in
+``config.file_manager`` and ``core.log_manager``, the database in
+``core.db_manager``, a singleton cache in ``config.global_settings``, and a
+class-level parse cache on ``JSONFile``. Left alone, tests would read and write
+the developer's real ``./generated/`` tree and inherit each other's state.
 
-* **A sandboxed filesystem.** ``config.file_manager`` and ``core.log_manager`` both
-  read a module-level ``base_path`` that defaults into ``./generated/``. Left alone,
-  tests would read and write the developer's real working tree. The session fixture
-  below repoints both at a tmpdir and restores them afterwards.
-
-* **An isolated database.** ``core.db_manager`` holds a single module-global
-  ``database`` that every config object reaches through ``get_database()``. The
-  ``db`` fixture rebuilds it against a fresh file per test, so tests can assert
-  absolute row counts instead of working around whatever the previous test left
-  behind.
+The fixtures here reset all of it per test. That isolation is what lets tests
+assert absolute values (row counts, file contents) instead of working around
+whatever ran before them, and it is why the old harness's ``random.randint`` IDs
+are no longer needed.
 """
 
 from __future__ import annotations
@@ -23,34 +21,37 @@ from pathlib import Path
 
 import pytest
 
-import core.db_manager as db_manager
 import config.file_manager as file_manager
+import config.global_settings as global_settings
+import core.db_manager as db_manager
 import core.log_manager as log_manager
+from config.file_manager import JSONFile
 
 # Repository root, resolved from this file rather than the working directory so
-# `pytest` works from any cwd.
+# pytest works from any cwd.
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# Built by Database.__init__; the real schema the bot ships with.
+# The real schema the bot ships with.
 DB_BUILD_FILE = REPO_ROOT / "resources" / "db_build.sql"
 
 # A small fixture schema (3 tables exercising defaults, tags and composite keys)
-# used by the tests that cover the generic Database machinery itself.
+# used by tests covering the generic Database machinery itself.
 TEST_DB_BUILD_FILE = REPO_ROOT / "resources" / "test_db_build.sql"
 
 
-@pytest.fixture(scope="session", autouse=True)
-def sandboxed_paths(tmp_path_factory: pytest.TempPathFactory):
+@pytest.fixture(autouse=True)
+def sandboxed_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """
-    Redirect every module-global filesystem path into a session tmpdir.
+    Give each test a private filesystem and a clean set of module caches.
 
     Autouse: no test should be able to touch the real ``./generated/`` tree by
-    forgetting to ask for this.
+    forgetting to ask for this. (The old harness wrote into the repo at
+    ``./generated/test-files``, which is also how that directory ends up
+    root-owned after a Docker run.)
     """
-    root = tmp_path_factory.mktemp("infinibot")
-    configure_dir = root / "configure"
-    logs_dir = root / "logs"
-    files_dir = root / "files"
+    configure_dir = tmp_path / "configure"
+    logs_dir = tmp_path / "logs"
+    files_dir = tmp_path / "files"
     for directory in (configure_dir, logs_dir, files_dir):
         directory.mkdir(parents=True, exist_ok=True)
 
@@ -64,20 +65,24 @@ def sandboxed_paths(tmp_path_factory: pytest.TempPathFactory):
 
     original_file_base = file_manager.base_path
     original_log_base = log_manager.base_path
-    original_db_url = db_manager.database_url
 
     file_manager.update_base_path(f"{configure_dir}/")
     log_manager.update_base_path(f"{logs_dir}/")
 
-    yield root
+    # JSONFile caches parsed data by absolute path, and global_settings memoizes
+    # its singletons. Both outlive a test unless cleared, so a settings change in
+    # one test would be visible in the next.
+    monkeypatch.setattr(JSONFile, "_cache", {})
+    monkeypatch.setattr(global_settings, "_global_setting_singletons", {})
+
+    yield tmp_path
 
     file_manager.update_base_path(original_file_base)
     log_manager.update_base_path(original_log_base)
-    db_manager.database_url = original_db_url
 
 
 @pytest.fixture
-def db(tmp_path: Path, sandboxed_paths):
+def db(tmp_path: Path, sandboxed_paths: Path):
     """
     Give the test a private, freshly built InfiniBot database.
 
@@ -110,7 +115,7 @@ def fixture_db():
     (``resources/test_db_build.sql``), not InfiniBot's real one.
 
     For tests covering the generic database machinery — column defaults, tag
-    parsing, table indexing — which need a schema with known, stable shape rather
+    parsing, table indexing — which need a schema of known, stable shape rather
     than whatever the bot currently ships.
     """
     from modules.database import Database
@@ -123,11 +128,11 @@ def fixture_db():
 
 
 @pytest.fixture(autouse=True)
-def quiet_logging(caplog):
+def quiet_logging(caplog: pytest.LogCaptureFixture) -> None:
     """
     Keep the bot's own logging out of passing tests' output.
 
     ``caplog`` still captures records at WARNING and above, so tests that assert
-    on log output continue to work; failures still show the captured log.
+    on log output continue to work, and a failure still shows the captured log.
     """
     caplog.set_level(logging.WARNING)
