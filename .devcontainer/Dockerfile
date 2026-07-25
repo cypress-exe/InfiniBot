@@ -20,19 +20,6 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
-# Production stage
-FROM dependencies AS production
-
-# Copy entrypoint and configure with permissions
-COPY ./.devcontainer/entrypoint.sh .
-RUN chmod +x entrypoint.sh
-
-# Copy application code (done last for better cache efficiency)
-COPY . .
-
-# Set entrypoint
-ENTRYPOINT ["./entrypoint.sh"]
-
 # Test dependencies stage — branches off `dependencies` so the dev group is
 # installed before the source is copied, keeping the layer cacheable
 FROM dependencies AS test-dependencies
@@ -45,3 +32,20 @@ FROM test-dependencies AS test
 COPY . .
 ENTRYPOINT []
 CMD ["python3", "-m", "pytest"]
+
+# Production stage.
+#
+# Kept LAST on purpose: Docker builds the final stage when no --target is given,
+# so a bare `docker build` must land here and not on `test`. build.bash passes
+# --target production explicitly as well; both guards are deliberate.
+FROM dependencies AS production
+
+# Copy entrypoint and configure with permissions
+COPY ./.devcontainer/entrypoint.sh .
+RUN chmod +x entrypoint.sh
+
+# Copy application code (done last for better cache efficiency)
+COPY . .
+
+# Set entrypoint
+ENTRYPOINT ["./entrypoint.sh"]

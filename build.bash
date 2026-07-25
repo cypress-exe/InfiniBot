@@ -59,7 +59,6 @@ done
 
 # Check if "--use-cache" flag is passed
 cache_string="--no-cache"
-buildx_cache=""
 
 for arg in "$@"; do
     if [ "$arg" == "--use-cache" ]; then
@@ -72,7 +71,11 @@ done
 # Optional "--target <stage>" selects a Dockerfile stage and tags the image
 # infinibot:<stage> instead of infinibot:latest. run_tests.bash uses
 # "--target test" to build the image that has the dev dependencies.
-target_args=()
+#
+# The default is an explicit "--target production". Docker builds the LAST stage
+# in the Dockerfile when no target is given, so leaving this implicit means
+# appending a stage silently changes what infinibot:latest contains.
+target_args=(--target production)
 image_tag="infinibot:latest"
 args=("$@")
 for i in "${!args[@]}"; do
@@ -91,7 +94,6 @@ done
 # Build the Docker image with BuildX (for better caching)
 docker buildx build -f ./.devcontainer/Dockerfile \
     --pull ${cache_string} \
-    "${buildx_cache_args[@]}" \
     "${target_args[@]}" \
     --load \
     -t "$image_tag" \
