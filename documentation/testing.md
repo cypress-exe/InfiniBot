@@ -96,4 +96,5 @@ Note `include_namespace_packages = true`. `src/` has no `__init__.py` files, and
 without that setting coverage reports only the modules the tests happened to
 import, which reads as 51% instead of the true 14%.
 
-`documentation/coverage_baseline_2026-07.md` ranks modules by untested lines.
+`documentation/claude-reports/coverage_baseline_2026-07.md` ranks modules by
+untested lines.
