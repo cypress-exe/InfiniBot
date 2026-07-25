@@ -127,6 +127,24 @@ def fixture_db():
         database.cleanup()
 
 
+@pytest.fixture
+def file_fixture_db(tmp_path: Path):
+    """
+    Like :func:`fixture_db`, but backed by a file rather than ``sqlite://``.
+
+    Every connection to an in-memory SQLite database is a separate, empty
+    database, so tests that need two connections to see the same data — anything
+    exercising the connection pool — must use a file.
+    """
+    from modules.database import Database
+
+    database = Database(f"sqlite:///{tmp_path / 'fixture.db'}", str(TEST_DB_BUILD_FILE))
+    try:
+        yield database
+    finally:
+        database.cleanup()
+
+
 @pytest.fixture(autouse=True)
 def quiet_logging(caplog: pytest.LogCaptureFixture) -> None:
     """
