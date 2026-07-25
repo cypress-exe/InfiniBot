@@ -20,9 +20,37 @@ dependencies = [
     "discordlists-py==1.1.1",
 ]
 
+[dependency-groups]
+# Test-only dependencies. Excluded from the production image, which builds with
+# `uv sync --frozen --no-dev`; the Dockerfile's `test` stage syncs them back in.
+dev = [
+    "pytest==9.0.1",
+    "pytest-asyncio==1.3.0",
+    "pytest-cov==7.0.0",
+]
+
 [tool.uv]
 # Application, not an installable package: `uv sync` installs dependencies only
 package = false
+
+[tool.pytest.ini_options]
+# Imports are rooted at src/ to match the container's WORKDIR (`python3 ./src/...`),
+# so `import core.db_manager` resolves the same on the host and in Docker.
+pythonpath = ["src"]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--strict-markers -ra"
+markers = [
+    "integration: exercises a real SQLite database",
+    "slow: takes more than a second (real sleeps, large data sets)",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "src/main.py",           # process entrypoint
+    "src/event_harness.py",  # synthetic-load benchmark, not shipped behavior
+]
 
 [tool.pyright]
 # Editor language server (pyright/basedpyright/Pylance): use the uv-managed
