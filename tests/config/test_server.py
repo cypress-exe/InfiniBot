@@ -2,14 +2,15 @@
 Tests for :class:`config.server.Server` — every per-guild setting the dashboard
 can change.
 
-The old harness drove this with ``run_test_on_property``, a hand-rolled
-parametrizer called from 16 ``test_*_profile`` methods. A failure reported only
-which *profile* broke, and the first bad property aborted the rest of that
-profile's checks. The same table lives here as ``SCALAR_PROPERTIES``, fed to
-pytest's own parametrize, so every property is an independent test that names
-itself:
+``SCALAR_PROPERTIES`` tables every setting with its default, some values that
+must round-trip and some that must be rejected; ``INTEGRATED_LISTS`` does the
+same for the per-guild tables. Both are fed to ``parametrize``, so each property
+is an independent test that names itself in the report:
 
     test_property_default[leveling_profile.max_points_per_message]
+
+Adding a setting to ``Server`` means adding a row to the table — not writing a
+test.
 """
 
 from __future__ import annotations

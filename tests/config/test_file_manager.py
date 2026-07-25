@@ -1,9 +1,5 @@
 """
 Tests for :mod:`config.file_manager`.
-
-The old harness covered all of this in a single ``test_json_file`` that created,
-read, mutated, re-read and deleted a file in one flow — so a failure anywhere in
-it reported only "test_json_file failed". These split it by behavior.
 """
 
 from __future__ import annotations

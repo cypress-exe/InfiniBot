@@ -1,11 +1,10 @@
 """
 Builders for the domain objects tests need.
 
-The old harness generated every ID with ``random.randint(0, 1000000000)`` because
-tests shared one database and needed to avoid colliding with each other's rows.
-The ``db`` fixture gives each test its own database, so IDs no longer need to be
-random — and shouldn't be, since randomness makes a failure hard to reproduce.
-``next_id()`` hands out unique, monotonic IDs instead.
+The ``db`` fixture gives each test its own database, so IDs only have to be
+unique within a test rather than across the whole suite. ``next_id()`` therefore
+hands out monotonic IDs rather than random ones: a random ID makes a failure
+awkward to reproduce, and buys nothing once tests no longer share a database.
 """
 
 from __future__ import annotations
@@ -29,9 +28,8 @@ def next_id() -> int:
 
 
 def random_content(length: int = 200) -> str:
-    """Message body of the given length, drawn from the character set the old
-    harness used (letters, punctuation and spaces — the things that stress
-    quoting on the way into SQLite)."""
+    """Message body of the given length, drawn from letters, punctuation and
+    spaces — the characters that stress quoting on the way into SQLite."""
     alphabet = string.ascii_lowercase + r"!@#$%^&*()_+-=[]{};:'<>,./? "
     return "".join(random.choice(alphabet) for _ in range(length))
 

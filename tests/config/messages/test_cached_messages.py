@@ -3,7 +3,7 @@ Tests for :mod:`config.messages.cached_messages` — the in-memory, per-channel
 message cache that serves edit/delete logging without hitting the database.
 
 The cache is a module global, so the autouse fixture below clears it between
-tests. The old harness cleared it only once, before its seven steps ran.
+tests.
 """
 
 from __future__ import annotations

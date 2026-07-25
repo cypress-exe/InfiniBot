@@ -80,10 +80,10 @@ and let `parametrize` expand it — see `SCALAR_PROPERTIES` in
 `tests/config/test_server.py`, where 45 settings become individually named tests
 like `test_property_default[leveling_profile.max_points_per_message]`.
 
-Avoid real sleeps. `ExpiringSet` reads `time.time()` and nothing else, so
-`tests/modules/test_custom_types.py` swaps the module's `time` reference for a
-fake clock; the four original tests slept ~7 seconds between them and now run in
-0.02s.
+Avoid real sleeps — they make the suite slow and flaky on a loaded machine.
+Monkeypatch the clock instead: `ExpiringSet` reads `time.time()` and nothing
+else, so `tests/modules/test_custom_types.py` swaps the module's `time`
+reference for a fake one and advances it by hand.
 
 ## Coverage
 

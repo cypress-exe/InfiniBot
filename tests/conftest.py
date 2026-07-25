@@ -8,9 +8,8 @@ class-level parse cache on ``JSONFile``. Left alone, tests would read and write
 the developer's real ``./generated/`` tree and inherit each other's state.
 
 The fixtures here reset all of it per test. That isolation is what lets tests
-assert absolute values (row counts, file contents) instead of working around
-whatever ran before them, and it is why the old harness's ``random.randint`` IDs
-are no longer needed.
+assert absolute values — row counts, file contents — rather than deltas against
+whatever ran before them.
 """
 
 from __future__ import annotations
@@ -45,9 +44,8 @@ def sandboxed_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     Give each test a private filesystem and a clean set of module caches.
 
     Autouse: no test should be able to touch the real ``./generated/`` tree by
-    forgetting to ask for this. (The old harness wrote into the repo at
-    ``./generated/test-files``, which is also how that directory ends up
-    root-owned after a Docker run.)
+    forgetting to ask for this. A suite that writes there leaves artifacts in the
+    working copy, and under Docker leaves them root-owned.
     """
     configure_dir = tmp_path / "configure"
     logs_dir = tmp_path / "logs"

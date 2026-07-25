@@ -1,6 +1,5 @@
 # Coverage baseline — July 2026
 
-Measured on the branch that replaced `src/tests.py` with the pytest suite.
 Reproduce with `uv run pytest --cov`.
 
 **13.6% of 11,445 statements** (9,889 untested).
@@ -12,9 +11,8 @@ Reproduce with `uv run pytest --cov`.
 
 ## Where the gap is
 
-Almost all of it is `src/features/`. The config and database layers — the parts
-the old suite covered — are in reasonable shape; the bot's actual behavior is
-not covered at all.
+Almost all of it is `src/features/`. The config and database layers are in
+reasonable shape; the bot's actual behavior is not covered at all.
 
 Ranked by untested statements, which is where a test buys the most:
 

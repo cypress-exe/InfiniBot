@@ -5,10 +5,6 @@ These run against the fixture schema in ``resources/test_db_build.sql`` — thre
 tables covering column defaults, table tags and a composite primary key — rather
 than InfiniBot's real schema, so the expected values stay stable as the bot's
 tables change.
-
-The old harness ran all ten of these as ``stepN_*`` methods inside a single
-``entrypoint`` test: the first failure aborted the rest, and the wrapper stringified
-the exception, throwing away the traceback. They are ordinary tests now.
 """
 
 from __future__ import annotations

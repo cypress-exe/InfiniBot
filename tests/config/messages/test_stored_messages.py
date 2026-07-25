@@ -2,10 +2,7 @@
 Tests for :mod:`config.messages.stored_messages` — the on-disk message store
 behind edit/delete logging.
 
-The old harness ran these as five ``stepN_*`` methods sharing one database, so
-each step began by deleting every row and the counts were built from
-``random.randint`` sizes. The ``db`` fixture gives each test its own database, so
-sizes are fixed here and the assertions are absolute.
+The ``db`` fixture gives each test an empty database.
 """
 
 from __future__ import annotations

@@ -2,10 +2,9 @@
 Tests for :mod:`modules.custom_types`.
 
 ``ExpiringSet`` reads the wall clock via ``time.time()`` and nothing else, so the
-``clock`` fixture swaps the module's ``time`` reference for a fake one. The old
-harness slept for real — 6 sleeps totalling ~7 seconds across four tests — which
-made these both slow and flaky on a loaded machine. Advancing a fake clock tests
-the same behavior deterministically and instantly.
+``clock`` fixture swaps the module's ``time`` reference for a fake one. Advancing
+that clock exercises expiry deterministically and instantly; sleeping for real
+would make these tests slow, and flaky on a loaded machine.
 """
 
 from __future__ import annotations

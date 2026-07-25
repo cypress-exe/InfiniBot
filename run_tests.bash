@@ -31,9 +31,8 @@ if [ "$skip_build" == "false" ]; then
     ./build.bash --use-cache --target test
 fi
 
-# No ./generated bind mount: tests write only to pytest's tmp_path. The old
-# harness mounted it, which is how ./generated/test-files ended up root-owned
-# on the host after a run.
+# No ./generated bind mount: tests write only to pytest's tmp_path inside the
+# container. Mounting it would leave root-owned artifacts in the working copy.
 #
 # --network none: the suite must never reach the real Discord API. It needs no
 # network, and .env carries a valid token.

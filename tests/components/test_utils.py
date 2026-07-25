@@ -111,7 +111,13 @@ def test_unmatched_name_is_left_literal() -> None:
 
 
 def test_everyone_is_never_matched_by_name() -> None:
-    """Turning ``@everyone`` into a real mention would ping the whole server."""
+    """
+    Turning ``@everyone`` into a real mention is against stipulated rules.
+    
+    Even though a mention in a message never sends a ping, it was stipulated
+    as a rule for this method to NOT convert ``@everyone`` into a real mention.
+    """
+
     guild = make_guild([])
 
     assert replace_in(guild, "Welcome @everyone!") == "Welcome @everyone!"
