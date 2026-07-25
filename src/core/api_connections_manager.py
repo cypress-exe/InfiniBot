@@ -3,138 +3,137 @@ import os
 import logging
 
 import aiohttp
-import topgg
 
-# Matches topggpy's own autopost default. Top.gg rejects intervals under 15 minutes.
-TOPGG_POST_INTERVAL_SECONDS = 1800
-
-DISCORDLISTS_POST_INTERVAL_SECONDS = 1800
-
-DISCORDLIST_GG_GUILDS_URL = "https://api.discordlist.gg/v0/bots/{bot_id}/guilds"
-
-async def post_topgg_stats(bot):
+class BotListConnection:
     """
-    Posts the bot's guild and shard counts to Top.gg.
+    Base class for posting InfiniBot's guild count to a bot list.
 
-    The shard count is sent, but Top.gg's v0 API currently discards it — a post
-    carrying one reads back as null, and nothing in their UI displays it. It
-    costs nothing to keep sending, and the listing's server count does update.
+    Subclasses MUST implement the :meth:`build_request` method to describe the
+    HTTP request for posting stats. The base class handles the loop, error
+    handling, and logging.
 
     :param bot: The bot instance to post stats for.
-    :return: None
-    :rtype: None
-    """
-    server_count = len(bot.guilds)
-    await bot.topggpy.post_guild_count(guild_count=server_count, shard_count=bot.shard_count)
-
-    logging.info(f"Posted {server_count} guilds across {bot.shard_count} shards to Top.gg.")
-
-async def run_topgg_post_loop(bot):
-    """
-    Posts stats to Top.gg on an interval until the bot closes.
-
-    Replaces topggpy's built-in autopost, which dispatched failures to an
-    ``on_autopost_error`` event nothing listens for and permanently killed its
-    own task on an unauthorized response. Failures are logged here instead, and
-    a failed post never stops the loop — a rotated or briefly rejected token
-    recovers on the next cycle.
-
-    :param bot: The bot instance to post stats for.
-    :return: None
-    :rtype: None
-    """
-    while not bot.is_closed():
-        try:
-            await post_topgg_stats(bot)
-        except Exception as e:
-            logging.error(f"Failed to post stats to Top.gg: {e}", exc_info=True)
-
-        await asyncio.sleep(TOPGG_POST_INTERVAL_SECONDS)
-
-def setup_topgg(bot, dbl_token):
-    """
-    Sets up the Top.gg API connection for the bot.
-
-    :param bot: The bot instance to set up the Top.gg connection for.
-    :param dbl_token: The token for the Top.gg API.
-    :return: None
-    :rtype: None
+    :param token: The API token for this website (bot list).
     """
 
-    logging.info("Setting up Top.gg API connection...")
-    if not dbl_token:
-        raise ValueError("Top.gg token is required to set up the Top.gg API connection.")
+    name = None
+    """Human-readable website (bot list) name for use in log messages."""
 
-    bot.topggpy = topgg.DBLClient(bot, dbl_token)
+    post_interval_seconds = 1800 # 30 minutes
+    """Seconds between posts."""
 
-    # Held on the bot because asyncio only keeps a weak reference to running
-    # tasks — a local would let the loop be garbage collected mid-flight.
-    bot.topgg_post_task = bot.loop.create_task(run_topgg_post_loop(bot))
+    def __init__(self, bot, token):
+        if not token:
+            raise ValueError(f"A token must be specified in order to setup the {self.name} API connection.")
 
-    logging.info("Top.gg API connection established successfully.")
+        self.bot = bot
+        self.token = token
+        self.task = None
 
-async def post_discordlists_stats(bot, token):
-    """
-    Posts the bot's guild count to discordlist.gg.
+    @property
+    def server_count(self):
+        """
+        The number of guilds the bot is in.
 
-    Posted directly rather than through BotBlock: BotBlock sends list tokens as a
-    bare ``Authorization`` header, and discordlist.gg requires the ``Bearer``
-    prefix, so every post it relayed came back 401. BotBlock reports that in the
-    body of an HTTP 200, which is why the failure went unnoticed for years.
+        :return: The guild count.
+        :rtype: int
+        """
+        return len(self.bot.guilds)
 
-    :param bot: The bot instance to post stats for.
-    :param token: The discordlist.gg API token.
-    :return: None
-    :rtype: None
-    """
-    server_count = len(bot.guilds)
+    def build_request(self):
+        """
+        Describes the stats HTTP request for this bot list website.
 
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            DISCORDLIST_GG_GUILDS_URL.format(bot_id=bot.user.id),
-            json={"count": server_count},
-            headers={"Authorization": f"Bearer {token}"},
-        ) as response:
-            response.raise_for_status()
+        :return: The HTTP method, URL, JSON body and headers to send.
+        :rtype: tuple[str, str, dict, dict]
+        """
+        raise NotImplementedError
 
-    logging.info(f"Posted {server_count} guilds to discordlist.gg.")
+    def success_message(self):
+        """
+        The line logged after a successful post.
 
-async def run_discordlists_post_loop(bot, token):
-    """
-    Posts stats to discordlist.gg on an interval until the bot closes.
+        :return: The message to log.
+        :rtype: str
+        """
+        return f"Posted {self.server_count} guilds to {self.name}."
 
-    :param bot: The bot instance to post stats for.
-    :param token: The discordlist.gg API token.
-    :return: None
-    :rtype: None
-    """
-    while not bot.is_closed():
-        try:
-            await post_discordlists_stats(bot, token)
-        except Exception as e:
-            logging.error(f"Failed to post stats to discordlist.gg: {e}", exc_info=True)
+    async def post_stats(self):
+        """
+        Sends a single stats request, raising on any non-success response.
 
-        await asyncio.sleep(DISCORDLISTS_POST_INTERVAL_SECONDS)
+        :return: None
+        :rtype: None
+        """
+        method, url, payload, headers = self.build_request()
 
-def setup_discordlists(bot, discordlists_token):
-    """
-    Sets up the DiscordLists API connection for the bot.
+        async with aiohttp.ClientSession() as session:
+            async with session.request(method, url, json=payload, headers=headers) as response:
+                response.raise_for_status()
 
-    :param bot: The bot instance to set up the DiscordLists connection for.
-    :param discordlists_token: The token for the DiscordLists API.
-    :return: None
-    :rtype: None
-    """
+        logging.info(self.success_message())
 
-    logging.info("Setting up DiscordLists API connection...")
-    if not discordlists_token:
-        raise ValueError("DiscordLists token is required to set up the DiscordLists API connection.")
+    async def run_post_loop(self):
+        """
+        Posts stats on an interval until the bot closes.
 
-    # TODO: Setup bots.ondiscord.xyz
-    # Held on the bot for the same reason as the Top.gg task above.
-    bot.discordlists_post_task = bot.loop.create_task(run_discordlists_post_loop(bot, discordlists_token))
+        :return: None
+        :rtype: None
+        """
+        # Mirrors Top.gg's now-removed module for posting bot stats on an interval.
+        while not self.bot.is_closed():
+            try:
+                await self.post_stats()
+            except Exception as e:
+                logging.error(f"Failed to post stats to {self.name}: {e}", exc_info=True)
 
-    logging.info("DiscordLists API connection established successfully.")
+            await asyncio.sleep(self.post_interval_seconds)
+
+    def start(self):
+        """
+        Starts the posting loop.
+
+        :return: None
+        :rtype: None
+        """
+        self.task = self.bot.loop.create_task(self.run_post_loop())
+        logging.info(f"{self.name} API connection established successfully.")
+
+class TopGGConnection(BotListConnection):
+    name = "Top.gg"
+    url = "https://top.gg/api/v1/projects/@me/metrics"
+
+    def build_request(self):
+        payload = {"server_count": self.server_count}
+
+        # Apparently, sending an explicit null is not the same
+        # as omitting the field. So we only include the shard_count
+        # if it's set.
+        if self.bot.shard_count:
+            payload["shard_count"] = self.bot.shard_count
+
+        return "PATCH", self.url, payload, {"Authorization": f"Bearer {self.token}"}
+
+    def success_message(self):
+        return f"Posted {self.server_count} guilds across {self.bot.shard_count} shards to {self.name}."
+
+class DiscordListConnection(BotListConnection):
+    name = "discordlist.gg"
+    url = "https://api.discordlist.gg/v0/bots/{bot_id}/guilds"
+
+    def build_request(self):
+        return (
+            "POST",
+            self.url.format(bot_id=self.bot.user.id),
+            {"count": self.server_count},
+            {"Authorization": f"Bearer {self.token}"},
+        )
+
+# TODO: Setup bots.ondiscord.xyz
+BOT_LIST_CONNECTIONS = (
+    (TopGGConnection, "TOPGG_AUTH_TOKEN"),
+    (DiscordListConnection, "DISCORDLISTS_AUTH_TOKEN"),
+)
 
 def start_all_api_connections():
     """
@@ -147,22 +146,21 @@ def start_all_api_connections():
     from core.bot import get_bot
     bot = get_bot()
 
-    # Setup top.gg API connection
-    topgg_token = os.environ.get('TOPGG_AUTH_TOKEN', '')
-    if topgg_token and topgg_token.lower() not in ["none", "missing"]:
-        try:
-            setup_topgg(bot, topgg_token)
-        except ValueError as e:
-            logging.error(f"Failed to set up Top.gg API connection: {e}")
-    else:
-        logging.warning("TOPGG_AUTH_TOKEN is not set or is invalid. Top.gg API connection will not be established.")
+    # Connections are held on the bot because asyncio only keeps a weak
+    # reference to running tasks — dropping them would let a loop be garbage
+    # collected mid-flight.
+    bot.bot_list_connections = []
 
-    # Setup discordlists API connection
-    discordlists_token = os.environ.get('DISCORDLISTS_AUTH_TOKEN', '')
-    if discordlists_token and discordlists_token.lower() not in ["none", "missing"]:
+    for connection_class, token_variable in BOT_LIST_CONNECTIONS:
+        token = os.environ.get(token_variable, '')
+        if not token or token.lower() in ["none", "missing"]:
+            logging.warning(f"{token_variable} is not set or is invalid. {connection_class.name} API connection will not be established.")
+            continue
+
+        logging.info(f"Setting up {connection_class.name} API connection...")
         try:
-            setup_discordlists(bot, discordlists_token)
-        except ValueError as e:
-            logging.error(f"Failed to set up DiscordLists API connection: {e}")
-    else:
-        logging.warning("DISCORDLISTS_AUTH_TOKEN is not set or is invalid. DiscordLists API connection will not be established.")
+            connection = connection_class(bot, token)
+            connection.start()
+            bot.bot_list_connections.append(connection)
+        except Exception as e:
+            logging.error(f"Failed to set up {connection_class.name} API connection: {e}")
