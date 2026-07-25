@@ -282,18 +282,6 @@ wheels = [
 ]
 
 [[package]]
-name = "discordlists-py"
-version = "1.1.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "aiohttp" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/77/92/ee9f7b9862af86d8defbbb66513d6826ab2c2b774b30b2f08d7d2587f71f/discordlists.py-1.1.1.tar.gz", hash = "sha256:f6d49c93c3eb1d5ffbaeddf663d3bfa80bb3073a4fc43787b832ea55de49113d", size = 7154, upload-time = "2019-11-24T17:58:01.164Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/fd/99db4a946f764335fadbeef241ab7cb55582ed8ce459704d3265bc7602d7/discordlists.py-1.1.1-py3-none-any.whl", hash = "sha256:0211aecde3c3b3881239511aadc0c753f3cece423d8374d01fa815e958ca2537", size = 10042, upload-time = "2019-11-24T17:57:55.224Z" },
-]
-
-[[package]]
 name = "frozenlist"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -439,10 +427,10 @@ name = "infinibot"
 version = "4.1.1"
 source = { virtual = "." }
 dependencies = [
+    { name = "aiohttp" },
     { name = "apscheduler" },
     { name = "cachetools" },
     { name = "dateparser" },
-    { name = "discordlists-py" },
     { name = "humanfriendly" },
     { name = "nextcord" },
     { name = "nextcord-ext-menus" },
@@ -462,10 +450,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiohttp", specifier = "==3.14.1" },
     { name = "apscheduler", specifier = "==3.11.2" },
     { name = "cachetools", specifier = "==7.1.4" },
     { name = "dateparser", specifier = "==1.4.1" },
-    { name = "discordlists-py", specifier = "==1.1.1" },
     { name = "humanfriendly", specifier = "==10.0" },
     { name = "nextcord", specifier = "==3.2.0" },
     { name = "nextcord-ext-menus", specifier = "==1.5.7" },

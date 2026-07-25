@@ -2,11 +2,15 @@ import asyncio
 import os
 import logging
 
+import aiohttp
 import topgg
-import discordlists
 
 # Matches topggpy's own autopost default. Top.gg rejects intervals under 15 minutes.
 TOPGG_POST_INTERVAL_SECONDS = 1800
+
+DISCORDLISTS_POST_INTERVAL_SECONDS = 1800
+
+DISCORDLIST_GG_GUILDS_URL = "https://api.discordlist.gg/v0/bots/{bot_id}/guilds"
 
 async def post_topgg_stats(bot):
     """
@@ -69,6 +73,49 @@ def setup_topgg(bot, dbl_token):
 
     logging.info("Top.gg API connection established successfully.")
 
+async def post_discordlists_stats(bot, token):
+    """
+    Posts the bot's guild count to discordlist.gg.
+
+    Posted directly rather than through BotBlock: BotBlock sends list tokens as a
+    bare ``Authorization`` header, and discordlist.gg requires the ``Bearer``
+    prefix, so every post it relayed came back 401. BotBlock reports that in the
+    body of an HTTP 200, which is why the failure went unnoticed for years.
+
+    :param bot: The bot instance to post stats for.
+    :param token: The discordlist.gg API token.
+    :return: None
+    :rtype: None
+    """
+    server_count = len(bot.guilds)
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            DISCORDLIST_GG_GUILDS_URL.format(bot_id=bot.user.id),
+            json={"count": server_count},
+            headers={"Authorization": f"Bearer {token}"},
+        ) as response:
+            response.raise_for_status()
+
+    logging.info(f"Posted {server_count} guilds to discordlist.gg.")
+
+async def run_discordlists_post_loop(bot, token):
+    """
+    Posts stats to discordlist.gg on an interval until the bot closes.
+
+    :param bot: The bot instance to post stats for.
+    :param token: The discordlist.gg API token.
+    :return: None
+    :rtype: None
+    """
+    while not bot.is_closed():
+        try:
+            await post_discordlists_stats(bot, token)
+        except Exception as e:
+            logging.error(f"Failed to post stats to discordlist.gg: {e}", exc_info=True)
+
+        await asyncio.sleep(DISCORDLISTS_POST_INTERVAL_SECONDS)
+
 def setup_discordlists(bot, discordlists_token):
     """
     Sets up the DiscordLists API connection for the bot.
@@ -78,15 +125,14 @@ def setup_discordlists(bot, discordlists_token):
     :return: None
     :rtype: None
     """
-    
+
     logging.info("Setting up DiscordLists API connection...")
     if not discordlists_token:
         raise ValueError("DiscordLists token is required to set up the DiscordLists API connection.")
-    
-    # TODO: Setup bots.ondiscord.xyz 
-    api = discordlists.Client(bot)
-    api.set_auth("discordlist.gg", discordlists_token)
-    api.start_loop()
+
+    # TODO: Setup bots.ondiscord.xyz
+    # Held on the bot for the same reason as the Top.gg task above.
+    bot.discordlists_post_task = bot.loop.create_task(run_discordlists_post_loop(bot, discordlists_token))
 
     logging.info("DiscordLists API connection established successfully.")
 
