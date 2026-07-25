@@ -101,8 +101,8 @@ def create_harness_environment(db_path: str | None = None) -> None:
     """
     Create an isolated file/database environment for the harness.
 
-    Mirrors tests.py's `create_environment()` but under
-    `./generated/harness-files/` so it never touches real data.
+    Mirrors the test suite's `sandboxed_paths` fixture (tests/conftest.py) but
+    under `./generated/harness-files/` so it never touches real data.
 
     If *db_path* is provided, the DB is copied to DB_COPY_PATH and the harness
     runs against the copy — the source file is never modified. Seeding is

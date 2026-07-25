@@ -4,9 +4,21 @@
 .git
 
 # Python
+# Patterns are matched per path segment, so the root-only forms let nested
+# __pycache__ dirs through — and stale host .pyc files carry absolute host
+# paths into the image.
 __pycache__
+**/__pycache__
 *.pyc
+**/*.pyc
 .venv
+
+# Test artifacts
+.pytest_cache
+**/.pytest_cache
+.ruff_cache
+.coverage
+coverage.xml
 
 # VS Code
 .vscode
