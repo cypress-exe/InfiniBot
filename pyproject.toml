@@ -53,6 +53,14 @@ omit = [
     "src/event_harness.py",  # synthetic-load benchmark, not shipped behavior
 ]
 
+[tool.coverage.report]
+# src/ has no __init__.py files, so without this coverage silently reports only
+# the modules the tests happened to import — inflating the number by omitting
+# every untested file instead of counting it as 0%.
+include_namespace_packages = true
+# The floor only ever moves up. Raise it in the same PR that adds the tests.
+fail_under = 13
+
 [tool.pyright]
 # Editor language server (pyright/basedpyright/Pylance): use the uv-managed
 # venv and resolve imports rooted at src/ (matching the container's WORKDIR)

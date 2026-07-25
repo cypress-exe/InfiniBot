@@ -31,7 +31,38 @@ jobs:
           cd github-pages-site
           bundle exec jekyll build
 
-  run-tests:
+  # Fast path: run the suite directly on the runner. This is the job that gates
+  # merges; it finishes in seconds because it skips the Docker build entirely.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      # Fails the build if total coverage drops below the floor in
+      # [tool.coverage.report] fail_under.
+      - name: Run tests with coverage
+        run: uv run pytest --cov --cov-report=term-missing --cov-report=xml
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage
+          path: coverage.xml
+          if-no-files-found: warn
+
+  # Slow path: run the same suite inside the shipped image, to catch drift
+  # between the runner's environment and the container's.
+  docker-parity:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -43,23 +74,17 @@ jobs:
       - name: Generate build info & environment
         run: ./build.bash --use-cache --skip-docker # Dry run (no docker build)
 
-      - name: Build Docker image with Buildx cache
+      - name: Build test image with Buildx cache
         uses: docker/build-push-action@v7
         with:
           context: .
           file: .devcontainer/Dockerfile
+          target: test
           load: true
-          tags: infinibot:latest
+          tags: infinibot:test
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Run tests
-        run: ./run_tests.bash --skip-build --run-all --retry-once-on-failure
-
-      - name: Check test exit code
-        run: |
-          # The exit code will be propagated from the run_tests.bash script
-          # If the Python tests pass, they exit with 0, and the script exits with 0
-          # If the Python tests fail, they exit with 1, and the script exits with 1
-          # GitHub Actions automatically marks the step as failed if the exit code is non-zero
-          echo "Tests completed"
+      # No coverage here; the fast job already measures it and enforces the floor.
+      - name: Run tests in the image
+        run: ./run_tests.bash --skip-build

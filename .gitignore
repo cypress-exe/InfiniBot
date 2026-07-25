@@ -7,3 +7,8 @@ generated/*
 .ipynb_checkpoints
 .env
 **/.env
+
+# Test artifacts
+.pytest_cache/
+.coverage
+coverage.xml

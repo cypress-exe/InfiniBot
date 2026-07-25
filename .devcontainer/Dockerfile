@@ -32,3 +32,16 @@ COPY . .
 
 # Set entrypoint
 ENTRYPOINT ["./entrypoint.sh"]
+
+# Test dependencies stage — branches off `dependencies` so the dev group is
+# installed before the source is copied, keeping the layer cacheable
+FROM dependencies AS test-dependencies
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen
+
+# Test stage: the production environment plus pytest. Built by run_tests.bash
+# and by CI's docker-parity job (`--target test`).
+FROM test-dependencies AS test
+COPY . .
+ENTRYPOINT []
+CMD ["python3", "-m", "pytest"]

@@ -69,12 +69,32 @@ for arg in "$@"; do
     fi
 done
 
+# Optional "--target <stage>" selects a Dockerfile stage and tags the image
+# infinibot:<stage> instead of infinibot:latest. run_tests.bash uses
+# "--target test" to build the image that has the dev dependencies.
+target_args=()
+image_tag="infinibot:latest"
+args=("$@")
+for i in "${!args[@]}"; do
+    if [ "${args[$i]}" == "--target" ]; then
+        stage="${args[$((i + 1))]}"
+        if [ -z "$stage" ]; then
+            echo "ERROR: --target requires a stage name." >&2
+            exit 1
+        fi
+        target_args=(--target "$stage")
+        image_tag="infinibot:$stage"
+        break
+    fi
+done
+
 # Build the Docker image with BuildX (for better caching)
 docker buildx build -f ./.devcontainer/Dockerfile \
     --pull ${cache_string} \
     "${buildx_cache_args[@]}" \
+    "${target_args[@]}" \
     --load \
-    -t infinibot:latest \
+    -t "$image_tag" \
     ./
     
 # Check if the build was successful

@@ -51,19 +51,34 @@ harness, etc.) lives in the `./documentation` folder.
 
 ## Running tests
 
-Tests run inside the Docker container:
+Tests run with [pytest](https://docs.pytest.org/) on the host:
 
 ```bash
-./run_tests.bash
+uv sync          # installs the dev dependency group
+uv run pytest
 ```
 
-Useful flags:
-- `--skip-build` - reuse the existing container image instead of rebuilding.
-- `--run-all` - run the full test suite (used in CI).
+Useful invocations:
+- `uv run pytest tests/config` - one directory.
+- `uv run pytest -k server` - tests matching a name.
+- `uv run pytest -m "not slow"` - skip the slow ones.
+- `uv run pytest --cov` - with a coverage report.
 
-CI (`.github/workflows/ci.yml`) builds the Docker image and runs the test
-suite on every push and pull request to `main`. Please make sure tests pass
-locally before opening a PR.
+To run the suite inside the Docker image (what CI's parity job does):
+
+```bash
+./run_tests.bash                # builds the image's `test` stage first
+./run_tests.bash --skip-build   # reuse the existing image
+```
+
+Any other arguments pass through to pytest.
+
+CI (`.github/workflows/ci.yml`) runs the suite on every push and pull
+request to `main`, and fails if total coverage drops below the floor in
+`pyproject.toml`. Please make sure tests pass locally before opening a PR.
+
+See [documentation/testing.md](documentation/testing.md) for how the suite is
+organized and what fixtures are available.
 
 ## Submitting a pull request
 
