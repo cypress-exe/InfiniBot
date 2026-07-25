@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import logging
 import shutil
+from collections.abc import Iterator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -25,6 +27,10 @@ import config.global_settings as global_settings
 import core.db_manager as db_manager
 import core.log_manager as log_manager
 from config.file_manager import JSONFile
+
+if TYPE_CHECKING:
+    from core.db_manager import DatabaseForInfiniBot
+    from modules.database import Database
 
 # Repository root, resolved from this file rather than the working directory so
 # pytest works from any cwd.
@@ -39,7 +45,7 @@ TEST_DB_BUILD_FILE = REPO_ROOT / "resources" / "test_db_build.sql"
 
 
 @pytest.fixture(autouse=True)
-def sandboxed_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def sandboxed_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     """
     Give each test a private filesystem and a clean set of module caches.
 
@@ -80,7 +86,7 @@ def sandboxed_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 @pytest.fixture
-def db(tmp_path: Path, sandboxed_paths: Path):
+def db(tmp_path: Path, sandboxed_paths: Path) -> Iterator[DatabaseForInfiniBot]:
     """
     Give the test a private, freshly built InfiniBot database.
 
@@ -107,7 +113,7 @@ def db(tmp_path: Path, sandboxed_paths: Path):
 
 
 @pytest.fixture
-def fixture_db():
+def fixture_db() -> Iterator[Database]:
     """
     A standalone :class:`Database` built from the *fixture* schema
     (``resources/test_db_build.sql``), not InfiniBot's real one.
@@ -126,7 +132,7 @@ def fixture_db():
 
 
 @pytest.fixture
-def file_fixture_db(tmp_path: Path):
+def file_fixture_db(tmp_path: Path) -> Iterator[Database]:
     """
     Like :func:`fixture_db`, but backed by a file rather than ``sqlite://``.
 
