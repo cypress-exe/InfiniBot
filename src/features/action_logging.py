@@ -799,7 +799,8 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
 
     elif before_timeout is None:
         # Member was not previously timed out, calculate the timeout duration
-        timeout_time: datetime.timedelta = after_timeout - datetime.datetime.now(datetime.timezone.utc)
+        anchor = entry.created_at if fresh_audit_log else datetime.datetime.now(datetime.timezone.utc)
+        timeout_time: datetime.timedelta = after_timeout - anchor
 
         # Round to the nearest second (ceiling)
         rounded_timeout_time = datetime.timedelta(seconds=math.ceil(timeout_time.total_seconds()))
