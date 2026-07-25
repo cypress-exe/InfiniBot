@@ -825,7 +825,7 @@ async def get_message(channel: nextcord.abc.Messageable, message_id: int, overri
         failed_message_fetches.add(cache_key)
         return None
 
-failed_member_fetches = ExpiringSet(60 * 1)  # 1 minute expiration
+failed_member_fetches = ExpiringSet(60 * 15)  # 15 minute expiration
 async def get_member(guild: nextcord.Guild, user_id: int, override_failed_cache: bool = False) -> nextcord.Member | None:
     """
     |coro|  
@@ -866,6 +866,12 @@ async def get_member(guild: nextcord.Guild, user_id: int, override_failed_cache:
     except (nextcord.Forbidden, nextcord.NotFound):
         logging.debug(f"Member with ID {user_id} was not found in guild {guild.name}. Caching failed fetch.")
         failed_member_fetches.add((guild.id, user_id))
+        return None
+    except nextcord.HTTPException as e:
+        # Transient server-side errors (503/502/504, rate-limit exhaustion). Unlike a
+        # NotFound these are not "member is gone", so return None WITHOUT caching so a
+        # later call can retry once Discord recovers.
+        logging.debug(f"Transient error fetching member {user_id} in guild {guild.name}: {e}")
         return None
 
 async def get_guild_owner(guild: nextcord.Guild) -> nextcord.Member | None:

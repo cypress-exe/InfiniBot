@@ -774,16 +774,40 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
     user = entry.user if fresh_audit_log else None
     actor = user.mention if user else "Someone"
 
-    if before.communication_disabled_until is None:
+    before_timeout = before.communication_disabled_until
+    after_timeout = after.communication_disabled_until
+
+    if after_timeout is None:
+        if before_timeout is None:
+            # No timeout before and none now. The caller only invokes us when the two
+            # differed at event time, so this means a (typically very short) timeout was
+            # applied and already lapsed before we read it here — there is no active
+            # timeout and no reliable duration to report, so nothing to log.
+            logging.debug("Timeout lapsed before it could be logged; skipping timeout log.")
+            return
+
+        # Timeout was revoked manually (or lapsed after a real prior timeout)
+        embed = nextcord.Embed(
+            title="Timeout Revoked",
+            description=f"{actor} revoked {after.mention}'s timeout",
+            color=nextcord.Color.orange(),
+            timestamp=datetime.datetime.now(datetime.timezone.utc)
+        )
+
+        # Send the embed to the log channel
+        await log_channel.send(embed=embed)
+
+    elif before_timeout is None:
         # Member was not previously timed out, calculate the timeout duration
-        timeout_time: datetime.timedelta = after.communication_disabled_until - datetime.datetime.now(datetime.timezone.utc)
+        anchor = entry.created_at if fresh_audit_log else datetime.datetime.now(datetime.timezone.utc)
+        timeout_time: datetime.timedelta = after_timeout - anchor
 
         # Round to the nearest second (ceiling)
         rounded_timeout_time = datetime.timedelta(seconds=math.ceil(timeout_time.total_seconds()))
-        
+
         # Convert the timeout duration to a human-friendly format
         timeout_time_ui_text = humanfriendly.format_timespan(rounded_timeout_time)
-        
+
         # Create an embed for the timeout event
         embed = nextcord.Embed(
             title="Member Timed-Out",
@@ -791,23 +815,11 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
             color=nextcord.Color.orange(),
             timestamp=datetime.datetime.now(datetime.timezone.utc)
         )
-        
+
         # Add a reason field if the audit log is fresh and a reason is provided
         if fresh_audit_log and entry.reason is not None:
             embed.add_field(name="Reason", value=entry.reason)
-        
-        # Send the embed to the log channel
-        await log_channel.send(embed=embed)
-        
-    elif after.communication_disabled_until is None:
-        # Timeout was revoked manually
-        embed = nextcord.Embed(
-            title="Timeout Revoked",
-            description=f"{actor} revoked {after.mention}'s timeout",
-            color=nextcord.Color.orange(),
-            timestamp=datetime.datetime.now(datetime.timezone.utc)
-        )
-        
+
         # Send the embed to the log channel
         await log_channel.send(embed=embed)
 
