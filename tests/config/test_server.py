@@ -355,10 +355,16 @@ def test_get_matching_selects_rows_sharing_a_non_key_value(
     """The last two sample rows share every non-key value, so a shared field
     selects exactly those two — and not the first row."""
     table = populate(server, spec)
+    # The column must also differ in row 0, or "exactly two matches" would not
+    # hold: managed_messages carries json_data="{}" on all three rows, so
+    # filtering only on "rows 1 and 2 agree" would pick a column matching all of
+    # them depending on declaration order.
     shared_columns = [
         column
         for column in spec.rows[0]
-        if column != spec.key and spec.rows[1][column] == spec.rows[2][column]
+        if column != spec.key
+        and spec.rows[1][column] == spec.rows[2][column]
+        and spec.rows[0][column] != spec.rows[1][column]
     ]
     if not shared_columns:
         # join_to_create_active_vcs is (server_id, channel_id) plus an
@@ -406,6 +412,8 @@ def test_delete_all_matching_removes_only_matching_rows(server: Server, spec: Li
 
     remaining = getattr(Server(server.server_id), spec.name)
     assert len(remaining) == len(spec.rows) - 1
+    # Not just "one fewer row" — the *matching* row must be the one that went.
+    assert_rows_match(remaining, spec, spec.rows[1:])
 
 
 @list_specs

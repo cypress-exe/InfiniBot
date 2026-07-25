@@ -138,9 +138,11 @@ def quantity_capped_messages(db):
     """
     Fill three guilds past ``MAX_PER_GUILD`` and two guilds under it.
 
-    Returns ``(expected_survivors, expected_deletions)``. Cleanup keeps the most
-    recently stored ``MAX_PER_GUILD`` messages per guild, so the survivors are the
-    *tail* of each over-filled guild's insertion order.
+    Returns ``(expected_survivors, expected_deletions)``. Cleanup ranks by
+    ``last_updated DESC`` and keeps ``MAX_PER_GUILD`` per guild, so what survives
+    is decided by the timestamp ``make_message`` stamps at *construction* time —
+    not by the order rows are written here. Each guild's list is built oldest
+    first, so its head is what cleanup drops.
     """
     survivors: list = []
     deletions: list = []
@@ -230,7 +232,7 @@ def aged_messages(db):
 
 
 def test_age_cleanup_removes_messages_past_the_retention_window(db, aged_messages) -> None:
-    survivors, deletions = aged_messages
+    _, deletions = aged_messages
 
     cleanup_db(max_days_to_keep=MAX_DAYS)
 
