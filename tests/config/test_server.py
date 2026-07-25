@@ -348,9 +348,11 @@ def test_edited_rows_persist_to_a_new_server_instance(server: Server, spec: List
 
 
 @list_specs
-def test_get_matching_returns_only_the_rows_that_match(server: Server, spec: ListSpec) -> None:
+def test_get_matching_selects_rows_sharing_a_non_key_value(
+    server: Server, spec: ListSpec
+) -> None:
     """The last two sample rows share every non-key value, so a shared field
-    selects exactly those two."""
+    selects exactly those two — and not the first row."""
     table = populate(server, spec)
     shared_columns = [
         column
@@ -358,6 +360,9 @@ def test_get_matching_returns_only_the_rows_that_match(server: Server, spec: Lis
         if column != spec.key and spec.rows[1][column] == spec.rows[2][column]
     ]
     if not shared_columns:
+        # join_to_create_active_vcs is (server_id, channel_id) plus an
+        # auto-populated timestamp: no payload field exists to match on.
+        # test_get_matching_selects_a_single_row_by_key covers it instead.
         pytest.skip(f"{spec.name} has no non-key column to match on")
     column = shared_columns[0]
     value = spec.rows[1][column]
@@ -366,6 +371,18 @@ def test_get_matching_returns_only_the_rows_that_match(server: Server, spec: Lis
 
     assert len(matches) == 2
     assert all(getattr(match, column) == value for match in matches)
+
+
+@list_specs
+def test_get_matching_selects_a_single_row_by_key(server: Server, spec: ListSpec) -> None:
+    """Matching on the secondary key narrows to exactly that row."""
+    table = populate(server, spec)
+    key_value = spec.rows[1][spec.key]
+
+    matches = table.get_matching(**{spec.key: key_value})
+
+    assert len(matches) == 1
+    assert getattr(matches[0], spec.key) == key_value
 
 
 @list_specs
