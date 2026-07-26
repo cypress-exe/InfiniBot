@@ -26,6 +26,8 @@ dev = [
     "pytest==9.0.1",
     "pytest-asyncio==1.3.0",
     "pytest-cov==7.0.0",
+    # Only used by tests/test_scaled_assets.py to validate the site's asset manifest.
+    "pyyaml==6.0.3",
 ]
 
 [tool.uv]

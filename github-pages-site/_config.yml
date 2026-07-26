@@ -49,6 +49,10 @@ exclude:
   - Dockerfile
   # theme test code
   - fixtures/
+  # build tooling for the downscaled asset twins in assets/**/small/ —
+  # the generated images ship, the generator itself doesn't
+  - scale_assets.py
+  - scaled-assets.yml
 
 
 back_to_top: true
