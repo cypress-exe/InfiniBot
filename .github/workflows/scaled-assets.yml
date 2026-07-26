@@ -10,8 +10,8 @@ on:
     paths:
       - 'github-pages-site/assets/**'
       # The job commits back into assets/, so its own output must not re-match
-      # the filter above.
-      - '!github-pages-site/assets/**/small/**'
+      # the filter above. Must track output_dir in scaled-assets.yml.
+      - '!github-pages-site/assets/**/discordbotlist-variants/**'
       - 'github-pages-site/scaled-assets.yml'
       - 'github-pages-site/scale_assets.py'
       - '.github/workflows/scaled-assets.yml'
@@ -36,10 +36,11 @@ jobs:
         uses: actions/checkout@v7
 
       # Not guaranteed to be present on the runner image, so don't gamble on it.
-      - name: Install ffmpeg
+      # gifsicle resizes the GIFs; ffmpeg/ffprobe handle stills and dimensions.
+      - name: Install gifsicle and ffmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y gifsicle ffmpeg
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v7
