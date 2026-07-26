@@ -61,7 +61,7 @@ def manifest() -> tuple[str, list]:
 def test_manifest_parses(manifest: tuple[str, list]) -> None:
     output_dir, assets = manifest
 
-    assert output_dir == "small"
+    assert output_dir == "discordbotlist-variants"
     assert assets, "the manifest should list at least one asset"
 
 
@@ -74,23 +74,30 @@ def test_every_listed_source_exists(manifest: tuple[str, list]) -> None:
     assert missing == [], f"manifest lists sources that don't exist: {missing}"
 
 
-def test_widths_actually_shrink_their_sources(manifest: tuple[str, list]) -> None:
-    """A target wider than the source means a wrong number, not a resize.
+def test_widths_are_in_a_plausible_range(manifest: tuple[str, list]) -> None:
+    """Catches a slipped decimal point or a height pasted into `width`.
 
-    Checked against the PNG/GIF header rather than ffprobe so the test doesn't
-    need ffmpeg installed.
+    Upscaling is permitted (join-message.png is deliberately enlarged past its
+    401px source), so this can't assert the target is smaller. It bounds the
+    value instead, and separately flags upscales far beyond their source, where
+    the blur would be severe enough to suggest a mistake.
+
+    Read from the PNG/GIF header rather than ffprobe so this needs no ffmpeg.
     """
     _, assets = manifest
 
     for asset in assets:
         source_width = _read_image_width(asset.src_path)
-        assert asset.width <= source_width, (
-            f"{asset.src.as_posix()}: target width {asset.width} exceeds "
-            f"the source's {source_width}px"
+        assert 16 <= asset.width <= 4000, (
+            f"{asset.src.as_posix()}: width {asset.width} is outside the sane range"
+        )
+        assert asset.width <= source_width * 2, (
+            f"{asset.src.as_posix()}: width {asset.width} is more than double "
+            f"the source's {source_width}px, which would be badly blurred"
         )
 
 
-def test_outputs_land_in_a_small_subdirectory(manifest: tuple[str, list]) -> None:
+def test_outputs_land_in_the_variants_subdirectory(manifest: tuple[str, list]) -> None:
     output_dir, assets = manifest
 
     for asset in assets:
@@ -103,23 +110,28 @@ def test_outputs_land_in_a_small_subdirectory(manifest: tuple[str, list]) -> Non
 @pytest.mark.parametrize(
     ("bad_yaml", "expected_message"),
     [
-        ("assets: []", "non-empty list"),
-        ("assets:\n  - {src: a.png, width: 0}", "positive integer"),
-        ("assets:\n  - {src: a.png, width: true}", "positive integer"),
-        ("assets:\n  - {src: a.png}", "positive integer"),
-        ("assets:\n  - {width: 100}", "non-empty string"),
-        ("assets:\n  - {src: ../escape.png, width: 100}", "relative path"),
-        ("assets:\n  - {src: a.mp4, width: 100}", "unsupported file type"),
-        ("assets:\n  - {src: a.png, width: 100}\n  - {src: a.png, width: 200}", "duplicate"),
-        ("assets:\n  - {src: a.png, width: 100, fps: 0}", "positive integer"),
-        ("assets:\n  - {src: a.png, width: 100, fps: 25}", "only meaningful for GIFs"),
+        ("output_dir: v\nassets: []", "non-empty list"),
+        ("output_dir: v\nassets:\n  - {src: a.png, width: 0}", "positive integer"),
+        ("output_dir: v\nassets:\n  - {src: a.png, width: true}", "positive integer"),
+        ("output_dir: v\nassets:\n  - {src: a.png}", "positive integer"),
+        ("output_dir: v\nassets:\n  - {width: 100}", "non-empty string"),
+        ("output_dir: v\nassets:\n  - {src: ../escape.png, width: 100}", "relative path"),
+        ("output_dir: v\nassets:\n  - {src: a.mp4, width: 100}", "unsupported file type"),
+        (
+            "output_dir: v\nassets:\n  - {src: a.png, width: 1}\n  - {src: a.png, width: 2}",
+            "duplicate",
+        ),
+        # `fps` was removed when GIFs moved to gifsicle; a stale manifest that
+        # still carries it must say so rather than silently ignoring the key.
+        ("output_dir: v\nassets:\n  - {src: a.gif, width: 100, fps: 25}", "unknown key"),
         ("output_dir: nested/dir\nassets:\n  - {src: a.png, width: 100}", "single directory name"),
+        ("assets:\n  - {src: a.png, width: 100}", "single directory name"),
     ],
 )
 def test_malformed_manifests_are_rejected(
     tmp_path: Path, bad_yaml: str, expected_message: str
 ) -> None:
-    """Bad config should fail loudly at parse time, not as a cryptic ffmpeg error."""
+    """Bad config should fail loudly at parse time, not as a cryptic encoder error."""
     manifest_file = tmp_path / "scaled-assets.yml"
     manifest_file.write_text(bad_yaml)
 
@@ -129,16 +141,28 @@ def test_malformed_manifests_are_rejected(
 
 def test_fingerprint_changes_when_settings_change() -> None:
     """Staleness detection rests on this: same inputs in, same fingerprint out."""
-    asset = scale_assets.Asset(src=Path("assets/demos/x.gif"), width=500, fps=None)
-    wider = scale_assets.Asset(src=Path("assets/demos/x.gif"), width=700, fps=None)
-    throttled = scale_assets.Asset(src=Path("assets/demos/x.gif"), width=500, fps=25)
+    asset = scale_assets.Asset(src=Path("assets/demos/x.gif"), width=550)
+    wider = scale_assets.Asset(src=Path("assets/demos/x.gif"), width=700)
 
     baseline = scale_assets.fingerprint(asset, "abc123")
 
     assert scale_assets.fingerprint(asset, "abc123") == baseline
     assert scale_assets.fingerprint(asset, "different-source") != baseline
     assert scale_assets.fingerprint(wider, "abc123") != baseline
-    assert scale_assets.fingerprint(throttled, "abc123") != baseline
+
+
+def test_fingerprint_pins_the_encoder_settings() -> None:
+    """A change to the pipeline must invalidate outputs built by the old one.
+
+    Without this, switching GIFs from ffmpeg to gifsicle would have left every
+    existing file in place, since their sources never changed.
+    """
+    asset = scale_assets.Asset(src=Path("assets/demos/x.gif"), width=550)
+
+    recorded = scale_assets.fingerprint(asset, "abc123")
+
+    assert recorded["pipeline"] == scale_assets.PIPELINE_VERSION
+    assert recorded["resize_method"] == scale_assets.RESIZE_METHOD
 
 
 def test_prune_only_removes_files_the_script_recorded(tmp_path: Path) -> None:
