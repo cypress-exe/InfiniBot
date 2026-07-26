@@ -1,63 +1,63 @@
 {
-  "assets/demos/small/dashboard.gif": {
-    "fps": null,
-    "pipeline": 1,
+  "assets/demos/discordbotlist-variants/dashboard.gif": {
+    "pipeline": 2,
+    "resize_method": "lanczos2",
     "src": "assets/demos/dashboard.gif",
     "src_sha256": "8d310749d63b71e047e8d1a927e1e112d6f0f3ae3be0f53e779ac9dadbbe5a29",
-    "width": 500
+    "width": 550
   },
-  "assets/demos/small/disable-features.gif": {
-    "fps": null,
-    "pipeline": 1,
+  "assets/demos/discordbotlist-variants/disable-features.gif": {
+    "pipeline": 2,
+    "resize_method": "lanczos2",
     "src": "assets/demos/disable-features.gif",
     "src_sha256": "6d100e33c726d769958f53d377febf76552b756080b027fa7d207d5c4c74b594",
-    "width": 500
+    "width": 550
   },
-  "assets/demos/small/join-message.png": {
-    "fps": null,
-    "pipeline": 1,
+  "assets/demos/discordbotlist-variants/join-message.png": {
+    "pipeline": 2,
+    "resize_method": "lanczos2",
     "src": "assets/demos/join-message.png",
     "src_sha256": "b4615ef9f859124c9e4e5356357bdaa1a9208410d92de43ea75efb8e1f7d9a88",
-    "width": 400
+    "width": 550
   },
-  "assets/demos/small/leveling.gif": {
-    "fps": null,
-    "pipeline": 1,
+  "assets/demos/discordbotlist-variants/leveling.gif": {
+    "pipeline": 2,
+    "resize_method": "lanczos2",
     "src": "assets/demos/leveling.gif",
     "src_sha256": "daf799af73a0c0de9d5179f5159b7d199f3319d8cc93b9f59419d92739b54e37",
-    "width": 500
+    "width": 550
   },
-  "assets/demos/small/logging.gif": {
-    "fps": null,
-    "pipeline": 1,
+  "assets/demos/discordbotlist-variants/logging.gif": {
+    "pipeline": 2,
+    "resize_method": "lanczos2",
     "src": "assets/demos/logging.gif",
     "src_sha256": "c33e3d36980c9ac22e5d5e8377739e3ecdcb7791ef32bba207f6baaae396a3c1",
-    "width": 500
+    "width": 550
   },
-  "assets/demos/small/profanity-moderation.gif": {
-    "fps": null,
-    "pipeline": 1,
+  "assets/demos/discordbotlist-variants/profanity-moderation.gif": {
+    "pipeline": 2,
+    "resize_method": "lanczos2",
     "src": "assets/demos/profanity-moderation.gif",
     "src_sha256": "24425444c1025bdbbfefce2bbc44291fcebb4add3d7e17521616b58d64ad0fba",
-    "width": 500
+    "width": 550
   },
-  "assets/demos/small/purging.gif": {
-    "fps": null,
-    "pipeline": 1,
+  "assets/demos/discordbotlist-variants/purging.gif": {
+    "pipeline": 2,
+    "resize_method": "lanczos2",
     "src": "assets/demos/purging.gif",
     "src_sha256": "3b3b5c5e7a0e97b4d410620ba666f18e7a8dd7c4fb88fc71116bc9b5895754d8",
-    "width": 500
+    "width": 550
   },
-  "assets/demos/small/role-messages.gif": {
-    "fps": null,
-    "pipeline": 1,
+  "assets/demos/discordbotlist-variants/role-messages.gif": {
+    "pipeline": 2,
+    "resize_method": "lanczos2",
     "src": "assets/demos/role-messages.gif",
     "src_sha256": "fae9ee83b3694517f72e405ae367fbe3d3c6bd33def410ac53763932ce79cb4c",
-    "width": 500
+    "width": 550
   },
-  "assets/images/small/header-image.png": {
-    "fps": null,
-    "pipeline": 1,
+  "assets/images/discordbotlist-variants/header-image.png": {
+    "pipeline": 2,
+    "resize_method": "lanczos2",
     "src": "assets/images/header-image.png",
     "src_sha256": "8b1b4e98971a1be219aa2c52b40b2237cd0f7d74d0799308c3f208a2e61fe10f",
     "width": 700
