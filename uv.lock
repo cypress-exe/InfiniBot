@@ -269,31 +269,6 @@ wheels = [
 ]
 
 [[package]]
-name = "discord-py"
-version = "2.7.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "aiohttp" },
-    { name = "audioop-lts" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/ef/57/9a2d9abdabdc9db8ef28ce0cf4129669e1c8717ba28d607b5ba357c4de3b/discord_py-2.7.1.tar.gz", hash = "sha256:24d5e6a45535152e4b98148a9dd6b550d25dc2c9fb41b6d670319411641249da", size = 1106326, upload-time = "2026-03-03T18:40:46.24Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/f7/a7/17208c3b3f92319e7fad259f1c6d5a5baf8fd0654c54846ced329f83c3eb/discord_py-2.7.1-py3-none-any.whl", hash = "sha256:849dca2c63b171146f3a7f3f8acc04248098e9e6203412ce3cf2745f284f7439", size = 1227550, upload-time = "2026-03-03T18:40:44.492Z" },
-]
-
-[[package]]
-name = "discordlists-py"
-version = "1.1.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "aiohttp" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/77/92/ee9f7b9862af86d8defbbb66513d6826ab2c2b774b30b2f08d7d2587f71f/discordlists.py-1.1.1.tar.gz", hash = "sha256:f6d49c93c3eb1d5ffbaeddf663d3bfa80bb3073a4fc43787b832ea55de49113d", size = 7154, upload-time = "2019-11-24T17:58:01.164Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/fd/99db4a946f764335fadbeef241ab7cb55582ed8ce459704d3265bc7602d7/discordlists.py-1.1.1-py3-none-any.whl", hash = "sha256:0211aecde3c3b3881239511aadc0c753f3cece423d8374d01fa815e958ca2537", size = 10042, upload-time = "2019-11-24T17:57:55.224Z" },
-]
-
-[[package]]
 name = "frozenlist"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -439,10 +414,10 @@ name = "infinibot"
 version = "4.1.1"
 source = { virtual = "." }
 dependencies = [
+    { name = "aiohttp" },
     { name = "apscheduler" },
     { name = "cachetools" },
     { name = "dateparser" },
-    { name = "discordlists-py" },
     { name = "humanfriendly" },
     { name = "nextcord" },
     { name = "nextcord-ext-menus" },
@@ -450,7 +425,6 @@ dependencies = [
     { name = "python-dateutil" },
     { name = "rapidfuzz" },
     { name = "sqlalchemy" },
-    { name = "topggpy" },
 ]
 
 [package.dev-dependencies]
@@ -462,10 +436,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiohttp", specifier = "==3.14.1" },
     { name = "apscheduler", specifier = "==3.11.2" },
     { name = "cachetools", specifier = "==7.1.4" },
     { name = "dateparser", specifier = "==1.4.1" },
-    { name = "discordlists-py", specifier = "==1.1.1" },
     { name = "humanfriendly", specifier = "==10.0" },
     { name = "nextcord", specifier = "==3.2.0" },
     { name = "nextcord-ext-menus", specifier = "==1.5.7" },
@@ -473,7 +447,6 @@ requires-dist = [
     { name = "python-dateutil", specifier = "==2.9.0.post0" },
     { name = "rapidfuzz", specifier = "==3.14.5" },
     { name = "sqlalchemy", specifier = "==2.0.46" },
-    { name = "topggpy", specifier = "==1.4.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -966,18 +939,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/33/75/f28622ba6dde79cd545055ea7bd4062dc934e0621f7b3be2891f8563f8de/sqlalchemy-2.0.46-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:ff33c6e6ad006bbc0f34f5faf941cfc62c45841c64c0a058ac38c799f15b5ede", size = 3470008, upload-time = "2026-01-21T18:33:11.725Z" },
     { url = "https://files.pythonhosted.org/packages/a9/42/4afecbbc38d5e99b18acef446453c76eec6fbd03db0a457a12a056836e22/sqlalchemy-2.0.46-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:82ec52100ec1e6ec671563bbd02d7c7c8d0b9e71a0723c72f22ecf52d1755330", size = 3476137, upload-time = "2026-01-21T18:45:15.001Z" },
     { url = "https://files.pythonhosted.org/packages/fc/a1/9c4efa03300926601c19c18582531b45aededfb961ab3c3585f1e24f120b/sqlalchemy-2.0.46-py3-none-any.whl", hash = "sha256:f9c11766e7e7c0a2767dda5acb006a118640c9fc0a4104214b96269bfb78399e", size = 1937882, upload-time = "2026-01-21T18:22:10.456Z" },
-]
-
-[[package]]
-name = "topggpy"
-version = "1.4.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "discord-py" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/fe/aa/45e9aafedf5065f6da0c1f5eae5b234d3ab5c8973febcd561aec3ecf4f4c/topggpy-1.4.0.tar.gz", hash = "sha256:75a2f3011a073c058238b740989155cc85598250ed605b788b5de28c4314ec04", size = 15649, upload-time = "2021-11-06T09:10:49.462Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/2a/720c6ff93df413d2eca84e3e09bee0f8365cd84edc3a65558aab0f27ded1/topggpy-1.4.0-py3-none-any.whl", hash = "sha256:d0c9e329c6613d6a4889ad56295554e60440a5c5025d92ea3bf0b7a816dae27c", size = 19501, upload-time = "2021-11-06T09:10:47.204Z" },
 ]
 
 [[package]]
