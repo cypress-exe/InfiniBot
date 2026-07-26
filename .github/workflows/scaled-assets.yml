@@ -1,0 +1,76 @@
+name: Regenerate scaled assets
+
+# Sites that embed our images without being able to resize them (discordbotlist)
+# link to the downscaled twins in `small/`. This keeps those twins in step with
+# their sources so nobody has to remember to regenerate them by hand.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'github-pages-site/assets/**'
+      # The job commits back into assets/, so its own output must not re-match
+      # the filter above.
+      - '!github-pages-site/assets/**/small/**'
+      - 'github-pages-site/scaled-assets.yml'
+      - 'github-pages-site/scale_assets.py'
+      - '.github/workflows/scaled-assets.yml'
+
+  # For backfills, or after changing a width in the manifest.
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit the regenerated assets back to main
+  actions: write    # dispatch the Pages deploy (see the last step)
+
+# Two runs committing to main at once would race on the push.
+concurrency:
+  group: scaled-assets
+  cancel-in-progress: false
+
+jobs:
+  regenerate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Not guaranteed to be present on the runner image, so don't gamble on it.
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Regenerate scaled assets
+        run: |
+          cd github-pages-site
+          uv run scale_assets.py
+
+      - name: Commit and push if anything changed
+        id: commit
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes; scaled assets were already up to date."
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(assets): regenerate scaled assets"
+          git push
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # A push made with GITHUB_TOKEN does not trigger further workflow runs, so
+      # pages.yml won't notice the commit above on its own. Dispatch it directly
+      # or the new files sit in the repo unpublished until the next unrelated push.
+      - name: Deploy the site so the new assets are published
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run pages.yml --ref main

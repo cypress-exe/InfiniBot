@@ -1,0 +1,46 @@
+# Sources for scale_assets.py.
+#
+# Some sites that embed our images can't resize them at render time —
+# discordbotlist.com, for instance, gives you a markdown box with no width
+# control. Every asset listed here gets a downscaled twin generated beside it in
+# a `small/` directory, which those sites can link to directly.
+#
+# Paths are relative to this file. After editing, run:
+#
+#     uv run scale_assets.py
+#
+# `width` is the target width in pixels; height follows from the aspect ratio.
+# `fps` is optional and only meaningful for GIFs — leave it unset to preserve
+# the source framerate. Set it (e.g. `fps: 25`) only if a specific file needs to
+# lose weight; these demos are 50fps screen captures, so halving that roughly
+# halves the file at a small cost in smoothness.
+
+output_dir: small
+
+assets:
+  - src: assets/images/header-image.png
+    width: 700
+
+  - src: assets/demos/dashboard.gif
+    width: 500
+
+  - src: assets/demos/disable-features.gif
+    width: 500
+
+  - src: assets/demos/profanity-moderation.gif
+    width: 500
+
+  - src: assets/demos/logging.gif
+    width: 500
+
+  - src: assets/demos/join-message.png
+    width: 400
+
+  - src: assets/demos/leveling.gif
+    width: 500
+
+  - src: assets/demos/role-messages.gif
+    width: 500
+
+  - src: assets/demos/purging.gif
+    width: 500
