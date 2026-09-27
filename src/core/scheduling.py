@@ -28,6 +28,32 @@ MONITORING_INTERVAL = 25  # Guilds processed between monitoring checks
 INTERVAL_MINUTES = 15  # Define the interval (keep as first assignment)
 INTERVAL_SECONDS = INTERVAL_MINUTES * 60
 
+class CpuSampler:
+    """
+    System CPU readings over windows of at least ``min_window_seconds``.
+
+    psutil.cpu_percent() with no interval measures since its previous call. Called
+    every few milliseconds it only ever returns 0/50/66.7/100 (prod logged 10.5k
+    "100%" throttles), so readings are only taken once the window has elapsed.
+    """
+    def __init__(self, min_window_seconds: float = 1.0) -> None:
+        self.min_window_seconds = min_window_seconds
+        self.last_reading = 0.0
+        psutil.cpu_percent()  # Prime: the first reading covers the time since here
+        self._last_sample_time = time.monotonic()
+
+    def sample(self) -> float | None:
+        """
+        :return: A fresh CPU percentage, or None if the window hasn't elapsed yet.
+        :rtype: float | None
+        """
+        now = time.monotonic()
+        if now - self._last_sample_time < self.min_window_seconds:
+            return None
+        self.last_reading = psutil.cpu_percent()
+        self._last_sample_time = now
+        return self.last_reading
+
 async def run_scheduled_tasks() -> None:
     """
     |coro|
@@ -62,14 +88,15 @@ async def run_scheduled_tasks() -> None:
         throttle_cpu = 50 # Start normal throttling at 50% CPU usage
         critical_cpu = 75 # Start critical throttling at 75% CPU usage
         throttle_count = 0
+        cpu_sampler = CpuSampler()
 
         for i, guild in enumerate(guilds):
             try:
                 # Throttling check
                 if i % MONITORING_INTERVAL == 0:
-                    cpu = psutil.cpu_percent()
-                    
-                    if cpu > throttle_cpu:
+                    cpu = cpu_sampler.sample()
+
+                    if cpu is not None and cpu > throttle_cpu:
                         throttle_count += 1
                         if cpu > critical_cpu:
                             delay = min(2.0, 0.7 * (cpu / critical_cpu))  # Dynamic backoff for critical CPU
@@ -125,7 +152,7 @@ async def run_scheduled_tasks() -> None:
                     f"Progress: {processed}/{total_guilds} "
                     f"({(processed/total_guilds)*100:.1f}%) | "
                     f"Rate: {rate:.1f} guilds/sec | "
-                    f"CPU: {psutil.cpu_percent()}% | "
+                    f"CPU: {cpu_sampler.last_reading}% | "
                     f"Mem: {psutil.virtual_memory().percent}%"
                 )
 
@@ -155,7 +182,7 @@ async def run_scheduled_tasks() -> None:
                 f"Completed processing {total_guilds} guilds\n"
                 f"Successes: {successes} | Errors: {errors} | Throttle events: {throttle_count}\n"
                 f"Cache stats: Size {len(tz_cache)}/{tz_cache.maxsize} | "
-                f"System load: CPU {psutil.cpu_percent()}% | Mem {psutil.virtual_memory().percent}%\n"
+                f"System load: CPU {cpu_sampler.last_reading}% | Mem {psutil.virtual_memory().percent}%\n"
                 f"Total duration: {duration} | Avg rate: {total_guilds/duration.total_seconds():.1f} guilds/sec"
             )
 

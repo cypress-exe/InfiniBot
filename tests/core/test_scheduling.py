@@ -43,3 +43,48 @@ async def test_repeated_start_keeps_scheduler_running(fresh_scheduler: AsyncIOSc
 
         assert fresh_scheduler.running
         assert len(fresh_scheduler.get_jobs()) == 1
+
+
+class FakeClock:
+    def __init__(self) -> None:
+        self.now = 1000.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+@pytest.fixture
+def fake_cpu(monkeypatch: pytest.MonkeyPatch) -> tuple[FakeClock, list[float]]:
+    """A controllable monotonic clock and a queue of psutil readings (last one repeats)."""
+    clock = FakeClock()
+    readings: list[float] = [0.0]
+    monkeypatch.setattr(scheduling.time, "monotonic", clock)
+    monkeypatch.setattr(scheduling.psutil, "cpu_percent", lambda: readings.pop(0) if len(readings) > 1 else readings[0])
+    return clock, readings
+
+
+def test_cpu_sampler_skips_readings_inside_the_window(fake_cpu) -> None:
+    """
+    Regression for the prod throttle noise: readings taken milliseconds apart were
+    always 100.0% and triggered 10.5k throttles.
+    """
+    clock, readings = fake_cpu
+    sampler = scheduling.CpuSampler(min_window_seconds=1.0)
+    readings[:] = [100.0, 30.0]
+
+    clock.now += 0.01
+    assert sampler.sample() is None
+    assert readings == [100.0, 30.0]  # psutil was not consulted (its baseline is intact)
+
+
+def test_cpu_sampler_reads_once_the_window_has_elapsed(fake_cpu) -> None:
+    clock, readings = fake_cpu
+    sampler = scheduling.CpuSampler(min_window_seconds=1.0)
+    readings[:] = [42.0, 42.0]
+
+    clock.now += 1.5
+    assert sampler.sample() == 42.0
+    assert sampler.last_reading == 42.0
+
+    clock.now += 0.2  # A new window starts at each reading
+    assert sampler.sample() is None
