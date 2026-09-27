@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 import nextcord
 from nextcord import Interaction, SlashOption
@@ -457,6 +458,20 @@ async def user_command_options(interaction: Interaction, user: nextcord.User):
 
 # ERROR HANDLING ==============================================================================================================================================================
 @bot.event
+async def on_error(event_method: str, *args, **kwargs) -> None:
+    """
+    Handles exceptions raised by event listeners. nextcord's default handler only
+    prints to stderr, which keeps these out of the log files.
+
+    :param event_method: The name of the event that raised the exception.
+    :type event_method: str
+    :return: None
+    :rtype: None
+    """
+    error_id = log_manager.get_uuid_for_logging()
+    logging.error(f"Error ID: {error_id} - Unhandled exception in event {event_method}", exc_info=True)
+
+@bot.event
 async def on_application_command_error(interaction: Interaction, error) -> None:
     """
     Handles errors in application commands.
@@ -542,8 +557,18 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     :return: None
     :rtype: None
     """
+    received_at = datetime.datetime.now(datetime.timezone.utc) # For log timestamps to be as accurate as possible
     # Skip DM messages (guild_id will be None)
     if payload.guild_id is None:
+        return
+
+    # Optimization: Everything below serves one of these features (the message cache is
+    # read only by spam moderation and leveling). Bail before any REST fetches when none
+    # are on: otherwise every edit in every guild would fetch the message (and often its
+    # author).
+    server = Server(payload.guild_id)
+    if not any(utils.feature_is_active(server=server, feature=feature)
+               for feature in ("logging", "moderation__profanity", "moderation__spam", "leveling")):
         return
 
     # Find guild and channel
@@ -570,8 +595,9 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     with LogIfFailure(feature="cached_messages.cache_message"):
         cached_messages.cache_message(edited_message)
 
-    # Resolve the author if it's not a Member object (e.g., if the member is not cached)
-    if not isinstance(edited_message.author, nextcord.Member):
+    # Resolve the author if it's not a Member object (e.g., if the member is not cached).
+    # Optimization: Webhook authors are never guild members, so fetching them only ever 404s.
+    if not isinstance(edited_message.author, nextcord.Member) and edited_message.webhook_id is None:
         with LogIfFailure(feature="utils.get_member (message edit profanity check)"):
             resolved_author = await utils.get_member(guild, edited_message.author.id)
             if resolved_author is not None:
@@ -579,11 +605,11 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
 
     # Punish profanity (if any)
     with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
-        await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message)
+        await moderation.check_and_trigger_profanity_moderation_for_message(bot, server, edited_message)
 
     # Log the message
     with LogIfFailure(feature="action_logging.log_raw_message_edit"):
-        await action_logging.log_raw_message_edit(guild, original_message, edited_message)
+        await action_logging.log_raw_message_edit(guild, original_message, edited_message, received_at=received_at)
 
     # Keep the stored copy current (upsert) so future edit/delete logs can retrieve it
     with LogIfFailure(feature="stored_messages.store_message_in_db(edited_message)"):
@@ -600,6 +626,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
     :return: None
     :rtype: None
     """
+    received_at = datetime.datetime.now(datetime.timezone.utc) # For log timestamps to be as accurate as possible
     # Skip DM messages (guild_id will be None)
     if payload.guild_id is None:
         return
@@ -636,7 +663,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
 
             # Log the message
             with LogIfFailure(feature="action_logging.log_raw_message_delete"):
-                await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id)
+                await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id, received_at=received_at)
 
         finally:
             # Update the message in the database
@@ -710,6 +737,7 @@ async def on_raw_member_remove(payload: nextcord.RawMemberRemoveEvent) -> None:
     :return: None
     :rtype: None
     """
+    received_at = datetime.datetime.now(datetime.timezone.utc) # For log timestamps to be as accurate as possible
     guild = payload.guild
     user = payload.user
 
@@ -722,7 +750,7 @@ async def on_raw_member_remove(payload: nextcord.RawMemberRemoveEvent) -> None:
 
         # Log the removal
         with LogIfFailure(feature="action_logging.log_member_removal"):
-            await action_logging.log_member_removal(guild, user)
+            await action_logging.log_member_removal(guild, user, received_at=received_at)
         return
 
     # Trigger the farewell message
@@ -735,7 +763,7 @@ async def on_raw_member_remove(payload: nextcord.RawMemberRemoveEvent) -> None:
 
     # Log the removal
     with LogIfFailure(feature="action_logging.log_member_removal"):
-        await action_logging.log_member_removal(guild, user)
+        await action_logging.log_member_removal(guild, user, received_at=received_at)
 
 @bot.event
 async def on_guild_join(guild: nextcord.Guild) -> None:

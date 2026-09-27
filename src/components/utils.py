@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import logging
-import datetime
 import re
 from typing import Any
 
@@ -1051,7 +1050,7 @@ async def check_text_channel_permissions(channel: nextcord.abc.GuildChannel, aut
 
     return False
 
-messages_sent = ExpiringSet(60 * 30)  # 30 minutes expiration (to prevent spamming the owner with the same message)
+messages_sent = ExpiringSet(60 * 60 * 24)  # 1 day expiration (to prevent spamming the owner with the same message)
 async def send_error_message_to_server_owner(
     guild: nextcord.Guild, 
     permission: str, 
