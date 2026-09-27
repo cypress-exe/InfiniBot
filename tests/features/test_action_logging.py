@@ -146,3 +146,30 @@ def test_embed_links_are_capped_at_the_field_limit() -> None:
     assert embed_link(0) in content
     shown = sum(1 for link in links if link in content)
     assert f"…and {20 - shown} more" in content
+
+
+def channel_with_history_permission(can_read_history: bool) -> Mock:
+    channel = make_text_channel()
+    channel.guild = make_guild()
+    channel.guild.me = Mock(spec=nextcord.Member)
+    channel.permissions_for = Mock(return_value=Mock(read_message_history=can_read_history))
+    return channel
+
+
+def test_follow_ups_reply_to_the_log_when_history_is_readable() -> None:
+    log_message = Mock(spec=nextcord.Message)
+
+    assert action_logging.reply_reference(channel_with_history_permission(True), log_message) is log_message
+
+
+def test_follow_ups_do_not_reply_without_read_message_history() -> None:
+    """
+    Regression for the prod 403:
+        'Cannot reply without permission to read message history'
+
+    Replies need Read Message History in the log channel; without it the follow-up
+    must go out as a plain message rather than fail.
+    """
+    log_message = Mock(spec=nextcord.Message)
+
+    assert action_logging.reply_reference(channel_with_history_permission(False), log_message) is None

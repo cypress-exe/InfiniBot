@@ -144,11 +144,30 @@ def entry_is_fresh(entry: nextcord.AuditLogEntry) -> bool:
     now = datetime.datetime.now(datetime.timezone.utc)
     return abs((now - entry.created_at).total_seconds()) <= 5 * 60
 
+def reply_reference(log_channel: nextcord.abc.Messageable, message: nextcord.Message) -> nextcord.Message | None:
+    """
+    Returns ``message`` to reply to, or None when InfiniBot lacks Read Message History
+    in ``log_channel``: Discord rejects replies without it (403, code 160002), so the
+    follow-up is sent as a plain message instead of failing.
+
+    :param log_channel: The channel the follow-up is sent in.
+    :type log_channel: nextcord.abc.Messageable
+    :param message: The log message to reply to.
+    :type message: nextcord.Message
+    :return: The message to reference, or None.
+    :rtype: nextcord.Message | None
+    """
+    guild = getattr(log_channel, "guild", None)
+    me = guild.me if guild else None
+    if me is None or not log_channel.permissions_for(me).read_message_history:
+        return None
+    return message
+
 def fill_embed_links_field(template: str, placeholder: str, links: list[str]) -> str:
     """
     Replace ``placeholder`` in ``template`` with one link per line, keeping the result
     within Discord's field value limit. Links that don't fit are summarized as a count
-    (they are still in the channel, as replies to the log message).
+    (they are still posted below the log message).
 
     :param template: The field value containing the placeholder.
     :type template: str
@@ -219,19 +238,19 @@ async def files_computation(deleted_message: nextcord.Message, log_channel: next
         
     if len(files) > 0:
         try:
-            await log_channel.send(files = files, reference = log_message)
+            await log_channel.send(files=files, reference=reply_reference(log_channel, log_message))
         except nextcord.errors.HTTPException: # 313 Payload Too Large
             await log_channel.send(embed=nextcord.Embed(
                 title="Error", 
                 description="One or more files are too large to send. Unfortunately, they have been lost to the void now...", 
                 color=nextcord.Color.red()), 
-                reference=log_message)
+                reference=reply_reference(log_channel, log_message))
     else:
         await log_channel.send(embed=nextcord.Embed(
             title="Error", 
             description="There was a problem when retrieving these files. They have been lost to the void.", 
             color=nextcord.Color.red()), 
-            reference=log_message)
+            reference=reply_reference(log_channel, log_message))
 
 
 # Triggers
@@ -359,14 +378,14 @@ async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Mes
             # task[2] is raw user-authored content — never let it ping @everyone/roles/users
             content_message = await log_channel.send(
                 content = task[2],
-                reference = message,
+                reference = reply_reference(log_channel, message),
                 allowed_mentions = nextcord.AllowedMentions.none()
             )
             completed_content_tasks.append([task[0], task[1], content_message.jump_url])
             
         completed_embed_tasks = []
         for task in embed_tasks:
-            embed_message = await log_channel.send(embed = task[1], reference = message)
+            embed_message = await log_channel.send(embed = task[1], reference = reply_reference(log_channel, message))
             completed_embed_tasks.append([task[0], task[1].title, embed_message.jump_url])
             
         # We've sent the other messages. Time to circle back and edit our old message to include the just sent links
