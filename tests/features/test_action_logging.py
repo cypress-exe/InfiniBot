@@ -10,7 +10,7 @@ from __future__ import annotations
 import datetime
 
 import features.action_logging as action_logging
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 import nextcord
 
@@ -173,3 +173,105 @@ def test_follow_ups_do_not_reply_without_read_message_history() -> None:
     log_message = Mock(spec=nextcord.Message)
 
     assert action_logging.reply_reference(channel_with_history_permission(False), log_message) is None
+
+
+def audit_log_iterator(*entries: Mock):
+    """A stand-in for ``Guild.audit_logs`` yielding ``entries`` newest-first."""
+    async def iterate(**_kwargs):
+        for entry in entries:
+            yield entry
+    return iterate
+
+
+def a_while_ago() -> datetime.datetime:
+    return in_minutes(-3)
+
+
+async def test_member_update_logs_are_stamped_with_when_the_update_arrived(monkeypatch) -> None:
+    """
+    The member-update logs wait for the audit log to settle (and do more awaits after
+    that), so stamping embeds with "now" put them seconds late — or more under rate
+    limiting. The receive time must carry through to the embed.
+    """
+    log_channel = make_text_channel()
+    monkeypatch.setattr(action_logging, "get_logging_channel", AsyncMock(return_value=log_channel))
+    monkeypatch.setattr(action_logging.asyncio, "sleep", AsyncMock())
+
+    guild = make_guild()
+    guild.me = Mock(spec=nextcord.Member)
+    guild.me.guild_permissions = Mock(view_audit_log=True)
+    guild.audit_logs = audit_log_iterator()
+    before = make_member(mention="@Renamed")
+    after = make_member(mention="@Renamed")
+    before.nick, after.nick = "old", "new"
+    before.roles = after.roles = []
+    after.guild = guild
+    received_at = a_while_ago()
+
+    await action_logging.log_member_update(before, after, received_at=received_at)
+
+    log_channel.send.assert_awaited_once()
+    assert log_channel.send.await_args.kwargs["embed"].timestamp == received_at
+
+
+async def test_a_timeout_log_is_stamped_with_when_the_update_arrived() -> None:
+    before = make_member(communication_disabled_until=in_minutes(5))
+    after = make_member(mention="@RevokedUser", communication_disabled_until=None)
+    log_channel = make_text_channel()
+    received_at = a_while_ago()
+
+    await action_logging.log_timeout_change(before, after, entry=None, log_channel=log_channel, received_at=received_at)
+
+    assert log_channel.send.await_args.kwargs["embed"].timestamp == received_at
+
+
+async def test_a_kick_log_is_stamped_with_when_the_removal_arrived(monkeypatch) -> None:
+    """
+    on_raw_member_remove sends the farewell message and cleans up levels before the
+    kick/ban log runs, so the log must use the time the removal event arrived.
+    """
+    log_channel = make_text_channel()
+    monkeypatch.setattr(action_logging, "get_logging_channel", AsyncMock(return_value=log_channel))
+
+    member = Mock(spec=nextcord.User)
+    member.id = 55
+    member.display_avatar = Mock(url="https://cdn.example/avatar.png")
+    entry = Mock(spec=nextcord.AuditLogEntry)
+    entry.action = nextcord.AuditLogAction.kick
+    entry.target = Mock(id=55)
+    entry.user = None
+    entry.reason = None
+    entry.created_at = in_minutes(0)
+    guild = make_guild()
+    guild.me = Mock(spec=nextcord.Member)
+    guild.audit_logs = audit_log_iterator(entry)
+    received_at = a_while_ago()
+
+    await action_logging.log_member_removal(guild, member, received_at=received_at)
+
+    log_channel.send.assert_awaited_once()
+    assert log_channel.send.await_args.kwargs["embed"].timestamp == received_at
+
+
+async def test_an_edit_log_is_stamped_with_discords_edit_time(monkeypatch) -> None:
+    """
+    Discord reports when a message was edited, which is exact even after the edit
+    handler's REST fetches and profanity check — prefer it over the receive time.
+    """
+    log_channel = make_text_channel()
+    monkeypatch.setattr(action_logging, "get_logging_channel", AsyncMock(return_value=log_channel))
+
+    edited_at = a_while_ago()
+    edited_message = Mock(spec=nextcord.Message)
+    edited_message.edited_at = edited_at
+    edited_message.channel = Mock(mention="#general")
+    edited_message.jump_url = "https://discord.com/channels/1/2/3"
+    edited_message.author = Mock(spec=nextcord.Member)
+    edited_message.author.name = "Editor"
+    edited_message.author.display_avatar = Mock(url="https://cdn.example/avatar.png")
+
+    # original_message=None takes the short "Contents Unretrievable" path
+    await action_logging.trigger_edit_log(make_guild(), None, edited_message, received_at=in_minutes(0))
+
+    log_channel.send.assert_awaited_once()
+    assert log_channel.send.await_args.kwargs["embed"].timestamp == edited_at

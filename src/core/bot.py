@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 import nextcord
 from nextcord import Interaction, SlashOption
@@ -556,6 +557,7 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     :return: None
     :rtype: None
     """
+    received_at = datetime.datetime.now(datetime.timezone.utc) # For log timestamps to be as accurate as possible
     # Skip DM messages (guild_id will be None)
     if payload.guild_id is None:
         return
@@ -607,7 +609,7 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
 
     # Log the message
     with LogIfFailure(feature="action_logging.log_raw_message_edit"):
-        await action_logging.log_raw_message_edit(guild, original_message, edited_message)
+        await action_logging.log_raw_message_edit(guild, original_message, edited_message, received_at=received_at)
 
     # Keep the stored copy current (upsert) so future edit/delete logs can retrieve it
     with LogIfFailure(feature="stored_messages.store_message_in_db(edited_message)"):
@@ -624,6 +626,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
     :return: None
     :rtype: None
     """
+    received_at = datetime.datetime.now(datetime.timezone.utc) # For log timestamps to be as accurate as possible
     # Skip DM messages (guild_id will be None)
     if payload.guild_id is None:
         return
@@ -660,7 +663,7 @@ async def on_raw_message_delete(payload: nextcord.RawMessageDeleteEvent) -> None
 
             # Log the message
             with LogIfFailure(feature="action_logging.log_raw_message_delete"):
-                await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id)
+                await action_logging.log_raw_message_delete(bot, guild, channel, message, payload.message_id, received_at=received_at)
 
         finally:
             # Update the message in the database
@@ -734,6 +737,7 @@ async def on_raw_member_remove(payload: nextcord.RawMemberRemoveEvent) -> None:
     :return: None
     :rtype: None
     """
+    received_at = datetime.datetime.now(datetime.timezone.utc) # For log timestamps to be as accurate as possible
     guild = payload.guild
     user = payload.user
 
@@ -746,7 +750,7 @@ async def on_raw_member_remove(payload: nextcord.RawMemberRemoveEvent) -> None:
 
         # Log the removal
         with LogIfFailure(feature="action_logging.log_member_removal"):
-            await action_logging.log_member_removal(guild, user)
+            await action_logging.log_member_removal(guild, user, received_at=received_at)
         return
 
     # Trigger the farewell message
@@ -759,7 +763,7 @@ async def on_raw_member_remove(payload: nextcord.RawMemberRemoveEvent) -> None:
 
     # Log the removal
     with LogIfFailure(feature="action_logging.log_member_removal"):
-        await action_logging.log_member_removal(guild, user)
+        await action_logging.log_member_removal(guild, user, received_at=received_at)
 
 @bot.event
 async def on_guild_join(guild: nextcord.Guild) -> None:

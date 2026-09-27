@@ -144,6 +144,23 @@ def entry_is_fresh(entry: nextcord.AuditLogEntry) -> bool:
     now = datetime.datetime.now(datetime.timezone.utc)
     return abs((now - entry.created_at).total_seconds()) <= 5 * 60
 
+def resolve_event_time(received_at: datetime.datetime | None) -> datetime.datetime:
+    """
+    Returns the time an event was received, for log embed timestamps.
+
+    Log messages can be sent a while after the event (settling delays, audit log
+    lookups, REST fetches, other features running first), so handlers capture the
+    receive time up front and pass it down. Audit log ``created_at`` isn't used
+    instead: message_delete entries are merged by Discord (keeping the first
+    deletion's time), and member lookups can match an older entry for the same member.
+
+    :param received_at: The time the event was received, if the caller captured it.
+    :type received_at: Optional[datetime.datetime]
+    :return: ``received_at``, or the current time if it wasn't provided.
+    :rtype: datetime.datetime
+    """
+    return received_at if received_at is not None else datetime.datetime.now(datetime.timezone.utc)
+
 def reply_reference(log_channel: nextcord.abc.Messageable, message: nextcord.Message) -> nextcord.Message | None:
     """
     Returns ``message`` to reply to, or None when InfiniBot lacks Read Message History
@@ -254,7 +271,13 @@ async def files_computation(deleted_message: nextcord.Message, log_channel: next
 
 
 # Triggers
-async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Message, edited_message: nextcord.Message, user: nextcord.Member = None) -> None:
+async def trigger_edit_log(
+    guild: nextcord.Guild, 
+    original_message: nextcord.Message, 
+    edited_message: nextcord.Message, 
+    user: nextcord.Member = None, 
+    received_at: datetime.datetime | None = None
+) -> None:
     """
     |coro|
 
@@ -268,6 +291,8 @@ async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Mes
     :type edited_message: nextcord.Message
     :param user: The user who edited the message. If None, the author of the edited message is used.
     :type user: Optional[nextcord.Member]
+    :param received_at: When the edit event was received. Only used if Discord didn't report an edit time.
+    :type received_at: Optional[datetime.datetime]
     :return: None
     :rtype: None
     """
@@ -286,7 +311,12 @@ async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Mes
     embed_tasks = []
 
     # Create an embed to edit
-    embed = nextcord.Embed(title = "Message Edited", description = edited_message.channel.mention, color = nextcord.Color.yellow(), timestamp = datetime.datetime.now(datetime.timezone.utc), url = edited_message.jump_url)
+    embed = nextcord.Embed(
+        title="Message Edited",
+        description=edited_message.channel.mention,
+        color=nextcord.Color.yellow(),
+        timestamp=edited_message.edited_at or resolve_event_time(received_at),
+        url=edited_message.jump_url)
     
     # Check that the original message is still cached
     if not original_message:
@@ -419,7 +449,14 @@ async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Mes
         # Finally, update the old message to have the new embed
         await message.edit(embed = embed)
     
-async def trigger_delete_log(bot: nextcord.Client, channel: nextcord.TextChannel, guild: nextcord.Guild, message: nextcord.Message, message_id: int) -> None:
+async def trigger_delete_log(
+    bot: nextcord.Client,
+    channel: nextcord.TextChannel,
+    guild: nextcord.Guild,
+    message: nextcord.Message,
+    message_id: int,
+    received_at: datetime.datetime | None = None
+) -> None:
     """
     |coro|
 
@@ -486,7 +523,7 @@ async def trigger_delete_log(bot: nextcord.Client, channel: nextcord.TextChannel
         
     
     # Send log information!!! -------------------------------------------------------------------------------------------------------------------------------------------
-    embed = nextcord.Embed(title = "Message Deleted", color = nextcord.Color.red(), timestamp = datetime.datetime.now(datetime.timezone.utc))
+    embed = nextcord.Embed(title="Message Deleted", color=nextcord.Color.red(), timestamp=resolve_event_time(received_at))
     embeds = []
     code = 1
     
@@ -553,7 +590,13 @@ async def trigger_delete_log(bot: nextcord.Client, channel: nextcord.TextChannel
     if message and message.attachments != []:
         await files_computation(message, log_channel, log_message)
 
-async def log_nickname_change(before: nextcord.Member, after: nextcord.Member, entry: nextcord.AuditLogEntry, log_channel: nextcord.TextChannel) -> None:
+async def log_nickname_change(
+    before: nextcord.Member,
+    after: nextcord.Member,
+    entry: nextcord.AuditLogEntry,
+    log_channel: nextcord.TextChannel,
+    received_at: datetime.datetime | None = None
+) -> None:
     """
     |coro|
 
@@ -585,7 +628,7 @@ async def log_nickname_change(before: nextcord.Member, after: nextcord.Member, e
             if user else f"{after.mention}'s nickname was changed."
         ),
         color=nextcord.Color.blue(),
-        timestamp=datetime.datetime.now(datetime.timezone.utc)
+        timestamp=resolve_event_time(received_at)
     )
 
     # Add fields for the old and new nicknames
@@ -607,7 +650,14 @@ async def log_nickname_change(before: nextcord.Member, after: nextcord.Member, e
     await log_channel.send(embed=embed)
 
 fresh_role_updates = ExpiringSet(expiration_time=2)  # Used for tracking recent role update messages as not to get duplicated logs. {(user_id, role_id, "added"), (user_id, role_id, "removed")}
-async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry: nextcord.AuditLogEntry, guild: nextcord.Guild, log_channel: nextcord.TextChannel) -> None:
+async def log_role_change(
+    before: nextcord.Member,
+    after: nextcord.Member,
+    entry: nextcord.AuditLogEntry,
+    guild: nextcord.Guild,
+    log_channel: nextcord.TextChannel,
+    received_at: datetime.datetime | None = None
+) -> None:
     """
     |coro|
 
@@ -788,7 +838,12 @@ async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry
     else:
         description = f"Someone modified {after.mention}'s roles."
 
-    embed = nextcord.Embed(title="Roles Modified", description=description, color=nextcord.Color.blue(), timestamp=datetime.datetime.now(datetime.timezone.utc))
+    embed = nextcord.Embed(
+        title="Roles Modified",
+        description=description,
+        color=nextcord.Color.blue(),
+        timestamp=resolve_event_time(received_at)
+    )
 
     if len(added_roles) > 0:
         embed.add_field(name="Added", value="\n".join(added_roles.mentions()), inline=True)
@@ -801,7 +856,13 @@ async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry
 
     await log_channel.send(embed=embed)
 
-async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, entry: nextcord.AuditLogEntry, log_channel: nextcord.TextChannel) -> None:
+async def log_timeout_change(
+    before: nextcord.Member,
+    after: nextcord.Member,
+    entry: nextcord.AuditLogEntry,
+    log_channel: nextcord.TextChannel,
+    received_at: datetime.datetime | None = None
+) -> None:
     """
     |coro|
 
@@ -825,6 +886,7 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
     fresh_audit_log = entry is not None and entry_is_fresh(entry)
     user = entry.user if fresh_audit_log else None
     actor = user.mention if user else "Someone"
+    event_time = resolve_event_time(received_at)
 
     before_timeout = before.communication_disabled_until
     after_timeout = after.communication_disabled_until
@@ -843,7 +905,7 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
             title="Timeout Revoked",
             description=f"{actor} revoked {after.mention}'s timeout",
             color=nextcord.Color.orange(),
-            timestamp=datetime.datetime.now(datetime.timezone.utc)
+            timestamp=event_time
         )
 
         # Send the embed to the log channel
@@ -851,7 +913,7 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
 
     elif before_timeout is None:
         # Member was not previously timed out, calculate the timeout duration
-        anchor = entry.created_at if fresh_audit_log else datetime.datetime.now(datetime.timezone.utc)
+        anchor = entry.created_at if fresh_audit_log else event_time
         timeout_time: datetime.timedelta = after_timeout - anchor
 
         # Round to the nearest second (ceiling)
@@ -865,7 +927,7 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
             title="Member Timed-Out",
             description=f"{actor} timed out {after.mention} for about {timeout_time_ui_text}",
             color=nextcord.Color.orange(),
-            timestamp=datetime.datetime.now(datetime.timezone.utc)
+            timestamp=event_time
         )
 
         # Add a reason field if the audit log is fresh and a reason is provided
@@ -878,7 +940,12 @@ async def log_timeout_change(before: nextcord.Member, after: nextcord.Member, en
 
 
 # Entrypoints
-async def log_raw_message_edit(guild: nextcord.Guild, original_message: nextcord.Message, edited_message: nextcord.Message) -> None:
+async def log_raw_message_edit(
+    guild: nextcord.Guild,
+    original_message: nextcord.Message,
+    edited_message: nextcord.Message,
+    received_at: datetime.datetime | None = None
+) -> None:
     """
     |coro|
 
@@ -903,9 +970,16 @@ async def log_raw_message_edit(guild: nextcord.Guild, original_message: nextcord
     if original_message != None and edited_message.content == original_message.content: return
     
     # UI Log
-    await trigger_edit_log(guild, original_message, edited_message)
+    await trigger_edit_log(guild, original_message, edited_message, received_at=received_at)
  
-async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, channel: nextcord.TextChannel, message: nextcord.Message, message_id: int) -> None:
+async def log_raw_message_delete(
+    bot: nextcord.Client,
+    guild: nextcord.Guild,
+    channel: nextcord.TextChannel,
+    message: nextcord.Message,
+    message_id: int,
+    received_at: datetime.datetime | None = None
+) -> None:
     """
     |coro|
 
@@ -925,6 +999,7 @@ async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, ch
     :rtype: None
     """
     
+    received_at = resolve_event_time(received_at) # Capture before the delay below
     await asyncio.sleep(1) # We need this time delay for some other features
 
     # Do not trigger if confident that the message was InfiniBot's
@@ -941,9 +1016,9 @@ async def log_raw_message_delete(bot: nextcord.Client, guild: nextcord.Guild, ch
         logging.debug(f"Channel {channel.id} is purging; skipping delete log.")
         return
     
-    await trigger_delete_log(bot, channel, guild, message, message_id)
+    await trigger_delete_log(bot, channel, guild, message, message_id, received_at=received_at)
 
-async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> None:
+async def log_member_update(before: nextcord.Member, after: nextcord.Member, received_at: datetime.datetime | None = None) -> None:
     """
     |coro|
 
@@ -965,6 +1040,7 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> 
     :return: None
     :rtype: None
     """
+    received_at = resolve_event_time(received_at) # Capture before any awaits
     guild = after.guild
 
     log_channel = await get_logging_channel(guild)
@@ -999,19 +1075,19 @@ async def log_member_update(before: nextcord.Member, after: nextcord.Member) -> 
     # Nickname change --------------------------------------------------------------
     if before.nick != after.nick:
         entry = await find_audit_entry(AuditLogAction.member_update)
-        await log_nickname_change(before, after, entry, log_channel)
+        await log_nickname_change(before, after, entry, log_channel, received_at=received_at)
 
     # Roles change --------------------------------------------------------------
     if before.roles != after.roles:
         entry = await find_audit_entry(AuditLogAction.member_role_update)
-        await log_role_change(before, after, entry, guild, log_channel)
+        await log_role_change(before, after, entry, guild, log_channel, received_at=received_at)
 
     # Timeout change --------------------------------------------------------------
     if before.communication_disabled_until != after.communication_disabled_until:
         entry = await find_audit_entry(AuditLogAction.member_update)
-        await log_timeout_change(before, after, entry, log_channel)
+        await log_timeout_change(before, after, entry, log_channel, received_at=received_at)
 
-async def log_member_removal(guild: nextcord.Guild, member: nextcord.abc.User) -> None:
+async def log_member_removal(guild: nextcord.Guild, member: nextcord.abc.User, received_at: datetime.datetime | None = None) -> None:
     """
     |coro|
 
@@ -1024,6 +1100,7 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.abc.User) -
     :return: None
     :rtype: None
     """
+    received_at = resolve_event_time(received_at) # Capture before any awaits
     if guild == None: return
     if guild.unavailable: return
     
@@ -1069,7 +1146,7 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.abc.User) -
     else:
         description = f"{member_name} was {verb}."
 
-    embed = nextcord.Embed(title=title, description=description, color=color, timestamp=datetime.datetime.now(datetime.timezone.utc))
+    embed = nextcord.Embed(title=title, description=description, color=color, timestamp=received_at)
     embed.set_author(name=str(member), icon_url=member.display_avatar.url)
     if entry.reason: embed.add_field(name="Reason", value=f"{entry.reason}", inline=False)
     embed.set_footer(text = f"User ID: {member.id}")
