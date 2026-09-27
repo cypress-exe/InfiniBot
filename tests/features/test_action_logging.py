@@ -110,3 +110,39 @@ async def test_a_role_change_by_an_unresolvable_user_is_still_logged() -> None:
 
     log_channel.send.assert_awaited_once()
     assert log_channel.send.await_args.kwargs["embed"].description == "Someone modified @Target's roles."
+
+
+EMBEDS_FIELD_TEMPLATE = (
+    "One or more embeds were modified. Here's a list of modifications:\n\nPlease Wait...\n\n"
+    "Note: Edited embeds will appear as them being deleted then added."
+)
+
+
+def embed_link(i: int) -> str:
+    return f"• **Added** [Embed title number {i}](https://discord.com/channels/1/2/{10**18 + i})"
+
+
+def test_embed_links_that_fit_are_all_listed() -> None:
+    links = [embed_link(i) for i in range(3)]
+
+    content = action_logging.fill_embed_links_field(EMBEDS_FIELD_TEMPLATE, "Please Wait...", links)
+
+    assert content == EMBEDS_FIELD_TEMPLATE.replace("Please Wait...", "\n".join(links))
+
+
+def test_embed_links_are_capped_at_the_field_limit() -> None:
+    """
+    Regression for the prod 400:
+        'In embeds.0.fields.2.value: Must be 1024 or fewer in length.'
+
+    One link per changed embed overflowed the field on edits touching many embeds,
+    leaving the edit log stuck on "Please Wait...".
+    """
+    links = [embed_link(i) for i in range(20)]
+
+    content = action_logging.fill_embed_links_field(EMBEDS_FIELD_TEMPLATE, "Please Wait...", links)
+
+    assert len(content) <= action_logging.MAX_EMBED_FIELD_VALUE_LENGTH
+    assert embed_link(0) in content
+    shown = sum(1 for link in links if link in content)
+    assert f"…and {20 - shown} more" in content

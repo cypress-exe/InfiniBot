@@ -18,6 +18,9 @@ from modules.custom_types import UNSET_VALUE, ExpiringSet
 MAX_EMBEDS_PER_MESSAGE = 10
 """Discord's hard limit on embeds in a single message."""
 
+MAX_EMBED_FIELD_VALUE_LENGTH = 1024
+"""Discord's hard limit on an embed field's value."""
+
 # By extension:
 MAX_ATTACHED_EMBEDS = MAX_EMBEDS_PER_MESSAGE - 1
 """How many of a deleted message's embeds fit alongside the log embed itself."""
@@ -140,6 +143,33 @@ def entry_is_fresh(entry: nextcord.AuditLogEntry) -> bool:
     # lets anything from earlier in the same hour count as "fresh".
     now = datetime.datetime.now(datetime.timezone.utc)
     return abs((now - entry.created_at).total_seconds()) <= 5 * 60
+
+def fill_embed_links_field(template: str, placeholder: str, links: list[str]) -> str:
+    """
+    Replace ``placeholder`` in ``template`` with one link per line, keeping the result
+    within Discord's field value limit. Links that don't fit are summarized as a count
+    (they are still in the channel, as replies to the log message).
+
+    :param template: The field value containing the placeholder.
+    :type template: str
+    :param placeholder: The text to replace with the links.
+    :type placeholder: str
+    :param links: The link lines to insert.
+    :type links: list[str]
+    :return: The filled field value.
+    :rtype: str
+    """
+    def fill(shown: list[str], hidden: int) -> str:
+        lines = shown + ([f"• …and {hidden} more (see the replies below)"] if hidden else []) # Uses "…" special character for char count efficiency
+        return template.replace(placeholder, "\n".join(lines))
+
+    for shown_count in range(len(links), -1, -1):
+        content = fill(links[:shown_count], len(links) - shown_count)
+        if len(content) <= MAX_EMBED_FIELD_VALUE_LENGTH:
+            return content
+
+    # Even the summary alone doesn't fit (the template itself is too long)
+    return content[:MAX_EMBED_FIELD_VALUE_LENGTH]
 
 
 # File Computation
@@ -359,9 +389,8 @@ async def trigger_edit_log(guild: nextcord.Guild, original_message: nextcord.Mes
                 links = []
                 for task in completed_embed_tasks:
                     links.append(f"• **{task[0]}** [{task[1]}]({task[2]})")
-                    
-                content = field.value
-                content = content.replace("Please Wait...", "\n".join(links))
+
+                content = fill_embed_links_field(field.value, "Please Wait...", links)
                 embed.add_field(name = field.name, value = content, inline = field.inline)
                 continue
             
