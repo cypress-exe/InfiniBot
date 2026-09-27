@@ -1053,21 +1053,28 @@ async def log_member_removal(guild: nextcord.Guild, member: nextcord.abc.User) -
     _entry_is_fresh = entry_is_fresh(entry)
     if not _entry_is_fresh: return # User chose to leave the server
     
-    user = entry.user 
-    reason = entry.reason
-
     if entry.action == AuditLogAction.kick:
-        embed = nextcord.Embed(title = "Member Kicked", description = f"{user} kicked {member}.", color = nextcord.Color.red(), timestamp = datetime.datetime.now(datetime.timezone.utc))
-        if reason: embed.add_field(name = "Reason", value = f"{reason}", inline = False)
-        
+        title, verb, color = "Member Kicked", "kicked", nextcord.Color.red()
     elif entry.action == AuditLogAction.ban:
-        embed = nextcord.Embed(title = "Member Banned", description = f"{user} banned {member}.", color = nextcord.Color.dark_red(), timestamp = datetime.datetime.now(datetime.timezone.utc))
-        if reason: embed.add_field(name = "Reason", value = f"{reason}", inline = False)
-        
+        title, verb, color = "Member Banned", "banned", nextcord.Color.dark_red()
     else:
         return
-    
-    await log_channel.send(embed = embed)
+
+    # The removed user is shown by name: a mention of someone no longer in the server
+    # can render as @unknown-user. The actor can be None (e.g. a deleted account).
+    member_name = f"**{nextcord.utils.escape_markdown(str(member))}**"
+    actor = entry.user
+    if actor is not None:
+        description = f"{actor.mention} {verb} {member_name}."
+    else:
+        description = f"{member_name} was {verb}."
+
+    embed = nextcord.Embed(title=title, description=description, color=color, timestamp=datetime.datetime.now(datetime.timezone.utc))
+    embed.set_author(name=str(member), icon_url=member.display_avatar.url)
+    if entry.reason: embed.add_field(name="Reason", value=f"{entry.reason}", inline=False)
+    embed.set_footer(text = f"User ID: {member.id}")
+
+    await log_channel.send(embed=embed)
 
 
 # Commands
