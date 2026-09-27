@@ -11,7 +11,7 @@ dependencies = [
     "humanfriendly==10.0",
     "nextcord==3.2.0",
     "nextcord-ext-menus==1.5.7",
-    "rapidfuzz==3.14.5",
+    "rapidfuzz==3.14.6",
     "python-dateutil==2.9.0.post0",
     "SQLAlchemy==2.0.46",
     "aiohttp==3.14.3",
