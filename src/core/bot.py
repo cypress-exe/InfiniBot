@@ -457,6 +457,20 @@ async def user_command_options(interaction: Interaction, user: nextcord.User):
 
 # ERROR HANDLING ==============================================================================================================================================================
 @bot.event
+async def on_error(event_method: str, *args, **kwargs) -> None:
+    """
+    Handles exceptions raised by event listeners. nextcord's default handler only
+    prints to stderr, which keeps these out of the log files.
+
+    :param event_method: The name of the event that raised the exception.
+    :type event_method: str
+    :return: None
+    :rtype: None
+    """
+    error_id = log_manager.get_uuid_for_logging()
+    logging.error(f"Error ID: {error_id} - Unhandled exception in event {event_method}", exc_info=True)
+
+@bot.event
 async def on_application_command_error(interaction: Interaction, error) -> None:
     """
     Handles errors in application commands.

@@ -181,9 +181,13 @@ def start_scheduler() -> None:
     """
     global scheduler
 
-    # Stop the scheduler if it's already running
+    # Skip scheduler if it's already running.
+    # (See `fix(scheduler): stop re-ready from killing the scheduler; log event errors`
+    # for the rationale — it involves preventing multiple instances of the scheduler
+    # from running while ensuring that we don't accidentally kill all the instances.)
     if scheduler.running:
-        scheduler.shutdown()
+        logging.info("Scheduler already running; preventing duplicate start by ignoring directive.")
+        return
 
     # Calculate next run time aligned to the nearest 5-minute interval
     now = time.time()
