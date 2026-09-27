@@ -67,7 +67,7 @@ body:
     attributes:
       label: Version / Commit
       description: If self-hosting, which commit or version are you running? (`pyproject.toml` version, or `git rev-parse HEAD`)
-      placeholder: e.g. v4.1.1 or a1b2c3d
+      placeholder: e.g. v4.2.0 or a1b2c3d
 
   - type: textarea
     id: environment

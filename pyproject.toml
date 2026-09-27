@@ -1,6 +1,6 @@
 [project]
 name = "infinibot"
-version = "4.1.1"
+version = "4.2.0"
 description = "A powerful, multi-purpose Discord utility bot built for millions of servers"
 readme = "README.md"
 license = { file = "LICENSE" }
