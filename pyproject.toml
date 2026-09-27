@@ -7,7 +7,7 @@ license = { file = "LICENSE" }
 requires-python = ">=3.13"
 dependencies = [
     "APScheduler==3.11.2",
-    "dateparser==1.4.1",
+    "dateparser==1.4.3",
     "humanfriendly==10.0",
     "nextcord==3.2.0",
     "nextcord-ext-menus==1.5.7",
