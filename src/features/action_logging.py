@@ -30,7 +30,11 @@ class ShowMoreButton(ui_components.CustomView):
   A View that will be used for the Action Logging feature.
   """
   def __init__(self):
-    super().__init__(timeout = None)
+    # prevent_update=False: don't store a copy per log message. This view gets
+    # used thousands of times per day on prod, and the instance registered in
+    # view_manager.init_views handles clicks on every log message, and the callback
+    # reads its toggle state from the message, so no per-message instance is needed. 
+    super().__init__(timeout=None, prevent_update=False)
     self.possible_embeds = [
         ["Possible Margin For Error", "Infinibot is relying on an educated guess regarding the deleter of this message. Thus, there *is* a margin for error (In testing, about 2%)."],
         ["Possible Margin For Error", "Because the message can not be retrieved, Infinibot is relying on an educated guess regarding the author and deleter of this message. Thus, there *is* a margin for error (In testing, about 6.5%)."],
@@ -38,7 +42,7 @@ class ShowMoreButton(ui_components.CustomView):
         ["Unable to find specifics", "Infinibot is unable to find the deleter because of Discord's limitations.\n\nThe user might have deleted their own message."]
     ]
   
-  @nextcord.ui.button(label = 'Show More', style = nextcord.ButtonStyle.gray, custom_id = "show_more")
+  @nextcord.ui.button(label='Show More', style=nextcord.ButtonStyle.gray, custom_id="show_more")
   async def event(self, button: nextcord.ui.Button, interaction: nextcord.Interaction):
     if not interaction.message.embeds:
         await interaction.response.pong()

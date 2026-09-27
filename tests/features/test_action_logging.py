@@ -59,3 +59,18 @@ async def test_a_revoked_timeout_is_logged() -> None:
 
     log_channel.send.assert_awaited_once()
     assert log_channel.send.await_args.kwargs["embed"].title == "Timeout Revoked"
+
+
+async def test_delete_log_button_is_not_stored_per_message() -> None:
+    """
+    Regression for the prod view leak: every delete log used to send a fresh
+    ShowMoreButton that nextcord stored forever, growing the view store
+    unboundedly. The one instance registered at startup handles clicks on
+    every log message, so sending one must not store another.
+    """
+    view = action_logging.ShowMoreButton()
+
+    # nextcord stores a sent view only when prevent_update is set
+    assert view.prevent_update is False
+    # ...and it must still be registrable as the persistent startup instance
+    assert view.is_persistent()
