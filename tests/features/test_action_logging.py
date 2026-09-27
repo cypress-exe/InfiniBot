@@ -10,7 +10,11 @@ from __future__ import annotations
 import datetime
 
 import features.action_logging as action_logging
-from tests.support.discord_mocks import make_member, make_text_channel
+from unittest.mock import Mock
+
+import nextcord
+
+from tests.support.discord_mocks import make_guild, make_member, make_role, make_text_channel
 
 
 def in_minutes(minutes: int) -> datetime.datetime:
@@ -74,3 +78,35 @@ async def test_delete_log_button_is_not_stored_per_message() -> None:
     assert view.prevent_update is False
     # ...and it must still be registrable as the persistent startup instance
     assert view.is_persistent()
+
+
+async def test_a_role_change_by_an_unresolvable_user_is_still_logged() -> None:
+    """
+    Regression for the prod AttributeError:
+        'NoneType' object has no attribute 'mention'
+
+    A fresh audit-log entry can have no resolvable user (e.g. a deleted account).
+    The role-change log dereferenced entry.user.mention anyway and dropped the log.
+    """
+    everyone = make_role("@everyone", "@everyone")
+    everyone.id = 1
+    role = make_role("Member", "@Member")
+    role.id = 4242
+    before = make_member(mention="@Target")
+    before.id = 77
+    before.roles = [everyone]
+    after = make_member(mention="@Target")
+    after.id = 77
+    after.roles = [everyone, role]
+    guild = make_guild()
+    guild.premium_subscriber_role = None
+    entry = Mock(spec=nextcord.AuditLogEntry)
+    entry.user = None
+    entry.reason = None
+    entry.created_at = in_minutes(0)
+    log_channel = make_text_channel()
+
+    await action_logging.log_role_change(before, after, entry, guild, log_channel)
+
+    log_channel.send.assert_awaited_once()
+    assert log_channel.send.await_args.kwargs["embed"].description == "Someone modified @Target's roles."

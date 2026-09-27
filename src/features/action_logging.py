@@ -735,7 +735,7 @@ async def log_role_change(before: nextcord.Member, after: nextcord.Member, entry
     for role in deleted_roles: fresh_role_updates.add((dedup_actor_id, role.id, "removed"))
 
     fresh_audit_log = entry is not None and entry_is_fresh(entry)
-    if fresh_audit_log:
+    if fresh_audit_log and entry.user is not None: # A fresh entry can still have no resolvable user (seen in logs)
         description = f"{entry.user.mention} modified {after.mention}'s roles."
     else:
         description = f"Someone modified {after.mention}'s roles."
