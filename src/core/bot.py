@@ -560,6 +560,15 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     if payload.guild_id is None:
         return
 
+    # Optimization: Everything below serves one of these features (the message cache is
+    # read only by spam moderation and leveling). Bail before any REST fetches when none
+    # are on: otherwise every edit in every guild would fetch the message (and often its
+    # author).
+    server = Server(payload.guild_id)
+    if not any(utils.feature_is_active(server=server, feature=feature)
+               for feature in ("logging", "moderation__profanity", "moderation__spam", "leveling")):
+        return
+
     # Find guild and channel
     channel = await utils.get_channel(payload.channel_id, bot=bot)
     if channel is None:
@@ -584,8 +593,9 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
     with LogIfFailure(feature="cached_messages.cache_message"):
         cached_messages.cache_message(edited_message)
 
-    # Resolve the author if it's not a Member object (e.g., if the member is not cached)
-    if not isinstance(edited_message.author, nextcord.Member):
+    # Resolve the author if it's not a Member object (e.g., if the member is not cached).
+    # Optimization: Webhook authors are never guild members, so fetching them only ever 404s.
+    if not isinstance(edited_message.author, nextcord.Member) and edited_message.webhook_id is None:
         with LogIfFailure(feature="utils.get_member (message edit profanity check)"):
             resolved_author = await utils.get_member(guild, edited_message.author.id)
             if resolved_author is not None:
@@ -593,7 +603,7 @@ async def on_raw_message_edit(payload: nextcord.RawMessageUpdateEvent) -> None:
 
     # Punish profanity (if any)
     with LogIfFailure(feature="moderation.check_and_trigger_profanity_moderation_for_message"):
-        await moderation.check_and_trigger_profanity_moderation_for_message(bot, Server(guild.id), edited_message)
+        await moderation.check_and_trigger_profanity_moderation_for_message(bot, server, edited_message)
 
     # Log the message
     with LogIfFailure(feature="action_logging.log_raw_message_edit"):
