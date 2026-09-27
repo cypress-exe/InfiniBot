@@ -186,8 +186,8 @@ async def check_and_punish_nickname_for_profanity(bot: nextcord.Client, guild: n
         
         if entry_is_fresh and user.id == member.id:
             # User is the one who edited their nickname. Give them a strike
-            timeout_successful = await grant_and_punish_strike(bot, guild.id, member, 1)
-            if not timeout_successful: return
+            action_successful, _ = await grant_and_punish_strike(bot, guild.id, member, 1)
+            if not action_successful: return
 
             if server.profanity_moderation_profile.strike_system_active:
                 if member.id in server.moderation_strikes:
@@ -407,7 +407,7 @@ def update_strikes_for_member(guild_id:int, member_id:int, amount:int):
 
     return updated_strike_count
 
-async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: nextcord.Member, amount: int, server = None, strike_data = None) -> bool:
+async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: nextcord.Member, amount: int) -> tuple[bool, bool]:
     """|coro|
     
     Handle giving or taking a strike to/from a member.
@@ -429,8 +429,10 @@ async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: n
         
     Returns
     -------
-    :return: If the user was timed out.
-    :rtype: bool
+    :return: (action_successful, timed_out). action_successful is True when the strike
+        was recorded and any timeout it triggered succeeded; timed_out is True only when
+        this call applied a timeout (which also clears the member's strikes).
+    :rtype: tuple[bool, bool]
     """
     updated_strike_count = update_strikes_for_member(guild_id, member.id, amount)
         
@@ -448,11 +450,11 @@ async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: n
         guild = bot.get_guild(guild_id)
         if not guild:
             logging.warning(f"Guild not found for guild_id: {guild_id}. Skipping timeout.")
-            return False
+            return False, False
         
         if not guild.me.guild_permissions.moderate_members:
             await utils.send_error_message_to_server_owner(guild, "Timeout Members", guild_permission = True)
-            return False
+            return False, False
         
         reason = (f"Profanity Moderation: User exceeded strike limit of {server.profanity_moderation_profile.max_strikes}." 
                   if (server.profanity_moderation_profile.strike_system_active) else "Profanity Moderation")
@@ -461,16 +463,16 @@ async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: n
         if timeout_response.startswith("Success"):
             # The user was successfully timed out. Remove the strike
             if member.id in server.moderation_strikes: server.moderation_strikes.delete(member.id)
-            return True
+            return True, True
 
         elif timeout_response == "Failure Forbidden":
             message = f"Failed to timeout {member.mention} for profanity moderation. Missing permissions."
             embed = nextcord.Embed(title = "Failed to Timeout", description = message, color = nextcord.Color.red())
 
             admin_channel = await utils.get_channel(server.profanity_moderation_profile.channel)
-            if admin_channel is None: return False
+            if admin_channel is None: return False, False
             await admin_channel.send(embed = embed)
-            return False
+            return False, False
         
         else:
             uuid = log_manager.get_uuid_for_logging()
@@ -479,14 +481,15 @@ async def grant_and_punish_strike(bot: nextcord.Client, guild_id: int, member: n
             embed.set_footer(text = f"Error ID: {uuid}")
 
             admin_channel = await utils.get_channel(server.profanity_moderation_profile.channel)
-            if admin_channel is None: return False
+            if admin_channel is None: return False, False
             await admin_channel.send(embed = embed)
 
             logging.error(f"Error ID: {uuid} - Failed to timeout user ({member.id}) for profanity moderation.")
-            return False
+            return False, False
 
     else:
-        return True
+        return True, False
+
 
 async def check_and_trigger_profanity_moderation_for_message(
     bot: nextcord.Client, 
@@ -551,12 +554,10 @@ async def check_and_trigger_profanity_moderation_for_message(
     logging.info(f"Profanity detected in message from {message.author} in {message.guild.name}: {profane_word}. Message: {message.content}")
     
     # Grant a strike (and maybe timeout)
-    action_successful = await grant_and_punish_strike(bot, message.guild.id, message.author, 1)
+    action_successful, timed_out = await grant_and_punish_strike(bot, message.guild.id, message.author, 1)
 
     # Wait a second
     await asyncio.sleep(1)
-    
-    timed_out = message.author.communication_disabled_until is not None
 
     if action_successful:
         # Notify the user that they were timed out via DM
@@ -576,7 +577,12 @@ async def check_and_trigger_profanity_moderation_for_message(
                     """
                 else:
                     # It was just a strike. Tell them.
-                    current_strikes = server.moderation_strikes[message.author.id].strikes
+                    if message.author.id in server.moderation_strikes:
+                        current_strikes = server.moderation_strikes[message.author.id].strikes
+                    else:
+                        # A concurrent message's timeout can clear the strike row during the sleep above.
+                        current_strikes = 0
+
                     description = f"""
                     You were flagged for profanity.
                     
